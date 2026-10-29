@@ -138,6 +138,19 @@ DEMO_QUALITY_REPORTS = [
         'linked_to_capa': False,
         'disposition': 'REWORK',
     },
+    # Reworked and passed on the current order: the FAIL that sent INJ-0042-016 to
+    # rework (closed REWORK below); QR-0042-016-FT above is its passing re-test.
+    {
+        'id': 'QR-0042-016-NI',
+        'part': 'INJ-0042-016',
+        'step': 'Flow Calibration',
+        'status': 'FAIL',
+        'defect': 'Asymmetric spray pattern',
+        'description': 'Uneven spray from one hole - nozzle reseated and retested',
+        'days_ago': 3,
+        'linked_to_capa': False,
+        'disposition': 'REWORK',
+    },
     # Journey 6 exhibit: gives INJ-0042-023 (SCRAPPED) a proper trail
     # to read backwards from — FAIL QR at Final Test → closed SCRAP
     # disposition (created below in DEMO_DISPOSITIONS).
@@ -167,6 +180,16 @@ DEMO_DISPOSITIONS = [
         'current_state': 'IN_PROGRESS',  # UPPERCASE enum value (approved -> in progress)
         'severity': 'MAJOR',  # UPPERCASE enum value - explicitly set, don't rely on default
         'resolution_notes': 'Spray pattern can be corrected by nozzle replacement',
+        'days_ago': 2,
+    },
+    # Completed rework on the current order: reworked, then passed QR-0042-016-FT.
+    {
+        'quality_report': 'QR-0042-016-NI',
+        'part': 'INJ-0042-016',
+        'disposition_type': 'REWORK',
+        'current_state': 'CLOSED',
+        'severity': 'MINOR',
+        'resolution_notes': 'Nozzle reseated; re-tested at Flow Calibration and passed',
         'days_ago': 2,
     },
     # Completed rework from prior order (shows resolution workflow)

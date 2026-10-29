@@ -61,7 +61,9 @@ DEMO_ORDERS = [
             {'serial': 'INJ-0042-013', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
             {'serial': 'INJ-0042-014', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
             {'serial': 'INJ-0042-015', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
-            {'serial': 'INJ-0042-016', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
+            # Failed Flow Calibration, reworked, passed (QR-0042-016-NI → closed REWORK →
+            # QR-0042-016-FT): its repeat visits give Operator Hours real rework time.
+            {'serial': 'INJ-0042-016', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'reworked': True},
             # 2 quarantined
             {'serial': 'INJ-0042-017', 'step': 'Flow Calibration', 'part_status': PartsStatus.QUARANTINED},
             # 1 in rework
@@ -103,7 +105,8 @@ DEMO_ORDERS = [
             {'serial': 'INJ-0038-005', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
             {'serial': 'INJ-0038-006', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
             {'serial': 'INJ-0038-007', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': True},
-            {'serial': 'INJ-0038-008', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': True},
+            # Accepted use-as-is (QR-0038-008-FT), so never reworked.
+            {'serial': 'INJ-0038-008', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
             {'serial': 'INJ-0038-009', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
             # Scrapped at Flow Calibration (QR-0038-010-NI, SCRAP disposition) — never shipped.
             {'serial': 'INJ-0038-010', 'step': None, 'part_status': PartsStatus.SCRAPPED},

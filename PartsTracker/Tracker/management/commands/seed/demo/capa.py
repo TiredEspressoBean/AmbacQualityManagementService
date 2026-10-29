@@ -330,6 +330,17 @@ class DemoCapaSeeder(BaseSeeder):
             if capa_data.get('link_quality_reports'):
                 self._link_quality_reports(capa)
 
+        # A CAPA seeded as already closed was assigned, worked and closed long ago, so
+        # its assignee read the "assigned to you" alert then. Left unread, it greets them
+        # on today's home page as NEW for a CAPA nobody can act on.
+        from Tracker.models.notification_outbox import NotificationOutbox
+        closed = [c.capa_number for c in result['capas'] if c.status == CapaStatus.CLOSED]
+        if closed:
+            NotificationOutbox.objects.filter(
+                tenant=self.tenant, event_code__startswith='capa.', read_at__isnull=True,
+                payload__capa_number__in=closed,
+            ).update(read_at=timezone.now())
+
         self.log(f"  Created {len(result['capas'])} CAPAs")
         self.log(f"  Created {len(result['rca_records'])} RCA records")
         self.log(f"  Created {len(result['tasks'])} CAPA tasks")
