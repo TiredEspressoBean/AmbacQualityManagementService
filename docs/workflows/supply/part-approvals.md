@@ -18,7 +18,8 @@ part type is not thereby approved for another.
 This is the part worth understanding:
 
 !!! warning "Unapproved pairs are held at receiving"
-    For part types that require approval, receiving **holds** lots from a
+    For part types that require approval — **Requires part approval**, ticked on
+    the [part type](../../admin/setup/part-types.md#sourcing) — receiving **holds** lots from a
     (part type, supplier) pair that has no **active, in-date** approval. The
     material arrives and then stops — it won't flow into stock.
 

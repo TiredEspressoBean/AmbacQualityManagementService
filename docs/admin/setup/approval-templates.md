@@ -217,12 +217,13 @@ the template exist — this is how PCRs, PCOs, CAPAs and the rest find theirs.
 
 ### Per document type (the override)
 
-1. Edit the **document type**
-2. Set its **approval template**
+1. Edit the **document type** (see [Document Types](document-types.md))
+2. With **Requires Approval** ticked, pick its **Approval template**
 3. Every document of that type routes through it instead of Document Release
 
-Leave it blank and the type uses **Document Release**. This is how two kinds of
-document can route to different approvers.
+Left on its first option, *The default document approval*, the type uses the
+current `DOCUMENT_RELEASE` template. This is how two kinds of document can route
+to different approvers.
 
 !!! note "A submitter never picks a template"
     There is no template selector on the submit dialog and no per-document

@@ -368,6 +368,12 @@ and with nothing set receiving simply books lots in.
 | **Requires a certificate of conformance** | Every lot is **held** until the CoC is uploaded |
 | **Requires a heat number** | Every lot is **held** until one is entered |
 
+A part type adds two more below them: **Requires supplier qualification** (*a
+received lot is held unless its supplier has an approved qualification*) and
+**Requires part approval** (held unless that part from that supplier has an
+active [part approval](part-approvals.md)). See [Part
+Types](../../admin/setup/part-types.md#sourcing).
+
 !!! tip "Set these once, on the item, not per delivery"
     This is where a paperwork rule belongs: it applies to every lot of that item
     from then on, rather than relying on a clerk remembering which parts need a

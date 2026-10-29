@@ -211,6 +211,20 @@ The board splits into two levels of authority, and they are not the same group.
     The **Planner** is the role whose whole job this is — owning the plan, and so
     holding both levels.
 
+## Editing a work order from the board
+
+**Edit WO** on a task's or a batch's detail opens the **Edit work order**
+dialog: **Priority**, **Quantity**, **Earliest start** and **Due date**. The
+changes apply to the plan and take effect on the next **Solve**; a quantity
+increase adds parts, a decrease cancels unstarted ones.
+
+Changing **Priority** adds a required field, *Why change priority from
+&lt;old&gt; to &lt;new&gt;?* — *"Recorded with the change, so the reason is on
+file when someone asks later."* **Save** stays disabled until it is filled. The
+dialog closes only once the save succeeds; a refused save leaves it open. This
+is the same rule as the work order form — see [Changing priority needs a
+reason](../work-orders/basics.md#changing-priority-needs-a-reason).
+
 ## Moving a task by hand
 
 Drag a task to reschedule it. The task is **pinned** at its new time, the

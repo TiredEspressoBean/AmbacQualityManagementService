@@ -176,8 +176,16 @@ Control](../../workflows/change-control/overview.md).
 
 ## Duplicating a process
 
-Use **Duplicate as Template** in the Process Flow editor. It copies the whole
-process as a new draft, which you then modify and approve as above.
+Use **Process Actions** > **Duplicate as Template** (*Clone for a new product (no
+change trail)*) in the Process Flow editor. It copies the whole process as a new
+draft named *&lt;process&gt; (Copy)*, and opens it; you then modify and approve
+it as above.
+
+The copy carries the process's part type, **Remanufactured**, **Disassembly**,
+**Category** and default scrap rate, and its currently attached documents. Its
+steps and connections are the original's — the copy uses the same step rows, at
+their current version, rather than copies of them. Sampling follows the step,
+so the copy samples as the original does, even after its part type is changed.
 
 !!! note "There is no template flag, and no step-level copy"
     A process is not *marked* as a template — duplicating one is the whole

@@ -105,11 +105,20 @@ For what each group can actually *do*, see the [Role Guides](../../roles/index.m
 ### From Groups Editor
 
 1. Navigate to **Data Management** > **User Groups**
-2. Click **New User Groups**
-3. Enter group name
-4. Add description
-5. Click **Save**
-6. Add permissions (next step)
+2. Click **New group**
+3. Enter its **Name**
+4. Pick **Start from**: *Blank — no permissions*, or *&lt;Preset&gt; preset* to
+   start with a built-in group's permissions. A blank group also takes a
+   **Description**
+5. Click **Create**. The new group opens
+6. Add or remove permissions (next step)
+
+To start from an existing group instead, use **Copy** on its row. The dialog,
+*Copy &lt;group&gt;*, reads *"A new custom group with the same permissions.
+Members aren't copied."* Give it a name and click **Copy**; the copy opens.
+
+**New group** and **Copy** are shown only to someone holding
+`change_tenantgroup`.
 
 ### Deleting a group
 
@@ -156,8 +165,10 @@ Permissions are organized by model:
 
 `action_model`:
 - `view_orders` - View order records
-- `add_parts` - Create parts
-- `change_qualityreports` - Edit quality reports
+- `add_parts` - Create parts; `add_<model>` also shows a list's **Import**
+  button and allows a create-only import
+- `change_qualityreports` - Edit quality reports still **Pending Review**;
+  `change_<model>` is also needed for an update or create-or-update import
 - `delete_documents` - Remove documents
 - `verify_capa` - Record a CAPA effectiveness check
 

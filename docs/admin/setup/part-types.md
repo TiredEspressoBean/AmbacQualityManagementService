@@ -16,7 +16,9 @@ A part type is the definition of a thing you make, buy or recover. It carries:
     A part type has no "default process" field and no "3D model" field. A
     [process](../processes/overview.md) names the part type it is for, and a
     [3D model](../../3d-models/uploading.md) does the same — so you create them
-    against the type rather than picking them from the type's form.
+    against the type rather than picking them from the type's form. The one
+    exception is the **Default disassembly process**, a preselection for the
+    teardown dialog — see [Receiving and recovery](#receiving-and-recovery).
 
 ## Creating a Part Type
 
@@ -30,7 +32,8 @@ A part type is the definition of a thing you make, buy or recover. It carries:
 | **ERP ID Prefix** | Prefix used when generating part identifiers | No |
 | **ERP ID** | External identifier for this type | No |
 | **Made in-house** | This type can be manufactured | No |
-| **Purchased** | This type can be bought | No |
+| **Purchased** | This type can be bought. Ticking it reveals the buy-side fields and receiving controls — see [Sourcing](#sourcing) | No |
+| **Can be recovered** | A used one can be recovered from a torn-down core — see [Receiving and recovery](#receiving-and-recovery) | No |
 | **ITAR Controlled** | Subject to ITAR | No |
 | **ECCN** | Export Control Classification Number | No |
 | **USML Category** | US Munitions List category | No |
@@ -67,11 +70,18 @@ A part type is the definition of a thing you make, buy or recover. It carries:
 |-------|-------------|
 | **Made in-house** | Can be manufactured |
 | **Purchased** | Can be bought |
-| **Preferred supplier** | Default supplier for purchased types. Offers **suppliers only** |
+| **Can be recovered** | See [Receiving and recovery](#receiving-and-recovery) |
+
+Ticking **Purchased** reveals the rest, below the three checkboxes:
+
+| Field | Description |
+|-------|-------------|
 | **Preferred supplier's lead time (days)** | Lead time used by sourcing requirements |
+| **Preferred supplier** | Default supplier for purchased types. Offers **suppliers only** |
 | **Safety stock** | A quantity held back from planning, so the sourcing report warns while there is still stock to react with |
-| **Requires supplier qualification** | Only qualified suppliers may supply it |
-| **Requires part approval** | Lots are held from suppliers without a [part approval](../../workflows/supply/part-approvals.md) |
+| Receiving controls | **Bought and counted by**, and the certificate and heat-number holds — see [Receiving and recovery](#receiving-and-recovery) |
+| **Requires supplier qualification** | *A received lot is held unless its supplier has an approved qualification* |
+| **Requires part approval** | *A received lot is held unless this part from that supplier has an active part approval (PPAP / FAI)* — see [part approvals](../../workflows/supply/part-approvals.md) |
 
 !!! note "Safety stock doesn't stop you issuing"
     It is held back from the **planning** view, not from the shelf — the same as
@@ -129,9 +139,9 @@ See [Export Controls](../../compliance/export-controls.md).
 
 | Field | Description |
 |-------|-------------|
-| **Can be recovered** | A used one of these can be recovered from a torn-down core and put back into service. This is the MRO classification — rotable and repairable items can, expendables cannot. Leave it off and the type will not appear as something a teardown can yield. |
-| **Default disassembly process** | Preselected in the operator's bulk-teardown dialog. Optional; without it the picker simply starts with nothing chosen. |
-| **Bought and counted by** | How the part is **bought and counted at receiving** — the stock unit, **Box**, or **Pound (weighed)**. |
+| **Can be recovered** | Under **Sourcing**. *A used one can be recovered from a torn-down core and put back into service (rotable / repairable). Leave off for expendables — seals, gaskets, lockwire.* Leave it off and the type will not appear as something a teardown can yield. |
+| **Default disassembly process** | Preselected in the operator's bulk-teardown dialog. Shown only when editing a type that has disassembly processes; its first option is *None — the operator picks*. Only a disassembly process is accepted — any other is refused: *"&lt;process&gt; isn't a disassembly process."* Changing it does not create a new version of the part type. |
+| **Bought and counted by** | How the part is **bought and counted at receiving** — the stock unit, **Box**, or **Pound (weighed)**. Shown once **Purchased** is ticked, like the two holds below. |
 | **&lt;stock unit&gt; per box** / **per pound** | Stock units in one box or one pound. Shown only when the part is bought by the box or by the pound. |
 | **Requires a certificate of conformance** | Hold each received lot until its certificate of conformance is uploaded. |
 | **Requires a heat number** | Hold each received lot until its heat / melt number is entered. |

@@ -36,7 +36,10 @@ Equipment records represent:
 | **Model Number** | Model | No |
 | **Location** | Where it is — a location record, from the picker | No |
 | **Status** | Operational status | No |
-| **Schedulable resource** | Whether the scheduler may plan work onto it | No |
+| **Schedulable resource** | Whether the scheduler may plan work onto it. Turning it on reveals the fields below, down to **Batch mode** | No |
+| **Requires calibration** | **Follow the equipment type**, **Yes — this item is calibrated** or **No — not for this item**. *Overrides the type's setting for this one item.* | No |
+| **Calibration interval (days)** | Blank uses the equipment type's default interval | No |
+| **Operating shifts** | *The shifts this machine runs. None ticked follows the plant's shift calendar.* Shown only once shifts exist | No |
 | **Batch capacity** | How many jobs or parts it handles at once. `1` — the default — is an ordinary one-at-a-time machine. Above 1 makes it a batch resource, and then **batch mode** decides how it behaves. | No |
 | **Batch mode** | Only meaningful above a capacity of 1. **Concurrent** — that many independent jobs run side by side, like a bank of wash tanks. **Cycle** — one load at a time of up to that many parts, like a furnace or oven. | No |
 | **Lights-out (unattended running)** | Whether it keeps running between staffed shifts: **Use facility default**, **Lights-out (runs 24/7)**, or **Attended (on shift only)**. The default follows the shop-wide scheduling setting; the other two override it for this machine. | No |
@@ -127,7 +130,9 @@ Counts](../../workflows/supply/locations.md).
 | **Schedulable resource** | Whether the scheduler plans work onto it |
 | **Lights-out (unattended running)** | Can run without an operator present |
 | **Batch mode** and **batch capacity** | Whether it processes a batch, and how large |
-| **Operating shifts** | Which shifts it runs |
+| **Operating shifts** | Which shifts it runs. None ticked follows the plant's shift calendar |
+
+All but **Schedulable resource** are shown only while it is on.
 
 ## Calibration Tracking
 
@@ -137,9 +142,15 @@ Configure per equipment:
 
 | Field | Description |
 |-------|-------------|
-| **Requires calibration** | Set on the **equipment type**. Each item inherits it, and can override it either way |
+| **Requires calibration** | Set on the **equipment type**. Each item inherits it — **Follow the equipment type** — and can override it either way with **Yes — this item is calibrated** or **No — not for this item** |
 | **Default calibration interval** | Days, set on the equipment type |
-| **Calibration interval (days)** | Per-item override of the type's interval |
+| **Calibration interval (days)** | Per-item override of the type's interval; blank uses the type's |
+
+!!! note "The item's calibration fields sit under Schedulable resource"
+    On the equipment form, **Requires calibration** and **Calibration interval
+    (days)** are shown only while **Schedulable resource** is on. To override
+    either on a gauge the scheduler should not plan onto, turn it on, set the
+    override, and turn it off again before saving — the override is kept.
 
 !!! tip "Set the rule on the type, the exception on the item"
     Both calibration settings work the same way: the type carries the policy for
@@ -296,7 +307,13 @@ no availability or OEE figure.
 | `add_equipments` | Create equipment |
 | `change_equipments` | Edit equipment |
 | `delete_equipments` | Remove equipment |
+| `view_equipmenttype` | View equipment types |
+| `add_equipmenttype` / `change_equipmenttype` | Create and edit equipment types — held by Tenant Admin, QA Manager, Production Manager and Document Controller when an organisation is created |
+| `delete_equipmenttype` | Remove equipment types — the same four groups |
 | `add_calibrationrecord` | Record a calibration |
+
+An equipment type carries calibration policy for every item of that type, so it
+is manager-tier; other staff roles can add and edit the equipment itself.
 
 ## Next Steps
 

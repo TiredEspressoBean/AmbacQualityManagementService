@@ -101,6 +101,11 @@ or export-control status is what needs looking at.
 | `add_capa` | The underlying create right for a CAPA — **not sufficient on its own** |
 | `initiate_capa` | **Raise** a CAPA. Checked in addition to `add_capa`, so every staff role holds the first and only the supervisory roles hold the second |
 
+`add_<model>` is also what shows a list's **Import** button and allows a
+**Create Only** import. **Create or Update** and **Update Only** imports rewrite
+existing records, so they need `change_<model>` as well — see [Import &
+Export](../data/import-export.md).
+
 ### Editing Data
 
 `change_*` permissions control modification:
@@ -109,7 +114,8 @@ or export-control status is what needs looking at.
 |------------|--------|
 | `change_orders` | Edit order details |
 | `change_parts` | Modify parts |
-| `change_qualityreports` | Update NCRs |
+| `change_qualityreports` | Edit quality reports that are still **Pending Review** — a recorded result is final |
+| `change_companies`, `change_equipmenttype`, `change_qualityerrorslist` | Edit customers and suppliers, equipment types, and the defect list. These and their `add_` counterparts are manager-tier: Tenant Admin, QA Manager, Production Manager and Document Controller hold them when an organisation is created |
 | `change_workorder` | Edit work orders |
 
 ### Deleting Data

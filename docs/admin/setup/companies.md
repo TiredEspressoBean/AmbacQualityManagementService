@@ -220,10 +220,17 @@ See [Integrations](../../integrations/api.md).
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `view_companies` | View companies |
-| `add_companies` | Create companies |
-| `change_companies` | Edit companies |
-| `delete_companies` | Remove companies |
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `view_companies` | View companies | Every staff role |
+| `add_companies` | Create companies | Tenant Admin, QA Manager, Production Manager, Document Controller |
+| `change_companies` | Edit companies | Tenant Admin, QA Manager, Production Manager, Document Controller |
+| `delete_companies` | Remove companies | Tenant Admin, QA Manager, Production Manager, Document Controller |
+
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../users/roles.md).
+
+!!! note "Customers and suppliers are shared master data"
+    Adding or changing a company is manager-tier. Other roles — Purchasing and
+    Engineering included — see companies and pick them, but ask one of those
+    groups to add a new customer or supplier.
 

@@ -73,7 +73,8 @@ routing and its properties are edited together.
     editor for that. **Timing** and **Machines** stay editable there, because
     they are scheduling data on the step row rather than its controlled
     content; a change there reaches every process version still sharing the
-    row.
+    row. The API refuses the same content edit — see [Where step content is
+    edited](overview.md#where-step-content-is-edited).
 
 ## Step Properties
 
@@ -108,7 +109,7 @@ The properties panel covers:
 | **Terminal step** | The routing ends here |
 | **Expected duration** | Planned duration |
 | **Max visits (rework limit)** | How many times a part may revisit the step |
-| **QA signoff** | Whether a lot needs QA to release it off this step, and how firmly that release is signed — *Not required*, *Check off* (recorded under their login), or *Signature + password* (they re-enter their own password). Whoever did the step's own work is always refused, at every level. |
+| **QA signoff** | Whether a lot needs QA to release it off this step, and how firmly that release is signed — *Not required*, *Check off* (recorded under their login), or *Signature + password* (they re-enter their own password). At every level, the sign-off is refused to anyone who signed one of the step's substeps on that work order, or who is assigned to or completed a part's open visit to the step on it — *"Segregation of duties: you completed work on this step — a different qualified inspector has to sign it off."* |
 | **Sampling required** | Sampling applies at this step |
 | **Min sampling rate (%)** | Shown once sampling is required: the minimum percentage of parts sampled at this step |
 | **Requires first-piece inspection** | FPI gates the step |

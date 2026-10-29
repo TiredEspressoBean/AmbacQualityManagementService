@@ -338,9 +338,13 @@ rather than with every staff role — the same tier as SPC baselines.
 The same permissions apply wherever sampling is authored. The flow editor's step
 **Sampling** dialog saves through one call that needs both
 `add_samplingruleset` and `change_samplingruleset`; without them it opens
-read-only, even for someone who can edit the process. The step form saves its
-sampling rules through the same call, so for someone without them the step saves
-and the rules are refused — *"Step updated, but rules failed."*
+read-only, even for someone who can edit the process. The step form holds the
+same line: without both permissions its **Sampling Rules** and **Fallback
+Rules** editors are read-only, with the note *"Sampling is set by QA — you need
+the sampling rule permissions to change it."*, and saving the step leaves the
+sampling as it was — *"Step updated."* With them, the sampling is saved only
+when the rules, fallback rules, **Fallback Threshold** or **Fallback Duration**
+were changed.
 
 !!! note "Engineering does not author sampling by default"
     A step's **Sampling required** flag is Engineering's, because it is part of

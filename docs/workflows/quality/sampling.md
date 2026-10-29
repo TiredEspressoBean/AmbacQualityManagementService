@@ -339,7 +339,9 @@ result is not in the log; it is on the part's quality report.
     including the **QA Inspector**, which surprises people. It holds on every
     surface: the flow editor's step **Sampling** dialog needs
     `add_samplingruleset` and `change_samplingruleset`, and opens read-only
-    without them.
+    without them; the standalone step form's rule editors are read-only too —
+    *"Sampling is set by QA — you need the sampling rule permissions to change
+    it."*
 
     Production Manager, Shift Lead and Engineering do **not** hold it, even
     though Engineering authors the step the rule hangs off and owns SPC control

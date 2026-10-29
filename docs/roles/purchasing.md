@@ -21,7 +21,7 @@ on, and the sourcing facts the requirements report nets against.
 | **Approved suppliers** | [Approved Suppliers](../workflows/supply/overview.md#approved-suppliers) |
 | **Part approvals** | [Part Approvals](../workflows/supply/part-approvals.md) |
 | **Sourcing facts** — lead time, preferred supplier, safety stock | The material or part type record |
-| **Supplier companies and contacts** | [Companies](../admin/setup/companies.md) |
+| **Supplier companies and contacts** — keeping them accurate | [Companies](../admin/setup/companies.md). Adding or changing a company is manager-tier: a new supplier is added by a QA Manager, Production Manager, Document Controller or Tenant Admin |
 
 ## Sourcing facts are planning inputs
 

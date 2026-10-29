@@ -119,6 +119,11 @@ Editing an existing work order and changing **Priority** adds a required field,
 so the reason is on file when someone asks later."* Saving without one is
 refused: *"Say why the priority is changing."*
 
+The schedule's **Edit work order** dialog asks the same question when its
+**Priority** changes, and keeps **Save** disabled until it is answered — see
+[Editing a work order from the
+board](../scheduling/gantt.md#editing-a-work-order-from-the-board).
+
 The form's **Priority changes** box lists the most recent changes: from and to,
 who, when, and the reason.
 

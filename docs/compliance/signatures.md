@@ -86,9 +86,12 @@ The meaning is server-derived — *"QA release of {step} for {work order}"* — 
 never supplied by a client.
 
 !!! important "Independence and assurance are different controls"
-    A QA release is always made by a second person: whoever signed the step's own
-    substeps is refused. That is **segregation of duties**, and it is enforced
-    whatever the assurance level — including *check off*.
+    A QA release is refused to whoever worked the step on that work order: anyone
+    who signed one of its substeps on a unit still at the step, or who is
+    assigned to or completed a unit's visit to the step that is still open. That
+    is **segregation of duties**, and it is enforced whatever the assurance
+    level — including *check off*. Units that have already moved past the step
+    fall outside it.
 
     The password, where the author requires one, proves the signer is who they say.
     It does not make them independent, and independence does not re-authenticate

@@ -77,11 +77,14 @@ or reversing a shipment on it, puts the order back to **In Progress**.
 Orders need work orders to track production:
 
 1. Go to **Data Management** > **Work Orders** and click **New Work Orders**
-2. Select your order
-3. Choose the process to apply
-4. The work order links parts to the manufacturing workflow
+2. Enter the **ERP ID** and **Expected Completion Date** — both required
+3. Pick your order as the **Related Order**
+4. Choose the **Process** to apply — only approved processes in force are offered
+5. Click **Submit**. The work order starts **Pending**, with a quantity of 1 and
+   no parts
 
-See [Work Order Basics](../work-orders/basics.md) for details.
+See [Creating a Work Order](../work-orders/basics.md#creating-a-work-order) for
+every field, and for how its quantity and parts are set.
 
 ## Bulk Order Import
 

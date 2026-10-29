@@ -119,12 +119,17 @@ See [Import & Export](../data/import-export.md).
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `view_qualityerrorslist` | View error types |
-| `add_qualityerrorslist` | Create error types |
-| `change_qualityerrorslist` | Edit error types |
-| `delete_qualityerrorslist` | Archive error types |
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `view_qualityerrorslist` | View error types | Every staff role |
+| `add_qualityerrorslist` | Create error types | Tenant Admin, QA Manager, Production Manager, Document Controller |
+| `change_qualityerrorslist` | Edit error types | Tenant Admin, QA Manager, Production Manager, Document Controller |
+| `delete_qualityerrorslist` | Archive error types | Tenant Admin, QA Manager, Production Manager, Document Controller |
+
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../users/roles.md).
+
+An inspector picks from the list on a quality report but cannot add to it; a
+missing category is a request to one of those groups.
 
 ## Next Steps
 
