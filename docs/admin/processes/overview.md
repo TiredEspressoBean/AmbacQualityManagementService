@@ -141,9 +141,20 @@ rather than a stripped one.
 
 The standalone step form is **read-only for step content** when the step belongs
 to a process, with a banner offering *Edit in &lt;process&gt; · v&lt;n&gt;*.
-Through the API, a change to a step's measurement definitions, training
-requirements or sampling rules is refused while any process using the step is
-out of draft:
+The API holds the same line. An edit of the step's own content
+(`PATCH`/`PUT /api/Steps/<id>/`) that does not name the draft it is for
+(`?process=<draft>`) is refused while the step belongs to any process that is
+not archived — draft or approved:
+
+> This step is part of a process. Its content is edited there, so every other
+> version of the process keeps the step as it was. Timing and machines can
+> still be changed here.
+
+Archiving, the operation number, the work center and timing still save
+through that call.
+
+A change to a step's measurement definitions, training requirements or
+sampling rules is refused while any process using the step is out of draft:
 
 > This step is part of an approved process version. Open it from a draft of the
 > process to change it; the draft gets its own copy.
@@ -244,8 +255,9 @@ is refused:
 > &lt;process&gt; is out of draft, so it can't be edited or deleted.
 
 Deleting archives the process
-rather than erasing it: its history is kept, and it can be restored from **Data
-Management**. An approved process leaves new work through **Deprecate** or a
+rather than erasing it: its history is kept. The processes list has no **Show
+archived**, so a deleted draft can't be brought back from there — see [Show
+archived, and Restore](../data/data-management.md#show-archived-and-restore). An approved process leaves new work through **Deprecate** or a
 newer version instead.
 
 ### Process Flow
