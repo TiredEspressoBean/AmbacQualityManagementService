@@ -80356,6 +80356,11 @@ components:
           type: string
           format: date-time
           readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When work actually started on this step
         exited_at:
           type: string
           format: date-time

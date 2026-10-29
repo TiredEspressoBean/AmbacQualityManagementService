@@ -1832,7 +1832,7 @@ class StepExecutionListSerializer(SecureModelMixin):
         fields = (
             'id', 'part', 'part_erp_id', 'part_status', 'work_order',
             'step', 'step_name', 'step_order', 'visit_number',
-            'entered_at', 'exited_at', 'status',
+            'entered_at', 'started_at', 'exited_at', 'status',
             'assigned_to', 'assigned_to_name', 'decision_result'
         )
 

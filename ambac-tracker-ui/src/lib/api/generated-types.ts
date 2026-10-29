@@ -36484,6 +36484,11 @@ export interface components {
             visit_number?: number;
             /** Format: date-time */
             readonly entered_at: string;
+            /**
+             * Format: date-time
+             * @description When work actually started on this step
+             */
+            started_at?: string | null;
             /** Format: date-time */
             exited_at?: string | null;
             status?: components["schemas"]["StepExecutionStatusEnum"];

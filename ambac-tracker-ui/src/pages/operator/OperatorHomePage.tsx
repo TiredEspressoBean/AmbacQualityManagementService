@@ -502,7 +502,13 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                 <div className="truncate font-mono text-xs text-muted-foreground">{activeRun.part_erp_id ?? "—"}</div>
                                 <div className="text-xs text-muted-foreground">
                                     {activeRun.status === "IN_PROGRESS" ? "Running" : "Assigned"}
-                                    {activeRun.entered_at ? ` · started ${formatDistanceToNow(new Date(activeRun.entered_at))} ago` : ""}
+                                    {/* Started is when work began; a run not yet started has only
+                                        arrived, so say how long it has been waiting instead. */}
+                                    {activeRun.started_at
+                                        ? ` · started ${formatDistanceToNow(new Date(activeRun.started_at))} ago`
+                                        : activeRun.entered_at
+                                            ? ` · waiting ${formatDistanceToNow(new Date(activeRun.entered_at))}`
+                                            : ""}
                                     {runs.length > 1 ? ` · +${runs.length - 1} more open` : ""}
                                 </div>
                             </div>

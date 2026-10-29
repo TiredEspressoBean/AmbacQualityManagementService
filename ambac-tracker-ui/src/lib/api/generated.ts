@@ -9921,6 +9921,12 @@ export type StepExecutionList = {
    */
   number | undefined;
   entered_at: string;
+  started_at?:
+    | /**
+     * When work actually started on this step
+     */
+    (string | null)
+    | undefined;
   exited_at?: (string | null) | undefined;
   status?: StepExecutionStatusEnum | undefined;
   assigned_to?:
@@ -25389,6 +25395,7 @@ const StepExecutionList = z.object({
   step_order: z.number().int().nullable(),
   visit_number: z.number().int().gte(0).lte(2147483647).optional(),
   entered_at: z.string().datetime({ offset: true }),
+  started_at: z.string().datetime({ offset: true }).nullish(),
   exited_at: z.string().datetime({ offset: true }).nullish(),
   status: StepExecutionStatusEnum.optional(),
   assigned_to: z.number().int().nullish(),
