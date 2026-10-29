@@ -122,15 +122,15 @@ Custom units can be added.
 
 ## Required vs Optional
 
-### Required Measurements
-- Must be recorded to advance
-- Blocks step transition if missing
-- Use for critical dimensions
+The definition's **Required** checkbox (*Must be measured to complete step*) is
+recorded, but nothing reads it: it does not stop a part moving on.
 
-### Optional Measurements
-- Can record or skip
-- Doesn't block advancement
-- Use for reference data
+- **Whether a reading must be taken** is set where it is captured — the step's
+  [work instructions](../../workflows/dwi/authoring.md). A substep can't be
+  completed with a required capture left blank.
+- **Whether an out-of-spec reading holds the part** is the step's **Block on
+  out-of-spec measurement** setting, in the flow editor's **Advanced** settings.
+  Off, an out-of-spec reading is recorded, but it doesn't hold the part.
 
 ## Control plan and drawing reference
 

@@ -115,6 +115,7 @@ The properties panel covers:
 | **Requires first-piece inspection** | FPI gates the step |
 | **FPI scope** | Shown once FPI is required: what one first piece releases — see [FPI Scope](#fpi-scope) |
 | **Block on quarantine** | *A quarantined part can't move on from this step until its quarantine is decided.* **Off by default** |
+| **Block on out-of-spec measurement** | *A part with an out-of-spec reading at this step can't move on until it's dealt with.* The part is held with *"One or more measurements are out of specification"*. **Off by default** |
 | **Sequencing** | The order the step's substeps are worked in — *Sequential* or *Free order*. See [Sequencing](../../workflows/dwi/authoring.md#sequencing) |
 | **Move lot as a unit** | Parts advance as a cohort rather than individually |
 | **Batch ready threshold (% of lot ready to advance)** | Shown once **Move lot as a unit** is on — see [Moving a lot as a unit](#moving-a-lot-as-a-unit) |
@@ -137,10 +138,12 @@ Link measurements to collect at this step:
 1. In step detail, go to **Measurements**
 2. Click **Add Measurement**
 3. Select existing measurement definition or create new
-4. Set as required or optional
-5. Save
+4. Save
 
-Parts cannot advance if required measurements are missing.
+Whether a reading must be taken is set in the step's [work
+instructions](../../workflows/dwi/authoring.md), not here. A reading outside its
+limits holds the part only when the step's **Block on out-of-spec measurement**
+is on.
 
 ### Training Requirements
 

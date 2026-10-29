@@ -214,9 +214,11 @@ The board splits into two levels of authority, and they are not the same group.
 ## Editing a work order from the board
 
 **Edit WO** on a task's or a batch's detail opens the **Edit work order**
-dialog: **Priority**, **Quantity**, **Earliest start** and **Due date**. The
-changes apply to the plan and take effect on the next **Solve**; a quantity
-increase adds parts, a decrease cancels unstarted ones.
+dialog: **Priority**, **Parts started**, **Earliest start** and **Due date**.
+The changes apply to the plan and take effect on the next **Solve**. Raising
+**Parts started** adds parts and lowering it cancels unstarted ones; the work
+order's **Order quantity** stays as planned. A new work order from the board
+asks for its **Order quantity**.
 
 Changing **Priority** adds a required field, *Why change priority from
 &lt;old&gt; to &lt;new&gt;?* — *"Recorded with the change, so the reason is on

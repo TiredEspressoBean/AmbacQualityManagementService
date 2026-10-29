@@ -63,12 +63,18 @@ An order may have multiple work orders if:
     A draft, a superseded version or a temporary change's version is refused —
     the picker leaves them out, and the server refuses them if sent anyway.
 
-!!! note "No quantity on this form"
-    A work order created here has a quantity of **1** and no parts. Set the
-    quantity from the schedule's **Edit work order** dialog, which adds parts for
-    an increase and cancels unstarted ones for a decrease. **Add Parts** on the
-    WO Control Center adds parts without changing the quantity. A work order planned from the schedule
-    or an order line gets its quantity and parts when it is planned.
+!!! note "Order quantity and parts started"
+    A work order carries two numbers. **Order quantity** is the good parts owed,
+    set when the job is planned; it doesn't move. **Parts started** is how many
+    parts are on the job: it rises when parts are added — **Add Parts** on the WO
+    Control Center, or make-up for scrap — and changes from the schedule's **Edit
+    work order** dialog, which adds parts for an increase and cancels unstarted
+    ones for a decrease. The work order page shows both: *Order quantity ·
+    &lt;n&gt; parts started*.
+
+    A work order created on this form has 1 part started and no parts yet, and
+    no order quantity of its own. A work order planned from the schedule or an
+    order line gets both when it is planned.
 
 !!! note "A work order need not be tied to a customer order"
     **Related Order** is optional — stock builds, internal work and rework all
