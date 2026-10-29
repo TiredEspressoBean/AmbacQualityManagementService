@@ -22,6 +22,7 @@ import { useRetrieveParts } from "@/hooks/parts"
 import { useRetrieveSteps } from "@/hooks/useRetrieveSteps"
 import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments"
 import { isFieldRequired } from "@/lib/zod-config"
+import { useAuthUser } from "@/hooks/useAuthUser"
 
 const STATUS_OPTIONS = schemas.QualityReportStatusEnum.options;
 
@@ -137,6 +138,16 @@ export default function EditQualityReportFormPage() {
             measurements: [],
         } as FormValues,
     });
+
+    // Opened with ?part=&step= (the operator home's "Flag"): the person flagging found
+    // it, so Detected By starts as them.
+    const { data: me } = useAuthUser();
+    const fromFlag = mode === "create" && !!prefill.part;
+    useEffect(() => {
+        if (fromFlag && me?.pk != null && form.getValues("detected_by") == null) {
+            form.setValue("detected_by", Number(me.pk));
+        }
+    }, [fromFlag, me?.pk, form]);
 
     // Reset form when quality report data loads in edit mode
     useEffect(() => {
@@ -364,7 +375,13 @@ export default function EditQualityReportFormPage() {
                                             contentClassName="w-[300px]"
                                             value={field.value == null ? null : String(field.value)}
                                             onChange={(v) => v && form.setValue("detected_by", Number(v))}
-                                            options={employees.map((emp) => ({ value: String(emp.id), label: `${emp.first_name} ${emp.last_name}` }))}
+                                            options={[
+                                                // The signed-in person, when prefilled and not on the loaded page.
+                                                ...(fromFlag && me && !employees.some((e) => String(e.id) === String(me.pk))
+                                                    ? [{ value: String(me.pk), label: me.full_name || me.email || "Me" }]
+                                                    : []),
+                                                ...employees.map((emp) => ({ value: String(emp.id), label: `${emp.first_name} ${emp.last_name}` })),
+                                            ]}
                                             placeholder="Select inspector"
                                             searchPlaceholder="Search employees..."
                                             emptyText="No employees found."

@@ -815,7 +815,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                             variant="ghost"
                             title={`Undo ${lastFinished.step_name}?`}
                             description={lastFinished.undo_needs_approval
-                                ? "This is past the step's undo window, so the undo is sent to your lead for approval. Say why it needs undoing."
+                                ? "This is past the step's undo window, so the undo is sent to QA for approval. Say why it needs undoing."
                                 : "The part goes back to this step so it can be done again. Say why; the reason is kept."}
                             confirmLabel={lastFinished.undo_needs_approval ? "Send for approval" : "Undo"}
                             done={(result) => (result as { requires_approval?: boolean })?.requires_approval
