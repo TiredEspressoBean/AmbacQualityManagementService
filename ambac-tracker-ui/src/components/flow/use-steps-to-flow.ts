@@ -56,6 +56,7 @@ export interface StepData {
   fpi_scope?: string;
   sequencing_mode?: string;
   block_on_quarantine?: boolean;
+  block_on_measurement_failure?: boolean;
   // Outside processing (subcontract op — the node owns the whole step: send out →
   // vendor → return → inspect). Set on a RECEIVING step to make it an OSP node.
   is_outside_process?: boolean;
@@ -192,6 +193,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         fpiScope: step.fpi_scope,
         sequencingMode: step.sequencing_mode,
         blockOnQuarantine: step.block_on_quarantine,
+        blockOnMeasurementFailure: step.block_on_measurement_failure,
         // Outside processing (OSP node config)
         isOutsideProcess: step.is_outside_process,
         outsideSupplier: step.outside_supplier,

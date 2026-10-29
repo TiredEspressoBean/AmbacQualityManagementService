@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from django.db import IntegrityError
@@ -298,8 +299,14 @@ def bulk_add_parts_to_workorder(
     quantity: int,
     erp_id_start: int = 1,
     part_status: str = PartsStatus.PENDING,
+    *,
+    count_as_started: bool = False,
 ) -> list:
     """Create N parts on `work_order` and return only the newly-created ones.
+
+    `count_as_started`: raise `WorkOrder.quantity` (parts started) by the parts created
+    — for an Add Parts on an existing job. The order quantity (`target_good_quantity`)
+    never moves. Planning a new work order leaves it off: it sets the quantity itself.
 
     Validates that `part_type` matches the WO's process part_type when the
     process is set. Wraps `create_parts_batch` (which is idempotent) and
@@ -331,6 +338,14 @@ def bulk_add_parts_to_workorder(
             .exclude(id__in=existing_ids)
             .order_by('ERP_id')
         )
+        if count_as_started and new_parts:
+            # A legacy WO has no order quantity and reads `quantity` as it: pin it first
+            # so the order quantity doesn't move with the parts started.
+            WorkOrder.objects.filter(pk=work_order.pk, target_good_quantity__isnull=True).update(  # tenant-safe: pk
+                target_good_quantity=F('quantity'))
+            WorkOrder.objects.filter(pk=work_order.pk).update(  # tenant-safe: pk of a scoped WO
+                quantity=F('quantity') + len(new_parts))
+            work_order.refresh_from_db(fields=['quantity', 'target_good_quantity'])
     return new_parts
 
 

@@ -1512,6 +1512,7 @@ class StepsSerializer(SecureModelMixin):
         model = Steps
         fields = (
             'id', 'name', 'operation_number', 'expected_duration', 'description', 'block_on_quarantine',
+            'block_on_measurement_failure',
             'requires_qa_signoff', 'qa_signoff_assurance', 'sampling_required', 'min_sampling_rate', 'pass_threshold',
             # First Piece Inspection
             'requires_first_piece_inspection',
@@ -1911,7 +1912,7 @@ class StepSerializer(SecureModelMixin):
             "timing", "labor_model",
             # QA settings
             "requires_qa_signoff", "qa_signoff_assurance", "sampling_required", "min_sampling_rate",
-            "block_on_quarantine", "pass_threshold",
+            "block_on_quarantine", "block_on_measurement_failure", "pass_threshold",
             # Batch completion — lot moves as a unit; pass_threshold is the
             # cohort-readiness fraction (% READY before the batch advances).
             "requires_batch_completion",

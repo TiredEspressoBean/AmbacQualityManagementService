@@ -203,6 +203,7 @@ export interface StepData {
   sampling_required?: boolean;
   min_sampling_rate?: number;
   block_on_quarantine?: boolean;
+  block_on_measurement_failure?: boolean;
   pass_threshold?: number;
   revisit_assignment?: 'any' | 'same' | 'different' | 'role';
   /** Reman: the repair code this step carries, as the shop writes it (e.g. NZL-RECON).

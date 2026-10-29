@@ -3105,6 +3105,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
                 quantity=quantity_int,
                 erp_id_start=erp_id_start_int,
                 part_status=part_status_val,
+                count_as_started=True,
             )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -3150,6 +3151,11 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         live = wo.parts.exclude(part_status__in=[PartsStatus.CANCELLED, PartsStatus.SCRAPPED])
         current = live.count()
         added = cancelled = 0
+        # This changes parts started, not the order quantity. A legacy WO with no order
+        # quantity reads `quantity` as it, so pin it before `quantity` moves.
+        if new_q != current and wo.target_good_quantity is None:
+            wo.target_good_quantity = wo.quantity
+            wo.save(update_fields=['target_good_quantity'])
         try:
             if new_q > current:
                 if not wo.process_id or wo.process.part_type_id is None:

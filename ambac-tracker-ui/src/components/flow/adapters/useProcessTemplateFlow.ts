@@ -202,6 +202,7 @@ export function useProcessTemplateFlow({ processId, enabled = true }: UseProcess
         sampling_required: ps.step.sampling_required,
         min_sampling_rate: ps.step.min_sampling_rate,
         block_on_quarantine: ps.step.block_on_quarantine,
+        block_on_measurement_failure: ps.step.block_on_measurement_failure,
         pass_threshold: ps.step.pass_threshold,
         part_type: ps.step.part_type ? String(ps.step.part_type) : undefined,
         part_type_name: ps.step.part_type_name ?? undefined,

@@ -71480,6 +71480,10 @@ components:
           nullable: true
         block_on_quarantine:
           type: boolean
+        block_on_measurement_failure:
+          type: boolean
+          description: If True, parts cannot advance if any measurement is out of
+            spec
         requires_qa_signoff:
           type: boolean
         qa_signoff_assurance:
@@ -80076,6 +80080,10 @@ components:
           description: Minimum % of parts that must be sampled at this step
         block_on_quarantine:
           type: boolean
+        block_on_measurement_failure:
+          type: boolean
+          description: If True, parts cannot advance if any measurement is out of
+            spec
         pass_threshold:
           type: number
           format: double
@@ -81175,6 +81183,10 @@ components:
           description: Minimum % of parts that must be sampled at this step
         block_on_quarantine:
           type: boolean
+        block_on_measurement_failure:
+          type: boolean
+          description: If True, parts cannot advance if any measurement is out of
+            spec
         pass_threshold:
           type: number
           format: double
@@ -81793,6 +81805,10 @@ components:
           nullable: true
         block_on_quarantine:
           type: boolean
+        block_on_measurement_failure:
+          type: boolean
+          description: If True, parts cannot advance if any measurement is out of
+            spec
         requires_qa_signoff:
           type: boolean
         qa_signoff_assurance:
@@ -82030,6 +82046,10 @@ components:
           nullable: true
         block_on_quarantine:
           type: boolean
+        block_on_measurement_failure:
+          type: boolean
+          description: If True, parts cannot advance if any measurement is out of
+            spec
         requires_qa_signoff:
           type: boolean
         qa_signoff_assurance:

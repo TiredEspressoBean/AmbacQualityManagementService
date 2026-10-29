@@ -142,6 +142,8 @@ type StepNodeData = {
   sequencingMode?: string;
   /** Parts can't advance from this step while quarantined. */
   blockOnQuarantine?: boolean;
+  /** Parts can't advance from this step with an out-of-spec reading. */
+  blockOnMeasurementFailure?: boolean;
   samplingRequired?: boolean;
   minSamplingRate?: number;
   passThreshold?: number;
@@ -1251,6 +1253,28 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
               </div>
               <p className="text-xs text-muted-foreground">
                 A quarantined part can't move on from this step until its quarantine is decided.
+              </p>
+            </div>
+
+            {/* Block on out-of-spec measurement — the advancement gate holds a part whose
+                reading at this step is outside its limits. */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="block-on-oos" className="text-sm font-normal">Block on out-of-spec measurement</Label>
+                {editable ? (
+                  <Switch
+                    id="block-on-oos"
+                    checked={data.blockOnMeasurementFailure || false}
+                    onCheckedChange={(checked) => onUpdate(node.id, { block_on_measurement_failure: checked })}
+                  />
+                ) : (
+                  <Badge variant={data.blockOnMeasurementFailure ? 'default' : 'secondary'}>
+                    {data.blockOnMeasurementFailure ? 'Yes' : 'No'}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A part with an out-of-spec reading at this step can't move on until it's dealt with.
               </p>
             </div>
 

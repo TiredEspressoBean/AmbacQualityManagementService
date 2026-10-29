@@ -8016,6 +8016,10 @@ export type Step = {
    */
   number | undefined;
   block_on_quarantine?: boolean | undefined;
+  block_on_measurement_failure?: /**
+   * If True, parts cannot advance if any measurement is out of spec
+   */
+  boolean | undefined;
   pass_threshold?: number | undefined;
   requires_batch_completion?: /**
    * If True, all parts in batch must be ready before any can advance
@@ -10285,6 +10289,10 @@ export type Steps = {
   expected_duration?: (string | null) | undefined;
   description?: (string | null) | undefined;
   block_on_quarantine?: boolean | undefined;
+  block_on_measurement_failure?: /**
+   * If True, parts cannot advance if any measurement is out of spec
+   */
+  boolean | undefined;
   requires_qa_signoff?: boolean | undefined;
   qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
   sampling_required?: boolean | undefined;
@@ -14703,6 +14711,10 @@ export type PatchedStepsRequest = Partial<{
   expected_duration: string | null;
   description: string | null;
   block_on_quarantine: boolean;
+  /**
+   * If True, parts cannot advance if any measurement is out of spec
+   */
+  block_on_measurement_failure: boolean;
   requires_qa_signoff: boolean;
   qa_signoff_assurance: QaSignoffAssuranceEnum;
   sampling_required: boolean;
@@ -17395,6 +17407,10 @@ export type StepRequest = {
    */
   number | undefined;
   block_on_quarantine?: boolean | undefined;
+  block_on_measurement_failure?: /**
+   * If True, parts cannot advance if any measurement is out of spec
+   */
+  boolean | undefined;
   pass_threshold?: number | undefined;
   requires_batch_completion?: /**
    * If True, all parts in batch must be ready before any can advance
@@ -17592,6 +17608,10 @@ export type StepsRequest = {
   expected_duration?: (string | null) | undefined;
   description?: (string | null) | undefined;
   block_on_quarantine?: boolean | undefined;
+  block_on_measurement_failure?: /**
+   * If True, parts cannot advance if any measurement is out of spec
+   */
+  boolean | undefined;
   requires_qa_signoff?: boolean | undefined;
   qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
   sampling_required?: boolean | undefined;
@@ -23858,6 +23878,7 @@ const Step = z.object({
   sampling_required: z.boolean().optional(),
   min_sampling_rate: z.number().optional(),
   block_on_quarantine: z.boolean().optional(),
+  block_on_measurement_failure: z.boolean().optional(),
   pass_threshold: z.number().optional(),
   requires_batch_completion: z.boolean().optional(),
   requires_first_piece_inspection: z.boolean().optional(),
@@ -25758,6 +25779,7 @@ const Steps = z.object({
   expected_duration: z.string().nullish(),
   description: z.string().nullish(),
   block_on_quarantine: z.boolean().optional(),
+  block_on_measurement_failure: z.boolean().optional(),
   requires_qa_signoff: z.boolean().optional(),
   qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
   sampling_required: z.boolean().optional(),
@@ -25826,6 +25848,7 @@ const StepsRequest = z.object({
   expected_duration: z.string().nullish(),
   description: z.string().nullish(),
   block_on_quarantine: z.boolean().optional(),
+  block_on_measurement_failure: z.boolean().optional(),
   requires_qa_signoff: z.boolean().optional(),
   qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
   sampling_required: z.boolean().optional(),
@@ -25864,6 +25887,7 @@ const PatchedStepsRequest = z
     expected_duration: z.string().nullable(),
     description: z.string().nullable(),
     block_on_quarantine: z.boolean(),
+    block_on_measurement_failure: z.boolean(),
     requires_qa_signoff: z.boolean(),
     qa_signoff_assurance: QaSignoffAssuranceEnum,
     sampling_required: z.boolean(),
@@ -29603,6 +29627,7 @@ const StepRequest = z.object({
   sampling_required: z.boolean().optional(),
   min_sampling_rate: z.number().optional(),
   block_on_quarantine: z.boolean().optional(),
+  block_on_measurement_failure: z.boolean().optional(),
   pass_threshold: z.number().optional(),
   requires_batch_completion: z.boolean().optional(),
   requires_first_piece_inspection: z.boolean().optional(),

@@ -190,6 +190,7 @@ export default function ProcessFlowPage() {
         fpi_scope: step.fpi_scope as string | undefined,
         sequencing_mode: step.sequencing_mode as string | undefined,
         block_on_quarantine: step.block_on_quarantine as boolean | undefined,
+        block_on_measurement_failure: step.block_on_measurement_failure as boolean | undefined,
         is_outside_process: step.is_outside_process as boolean | undefined,
         outside_supplier: step.outside_supplier as string | null,
         outside_supplier_name: step.outside_supplier_name as string | null,
@@ -421,6 +422,7 @@ export default function ProcessFlowPage() {
           fpiScope: updatedStep.fpi_scope,
           sequencingMode: updatedStep.sequencing_mode,
           blockOnQuarantine: updatedStep.block_on_quarantine,
+          blockOnMeasurementFailure: updatedStep.block_on_measurement_failure,
           isOutsideProcess: updatedStep.is_outside_process,
           outsideSupplier: updatedStep.outside_supplier,
           outsideSupplierName: updatedStep.outside_supplier_name,
@@ -499,6 +501,7 @@ export default function ProcessFlowPage() {
         fpi_scope: step.fpi_scope || 'PER_WORKORDER',
         sequencing_mode: step.sequencing_mode || 'sequential',
         block_on_quarantine: step.block_on_quarantine || false,
+        block_on_measurement_failure: step.block_on_measurement_failure || false,
         is_outside_process: step.is_outside_process || false,
         // FK by id — the graph-save applies node keys to the Step directly.
         outside_supplier_id: step.outside_supplier || null,

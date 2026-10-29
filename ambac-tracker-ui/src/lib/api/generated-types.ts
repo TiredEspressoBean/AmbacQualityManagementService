@@ -32057,6 +32057,8 @@ export interface components {
             expected_duration?: string | null;
             description?: string | null;
             block_on_quarantine?: boolean;
+            /** @description If True, parts cannot advance if any measurement is out of spec */
+            block_on_measurement_failure?: boolean;
             requires_qa_signoff?: boolean;
             qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
@@ -36342,6 +36344,8 @@ export interface components {
              */
             min_sampling_rate?: number;
             block_on_quarantine?: boolean;
+            /** @description If True, parts cannot advance if any measurement is out of spec */
+            block_on_measurement_failure?: boolean;
             /** Format: double */
             pass_threshold?: number;
             /** @description If True, all parts in batch must be ready before any can advance */
@@ -36953,6 +36957,8 @@ export interface components {
              */
             min_sampling_rate?: number;
             block_on_quarantine?: boolean;
+            /** @description If True, parts cannot advance if any measurement is out of spec */
+            block_on_measurement_failure?: boolean;
             /** Format: double */
             pass_threshold?: number;
             /** @description If True, all parts in batch must be ready before any can advance */
@@ -37313,6 +37319,8 @@ export interface components {
             expected_duration?: string | null;
             description?: string | null;
             block_on_quarantine?: boolean;
+            /** @description If True, parts cannot advance if any measurement is out of spec */
+            block_on_measurement_failure?: boolean;
             requires_qa_signoff?: boolean;
             qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
@@ -37430,6 +37438,8 @@ export interface components {
             expected_duration?: string | null;
             description?: string | null;
             block_on_quarantine?: boolean;
+            /** @description If True, parts cannot advance if any measurement is out of spec */
+            block_on_measurement_failure?: boolean;
             requires_qa_signoff?: boolean;
             qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;

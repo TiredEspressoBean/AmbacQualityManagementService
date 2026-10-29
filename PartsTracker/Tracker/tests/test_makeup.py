@@ -86,3 +86,32 @@ class MakeupPlanningTests(TenantContextMixin, TestCase):
         create_makeup_parts(wo)
         sched.refresh_from_db()
         self.assertTrue(sched.is_stale)
+
+
+class PartsStartedTests(MakeupPlanningTests):
+    """WorkOrder.quantity is parts started (2026-10-29): make-up and Add Parts raise it;
+    the order quantity never moves — a legacy WO's is pinned first."""
+
+    def test_makeup_raises_parts_started_not_the_order(self):
+        wo = self._wo(target=5, started=5)
+        self._scrap(wo, 2)
+        create_makeup_parts(wo)
+        wo.refresh_from_db()
+        self.assertEqual((wo.quantity, wo.target_good_quantity), (7, 5))
+
+    def test_legacy_makeup_pins_the_order_and_then_stops(self):
+        wo = self._wo(target=4, started=4)
+        WorkOrder.objects.filter(pk=wo.pk).update(target_good_quantity=None)
+        wo.refresh_from_db()
+        self._scrap(wo, 1)
+        create_makeup_parts(wo)
+        wo.refresh_from_db()
+        self.assertEqual((wo.quantity, wo.target_good_quantity), (5, 4))
+        self.assertEqual(create_makeup_parts(wo)['created'], 0)
+
+    def test_add_parts_raises_parts_started(self):
+        from Tracker.services.mes.work_order import bulk_add_parts_to_workorder
+        wo = self._wo(target=5, started=5)
+        bulk_add_parts_to_workorder(wo, self.pt, self.step, 3, erp_id_start=10, count_as_started=True)
+        wo.refresh_from_db()
+        self.assertEqual((wo.quantity, wo.target_good_quantity), (8, 5))

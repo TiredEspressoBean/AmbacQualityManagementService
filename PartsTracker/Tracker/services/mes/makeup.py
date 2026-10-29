@@ -79,6 +79,17 @@ def create_makeup_parts(work_order, user=None) -> dict:
         ]
         # tenant-safe: each Part sets tenant=work_order.tenant explicitly above.
         Parts.objects.bulk_create(new_parts)
+        # Make-up parts are parts started too; the order quantity stays. A legacy WO
+        # with no order quantity falls back to `quantity` as its target, so pin the
+        # target first — else raising `quantity` would raise the target and make-up
+        # would never see the gap close.
+        from django.db.models import F
+        from Tracker.models import WorkOrder
+        WorkOrder.objects.filter(pk=work_order.pk, target_good_quantity__isnull=True).update(  # tenant-safe: pk
+            target_good_quantity=F('quantity'))
+        WorkOrder.objects.filter(pk=work_order.pk).update(  # tenant-safe: pk of a scoped WO
+            quantity=F('quantity') + n)
+        work_order.refresh_from_db(fields=['quantity', 'target_good_quantity'])
         # Sampling eval, mirroring create_parts_batch.
         work_order._bulk_evaluate_sampling(new_parts)
         # New demand (bulk_create bypasses the Parts post_save) — flag for re-solve.

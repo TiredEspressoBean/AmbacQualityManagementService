@@ -171,3 +171,41 @@ class ApprovalTemplateDeactivationRemovedTests(TenantTestCase):
         for name in ("ApprovalTemplates-deactivate", "ApprovalTemplates-activate"):
             with self.assertRaises(NoReverseMatch):
                 reverse(name, kwargs={"pk": "00000000-0000-0000-0000-000000000000"})
+
+
+class BlockOnOutOfSpecTests(TenantTestCase):
+    """Block on out-of-spec measurement (2026-10-29): the switch holds a part with an
+    out-of-spec reading at the step; the old required_measurements half is gone."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import MeasurementDefinition, Parts, StepExecution, WorkOrder
+        t = self.tenant_a
+        self.pt = PartTypes.objects.create(tenant=t, name="Body", ID_prefix="B")
+        self.step = Steps.objects.create(tenant=t, part_type=self.pt, name="Bore", step_type="TASK",
+                                         block_on_measurement_failure=True)
+        self.md = MeasurementDefinition.objects.create(tenant=t, step=self.step, label="OD", type="NUMERIC",
+                                                       nominal=10, upper_tol=0.1, lower_tol=0.1)
+        self.wo = WorkOrder.objects.create(tenant=t, ERP_id="WO-OOS", quantity=1)
+        part = Parts.objects.create(tenant=t, ERP_id="B-1", part_type=self.pt, work_order=self.wo,
+                                    step=self.step)
+        self.se = StepExecution.objects.create(tenant=t, part=part, step=self.step, status="IN_PROGRESS")
+
+    def _record(self, value):
+        from Tracker.models import StepExecutionMeasurement
+        StepExecutionMeasurement.objects.create(tenant=self.tenant_a, measurement_definition=self.md,
+                                                step_execution=self.se, value=value, recorded_by=self.user_a)
+
+    def test_an_out_of_spec_reading_blocks(self):
+        self._record(10.5)
+        _, blockers = self.step.can_advance_from_step(self.se, self.wo)
+        self.assertIn("One or more measurements are out of specification", blockers)
+
+    def test_in_spec_and_unrecorded_requirements_do_not(self):
+        from Tracker.models import MeasurementDefinition, StepMeasurementRequirement
+        other = MeasurementDefinition.objects.create(tenant=self.tenant_a, step=self.step, label="ID",
+                                                     type="NUMERIC", nominal=5, upper_tol=0.1, lower_tol=0.1)
+        StepMeasurementRequirement.objects.create(step=self.step, measurement=other)
+        self._record(10.0)
+        _, blockers = self.step.can_advance_from_step(self.se, self.wo)
+        self.assertFalse([b for b in blockers if "measurement" in b.lower()], blockers)

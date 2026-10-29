@@ -1275,8 +1275,13 @@ class Steps(SecureModel):
             elif quality_report.status == 'FAIL':
                 blockers.append("Sampling inspection failed - disposition required")
 
-        # 5. Check mandatory measurements
-        if hasattr(self, 'block_on_measurement_failure') and self.block_on_measurement_failure:
+        # 5. Block on out-of-spec measurement (the step's "Block on out-of-spec
+        # measurement" switch): a reading outside its limits at this visit holds the
+        # part until it is dealt with. Whether a value was captured at all is the work
+        # instruction's required nodes (operator_capture.find_missing_required + the
+        # substep advancement gate) — the step-level required_measurements check that
+        # used to sit here had no authoring surface and is gone (user decision 2026-10-29).
+        if self.block_on_measurement_failure:
             from .qms import StepExecutionMeasurement
             failed_measurements = StepExecutionMeasurement.objects.filter(
                 step_execution=step_execution,
@@ -1284,20 +1289,6 @@ class Steps(SecureModel):
             ).exists()
             if failed_measurements:
                 blockers.append("One or more measurements are out of specification")
-
-            # Also check if all required measurements are recorded
-            required_measurement_ids = list(
-                self.required_measurements.values_list('id', flat=True)
-            )
-            if required_measurement_ids:
-                recorded_ids = set(
-                    StepExecutionMeasurement.objects.filter(
-                        step_execution=step_execution
-                    ).values_list('measurement_definition_id', flat=True)
-                )
-                missing = set(required_measurement_ids) - recorded_ids
-                if missing:
-                    blockers.append(f"Missing {len(missing)} required measurement(s)")
 
         # 6. Check StepRequirement model entries
         for req in self.requirements.filter(is_mandatory=True, archived=False):

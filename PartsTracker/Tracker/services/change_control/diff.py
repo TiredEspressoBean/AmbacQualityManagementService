@@ -78,6 +78,7 @@ _STEP_DIFF_FIELDS = (
     "sampling_required",
     "min_sampling_rate",
     "block_on_quarantine",
+    "block_on_measurement_failure",
     "sequencing_mode",
     # A Repair node's code: which repair a check can send a unit to.
     "repair_code_id",
