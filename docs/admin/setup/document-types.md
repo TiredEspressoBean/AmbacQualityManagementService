@@ -74,7 +74,7 @@ Each is identified by a short **code**. A few, to show the shape:
 | **Review Period (days)** | How often documents of this type should be reviewed |
 | **Retention Period (days)** | How long to keep them |
 | **Requires Approval** | Whether documents need approval before release |
-| **Approval template** | Shown once **Requires Approval** is ticked: which approval template a document of this type is routed through. Its first option, *The default document approval*, uses the current `DOCUMENT_RELEASE` template |
+| **Approval template** | Shown once **Requires Approval** is ticked: which approval template a document of this type is routed through. It offers the Document Release templates; its first option, *The default document approval (&lt;name&gt;)*, uses the default one |
 
 4. Click **Create Document Type**
 
@@ -89,7 +89,7 @@ Each is identified by a short **code**. A few, to show the shape:
 | Setting | Description |
 |---------|-------------|
 | **Requires Approval** | Documents need approval before release |
-| **Approval template** | Which approval template is used; *The default document approval* uses the current `DOCUMENT_RELEASE` template. See [Per document type](approval-templates.md#per-document-type-the-override) |
+| **Approval template** | Which approval template is used; *The default document approval* uses the default Document Release template. See [Per document type](approval-templates.md#per-document-type-the-override) |
 
 There is no auto-archive-previous setting. Superseding is handled by
 [revisions](../../workflows/documents/revisions.md): a new revision links to

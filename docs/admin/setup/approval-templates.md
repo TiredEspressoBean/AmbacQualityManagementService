@@ -13,12 +13,23 @@ Approval Templates define:
 - **How many** approvals required
 - **Sequence** — everyone at once, or one at a time
 
-!!! important "One current template per approval type"
-    An organisation has **one** current template for each approval type — a
-    second template of the same type is refused. To change how a type is
-    approved, edit its template: saving creates a new version, and requests
-    raised after that use it. A request already open keeps the approvers it was
-    created with.
+!!! important "Several templates per type, one of them the default"
+    An approval type can have several templates. One is the type's **default**,
+    shown with a **Default** badge in the list: it is used *"whenever nothing
+    names a template for this type"* — every workflow that looks a template up
+    by its type gets the default. The others are used only where something names
+    them, such as a document type's own **Approval template**.
+
+    **Default for this approval type**, under **Allow Self-Approval** on the
+    template form, makes a template the default and takes it from the current
+    one. On the current default it is switched on and greyed out: *"This is the
+    default. To change that, open another template of this type and make it the
+    default."* — a type always keeps a default. The first template of a type
+    becomes its default on its own.
+
+    To change how a template approves, edit it: saving creates a new version,
+    and requests raised after that use it. A request already open keeps the
+    approvers it was created with.
 
 ## Creating Approval Templates
 
@@ -231,18 +242,22 @@ submitting. There are three places the binding is made:
 
 ### By approval type (the default)
 
-Each type resolves to its current template. Nothing to configure beyond having
-the template exist — this is how PCRs, PCOs, CAPAs and the rest find theirs.
+Each type resolves to its **default** template — or, where a type has only one
+template, that one. This is how PCRs, PCOs, CAPAs and the rest find theirs.
 
 ### Per document type (the override)
 
-1. Edit the **document type** (see [Document Types](document-types.md))
-2. With **Requires Approval** ticked, pick its **Approval template**
-3. Every document of that type routes through it instead of Document Release
+1. Create a second **Document Release** template for the route you want — leave
+   **Default for this approval type** off
+2. Edit the **document type** (see [Document Types](document-types.md))
+3. With **Requires Approval** ticked, pick that template under **Approval
+   template** — it offers the type's Document Release templates
+4. Every document of that type routes through it instead of the default
 
-Left on its first option, *The default document approval*, the type uses the
-current `DOCUMENT_RELEASE` template. This is how two kinds of document can route
-to different approvers.
+Left on its first option, *The default document approval (&lt;name&gt;)*, the
+type uses the default Document Release template. This is how two kinds of
+document can route to different approvers — for example a drawing that needs a
+sequential sign-off while everything else uses the default.
 
 !!! note "A submitter never picks a template"
     There is no template selector on the submit dialog and no per-document
