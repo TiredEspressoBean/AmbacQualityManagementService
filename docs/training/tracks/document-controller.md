@@ -105,17 +105,16 @@ first, then any one QA Manager, then the production manager. The engineer has al
 approved.
 
 1. Log in as Jennifer and open `DWG-1001`'s **Approval** tab. **Assigned Approvers**
-   lists Jordan Reyes *Approved*, the **QA Manager** group, and Jennifer *Pending*.
-   **Submit Response** and try to approve. It's refused: *Not your turn — waiting on
-   QA Manager.* It isn't in her pending approvals either; a request shows there only
-   when it's your turn.
-2. Log in as Maria and approve it: the QA Manager stage is done.
+   shows the stages: *Stage 1* Jordan Reyes *Approved* (*Done*), *Stage 2* the **QA
+   Manager** group, *Any one member*, marked *Waiting on this stage*, and *Stage 3*
+   Jennifer *Pending*. There's no **Submit Response** for her — in its place, *Not
+   your turn — waiting on QA Manager.* It isn't in her pending approvals either; a
+   request shows there only when it's your turn.
+2. Log in as Maria. She has **Submit Response**; approve it. Stage 2 is *Done*.
 3. Log in as Jennifer again. Now she can approve, and the drawing is *Approved*.
 
-**Exercise 3.1.** The Approval tab doesn't number the stages: the order is the
-template's. Open **Data Management** > **Approval Templates** > *Drawing Release
-(sequential)* and say who answers each stage, and which one the drawing is waiting
-on.
+**Exercise 3.1.** Before step 2, say which stage is open, who can answer it, and why
+Jennifer can't.
 
 ---
 

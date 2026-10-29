@@ -101,9 +101,11 @@ Two independent settings:
 **Sequence** — the order approvers are asked:
 
 - **Parallel** — everyone is asked at once
-- **Sequential** — in stages, set on the template. Only the open stage can
-  answer; anyone later is refused *"Not your turn — waiting on &lt;names or
-  groups&gt;."* A stage is done when everyone named in it has approved and each of
+- **Sequential** — in stages, set on the template. The request shows its
+  stages, the open one marked *Waiting on this stage*. Only the open stage can
+  answer; anyone later sees *"Not your turn — waiting on &lt;names or
+  groups&gt;."* instead of a response button. A group shows *Any one member* until
+  a member answers for it. A stage is done when everyone named in it has approved and each of
   its groups has been answered by one member. A request appears under your
   pending approvals only when it is your turn
 

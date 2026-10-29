@@ -96,10 +96,13 @@ these."*
 
 The order is enforced, not just suggested:
 
-- **Only the open stage can answer.** Anyone in a later stage who tries to
-  approve or reject is refused — *"Not your turn — waiting on &lt;names or
-  groups&gt;."* Only the open stage is notified; the next stage is notified when
-  it opens.
+- **Only the open stage can answer.** On the request, **Assigned Approvers**
+  shows the stages — *Stage 1*, *Stage 2* … — with the open one marked *Waiting
+  on this stage* and finished ones *Done*. Someone in a later stage has no
+  response button; in its place they see *"Not your turn — waiting on &lt;names
+  or groups&gt;."*, and the server refuses an out-of-turn response with the same
+  words. Only the open stage is notified; the next stage is notified when it
+  opens.
 - **A stage is done** when everyone named in it has approved and each of its
   groups has been answered by one member. A group in a stage is **required**.
 - **A rejection at any stage ends the request.** Later stages are never asked;
