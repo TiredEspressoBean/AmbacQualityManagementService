@@ -98,7 +98,8 @@ export default function WorkOrderFormPage() {
         // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF defaultValues: required enum fields must start unset; cast needed to satisfy strict FormValues type
         defaultValues: {
             ERP_id: "",
-            workorder_status: undefined,
+            // A new work order starts Pending; the server refuses any other status on create.
+            workorder_status: "PENDING",
             priority: undefined,
             notes: "",
             related_order: "",
@@ -168,7 +169,7 @@ export default function WorkOrderFormPage() {
                     toast.success("Work order created successfully!")
                     form.reset()
                 },
-                onError: () => toast.error("Failed to create the work order."),
+                onError: (err) => toast.error(apiErrorMessage(err) ?? "Failed to create the work order."),
             })
         }
     }
@@ -198,7 +199,7 @@ export default function WorkOrderFormPage() {
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        {WORKORDER_STATUS.map((status) => (
+                                        {(mode === "edit" ? WORKORDER_STATUS : (["PENDING"] as const)).map((status) => (
                                             <SelectItem key={status} value={status}>
                                                 {status.replace(/_/g, " ")}
                                             </SelectItem>
@@ -208,7 +209,7 @@ export default function WorkOrderFormPage() {
                                 <FormDescription>
                                     {mode === "edit"
                                         ? "Hold, resume or cancel from the work order's page; In progress and Completed follow the work."
-                                        : "Current status of the work order"}
+                                        : "A new work order starts Pending. Hold, cancel or complete it from its page afterwards."}
                                 </FormDescription>
                                 <FormMessage/>
                             </FormItem>

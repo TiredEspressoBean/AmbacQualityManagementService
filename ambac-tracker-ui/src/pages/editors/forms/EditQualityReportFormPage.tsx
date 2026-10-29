@@ -1,4 +1,5 @@
 "use client"
+import { apiErrorMessage } from "@/lib/api/describeApiError"
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react"
@@ -193,7 +194,7 @@ export default function EditQualityReportFormPage() {
                     },
                     onError: (error) => {
                         console.error("Failed to update quality report:", error);
-                        toast.error("Failed to update the quality report.");
+                        toast.error(apiErrorMessage(error) ?? "Failed to update the quality report.");
                     },
                 }
             );
@@ -205,7 +206,7 @@ export default function EditQualityReportFormPage() {
                 },
                 onError: (error) => {
                     console.error("Failed to create quality report:", error);
-                    toast.error("Failed to create the quality report.");
+                    toast.error(apiErrorMessage(error) ?? "Failed to create the quality report.");
                 },
             });
         }

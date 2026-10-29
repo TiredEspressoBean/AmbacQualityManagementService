@@ -60,3 +60,14 @@ class WorkOrderPriorityTests(TenantTestCase):
         }, format="json")
         self.assertEqual(r.status_code, 201, r.content)
         self.assertEqual(r.data["priority_changes"], [])
+
+    def test_a_new_work_order_can_only_start_pending(self):
+        """Editor-docs review 10/29: a create could set On hold (no hold record),
+        Completed or Cancelled, skipping the paths that own those moves."""
+        for status in ("ON_HOLD", "COMPLETED", "CANCELLED", "IN_PROGRESS"):
+            r = self.client.post("/api/WorkOrders/", {
+                "ERP_id": f"WO-{status}", "workorder_status": status, "quantity": 1,
+                "process": str(self.wo.process_id), "priority": 3,
+            }, format="json")
+            self.assertEqual(r.status_code, 400, (status, r.content))
+            self.assertIn("workorder_status", r.json())

@@ -1,4 +1,5 @@
 "use client"
+import { apiErrorMessage } from "@/lib/api/describeApiError"
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { Combobox } from "@/components/ui/combobox";
 import {useEffect, useState} from "react"
@@ -152,7 +153,7 @@ export default function PartFormPage() {
                     toast.success("Part updated successfully!");
                 }, onError: (error) => {
                     console.error("Failed to update part:", error);
-                    toast.error("Failed to update the part.");
+                    toast.error(apiErrorMessage(error) ?? "Failed to update the part.");
                 },
             });
         } else {
@@ -162,7 +163,7 @@ export default function PartFormPage() {
                     form.reset(); // optionally reset the form
                 }, onError: (error) => {
                     console.error("Failed to create part:", error);
-                    toast.error("Failed to create the part.");
+                    toast.error(apiErrorMessage(error) ?? "Failed to create the part.");
                 },
             });
         }
@@ -201,7 +202,7 @@ export default function PartFormPage() {
                                     type=""
                                     {...field} />
                             </FormControl>
-                            <FormDescription>ID in Glovia</FormDescription>
+                            <FormDescription>The part's ID in your ERP</FormDescription>
                             <FormMessage/>
                         </FormItem>)}
                     />

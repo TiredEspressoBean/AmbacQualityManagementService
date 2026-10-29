@@ -710,7 +710,10 @@ export function ModelEditorPage<T extends { id: string | number }>({
                             {/* Only what the backend has: an Import button on a model
                                 with no import endpoint opened a dialog whose every
                                 call 404'd. */}
-                            {typeof endpointFn(apiEndpoint, "import_create") === "function" && (
+                            {/* …and only for someone who can add rows: the import endpoint
+                                needs add_<model> (an update also change_<model>), so it
+                                403'd for everyone else. Same gate as Data Management. */}
+                            {canCreate && typeof endpointFn(apiEndpoint, "import_create") === "function" && (
                                 <DataImportDialog
                                     modelName={apiEndpoint}
                                     onImportComplete={() => {

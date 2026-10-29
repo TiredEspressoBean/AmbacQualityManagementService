@@ -1172,6 +1172,15 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         return value
 
     def validate_workorder_status(self, value):
+        # A new work order starts Pending. Every other status is reached by its own
+        # path — In progress by the work, On hold through a hold record, Completed by
+        # the work or a short close, Cancelled by Cancel — so a create can't skip them.
+        if self.instance is None:
+            if value and value != WorkOrderStatus.PENDING:
+                raise serializers.ValidationError(
+                    "A new work order starts as Pending. Hold, cancel or complete it "
+                    "afterwards with its own action.")
+            return value
         # On an edit, status isn't a field you set: each move has its action
         # (hold / clear hold / cancel) or follows the work. See manual_status_refusal.
         if self.instance is not None:
