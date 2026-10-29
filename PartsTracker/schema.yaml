@@ -11685,6 +11685,81 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/FPIRecords/mine/:
+    get:
+      operationId: api_FPIRecords_mine_list
+      description: |-
+        First pieces from the signed-in operator's runs: open ones, and ones decided
+        today — the operator home's sent → seen → verdict strip
+        (services/mes/operator_day.my_first_pieces).
+      parameters:
+      - in: query
+        name: equipment
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: shift_date
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - FAILED
+          - NOT_REQUIRED
+          - PASSED
+          - PENDING
+          - SUPERSEDED
+          - VOIDED
+          - WAIVED
+        description: |-
+          Current status of the FPI
+
+          * `NOT_REQUIRED` - Not Required
+          * `PENDING` - Pending
+          * `PASSED` - Passed
+          * `FAILED` - Failed
+          * `WAIVED` - Waived
+          * `VOIDED` - Voided
+          * `SUPERSEDED` - Superseded
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: work_order
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MyFirstPiece'
+          description: ''
   /api/Fishbone/:
     get:
       operationId: api_Fishbone_list
@@ -62541,6 +62616,41 @@ components:
       - completed_today
       - flagged_today
       - last_finished
+    MyFirstPiece:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        step_name:
+          type: string
+        part_erp_id:
+          type: string
+          nullable: true
+        status:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+        acknowledged_by_name:
+          type: string
+          nullable: true
+        decided_by_name:
+          type: string
+          nullable: true
+        decided_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - acknowledged_by_name
+      - decided_at
+      - decided_by_name
+      - id
+      - part_erp_id
+      - sent_at
+      - status
+      - step_name
     MyHours:
       type: object
       properties:

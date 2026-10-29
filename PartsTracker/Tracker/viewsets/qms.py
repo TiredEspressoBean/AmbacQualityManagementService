@@ -1938,6 +1938,24 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         from Tracker.serializers.qms import FPIRecordSerializer
         return FPIRecordSerializer
 
+    @extend_schema(responses={200: inline_serializer(name="MyFirstPiece", many=True, fields={
+        "id": serializers.UUIDField(),
+        "step_name": serializers.CharField(),
+        "part_erp_id": serializers.CharField(allow_null=True),
+        "status": serializers.CharField(),
+        "sent_at": serializers.DateTimeField(),
+        "acknowledged_by_name": serializers.CharField(allow_null=True),
+        "decided_by_name": serializers.CharField(allow_null=True),
+        "decided_at": serializers.DateTimeField(allow_null=True),
+    })})
+    @action(detail=False, methods=['get'], pagination_class=None)
+    def mine(self, request):
+        """First pieces from the signed-in operator's runs: open ones, and ones decided
+        today — the operator home's sent → seen → verdict strip
+        (services/mes/operator_day.my_first_pieces)."""
+        from Tracker.services.mes.operator_day import my_first_pieces
+        return Response(my_first_pieces(self.tenant, request.user))
+
     def _resolve_signer(self, request):
         """Who is attesting to this verdict — the caller, or a cosigner?
 

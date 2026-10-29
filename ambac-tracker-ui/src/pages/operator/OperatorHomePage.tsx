@@ -14,7 +14,8 @@
  *           from /api/WorkQueue/, filtered by kind=PRODUCTION and the user's
  *           WorkCenter memberships; Start navigates to WO detail — the operator work
  *           surface) · station-scope combobox (memberships → picked station persists
- *           per-user in localStorage) · day recap (StepExecutions/my_day).
+ *           per-user in localStorage) · day recap (StepExecutions/my_day) ·
+ *           first-piece strip (FPIRecords/mine).
  *  PREVIEW: dimmed tiles, by decision — Call my lead; Can't run this? and Your flags
  *           (blocker routing not built, 10/21); the job branch of Report a problem.
  *           Each renders placeholder content behind a blur+disable via <PreviewLock>,
@@ -67,6 +68,20 @@ const myDayOptions = () =>
         refetchInterval: 60_000,
     });
 
+/** First pieces from my runs — open, or decided today. */
+const myFirstPiecesOptions = () =>
+    queryOptions({
+        queryKey: ["fpi-records", "mine"],
+        queryFn: () => api.api_FPIRecords_mine_list(),
+        refetchInterval: 30_000,
+    });
+
+const FPI_VERDICT: Record<string, { label: string; className: string }> = {
+    PASSED: { label: "Passed", className: "font-medium text-emerald-700 dark:text-emerald-400" },
+    FAILED: { label: "Failed", className: "font-medium text-red-700 dark:text-red-400" },
+    WAIVED: { label: "Waived", className: "font-medium text-amber-700 dark:text-amber-400" },
+};
+
 /** Clock state: my one open time entry (end_time is null). */
 const openTimeEntryOptions = (userPk: AuthUser["pk"]) =>
     queryOptions({
@@ -90,8 +105,6 @@ type MyFlag = {
 // Layout placeholders for the Preview tiles. Deliberately not names or record numbers:
 // a trainee on the training tenant went looking for "Dana" and "WO-2024-0047".
 const MOCK = {
-    // The visible first-piece loop: sent → seen → (approve/reject arrives as a state change).
-    firstPiece: { step: "<step>", part: "<serial>", sentAgo: "—", ackBy: "QA" },
     // Flags I raised — lifecycle visible so nobody walks the floor to ask "did anyone see this?"
     myFlags: [
         { id: "f0", label: "<reason>", wo: "<work order>", owner: "your lead", elapsed: "—", seenBy: null },
@@ -190,6 +203,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     const { data: openEntryPage, isSuccess: clockKnown } = useQuery(openTimeEntryOptions(user.pk));
     const { data: myHours } = useMyHours();
     const { data: myDay } = useQuery(myDayOptions());
+    const { data: firstPieces = [] } = useQuery(myFirstPiecesOptions());
     const openEntry = openEntryPage?.results?.[0] ?? null;
     const onLunch = openEntry?.entry_type === "LUNCH";
     const paused = openEntry?.entry_type === "BREAK" || onLunch;
@@ -417,20 +431,37 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
             {/* Orient the viewer: what's real vs. planned. */}
             <p className="text-xs text-muted-foreground">
-                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, the <b className="text-foreground">station-scope</b> combobox, and the <b className="text-foreground">clock</b> (in/out/break/lunch) and the <b className="text-foreground">day recap</b> are live.
+                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, the <b className="text-foreground">station-scope</b> combobox, and the <b className="text-foreground">clock</b> (in/out/break/lunch) the <b className="text-foreground">day recap</b> and the <b className="text-foreground">first-piece strip</b> are live.
                 Dimmed tiles show the planned layout; they light up as the blocker model and other pieces land.
             </p>
 
-            {/* FIRST-PIECE loop — needs the FPI operator-side read. */}
-            <PreviewLock>
-                <div className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm dark:border-orange-900 dark:bg-orange-950">
-                    <Timer className="h-4 w-4 shrink-0 text-orange-600" />
-                    <span className="min-w-0 truncate">
-                        <b>{MOCK.firstPiece.step}</b> · first piece sent for check {MOCK.firstPiece.sentAgo} ago
-                    </span>
-                    <span className="ml-auto shrink-0 text-muted-foreground">Seen by {MOCK.firstPiece.ackBy}</span>
+            {/* FIRST-PIECE loop — LIVE: first pieces from my runs, open or decided today
+                (FPIRecords/mine): sent → seen by QA → the verdict. Hidden when none. */}
+            {firstPieces.length > 0 && (
+                <div className="space-y-1">
+                    {firstPieces.map((f) => {
+                        const pending = f.status === "PENDING";
+                        const verdict = FPI_VERDICT[f.status];
+                        return (
+                            <div key={f.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${pending
+                                ? "border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950"
+                                : "bg-muted/30"}`}>
+                                <Timer className={`h-4 w-4 shrink-0 ${pending ? "text-orange-600" : "text-muted-foreground"}`} />
+                                <span className="min-w-0 truncate">
+                                    <b>{f.step_name}</b>
+                                    {f.part_erp_id ? <> · <span className="font-mono">{f.part_erp_id}</span></> : null}
+                                    {" · "}first piece sent {formatDistanceToNow(new Date(f.sent_at))} ago
+                                </span>
+                                <span className="ml-auto shrink-0 text-muted-foreground">
+                                    {pending
+                                        ? (f.acknowledged_by_name ? `Seen by ${f.acknowledged_by_name}` : "Not seen yet")
+                                        : <span className={verdict?.className}>{verdict?.label ?? f.status}{f.decided_by_name ? ` by ${f.decided_by_name}` : ""}</span>}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
-            </PreviewLock>
+            )}
 
             {/* Tile grid — Up Next dominates (2×2); everything else is one tile. */}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -722,7 +753,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                 </p>
             </PreviewLock>
 
-            {/* Day recap — LIVE: steps I completed today and quality reports I raised
+            {/* Day recap — LIVE: steps I completed today and the findings (FAIL / REPAIR reports) I raised
                 today, on the plant clock (StepExecutions/my_day). */}
             <p className="mx-auto w-fit text-center text-sm text-muted-foreground">
                 Today: <b className="text-foreground">{myDay?.completed_today ?? "—"}</b> step{myDay?.completed_today === 1 ? "" : "s"} completed

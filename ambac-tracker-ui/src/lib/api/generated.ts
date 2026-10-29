@@ -21175,6 +21175,16 @@ const FPIGetOrCreateCreated = z.object({
   created: z.boolean(),
   fpi: FPIRecord,
 });
+const MyFirstPiece = z.object({
+  id: z.string().uuid(),
+  step_name: z.string(),
+  part_erp_id: z.string().nullable(),
+  status: z.string(),
+  sent_at: z.string().datetime({ offset: true }),
+  acknowledged_by_name: z.string().nullable(),
+  decided_by_name: z.string().nullable(),
+  decided_at: z.string().datetime({ offset: true }).nullable(),
+});
 const PaginatedFishboneList = z.object({
   count: z.number().int(),
   next: z.string().url().nullish(),
@@ -29798,6 +29808,7 @@ export const schemas = {
   api_FPIRecords_get_or_create_create_Body,
   FPIGetOrCreateExisting,
   FPIGetOrCreateCreated,
+  MyFirstPiece,
   PaginatedFishboneList,
   FishboneRequest,
   PatchedFishboneRequest,
@@ -39841,6 +39852,63 @@ operations against the quantity available (cumulative capacity).`,
   },
   {
     method: "get",
+    path: "/api/FPIRecords/mine/",
+    alias: "api_FPIRecords_mine_list",
+    description: `First pieces from the signed-in operator&#x27;s runs: open ones, and ones decided
+today — the operator home&#x27;s sent → seen → verdict strip
+(services/mes/operator_day.my_first_pieces).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "equipment",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "shift_date",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "FAILED",
+            "NOT_REQUIRED",
+            "PASSED",
+            "PENDING",
+            "SUPERSEDED",
+            "VOIDED",
+            "WAIVED",
+          ])
+          .optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: z.array(MyFirstPiece),
+  },
+  {
+    method: "get",
     path: "/api/HarvestedComponents/",
     alias: "api_HarvestedComponents_list",
     description: `Harvested component management.
@@ -40756,7 +40824,10 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/JobRoles/:id/",
@@ -40771,10 +40842,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "put",
     path: "/api/JobRoles/:id/",
@@ -45047,7 +45115,10 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: OrderLine,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "put",
     path: "/api/OrderLines/:id/",
@@ -45067,10 +45138,7 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: OrderLine,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/OrderLines/:id/",
@@ -50728,7 +50796,10 @@ Usage:
       },
     ],
     response: QuarantineDisposition,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "patch",
     path: "/api/QuarantineDispositions/:id/",
@@ -50772,10 +50843,7 @@ Usage:
       },
     ],
     response: QuarantineDisposition,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/QuarantineDispositions/:id/",
@@ -56078,7 +56146,10 @@ parts, newest first: who authorised it, for whom, on which step and part, why.`,
       },
     ],
     response: PaginatedStepOverrideList,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepOverrides/",
@@ -56096,10 +56167,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: StepOverride,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepOverrides/:id/",
@@ -61172,7 +61240,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/User/",
@@ -61262,10 +61333,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: PaginatedUserList,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/User/",

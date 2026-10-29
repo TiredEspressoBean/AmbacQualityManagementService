@@ -1,7 +1,8 @@
 """The operator home's own-day reads (decision 2026-10-29: wire the preview tiles).
 
-- **Day recap:** step completions I signed off today and quality reports I raised
-  today, on the plant clock.
+- **Day recap:** step completions I signed off today and the findings I raised today
+  (quality reports that FAILed or need REPAIR — a passing inspection isn't a flag), on
+  the plant clock.
 - **Last finished:** my most recent completed step, for the undo strip. Undo itself is
   the Parts rollback (undo window, approval past it); this only says what to offer it on.
 """
@@ -63,6 +64,7 @@ def my_day(tenant, user) -> dict:
                                         exited_at__isnull=False)
     completed = mine.filter(exited_at__gte=start, exited_at__lt=end).count()
     flagged = QualityReports.objects.filter(tenant=tenant, detected_by=user, archived=False,
+                                            status__in=('FAIL', 'REPAIR'),
                                             created_at__gte=start, created_at__lt=end).count()
     last = (mine.select_related('step', 'part').order_by('-exited_at').first())
     return {

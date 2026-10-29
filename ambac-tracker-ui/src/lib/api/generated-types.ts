@@ -4400,6 +4400,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/FPIRecords/mine/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description First pieces from the signed-in operator's runs: open ones, and ones decided
+         *     today — the operator home's sent → seen → verdict strip
+         *     (services/mes/operator_day.my_first_pieces).
+         */
+        get: operations["api_FPIRecords_mine_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Fishbone/": {
         parameters: {
             query?: never;
@@ -26988,6 +27009,19 @@ export interface components {
             flagged_today: number;
             last_finished: components["schemas"]["MyLastFinished"] | null;
         };
+        MyFirstPiece: {
+            /** Format: uuid */
+            id: string;
+            step_name: string;
+            part_erp_id: string | null;
+            status: string;
+            /** Format: date-time */
+            sent_at: string;
+            acknowledged_by_name: string | null;
+            decided_by_name: string | null;
+            /** Format: date-time */
+            decided_at: string | null;
+        };
         MyHours: {
             /** Format: date */
             week_start: string;
@@ -49173,6 +49207,45 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_FPIRecords_mine_list: {
+        parameters: {
+            query?: {
+                equipment?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                shift_date?: string;
+                /**
+                 * @description Current status of the FPI
+                 *
+                 *     * `NOT_REQUIRED` - Not Required
+                 *     * `PENDING` - Pending
+                 *     * `PASSED` - Passed
+                 *     * `FAILED` - Failed
+                 *     * `WAIVED` - Waived
+                 *     * `VOIDED` - Voided
+                 *     * `SUPERSEDED` - Superseded
+                 */
+                status?: "FAILED" | "NOT_REQUIRED" | "PASSED" | "PENDING" | "SUPERSEDED" | "VOIDED" | "WAIVED";
+                step?: string;
+                work_order?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyFirstPiece"][];
                 };
             };
         };
