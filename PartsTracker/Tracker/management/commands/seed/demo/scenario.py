@@ -204,6 +204,9 @@ class DemoScenario(BaseSeeder):
         result['ops_walk'] = self._seed_ops_walk(
             result['companies'], result['users'], result['manufacturing'])
 
+        self.log("\n--- Phase 6d: Block on Out-of-Spec Exhibit ---")
+        result['oos_block'] = self._seed_oos_block(result['companies'], result['users'])
+
         # Phase 7: Documents and Approvals
         self.log("\n--- Phase 7: Documents and Approvals ---")
         result['documents'] = self._seed_documents(result['users'])
@@ -353,6 +356,15 @@ class DemoScenario(BaseSeeder):
         seeder._verbose = self._verbose
         company_list = companies.get('customers', []) if isinstance(companies, dict) else []
         return seeder.seed(company_list, users, manufacturing)
+
+    def _seed_oos_block(self, companies, users):
+        """A part held by Block on out-of-spec measurement, on a route of its own
+        (WO-QA-OOS-01). See seed/demo/oos_block.py."""
+        from .oos_block import DemoOutOfSpecBlockSeeder
+        seeder = DemoOutOfSpecBlockSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        company_list = companies.get('customers', []) if isinstance(companies, dict) else []
+        return seeder.seed(company_list, users, None)
 
     def _seed_calendar_events(self):
         """Seed plant closures, labor blocks, and an overtime window so the
