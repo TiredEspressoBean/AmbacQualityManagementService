@@ -391,54 +391,58 @@ export default function EquipmentFormPage() {
                         )}
                     />
 
+                    {/* Calibration applies to any item — a gauge most of all — so it sits outside
+                        the scheduling block (a gauge isn't a scheduled resource). */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="requires_calibration_override"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Requires calibration</FormLabel>
+                                    <Select
+                                        value={field.value === true ? "yes" : field.value === false ? "no" : "inherit"}
+                                        onValueChange={(v) => field.onChange(v === "yes" ? true : v === "no" ? false : null)}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="inherit">Follow the equipment type</SelectItem>
+                                            <SelectItem value="yes">Yes — this item is calibrated</SelectItem>
+                                            <SelectItem value="no">No — not for this item</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormDescription>
+                                        Overrides the type's setting for this one item.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="calibration_interval_days"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Calibration interval (days)</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" min={1} placeholder="Type's default"
+                                            value={field.value ?? ""}
+                                            onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Blank uses the equipment type's default interval.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
                     {form.watch("is_schedulable") && (
                         <>
-                            <FormField
-                                control={form.control}
-                                name="requires_calibration_override"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Requires calibration</FormLabel>
-                                        <Select
-                                            value={field.value === true ? "yes" : field.value === false ? "no" : "inherit"}
-                                            onValueChange={(v) => field.onChange(v === "yes" ? true : v === "no" ? false : null)}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="inherit">Follow the equipment type</SelectItem>
-                                                <SelectItem value="yes">Yes — this item is calibrated</SelectItem>
-                                                <SelectItem value="no">No — not for this item</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormDescription>
-                                            Overrides the type's setting for this one item.
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="calibration_interval_days"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Calibration interval (days)</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" min={1} placeholder="Type's default"
-                                                value={field.value ?? ""}
-                                                onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))} />
-                                        </FormControl>
-                                        <FormDescription>
-                                            Blank uses the equipment type's default interval.
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
                             {shifts.length > 0 && (
                                 <FormField
                                     control={form.control}
