@@ -22,7 +22,10 @@ export function WorkOrderLaborPanel({ workOrderId }: { workOrderId: string }) {
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-md border p-3">
-          <div className="text-2xl font-semibold tabular-nums">{h(data.direct_hours)}</div>
+          {/* Amber when the job has taken more operator time than planned. */}
+          <div className={cn("text-2xl font-semibold tabular-nums", over && "text-amber-600 dark:text-amber-400")}>
+            {h(data.direct_hours)}
+          </div>
           <div className="text-xs text-muted-foreground">Actual direct hrs</div>
         </div>
         <div className="rounded-md border p-3">
@@ -30,7 +33,7 @@ export function WorkOrderLaborPanel({ workOrderId }: { workOrderId: string }) {
           <div className="text-xs text-muted-foreground">of which rework</div>
         </div>
         <div className="rounded-md border p-3">
-          <div className={cn("text-2xl font-semibold tabular-nums", over && "text-amber-600 dark:text-amber-400")}>
+          <div className="text-2xl font-semibold tabular-nums">
             {planned != null ? h(planned) : "—"}
           </div>
           <div className="text-xs text-muted-foreground">
