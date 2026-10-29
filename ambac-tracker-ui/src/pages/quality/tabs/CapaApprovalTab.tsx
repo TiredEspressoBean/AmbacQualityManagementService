@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ApprovalStagesList, type ApprovalStageView } from "@/components/approval/ApprovalStagesList";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +62,8 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
     const isRequester = !!pendingApprovalRequest && pendingApprovalRequest.requested_by === currentUserId;
     const canRespond = isUserAnApprover(currentUserId, userGroupIds, pendingApprovalRequest) &&
         !hasUserResponded(currentUserId, pendingApprovalRequest?.responses || []) &&
-        (!isRequester || !!pendingApprovalRequest?.can_self_approve);
+        (!isRequester || !!pendingApprovalRequest?.can_self_approve) &&
+        !pendingApprovalRequest?.turn_refusal;
 
     const handleRequestApproval = () => {
         requestApproval(undefined, {
@@ -173,6 +175,9 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
                                         <Users className="h-4 w-4" />
                                         Assigned Approvers
                                     </h4>
+                                    {pendingApprovalRequest.stages ? (
+                                        <ApprovalStagesList stages={pendingApprovalRequest.stages as ApprovalStageView[]} />
+                                    ) : (
                                     <div className="space-y-1">
                                         {pendingApprovalRequest.required_approvers_info?.map((approver) => {
                                             const hasResponded = pendingApprovalRequest.responses?.some(
@@ -218,6 +223,7 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
                                                 </p>
                                             )}
                                     </div>
+                                    )}
                                 </div>
                             )}
 
@@ -239,6 +245,8 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
                                 <p className="text-sm text-muted-foreground">
                                     {hasUserResponded(currentUserId, pendingApprovalRequest.responses || [])
                                         ? "You have already submitted your response."
+                                            : pendingApprovalRequest?.turn_refusal
+                                            ? pendingApprovalRequest.turn_refusal
                                         : isRequester
                                             ? "You requested this approval; a QA Manager decides it."
                                             : "You are not assigned as an approver for this request."}

@@ -217,3 +217,49 @@ def assign_from_template(request, template, tenant) -> None:
             GroupApproverAssignment.objects.create(
                 approval_request=request, group=group, sequence_order=final,
                 assignment_source=ApproverAssignmentSource.TEMPLATE_GROUP)
+
+
+def describe(request) -> list[dict]:
+    """The request's stages for display, in order: each with its number, whether it's
+    the open one or done, and its people and groups with where they stand."""
+    from Tracker.models import ApprovalDecision, TenantGroup, User
+    all_stages = stages(request)
+    st_open = open_stage(request)
+    decisions = dict(request.responses.exclude(decision=ApprovalDecision.WITHDRAWN)
+                     .values_list('approver_id', 'decision'))
+    members = _members({g for st in all_stages for g in st.group_ids})
+    users = {u.id: u for u in User.objects.filter(id__in={u for st in all_stages for u in st.user_ids})}
+    groups = {g.id: g for g in TenantGroup.objects.filter(  # tenant-safe: the request's own groups
+        id__in={g for st in all_stages for g in st.group_ids})}
+    open_order = st_open.order if st_open else None
+    out = []
+    for n, st in enumerate(all_stages, start=1):
+        rows = []
+        for uid in st.user_ids:
+            u = users.get(uid)
+            claimed_for = [groups[g].name for g in st.group_ids
+                           if uid in members.get(g, set()) and uid in st.claimed_ids and g in groups]
+            rows.append({'kind': 'user', 'id': str(uid),
+                         'name': (u.get_full_name() or u.get_username()) if u else str(uid),
+                         'status': decisions.get(uid, 'PENDING'),
+                         'for_group': claimed_for[0] if claimed_for else None})
+        present = set(st.user_ids)
+        for gid in st.group_ids:
+            covered_by = members.get(gid, set()) & present
+            rows.append({'kind': 'group', 'id': str(gid),
+                         'name': groups[gid].name if gid in groups else str(gid),
+                         'status': 'COVERED' if covered_by else 'PENDING', 'for_group': None})
+        out.append({'number': n, 'open': st.order == open_order,
+                    'done': open_order is None or st.order < open_order, 'members': rows})
+    return out
+
+
+def viewer_turn_refusal(request, user) -> str | None:
+    """Why `user` can't answer `request` now, when the reason is the turn: they're an
+    approver on it, but not in the open stage. None otherwise."""
+    if request.sequence_type != 'SEQUENTIAL' or request.status != 'PENDING' or user is None:
+        return None
+    if not request.is_eligible_somewhere(user):
+        return None
+    may, _, refusal = turn(request, user)
+    return None if may else refusal

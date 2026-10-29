@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ApprovalStagesList, type ApprovalStageView } from "@/components/approval/ApprovalStagesList";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +75,8 @@ export function ApprovalSignaturePanel({
     const canRespond =
         !!pending &&
         isUserAnApprover(currentUserId, userGroupIds, pending) &&
-        !hasUserResponded(currentUserId, pending.responses || []);
+        !hasUserResponded(currentUserId, pending.responses || []) &&
+        !pending?.turn_refusal;
 
     const respondedCount = current.responses?.filter((r) => r.decision === "APPROVED").length ?? 0;
     const requiredCount = current.required_approvers_info?.length ?? 0;
@@ -106,6 +108,9 @@ export function ApprovalSignaturePanel({
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {current.stages ? (
+                        <ApprovalStagesList stages={current.stages as ApprovalStageView[]} />
+                    ) : (
                     <div className="space-y-1">
                         {current.required_approvers_info?.map((approver) => {
                             const response = current.responses?.find((r) => r.approver === approver.id);
@@ -150,6 +155,7 @@ export function ApprovalSignaturePanel({
                                 </p>
                             )}
                     </div>
+                    )}
 
                     {canRespond && (
                         <>
@@ -166,6 +172,8 @@ export function ApprovalSignaturePanel({
                         <p className="text-sm text-muted-foreground">
                             {hasUserResponded(currentUserId, pending.responses || [])
                                 ? "You have already submitted your response."
+                                            : pending?.turn_refusal
+                                            ? pending.turn_refusal
                                 : "You are not assigned as an approver for this change."}
                         </p>
                     )}

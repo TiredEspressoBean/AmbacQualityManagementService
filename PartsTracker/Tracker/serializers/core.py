@@ -1005,6 +1005,14 @@ class ApprovalRequestSerializer(SecureModelMixin):
     can_self_approve = serializers.SerializerMethodField(
         help_text="The viewer requested this and may decide it themselves (with a "
                   "justification): the template allows it, or nobody else can approve it.")
+    # Sequential requests: the stages, in order, with the open one marked; and why the
+    # viewer can't answer yet when it's their turn that hasn't come.
+    stages = serializers.SerializerMethodField(
+        help_text="Sequential only: [{number, open, done, members: [{kind: user|group, id, "
+                  "name, status, for_group}]}]. Null for a parallel request.")
+    turn_refusal = serializers.SerializerMethodField(
+        help_text="Why the viewer can't answer yet ('Not your turn — waiting on ...'), when "
+                  "they're an approver outside the open stage; null otherwise.")
     withdrawal_reason = serializers.SerializerMethodField(
         help_text="Why the requester withdrew it, when it was withdrawn.")
 
@@ -1035,7 +1043,7 @@ class ApprovalRequestSerializer(SecureModelMixin):
             'required_approvers_info', 'optional_approvers_info',
             'approver_groups', 'approver_groups_info',
             'responses', 'pending_approvers',
-            'is_overdue', 'can_self_approve', 'withdrawal_reason',
+            'is_overdue', 'can_self_approve', 'withdrawal_reason', 'stages', 'turn_refusal',
             'requested_at', 'completed_at', 'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
@@ -1113,6 +1121,21 @@ class ApprovalRequestSerializer(SecureModelMixin):
         if obj.content_object:
             return str(obj.content_object)
         return None
+
+    @extend_schema_field(serializers.ListField(child=serializers.DictField(), allow_null=True))
+    def get_stages(self, obj):
+        if obj.sequence_type != 'SEQUENTIAL':
+            return None
+        from Tracker.services.core.approval_stages import describe
+        return describe(obj)
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_turn_refusal(self, obj):
+        from Tracker.services.core.approval_stages import viewer_turn_refusal
+        user = getattr(self.context.get('request'), 'user', None)
+        if user is None or not user.is_authenticated:
+            return None
+        return viewer_turn_refusal(obj, user)
 
     @extend_schema_field(serializers.BooleanField())
     def get_can_self_approve(self, obj):

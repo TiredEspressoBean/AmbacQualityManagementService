@@ -21286,6 +21286,12 @@ export interface components {
             readonly can_self_approve: boolean;
             /** @description Why the requester withdrew it, when it was withdrawn. */
             readonly withdrawal_reason: string | null;
+            /** @description Sequential only: [{number, open, done, members: [{kind: user|group, id, name, status, for_group}]}]. Null for a parallel request. */
+            readonly stages: {
+                [key: string]: unknown;
+            }[] | null;
+            /** @description Why the viewer can't answer yet ('Not your turn — waiting on ...'), when they're an approver outside the open stage; null otherwise. */
+            readonly turn_refusal: string | null;
             /** Format: date-time */
             readonly requested_at: string;
             /** Format: date-time */

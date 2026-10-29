@@ -97,6 +97,20 @@ class SequentialStagesTests(TenantTestCase):
                              {"decision": "APPROVED", "comments": "ok"}, format="json")
         self.assertEqual(r.status_code, 403, r.content)
 
+    def test_the_request_shows_its_stages_and_the_viewers_turn(self):
+        self.grant_tenant_permissions(self.mgr, self.tenant_a, ['view_approvalrequest', 'full_tenant_access'])
+        self.authenticate_as(self.mgr, self.tenant_a)
+        body = self.client.get(f"/api/ApprovalRequests/{self.req.id}/").json()
+        self.assertEqual([st["open"] for st in body["stages"]], [True, False, False])
+        self.assertEqual(body["stages"][1]["members"][0]["kind"], "group")
+        self.assertIn("Not your turn — waiting on eng", body["turn_refusal"])
+        self._approve(self.eng)
+        self._approve(self.qa1)
+        body = self.client.get(f"/api/ApprovalRequests/{self.req.id}/").json()
+        self.assertIsNone(body["turn_refusal"])
+        self.assertEqual([st["done"] for st in body["stages"]], [True, True, False])
+        self.assertEqual(body["stages"][1]["members"][0]["for_group"], "QA reviewers")
+
     def test_template_edits_dont_reorder_a_request_in_flight(self):
         self.template.approval_stages = [{"users": [self.mgr.id]}]
         self.template.save(update_fields=["approval_stages"])

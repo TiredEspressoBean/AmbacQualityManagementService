@@ -50302,6 +50302,21 @@ components:
           nullable: true
           readOnly: true
           description: Why the requester withdrew it, when it was withdrawn.
+        stages:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          nullable: true
+          readOnly: true
+          description: 'Sequential only: [{number, open, done, members: [{kind: user|group,
+            id, name, status, for_group}]}]. Null for a parallel request.'
+        turn_refusal:
+          type: string
+          nullable: true
+          readOnly: true
+          description: Why the viewer can't answer yet ('Not your turn — waiting on
+            ...'), when they're an approver outside the open stage; null otherwise.
         requested_at:
           type: string
           format: date-time
@@ -50344,7 +50359,9 @@ components:
       - requested_by_info
       - required_approvers_info
       - responses
+      - stages
       - status_display
+      - turn_refusal
       - updated_at
       - withdrawal_reason
     ApprovalRequestRequest:

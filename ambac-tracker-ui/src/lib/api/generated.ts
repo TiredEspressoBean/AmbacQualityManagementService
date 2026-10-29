@@ -196,6 +196,14 @@ export type ApprovalRequest = {
    * Why the requester withdrew it, when it was withdrawn.
    */
   withdrawal_reason: string | null;
+  /**
+   * Sequential only: [{number, open, done, members: [{kind: user|group, id, name, status, for_group}]}]. Null for a parallel request.
+   */
+  stages: Array<{}> | null;
+  /**
+   * Why the viewer can't answer yet ('Not your turn — waiting on ...'), when they're an approver outside the open stage; null otherwise.
+   */
+  turn_refusal: string | null;
   requested_at: string;
   completed_at: string | null;
   created_at: string;
@@ -18973,6 +18981,8 @@ const ApprovalRequest = z.object({
   is_overdue: z.boolean(),
   can_self_approve: z.boolean(),
   withdrawal_reason: z.string().nullable(),
+  stages: z.array(z.object({}).partial().passthrough()).nullable(),
+  turn_refusal: z.string().nullable(),
   requested_at: z.string().datetime({ offset: true }),
   completed_at: z.string().datetime({ offset: true }).nullable(),
   created_at: z.string().datetime({ offset: true }),

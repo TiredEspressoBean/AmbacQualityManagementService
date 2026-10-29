@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ApprovalStagesList, type ApprovalStageView } from "@/components/approval/ApprovalStagesList";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,7 +61,8 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
     // Extract group IDs from group objects — TenantGroup ids are UUID strings
     const userGroupIds = (authUser?.groups || []).map((g) => String(g.id));
     const canRespond = isUserAnApprover(currentUserId, userGroupIds, pendingApprovalRequest) &&
-        !hasUserResponded(currentUserId, pendingApprovalRequest?.responses || []);
+        !hasUserResponded(currentUserId, pendingApprovalRequest?.responses || []) &&
+        !pendingApprovalRequest?.turn_refusal;
 
     // Submitting locks the draft for review and notifies the approvers — confirm, then
     // say it happened (Document Controller walk: no confirm, no toast).
@@ -175,6 +177,9 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
                                         <Users className="h-4 w-4" />
                                         Assigned Approvers
                                     </h4>
+                                    {pendingApprovalRequest.stages ? (
+                                        <ApprovalStagesList stages={pendingApprovalRequest.stages as ApprovalStageView[]} />
+                                    ) : (
                                     <div className="space-y-1">
                                         {pendingApprovalRequest.required_approvers_info?.map((approver) => {
                                             const hasResponded = pendingApprovalRequest.responses?.some(
@@ -221,6 +226,7 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
                                                 </p>
                                             )}
                                     </div>
+                                    )}
                                 </div>
                             )}
 
@@ -242,6 +248,8 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
                                     <p className="text-sm text-muted-foreground">
                                         {hasUserResponded(currentUserId, pendingApprovalRequest.responses || [])
                                             ? "You have already submitted your response."
+                                            : pendingApprovalRequest?.turn_refusal
+                                            ? pendingApprovalRequest.turn_refusal
                                             : "You are not assigned as an approver for this document."}
                                     </p>
                                     {/* Still open, so the answer can be taken back and given again. */}

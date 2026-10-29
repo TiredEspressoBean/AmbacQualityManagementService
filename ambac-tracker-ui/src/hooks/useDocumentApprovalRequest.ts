@@ -31,6 +31,10 @@ export interface ApprovalResponse {
 
 export interface ApprovalRequest {
     id: string;
+    /** Sequential requests: the stages, open one marked; null when parallel. */
+    stages?: unknown[] | null;
+    /** Why the viewer can't answer yet ("Not your turn — waiting on ..."), or null. */
+    turn_refusal?: string | null;
     approval_number: string;
     approval_type: string;
     approval_type_display: string;
