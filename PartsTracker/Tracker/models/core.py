@@ -2683,6 +2683,12 @@ class ApprovalRequest(SecureModel):
     content_object = GenericForeignKey('content_type', 'object_id')
 
     approval_type = models.CharField(max_length=50, choices=Approval_Type.choices)
+    # The template this request was made from. A type can have several templates (one
+    # the default), so the request's own rules — self-approval, say — come from this,
+    # not from a lookup by type. Null on requests made before it was recorded, which
+    # fall back to the type's default. (User decision 2026-10-29.)
+    template = models.ForeignKey('ApprovalTemplate', on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='requests')
     status = models.CharField(max_length=20, choices=Approval_Status_Type.choices, default=Approval_Status_Type.PENDING)
 
     requested_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='approval_requests_made')
@@ -2890,15 +2896,11 @@ class ApprovalRequest(SecureModel):
         return False
 
     def get_template(self):
-        """Get the approval template used for this request"""
-        try:
-            # tenant-safe: SecureManager .objects auto-scopes to the request tenant
-            return ApprovalTemplate.objects.get(
-                approval_type=self.approval_type,
-                is_current_version=True,
-            )
-        except ApprovalTemplate.DoesNotExist:
-            return None
+        """The approval template this request was made from; for a request made before
+        that was recorded, the type's default template."""
+        if self.template_id:
+            return self.template
+        return ApprovalTemplate.default_for(self.approval_type)
 
     def save(self, *args, **kwargs):
         """Track status changes for signal detection."""
@@ -3028,6 +3030,12 @@ class ApprovalTemplate(SecureModel):
     approval_flow_type = models.CharField(max_length=20, choices=ApprovalFlows.choices, default=ApprovalFlows.ALL_REQUIRED)
     delegation_policy = models.CharField(max_length=20, choices=ApprovalDelegation.choices, default=ApprovalDelegation.DISABLED)
     approval_sequence = models.CharField(max_length=20, choices=SequenceTypes.choices, default=SequenceTypes.PARALLEL)
+    # A type can have several templates; the default is the one used when nothing names
+    # a template (a document type without its own, a process, a PCR). One current
+    # default per (tenant, type). (User decision 2026-10-29.)
+    is_default = models.BooleanField(
+        default=False,
+        help_text="The template used for this approval type when nothing names another.")
     # The order a SEQUENTIAL approval goes in: stages, each a set of named users and/or
     # groups — [{"users": [user ids], "groups": [group ids]}, ...]. A stage is done when
     # every named user has approved and one member of each group has. Copied into
@@ -3062,10 +3070,27 @@ class ApprovalTemplate(SecureModel):
             ),
             models.UniqueConstraint(
                 fields=['tenant', 'approval_type'],
-                condition=models.Q(is_current_version=True),
-                name='approvaltemplate_tenant_type_uniq',
+                condition=models.Q(is_current_version=True, is_default=True),
+                name='approvaltemplate_tenant_type_default_uniq',
             ),
         ]
+
+    @classmethod
+    def default_for(cls, approval_type):
+        """The current tenant's current default template for `approval_type`, or None.
+
+        A type whose only current template was made without the flag (an import, a
+        test, anything predating defaults) still has that one as its default — with a
+        single template there is nothing to choose between. Two or more need one flagged.
+        """
+        # tenant-safe: SecureManager .objects auto-scopes to the current tenant
+        current = cls.objects.filter(approval_type=approval_type, is_current_version=True,
+                                     archived=False)
+        flagged = current.filter(is_default=True).first()
+        if flagged is not None:
+            return flagged
+        candidates = list(current[:2])
+        return candidates[0] if len(candidates) == 1 else None
 
     def __str__(self):
         return f"{self.template_name} ({self.get_approval_type_display()})"

@@ -21457,6 +21457,8 @@ export interface components {
             approval_stages?: {
                 [key: string]: unknown;
             }[];
+            /** @description The template used for this approval type when nothing names another. */
+            is_default?: boolean;
             /** @description Allow requesters to approve their own requests (requires justification) */
             allow_self_approval?: boolean;
             /** @description Days until due date */
@@ -21497,6 +21499,8 @@ export interface components {
             approval_stages?: {
                 [key: string]: unknown;
             }[];
+            /** @description The template used for this approval type when nothing names another. */
+            is_default?: boolean;
             /** @description Allow requesters to approve their own requests (requires justification) */
             allow_self_approval?: boolean;
             /** @description Days until due date */
@@ -30069,6 +30073,8 @@ export interface components {
             approval_stages?: {
                 [key: string]: unknown;
             }[];
+            /** @description The template used for this approval type when nothing names another. */
+            is_default?: boolean;
             /** @description Allow requesters to approve their own requests (requires justification) */
             allow_self_approval?: boolean;
             /** @description Days until due date */

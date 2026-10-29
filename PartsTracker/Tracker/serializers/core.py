@@ -809,6 +809,7 @@ class ApprovalTemplateSerializer(SecureModelMixin):
             'approval_flow_type', 'approval_flow_type_display',
             'delegation_policy', 'delegation_policy_display',
             'approval_sequence', 'approval_sequence_display', 'approval_stages',
+            'is_default',
             'allow_self_approval',
             'default_due_days', 'escalation_days', 'escalate_to', 'escalate_to_info',
             'change_description',
@@ -859,19 +860,44 @@ class ApprovalTemplateSerializer(SecureModelMixin):
             return UserSelectSerializer(obj.escalate_to).data
         return None
 
+    def validate_is_default(self, value):
+        # A type always has one default: it moves by making another template the
+        # default, never by switching this one off.
+        if self.instance is not None and self.instance.is_default and value is False:
+            raise serializers.ValidationError(
+                "This is the default for its approval type. Make another template of this "
+                "type the default instead.")
+        return value
+
+    def create(self, validated_data):
+        from Tracker.models import ApprovalTemplate
+        from Tracker.services.core.approval_template import make_default
+        wants_default = validated_data.pop('is_default', False)
+        template = super().create(validated_data)
+        # The first template of a type is its default whether asked or not.
+        if wants_default or ApprovalTemplate.default_for(template.approval_type) is None:
+            make_default(template)
+        return template
+
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let
-        archive toggles through as a plain save."""
+        archive toggles through as a plain save. Becoming the default is not a
+        content edit: it moves the default flag, no new version."""
+        from Tracker.services.core.approval_template import make_default
         from Tracker.services.core.versioning import apply_versioned_update
+        wants_default = validated_data.pop('is_default', None)
         change_description = validated_data.pop(
             'change_description', None
         ) or "Edited via Approval Template form"
-        return apply_versioned_update(
+        updated = apply_versioned_update(
             instance, validated_data,
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
             default_update=super().update,
             version_kwargs={'change_description': change_description},
         )
+        if wants_default:
+            make_default(updated)
+        return updated
 
 
 class ApprovalResponseSerializer(SecureModelMixin):

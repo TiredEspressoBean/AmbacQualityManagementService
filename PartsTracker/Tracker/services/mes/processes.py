@@ -215,14 +215,9 @@ def submit_process_for_approval(process: Processes, user) -> ApprovalRequest:
     if process.process_steps.count() == 0:
         raise ValueError("Cannot submit process with no steps for approval.")
 
-    try:
-        # tenant-safe: SecureManager .objects auto-scopes to the request tenant
-        template = ApprovalTemplate.objects.get(
-            approval_type='PROCESS_APPROVAL',
-            is_current_version=True,
-            archived=False,
-        )
-    except ApprovalTemplate.DoesNotExist:
+    # The type's default template — a type may have several (user decision 2026-10-29).
+    template = ApprovalTemplate.default_for('PROCESS_APPROVAL')
+    if template is None:
         raise ValueError(
             "PROCESS_APPROVAL approval template not found. "
             "Please configure approval templates."

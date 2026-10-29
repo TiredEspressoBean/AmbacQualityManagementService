@@ -142,14 +142,9 @@ def submit_pcr(
     # versioned, so editing the template creates a new row with the
     # same approval_type. Without this filter the lookup raises
     # `MultipleObjectsReturned` the moment any admin edits the template.
-    try:
-        # tenant-safe: SecureManager .objects auto-scopes to the request tenant
-        template = ApprovalTemplate.objects.get(
-            approval_type='PCR_APPROVAL',
-            is_current_version=True,
-            archived=False,
-        )
-    except ApprovalTemplate.DoesNotExist:
+    # The type's default template — a type may have several (user decision 2026-10-29).
+    template = ApprovalTemplate.default_for('PCR_APPROVAL')
+    if template is None:
         raise ValueError(
             "PCR_APPROVAL approval template not found. "
             "Please configure approval templates."
@@ -557,14 +552,9 @@ def approve_pco(
             "PCO must reference a draft_process_version before approval."
         )
 
-    try:
-        # tenant-safe: SecureManager .objects auto-scopes to the request tenant
-        template = ApprovalTemplate.objects.get(
-            approval_type='PCO_APPROVAL',
-            is_current_version=True,
-            archived=False,
-        )
-    except ApprovalTemplate.DoesNotExist:
+    # The type's default template — a type may have several (user decision 2026-10-29).
+    template = ApprovalTemplate.default_for('PCO_APPROVAL')
+    if template is None:
         raise ValueError(
             "PCO_APPROVAL approval template not found. "
             "Please configure approval templates."

@@ -363,9 +363,7 @@ def capa_approval_template(capa: CAPA) -> ApprovalTemplate | None:
     types.append('CAPA_APPROVAL')
     for approval_type in types:
         # tenant-safe: SecureManager .objects auto-scopes to the current tenant
-        template = (ApprovalTemplate.objects
-                    .filter(approval_type=approval_type, is_current_version=True, archived=False)
-                    .order_by('-created_at').first())
+        template = ApprovalTemplate.default_for(approval_type)
         if template is not None:
             return template
     return None

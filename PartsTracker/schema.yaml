@@ -50698,6 +50698,10 @@ components:
             additionalProperties: {}
           description: 'Ordered stages for a sequential template: [{''users'': [user
             ids], ''groups'': [group ids]}, ...]. Ignored when parallel.'
+        is_default:
+          type: boolean
+          description: The template used for this approval type when nothing names
+            another.
         allow_self_approval:
           type: boolean
           description: Allow requesters to approve their own requests (requires justification)
@@ -50796,6 +50800,10 @@ components:
             additionalProperties: {}
           description: 'Ordered stages for a sequential template: [{''users'': [user
             ids], ''groups'': [group ids]}, ...]. Ignored when parallel.'
+        is_default:
+          type: boolean
+          description: The template used for this approval type when nothing names
+            another.
         allow_self_approval:
           type: boolean
           description: Allow requesters to approve their own requests (requires justification)
@@ -68161,6 +68169,10 @@ components:
             additionalProperties: {}
           description: 'Ordered stages for a sequential template: [{''users'': [user
             ids], ''groups'': [group ids]}, ...]. Ignored when parallel.'
+        is_default:
+          type: boolean
+          description: The template used for this approval type when nothing names
+            another.
         allow_self_approval:
           type: boolean
           description: Allow requesters to approve their own requests (requires justification)

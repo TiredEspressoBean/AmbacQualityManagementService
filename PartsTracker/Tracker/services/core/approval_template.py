@@ -100,3 +100,20 @@ def create_new_approval_template_version(
         )
 
     return new_version
+
+
+def make_default(template: ApprovalTemplate) -> ApprovalTemplate:
+    """Make `template` the default for its approval type, unsetting the previous default
+    in the same transaction (one current default per tenant and type; user decision
+    2026-10-29). Not a content edit — no new version."""
+    from django.db import transaction
+    with transaction.atomic():
+        # tenant-safe: scoped by the template's own tenant
+        ApprovalTemplate.objects.filter(
+            tenant_id=template.tenant_id, approval_type=template.approval_type,
+            is_current_version=True, is_default=True,
+        ).exclude(pk=template.pk).update(is_default=False)
+        if not template.is_default:
+            ApprovalTemplate.objects.filter(pk=template.pk).update(is_default=True)  # tenant-safe: pk
+            template.is_default = True
+    return template

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
     Select,
     SelectContent,
@@ -58,6 +59,7 @@ const formSchema = schemas.ApprovalTemplateRequest.pick({
     approval_sequence: true,
     delegation_policy: true,
     allow_self_approval: true,
+    is_default: true,
     default_due_days: true,
     escalation_days: true,
     default_threshold: true,
@@ -146,6 +148,7 @@ export default function ApprovalTemplateFormPage() {
             approval_sequence: "PARALLEL",
             delegation_policy: "DISABLED",
             allow_self_approval: false,
+            is_default: false,
             default_due_days: 5,
             escalation_days: null,
             default_threshold: null,
@@ -179,6 +182,7 @@ export default function ApprovalTemplateFormPage() {
                 approval_sequence: t.approval_sequence || "PARALLEL",
                 delegation_policy: t.delegation_policy || "DISABLED",
                 allow_self_approval: t.allow_self_approval || false,
+                is_default: t.is_default ?? false,
                 default_due_days: t.default_due_days || 5,
                 escalation_days: t.escalation_days ?? null,
                 default_threshold: t.default_threshold ?? null,
@@ -525,6 +529,36 @@ export default function ApprovalTemplateFormPage() {
                                     </div>
                                 </FormItem>
                             )}
+                        />
+
+                        {/* One default per approval type: the template used when nothing names
+                            another (a document type without its own, a process, a PCR). It moves
+                            by making another template the default, never by switching it off. */}
+                        <FormField
+                            control={form.control}
+                            name="is_default"
+                            render={({ field }) => {
+                                const isTheDefault = mode === "edit" && !!template?.is_default;
+                                return (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Switch
+                                                checked={!!field.value}
+                                                onCheckedChange={field.onChange}
+                                                disabled={isTheDefault}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>Default for this approval type</FormLabel>
+                                            <FormDescription>
+                                                {isTheDefault
+                                                    ? "This is the default. To change that, open another template of this type and make it the default."
+                                                    : "Used whenever nothing names a template for this type. Turning it on takes the default from the current one."}
+                                            </FormDescription>
+                                        </div>
+                                    </FormItem>
+                                );
+                            }}
                         />
                     </div>
 

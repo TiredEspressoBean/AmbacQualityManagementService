@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { Badge } from "@/components/ui/badge";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { useRetrieveApprovalTemplates, approvalTemplatesOptions, approvalTemplatesMetadataOptions } from "@/hooks/useRetrieveApprovalTemplates";
 import { EditApprovalTemplateActionsCell } from "@/components/edit-approval-template-action-cell";
@@ -58,7 +59,15 @@ export function ApprovalTemplatesEditorPage() {
                 { label: "Type (Z-A)", value: "-approval_type" },
             ]}
             columns={[
-                col({ header: "Name", renderCell: (item) => item.template_name }),
+                col({
+                    header: "Name",
+                    renderCell: (item) => (
+                        <span className="flex items-center gap-2">
+                            {item.template_name}
+                            {item.is_default && <Badge variant="secondary">Default</Badge>}
+                        </span>
+                    ),
+                }),
                 col({ header: "Type", renderCell: (item) => item.approval_type_display || item.approval_type }),
                 col({ header: "Flow", renderCell: (item) => item.approval_flow_type_display || item.approval_flow_type }),
                 col({ header: "Due Days", renderCell: (item) => item.default_due_days }),

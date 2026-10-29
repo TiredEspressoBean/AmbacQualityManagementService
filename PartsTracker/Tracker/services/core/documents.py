@@ -160,19 +160,10 @@ def submit_document_for_approval(document, user):
     if document.document_type and document.document_type.approval_template:
         template = document.document_type.approval_template
     else:
-        # `is_current_version=True` is load-bearing — ApprovalTemplate
-        # is versioned, so editing the template creates a new row with
-        # the same `approval_type`. Without this filter the lookup
-        # raises `MultipleObjectsReturned` the moment any admin edits
-        # the template.
-        try:
-            # tenant-safe: SecureManager .objects auto-scopes to the request tenant
-            template = ApprovalTemplate.objects.get(
-                approval_type='DOCUMENT_RELEASE',
-                is_current_version=True,
-                archived=False,
-            )
-        except ApprovalTemplate.DoesNotExist:
+        # The default DOCUMENT_RELEASE template (a type may have several; user
+        # decision 2026-10-29).
+        template = ApprovalTemplate.default_for('DOCUMENT_RELEASE')
+        if template is None:
             raise ValueError(
                 "DOCUMENT_RELEASE approval template not found. "
                 "Please configure approval templates."

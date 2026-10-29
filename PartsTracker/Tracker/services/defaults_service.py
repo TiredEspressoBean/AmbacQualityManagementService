@@ -420,6 +420,8 @@ def seed_approval_templates(tenant=None, update_existing: bool = False) -> dict:
                     create_data = {k: v for k, v in t.items() if k not in ("default_groups_names", "description")}
                     if tenant:
                         create_data['tenant'] = tenant
+                    # A starter is its type's default (one per type, 2026-10-29).
+                    create_data['is_default'] = True
                     template = ApprovalTemplate.objects.create(**create_data)
 
                     # Set M2M (TenantGroup requires tenant filtering)

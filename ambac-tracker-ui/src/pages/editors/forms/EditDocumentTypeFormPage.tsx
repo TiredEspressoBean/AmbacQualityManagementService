@@ -102,7 +102,13 @@ export default function DocumentTypeFormPage() {
 
     // The template a document of this type is routed through for approval.
     const { data: approvalTemplates } = useRetrieveApprovalTemplates({ limit: 200 });
-    const templates = ((approvalTemplates as { results?: Array<{ id: string; template_name?: string }> } | undefined)?.results ?? []);
+    // Document-release templates only — another type's template would route a document
+    // through rules meant for something else. The default is what "The default document
+    // approval" already means, so it isn't listed twice.
+    const templates = ((approvalTemplates as { results?: Array<{ id: string; template_name?: string; approval_type?: string; is_default?: boolean }> } | undefined)?.results ?? [])
+        .filter((t) => t.approval_type === "DOCUMENT_RELEASE" && !t.is_default);
+    const defaultTemplate = ((approvalTemplates as { results?: Array<{ id: string; template_name?: string; approval_type?: string; is_default?: boolean }> } | undefined)?.results ?? [])
+        .find((t) => t.approval_type === "DOCUMENT_RELEASE" && t.is_default);
 
     const createDocumentType = useCreateDocumentType();
     const updateDocumentType = useUpdateDocumentType();
@@ -307,13 +313,15 @@ export default function DocumentTypeFormPage() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Approval template</FormLabel>
-                                    <Select value={field.value ? String(field.value) : NO_TEMPLATE}
+                                    <Select value={field.value && String(field.value) !== String(defaultTemplate?.id) ? String(field.value) : NO_TEMPLATE}
                                             onValueChange={(v) => field.onChange(v === NO_TEMPLATE ? null : v)}>
                                         <FormControl>
                                             <SelectTrigger><SelectValue /></SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value={NO_TEMPLATE}>The default document approval</SelectItem>
+                                            <SelectItem value={NO_TEMPLATE}>
+                                                The default document approval{defaultTemplate?.template_name ? ` (${defaultTemplate.template_name})` : ""}
+                                            </SelectItem>
                                             {templates.map((t) => (
                                                 <SelectItem key={t.id} value={String(t.id)}>{t.template_name || t.id}</SelectItem>
                                             ))}

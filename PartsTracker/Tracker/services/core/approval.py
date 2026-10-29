@@ -209,6 +209,7 @@ def create_approval_from_template(
         tenant=tenant,
         content_object=content_object,
         approval_type=template.approval_type,
+        template=template,
         requested_by=requested_by,
         reason=reason,
         flow_type=template.approval_flow_type,
