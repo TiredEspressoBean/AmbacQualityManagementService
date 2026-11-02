@@ -36,7 +36,7 @@ same working time the scheduler plans against:
 | Row | Hours available |
 |-----|-----------------|
 | **Labor** | Each shop-floor operator's own shift, plus that shift's overtime, less plant closures, company-wide blocks and their own time off (PTO, sick, training) |
-| **A work centre** | Its attended machines × the plant's working hours (shifts plus overtime, less closures), plus its lights-out machines × every hour of the month |
+| **A work centre** | Its attended machines × the plant's working hours (shifts plus overtime, less closures), plus its lights-out machines × every hour of the month less closures |
 | **A certification pool** | The labor hours of the operators qualified for that work, worked out the same way as Labor |
 
 - **Yearly closures** count in every year of the view, so a 24- or 36-month
@@ -45,8 +45,11 @@ same working time the scheduler plans against:
 - It is **today's** roster carried forward. A hire, a new shift or a newly
   qualified operator counts only once they are on the roster or trained. There
   is no way to plan one ahead.
-- Lights-out machines are credited every hour, closures included; machine
-  downtime is not taken off here.
+- A plant closure stops **every** machine, lights-out ones included, as it does
+  on the schedule: a two-day shutdown takes 48 h off each lights-out machine
+  that month.
+- Machine downtime is not taken off here, for either kind of machine.
+- **Could we take this order?** counts the same hours.
 
 ## What's in the load
 
