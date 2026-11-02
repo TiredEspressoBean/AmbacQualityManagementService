@@ -15,21 +15,53 @@ current month. Type a quantity in a cell; it saves when you leave the cell or
 press **Enter**. A blank or **0** clears that month. **Add a part type…** adds a
 row.
 
-Under each cell, *&lt;N&gt; ordered* is what orders due that month already claim
-of the forecast — firm orders and RFIs together. It turns green once orders
-cover the whole forecast. Hover a cell for the breakdown: the forecast, *Firm
-orders* and *RFI*, and *Planned on top of orders*.
+Under each cell, *&lt;N&gt; ordered* is how much of that month's forecast orders
+have used up — firm orders and RFIs together, including orders due in a
+neighbouring month (see below). It turns green once orders cover the whole
+forecast. Hover a cell for the breakdown: the forecast, which orders used it up
+and from which month — *of which Firm 10 (from Mar 27), RFI 60 (from Apr 27)* —
+and *Planned on top of orders*.
 
 ## Orders use up the forecast
 
 A forecast is expected volume, and the orders you win are part of it — not
-extra on top. So in each month:
+extra on top. So an order uses up forecast, in this order:
 
-- Firm orders and RFI deals due that month **use up** that month's forecast.
-- The month plans the larger of the forecast and what orders already claim.
-  Only the **unclaimed rest** adds load.
-- That rest is placed as if due at the month's end, the same way an [open order
+1. its **due month**;
+2. then **earlier** months, nearest first;
+3. then **later** months —
+
+within the **forecast consumption window** either side of the due month (see
+[Settings](#settings)). That way an order due on 2 March isn't counted again
+against February's forecast for the same build. Orders are taken in due-month
+order, firm before RFI within a month, and a month's forecast never goes below
+zero.
+
+Then each month:
+
+- plans the larger of its forecast and what orders have used up — only the
+  **unclaimed rest** adds load;
+- places that rest as if due at the month's end, the same way an [open order
   line](capacity.md#whats-in-the-load) is placed back from its due date.
+
+## The demand time fence
+
+Close in, a forecast is not worth planning against — only real orders should
+drive the next few weeks. Inside the **demand time fence**, the forecast is
+**shown but not planned**: capacity, the material lane and the material outlook
+export count only firm and RFI orders there. Fenced month columns are muted on
+this page — *"Inside the demand time fence: only orders are planned."* — and stay
+editable. With the default of 1, the current month carries no forecast load.
+
+## Settings
+
+Both are in **Scheduling settings**, in the **Fences** group, for whoever can
+change scheduling settings:
+
+| Setting | Default | Means |
+|---------|---------|-------|
+| **Demand time fence (months)** | 1 | *"Months from now in which forecast isn't planned — only orders count. 1 = this month; 0 = off."* |
+| **Forecast consumption window (months)** | 1 | *"How far either side of its due month an order uses up forecast: earlier months first, then later. 0 = its due month only."* |
 
 What counts as claiming it: order lines that aren't cancelled, at their full
 quantity, plus work orders that aren't on any order line. A work order on an

@@ -60,8 +60,11 @@ work**:
   RFI (tentative)*. An RFI line can't be planned into work until the order moves
   past RFI — see [Order Status](../orders/order-status.md).
 - **The unclaimed forecast.** The [volume forecast](forecast.md) adds whatever
-  orders due that month don't already cover. The verdict says *Includes
-  &lt;U&gt; units of unclaimed forecast*, linking to the forecast.
+  orders don't already use up — orders use up their due month's forecast, then
+  neighbouring months' within the [consumption window](forecast.md#orders-use-up-the-forecast).
+  Inside the [demand time fence](forecast.md#the-demand-time-fence) — the
+  current month, by default — no forecast is planned, only orders. The verdict
+  says *Includes &lt;U&gt; units of unclaimed forecast*, linking to the forecast.
 
 A heatmap cell carrying either has a thin strip along its bottom edge — **sky
 blue** for tentative (RFI), **violet** for unclaimed forecast — as wide as that
