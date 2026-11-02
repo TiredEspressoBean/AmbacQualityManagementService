@@ -55,7 +55,7 @@ editable. With the default of 1, the current month carries no forecast load.
 
 ## Settings
 
-Both are in **Scheduling settings**, in the **Fences** group, for whoever can
+Both are in **Scheduling settings**, under **Time fences**, for whoever can
 change scheduling settings:
 
 | Setting | Default | Means |
