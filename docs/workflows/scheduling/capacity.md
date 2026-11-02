@@ -108,13 +108,25 @@ One row per bought item, keyed the way the ERP keys it:
 | **Name**, **Kind** | *Material* or *Bought part* |
 | **Stock unit**, **Purchase unit**, **Stock units per purchase unit** | How it is counted and bought; the last is blank when it is bought in the stock unit |
 | **On hand**, **Safety stock**, **Incoming** | Incoming is lots promised within the horizon |
+| **Lead time (days)** | The item's purchase lead time, from its sourcing |
+| **First short month** | The first month (`YYYY-MM`) whose running balance — on hand − safety stock + incoming − demand so far — goes below zero |
+| **Order by** | The 1st of the first short month, less the lead time in calendar days; with no lead time set, the 1st of that month |
+| **Late** | *Late* when the order-by date has already passed (the date is still shown) |
 | One column per month (`YYYY-MM`) | Demand in **stock units** |
 | **Total demand**, **Balance at end** | Balance at end = on hand − safety stock + incoming − total demand; negative is short |
 
-!!! warning "A spread, not a buying plan"
-    The export spreads demand over months; it doesn't plan purchases. There is
-    no lead-time offset, no rounding to purchase packs, and no planned orders —
-    buying stays in your ERP, which this sheet feeds.
+The four order-by columns are blank for an item that never goes short in the
+horizon. On the page, hovering a material's name shows the same answer — *First
+short &lt;month&gt; · order by &lt;date&gt; · &lt;n&gt;-day lead time* (or *no
+lead time set*) — and a red *order late* marker sits beside the name when the
+order-by date has passed.
+
+!!! warning "When to act, not a buying plan"
+    Only the **first** shortage is dated: it tells you when to act. There are no
+    order quantities, no rounding to purchase packs, no planned orders, and later
+    shortages aren't rolled forward — buying stays in your ERP, which this sheet
+    feeds. A wrong lead time gives a wrong order-by date, so keep sourcing
+    current.
 
 ## Could we take this order?
 
