@@ -17250,6 +17250,7 @@ export type SourcingRequirements = {
   produce: Array<ProduceRequirement>;
   recover: Array<RecoverRequirement>;
   tooling: Array<ToolingRequirement>;
+  ship: Array<ShipRequirement>;
 };
 export type ProduceRequirement = {
   work_order: string;
@@ -17264,6 +17265,26 @@ export type ToolingRequirement = {
   need_by: string | null;
   lead_time_days: number | null;
   order_by: string | null;
+};
+export type ShipRequirement = {
+  order_line_id: string;
+  order_id: string;
+  order: string;
+  customer: string | null;
+  line_number: number;
+  part_type: string;
+  part_type_erp_id: string;
+  due_date: string | null;
+  month: string | null;
+  overdue: boolean;
+  tentative: boolean;
+  quantity: number;
+  shipped: number;
+  to_ship: number;
+  planned: number;
+  unplanned: number;
+  ready: number;
+  note: string;
 };
 export type StepEdgeRequest = {
   from_step: string;
@@ -25415,11 +25436,32 @@ const ToolingRequirement = z.object({
   lead_time_days: z.number().int().nullable(),
   order_by: z.string().nullable(),
 });
+const ShipRequirement = z.object({
+  order_line_id: z.string(),
+  order_id: z.string(),
+  order: z.string(),
+  customer: z.string().nullable(),
+  line_number: z.number().int(),
+  part_type: z.string(),
+  part_type_erp_id: z.string(),
+  due_date: z.string().nullable(),
+  month: z.string().nullable(),
+  overdue: z.boolean(),
+  tentative: z.boolean(),
+  quantity: z.number().int(),
+  shipped: z.number().int(),
+  to_ship: z.number().int(),
+  planned: z.number().int(),
+  unplanned: z.number().int(),
+  ready: z.number().int(),
+  note: z.string(),
+});
 const SourcingRequirements = z.object({
   source: z.array(SourceRequirement),
   produce: z.array(ProduceRequirement),
   recover: z.array(RecoverRequirement),
   tooling: z.array(ToolingRequirement),
+  ship: z.array(ShipRequirement),
 });
 const RestorePreviousInputRequest = z.object({ reason: z.string().min(1) });
 const LapsingInHorizonKindEnum = z.enum(["operator", "machine", "gauge"]);
@@ -30554,6 +30596,7 @@ export const schemas = {
   RecoverComponent,
   RecoverRequirement,
   ToolingRequirement,
+  ShipRequirement,
   SourcingRequirements,
   RestorePreviousInputRequest,
   LapsingInHorizonKindEnum,

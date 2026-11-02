@@ -466,7 +466,75 @@ def sourcing_requirements(tenant) -> dict:
         })
 
     return {'source': source, 'produce': produce, 'tooling': tooling,
-            'recover': recover}
+            'recover': recover, 'ship': ship_lane(tenant)}
+
+
+def ship_lane(tenant) -> list:
+    """What customers are owed, by when: one row per open order line still to ship.
+
+    Read-only — shipping itself stays on the shipping pages. Shipped counts SHIPPED parts
+    on the line's work orders (as `shipping.order_shipping` does), so a line fully shipped
+    drops out. Of what is still to ship, `planned` is covered by work orders and
+    `unplanned` is not yet. RFI lines are `tentative`: a deal not yet won, shown apart.
+    No forecast rows — a forecast is not a customer's ask and has nothing to ship.
+
+    Overdue lines first, then by due date; lines with no due date last.
+    """
+    from collections import Counter
+    from django.db.models import Count, Q
+    from Tracker.models import OrderLine
+    from Tracker.services.core.clock import tenant_today
+    from Tracker.services.mes.shipping import _ready_parts
+
+    today = tenant_today(tenant)
+    lines = list(
+        OrderLine.objects  # tenant-safe: explicit tenant filter
+        .filter(tenant=tenant, archived=False, status='OPEN', order__archived=False)
+        .exclude(order__order_status__in=['COMPLETED', 'CANCELLED'])
+        .select_related('order__company', 'part_type')
+        .annotate(shipped=Count('work_orders__parts', filter=Q(
+            work_orders__parts__part_status='SHIPPED', work_orders__parts__archived=False))))
+    ready = Counter(p.work_order.order_line_id for p in _ready_parts(tenant)
+                    if p.work_order_id and p.work_order.order_line_id)
+
+    rows = []
+    for ln in lines:
+        to_ship = ln.quantity - ln.shipped
+        if to_ship <= 0:
+            continue
+        unplanned = ln.remaining_quantity
+        n_ready = ready.get(ln.id, 0)
+        if n_ready:
+            note = f"{n_ready} ready to ship"
+        elif ln.planned_quantity > ln.shipped:
+            note = "in work"
+        else:
+            note = "not started"
+        order = ln.order
+        rows.append({
+            'order_line_id': str(ln.id),
+            'order_id': str(order.id),
+            'order': order.order_number or order.name,
+            'customer': order.company.name if order.company_id else None,
+            'line_number': ln.line_number,
+            'part_type': ln.part_type.name,
+            'part_type_erp_id': ln.part_type.ERP_id or "",
+            'due_date': ln.due_date,
+            'month': f"{ln.due_date:%Y-%m}" if ln.due_date else None,
+            'overdue': bool(ln.due_date and ln.due_date < today),
+            'tentative': order.order_status == 'RFI',
+            'quantity': ln.quantity,
+            'shipped': ln.shipped,
+            'to_ship': to_ship,
+            # Of what is still to ship: on work orders, and not yet.
+            'planned': max(0, to_ship - unplanned),
+            'unplanned': min(unplanned, to_ship),
+            'ready': n_ready,
+            'note': note,
+        })
+    rows.sort(key=lambda r: (r['due_date'] is None, not r['overdue'],
+                             r['due_date'] or today, r['order'], r['line_number']))
+    return rows
 
 
 def _recover_lane(tenant, pool_need, need_by, names, order_by) -> list:

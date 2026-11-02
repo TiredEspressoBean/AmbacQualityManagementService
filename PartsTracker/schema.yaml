@@ -79921,6 +79921,68 @@ components:
           type: string
           format: date
           nullable: true
+    ShipRequirement:
+      type: object
+      properties:
+        order_line_id:
+          type: string
+        order_id:
+          type: string
+        order:
+          type: string
+        customer:
+          type: string
+          nullable: true
+        line_number:
+          type: integer
+        part_type:
+          type: string
+        part_type_erp_id:
+          type: string
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        month:
+          type: string
+          nullable: true
+        overdue:
+          type: boolean
+        tentative:
+          type: boolean
+        quantity:
+          type: integer
+        shipped:
+          type: integer
+        to_ship:
+          type: integer
+        planned:
+          type: integer
+        unplanned:
+          type: integer
+        ready:
+          type: integer
+        note:
+          type: string
+      required:
+      - customer
+      - due_date
+      - line_number
+      - month
+      - note
+      - order
+      - order_id
+      - order_line_id
+      - overdue
+      - part_type
+      - part_type_erp_id
+      - planned
+      - quantity
+      - ready
+      - shipped
+      - tentative
+      - to_ship
+      - unplanned
     ShipmentLot:
       type: object
       description: A material lot on a shipment, and how much of it went.
@@ -80278,9 +80340,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ToolingRequirement'
+        ship:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShipRequirement'
       required:
       - produce
       - recover
+      - ship
       - source
       - tooling
     SplitMovedOn:

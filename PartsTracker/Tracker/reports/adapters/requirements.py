@@ -84,6 +84,27 @@ class ToolingRow(BaseModel):
     order_by: Optional[datetime.date] = None
 
 
+class ShipRow(BaseModel):
+    """An open order line still to ship. Read-only — shipping happens on its own pages."""
+    order: str
+    customer: Optional[str] = None
+    line_number: int
+    part_type: str
+    part_type_erp_id: str = ""
+    due_date: Optional[datetime.date] = None
+    month: Optional[str] = None
+    overdue: bool = False
+    #: An RFI line: a deal not yet won, shown apart from firm demand.
+    tentative: bool = False
+    quantity: int
+    shipped: int
+    to_ship: int
+    planned: int
+    unplanned: int
+    ready: int
+    note: str
+
+
 class RequirementsContext(BaseModel):
     generated_date: datetime.date
     tenant_name: str
@@ -91,6 +112,7 @@ class RequirementsContext(BaseModel):
     recover: list[RecoverRow] = Field(default_factory=list)
     produce: list[ProduceRow] = Field(default_factory=list)
     tooling: list[ToolingRow] = Field(default_factory=list)
+    ship: list[ShipRow] = Field(default_factory=list)
 
 
 class RequirementsParamsSerializer(serializers.Serializer):
@@ -123,6 +145,7 @@ class RequirementsAdapter(ReportAdapter):
             recover=[RecoverRow(**r) for r in req.get("recover", [])],
             produce=[ProduceRow(**r) for r in req["produce"]],
             tooling=[ToolingRow(**r) for r in req["tooling"]],
+            ship=[ShipRow(**r) for r in req.get("ship", [])],
         )
 
     def get_filename(self, validated_params) -> str:

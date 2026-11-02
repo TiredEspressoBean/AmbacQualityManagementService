@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ExpectFromShortagesDialog } from "@/components/receiving/ExpectFromShortagesDialog";
 import { usePlanTeardown } from "@/hooks/usePlanTeardown";
-import { useRequirements, type RecoverRow } from "@/hooks/useScheduling";
+import { useRequirements, type RecoverRow, type ShipRow } from "@/hooks/useScheduling";
 import { useState } from "react";
 import { toast } from "sonner";
 import { downloadCsv } from "@/lib/csv";
@@ -149,6 +149,7 @@ export function RequirementsPage() {
   const produce = data?.produce ?? [];
   const tooling = data?.tooling ?? [];
   const recover = data?.recover ?? [];
+  const ship = data?.ship ?? [];
   // Shortage rows ticked to raise expected receipts from. Keyed by item, not index,
   // so a refetch that reorders the lane keeps the right rows ticked.
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -176,12 +177,19 @@ export function RequirementsPage() {
           r.components.map((c) => `${c.component} ${c.covered_by_teardown}/${c.needed}`).join("; ")]),
         ...produce.map((r) => ["Produce", r.component, "", r.work_order, r.qty, "", "", r.need_by ?? "", "", r.status]),
         ...tooling.map((r) => ["Tooling", r.fixture, "", r.kind, "", "", "", "", r.order_by ?? "", ""]),
+        // Need by = the line's due date; the customer rides in Notes, not Supplier.
+        ...ship.map((r) => ["Ship", r.part_type, r.part_type_erp_id,
+          `${r.order} line ${r.line_number}${r.tentative ? " (RFI, tentative)" : ""}`,
+          r.to_ship, "", "", r.due_date ?? "", "",
+          [r.customer ?? "", `${r.planned} planned, ${r.unplanned} not yet planned`,
+           r.shipped ? `${r.shipped} shipped` : "", r.note, r.overdue ? "overdue" : ""]
+            .filter(Boolean).join("; ")]),
       ]
     );
 
   // Recover counts: a sheet whose only content is a teardown proposal is still worth
   // exporting.
-  const anyRows = source.length + recover.length + produce.length + tooling.length > 0;
+  const anyRows = source.length + recover.length + produce.length + tooling.length + ship.length > 0;
 
   if (isLoading) {
     return (
@@ -203,7 +211,8 @@ export function RequirementsPage() {
             <h1 className="text-2xl font-semibold tracking-tight">Sourcing &amp; production requirements</h1>
             <p className="text-sm text-muted-foreground">
               What open demand needs — material to buy, components to build, tooling to procure —
-              with order-by dates from the live schedule. Rows past their order-by are flagged.
+              with order-by dates from the live schedule, and what customers are owed, by when.
+              Rows past their order-by or due date are flagged.
             </p>
           </div>
         </div>
@@ -454,7 +463,97 @@ export function RequirementsPage() {
           ))}
         </tbody>
       </Section>
+
+      {/* Read-only: what customers are owed, by when. Shipping itself happens on the
+          shipping pages. Grouped by due month so "what ships in March" reads straight
+          down; overdue lines come first, lines with no due date last. */}
+      <Section
+        title="Ship"
+        subtitle="Open order lines still to ship, by due date. RFI lines are tentative — a deal not yet won. No forecast here: a forecast isn't a customer's order."
+        empty={ship.length === 0}
+        count={ship.length}
+        action={
+          <Link to="/production/shipments" className="text-sm text-muted-foreground underline underline-offset-2">
+            Shipping
+          </Link>
+        }
+      >
+        <thead>
+          <tr className="border-b bg-muted/40 text-left text-muted-foreground">
+            <th className="p-3 font-medium">Due</th>
+            <th className="p-3 font-medium">Order</th>
+            <th className="p-3 font-medium">Part type</th>
+            <th className="p-3 text-right font-medium">To ship</th>
+            <th className="p-3 text-right font-medium"
+                title="Of what is still to ship: on work orders / not yet planned into work.">
+              Planned / not yet
+            </th>
+            <th className="p-3 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ship.map((r, i) => {
+            const group = shipGroup(r);
+            const prev = i > 0 ? shipGroup(ship[i - 1]) : null;
+            return <ShipLine key={r.order_line_id} r={r} groupHeader={group !== prev ? group : null} />;
+          })}
+        </tbody>
+      </Section>
     </div>
+  );
+}
+
+/** The heading a ship row sits under: overdue first, then each due month, then none. */
+const shipGroup = (r: ShipRow) => (r.overdue ? "Overdue" : r.month ?? "No due date");
+
+const monthTitle = (g: string) =>
+  /^\d{4}-\d{2}$/.test(g)
+    ? new Date(`${g}-01T00:00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    : g;
+
+function ShipLine({ r, groupHeader }: { r: ShipRow; groupHeader: string | null }) {
+  return (
+    <>
+      {groupHeader && (
+        <tr className="border-b bg-muted/20">
+          <th colSpan={6} className={cn("px-3 py-1.5 text-left text-xs font-semibold",
+            groupHeader === "Overdue" && "text-destructive")}>
+            {monthTitle(groupHeader)}
+          </th>
+        </tr>
+      )}
+      <tr className={cn("border-b last:border-0 hover:bg-muted/30", r.tentative && "text-muted-foreground")}>
+        <td className={cn("whitespace-nowrap p-3", r.overdue && "font-medium text-destructive")}>
+          {r.due_date ? fmt(r.due_date) : <span className="text-muted-foreground">no due date</span>}
+        </td>
+        <td className="p-3">
+          <Link to="/production/orders/$orderId" params={{ orderId: r.order_id }} className="font-medium hover:underline">
+            {r.order}
+          </Link>
+          <span className="ml-1 text-xs text-muted-foreground">line {r.line_number}</span>
+          {r.tentative && (
+            <Badge variant="outline" className="ml-2 border-sky-500/60 text-sky-700 dark:text-sky-300">RFI · tentative</Badge>
+          )}
+          {r.customer && <div className="text-xs text-muted-foreground">{r.customer}</div>}
+        </td>
+        <td className="p-3">
+          <div>{r.part_type}</div>
+          {r.part_type_erp_id && <div className="text-xs text-muted-foreground">{r.part_type_erp_id}</div>}
+        </td>
+        <td className="p-3 text-right tabular-nums">
+          {r.to_ship}
+          {r.shipped > 0 && <div className="text-xs text-muted-foreground">of {r.quantity}</div>}
+        </td>
+        <td className="p-3 text-right tabular-nums">
+          {r.planned}
+          <span className="text-muted-foreground"> / </span>
+          <span className={cn(r.unplanned > 0 && "text-amber-700 dark:text-amber-400")}>{r.unplanned}</span>
+        </td>
+        <td className="p-3">
+          <Badge variant={r.ready > 0 ? "default" : "secondary"}>{r.note}</Badge>
+        </td>
+      </tr>
+    </>
   );
 }
 

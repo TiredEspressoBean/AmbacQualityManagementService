@@ -660,6 +660,29 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "lead_time_days": serializers.IntegerField(allow_null=True),
                 "order_by": serializers.DateField(allow_null=True),
             }),
+            # What customers are owed, by when: open order lines still to ship. Overdue
+            # first, then by due date; no due date last. RFI lines are `tentative`.
+            "ship": inline_serializer(name="ShipRequirement", many=True, fields={
+                "order_line_id": serializers.CharField(),
+                "order_id": serializers.CharField(),
+                "order": serializers.CharField(),
+                "customer": serializers.CharField(allow_null=True),
+                "line_number": serializers.IntegerField(),
+                "part_type": serializers.CharField(),
+                "part_type_erp_id": serializers.CharField(),
+                "due_date": serializers.DateField(allow_null=True),
+                "month": serializers.CharField(allow_null=True),
+                "overdue": serializers.BooleanField(),
+                "tentative": serializers.BooleanField(),
+                "quantity": serializers.IntegerField(),
+                "shipped": serializers.IntegerField(),
+                "to_ship": serializers.IntegerField(),
+                # Of what is still to ship: covered by work orders, and not yet planned.
+                "planned": serializers.IntegerField(),
+                "unplanned": serializers.IntegerField(),
+                "ready": serializers.IntegerField(),
+                "note": serializers.CharField(),
+            }),
         },
     )})
     @action(detail=False, methods=['get'], url_path='requirements')

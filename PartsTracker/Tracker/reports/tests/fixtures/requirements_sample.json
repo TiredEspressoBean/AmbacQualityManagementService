@@ -10,5 +10,10 @@
   ],
   "tooling": [
     {"fixture": "Weld Jig", "kind": "FIXTURE", "need_by": "2026-08-27", "lead_time_days": 7, "order_by": "2026-08-20"}
+  ],
+  "ship": [
+    {"order": "ORD-1001", "customer": "Fleet Diesel Co", "line_number": 1, "part_type": "Common Rail Injector", "part_type_erp_id": "CRI-100", "due_date": "2026-08-20", "month": "2026-08", "overdue": true, "tentative": false, "quantity": 10, "shipped": 4, "to_ship": 6, "planned": 6, "unplanned": 0, "ready": 2, "note": "2 ready to ship"},
+    {"order": "ORD-RFI-7", "customer": "Harbor Marine", "line_number": 1, "part_type": "Common Rail Injector", "part_type_erp_id": "CRI-100", "due_date": "2026-11-30", "month": "2026-11", "overdue": false, "tentative": true, "quantity": 60, "shipped": 0, "to_ship": 60, "planned": 0, "unplanned": 60, "ready": 0, "note": "not started"},
+    {"order": "ORD-1003", "customer": null, "line_number": 2, "part_type": "Injector Spring", "part_type_erp_id": "", "due_date": null, "month": null, "overdue": false, "tentative": false, "quantity": 5, "shipped": 0, "to_ship": 5, "planned": 5, "unplanned": 0, "ready": 0, "note": "in work"}
   ]
 }

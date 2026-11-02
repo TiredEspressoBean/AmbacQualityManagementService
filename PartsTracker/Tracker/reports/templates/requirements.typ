@@ -114,6 +114,28 @@
   [Nothing outstanding.],
 )
 
+// ── SHIP ───────────────────────────────────────────────────────────────────────
+// What customers are owed, by when: open order lines still to ship, overdue first,
+// then by due date; no due date last. RFI lines are tentative — a deal not yet won.
+#let ship-cols = (0.7fr, 1.5fr, 1.6fr, 1.8fr, 0.6fr, 0.7fr, 0.7fr, 1.3fr)
+#section("Ship — open order lines still to ship",
+  data.ship.map(r => (
+    if r.due_date == none { text(fill: muted)[no due date] } else { date-cell(r.due_date) },
+    [#r.order #text(size: 7pt, fill: muted)[ L#r.line_number]
+      #if r.tentative [#linebreak()#text(size: 7pt, fill: muted, weight: "semibold")[RFI — tentative]]],
+    if r.customer == none { text(fill: muted)[—] } else [#r.customer],
+    [#r.part_type #if r.part_type_erp_id != "" [#linebreak()#text(size: 7pt, fill: muted)[#r.part_type_erp_id]]],
+    text(font: mono-font)[#r.to_ship],
+    text(font: mono-font)[#r.planned],
+    text(font: mono-font)[#r.unplanned],
+    text(fill: muted)[#r.note #if r.shipped > 0 [(#r.shipped shipped)]],
+  )),
+  ship-cols,
+  ("Due", "Order", "Customer", "Part type", "To ship", "Planned", "Unplanned", "Status"),
+  (left, left, left, left, right, right, right, left),
+  [Nothing waiting to ship.],
+)
+
 #footer-note(
   lead: "Note",
   [Order-by = need-by − purchase lead time, from the live schedule. Coverage is a flag (net of on-hand + promised), not a reservation — stock and POs live in the ERP.],

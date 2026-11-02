@@ -36313,6 +36313,27 @@ export interface components {
             /** Format: date */
             expected_delivery?: string | null;
         };
+        ShipRequirement: {
+            order_line_id: string;
+            order_id: string;
+            order: string;
+            customer: string | null;
+            line_number: number;
+            part_type: string;
+            part_type_erp_id: string;
+            /** Format: date */
+            due_date: string | null;
+            month: string | null;
+            overdue: boolean;
+            tentative: boolean;
+            quantity: number;
+            shipped: number;
+            to_ship: number;
+            planned: number;
+            unplanned: number;
+            ready: number;
+            note: string;
+        };
         /** @description A material lot on a shipment, and how much of it went. */
         ShipmentLot: {
             /** Format: uuid */
@@ -36462,6 +36483,7 @@ export interface components {
             produce: components["schemas"]["ProduceRequirement"][];
             recover: components["schemas"]["RecoverRequirement"][];
             tooling: components["schemas"]["ToolingRequirement"][];
+            ship: components["schemas"]["ShipRequirement"][];
         };
         SplitMovedOn: {
             part: string;

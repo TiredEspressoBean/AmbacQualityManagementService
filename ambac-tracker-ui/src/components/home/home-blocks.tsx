@@ -1454,6 +1454,7 @@ const LAUNCHPADS: Record<string, { title: string; links: LaunchLink[] }> = {
         title: "Shipping dock",
         links: [
             { to: "/production/shipments", label: "Shipments", hint: "Ship units, packing lists, CoCs", icon: PackageCheck },
+            { to: "/production/requirements", label: "What ships when", hint: "Open order lines by due date", icon: CalendarRange },
             { to: "/production/outside-processing", label: "Outside processing", hint: "Send out and receive back", icon: Truck },
             { to: "/production/locations", label: "Locations", hint: "Where finished units are", icon: MapPin },
             { to: "/production/material-lots", label: "Material lots", hint: "Customer property and returns", icon: Boxes },

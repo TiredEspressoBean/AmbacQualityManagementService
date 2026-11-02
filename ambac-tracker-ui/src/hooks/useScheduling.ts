@@ -466,13 +466,22 @@ export type ToolingRow = {
   fixture: string; kind: string; need_by: string; lead_time_days: number | null;
   order_by: string | null;
 };
+/** An open order line still to ship. RFI lines are `tentative`. Of `to_ship`,
+ *  `planned` is on work orders and `unplanned` is not yet. */
+export type ShipRow = {
+  order_line_id: string; order_id: string; order: string; customer: string | null;
+  line_number: number; part_type: string; part_type_erp_id: string;
+  due_date: string | null; month: string | null; overdue: boolean; tentative: boolean;
+  quantity: number; shipped: number; to_ship: number; planned: number; unplanned: number;
+  ready: number; note: string;
+};
 export const requirementsOptions = () =>
   queryOptions({
     queryKey: ["schedule", "requirements"],
     queryFn: () =>
       api.api_Schedules_requirements_retrieve() as Promise<{
         source: SourceRow[]; produce: ProduceRow[]; tooling: ToolingRow[];
-        recover?: RecoverRow[];
+        recover?: RecoverRow[]; ship?: ShipRow[];
       }>,
   });
 
