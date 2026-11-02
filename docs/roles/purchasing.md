@@ -21,7 +21,7 @@ on, and the sourcing facts the requirements report nets against.
 | **Approved suppliers** | [Approved Suppliers](../workflows/supply/overview.md#approved-suppliers) |
 | **Part approvals** | [Part Approvals](../workflows/supply/part-approvals.md) |
 | **Sourcing facts** — lead time, preferred supplier, safety stock | The material or part type record |
-| **The material outlook** — two years of demand by month, for your ERP | The **Material outlook** tile on Home opens [Capacity Planning](../workflows/scheduling/capacity.md#material-outlook) at 24 months; export it to Excel or CSV |
+| **The material outlook** — two years of demand by month, for your ERP, with an order-by date for each item's first shortage | The **Material outlook** tile on Home opens [Capacity Planning](../workflows/scheduling/capacity.md#material-outlook) at 24 months; export it to Excel or CSV |
 | **Supplier companies and contacts** — keeping them accurate | [Companies](../admin/setup/companies.md). Adding or changing a company is manager-tier: a new supplier is added by a QA Manager, Production Manager, Document Controller or Tenant Admin |
 
 ## Sourcing facts are planning inputs
