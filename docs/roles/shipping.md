@@ -85,6 +85,15 @@ those customers, so you know before you pack.
     Voiding restores the record. Shipping again to patch an error leaves two
     shipments and a delivery-performance figure that describes neither.
 
+## What ships when
+
+The **What ships when** tile on Home opens the **Ship** section of
+Requirements: every open order line still to ship, overdue first, then by due
+month, with how many units are on work orders and how many are ready to ship.
+RFI lines are marked tentative. It is read-only; shipping is done here, on the
+Shipping board. See [What ships
+when](../workflows/scheduling/overview.md#what-ships-when).
+
 ## Whether you are on time
 
 **Shipping** shows **on-time %** over the last 90 days, and each order's

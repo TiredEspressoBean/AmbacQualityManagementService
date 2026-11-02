@@ -158,9 +158,10 @@ approved entry leaves this card, and can't be corrected here.
 ## Requirements
 
 **What open demand needs — material to buy, components to build, tooling to
-procure — with order-by dates from the live schedule.**
+procure — and what customers are owed, by when. Rows past their order-by or due
+date are flagged.**
 
-Four sections, one under another on the page:
+Five sections, one under another on the page:
 
 | Section | Covers |
 |---------|--------|
@@ -168,6 +169,30 @@ Four sections, one under another on the page:
 | **Recover (tear down)** | Teardown proposed to refill recovered stock — see [Planning a teardown](#planning-a-teardown) |
 | **Produce (build)** | In-house component work orders pegged to open demand |
 | **Tooling** | Fixtures, tools, dies and NC programs not yet on hand |
+| **Ship** | Open order lines still to ship, by due date — see [What ships when](#what-ships-when) |
+
+### What ships when
+
+The **Ship** section lists open order lines still to ship, grouped **Overdue**
+first (in red), then by due month, then **No due date**. It is read-only — a
+**Shipping** link beside its count goes to where shipping is done. Shipping's
+Home has a **What ships when** tile that opens this page.
+
+| Column | Shows |
+|--------|-------|
+| **Due** | The line's due date, red when past |
+| **Order** | The order and line number, with the customer underneath; an RFI line carries *RFI · tentative* |
+| **Part type** | Its name and ERP id |
+| **To ship** | Units still to ship — *of &lt;quantity&gt;* when some have gone |
+| **Planned / not yet** | Of those, how many are on work orders and how many aren't yet planned (amber when any) |
+| **Status** | *&lt;N&gt; ready to ship*, *in work* or *not started* |
+
+Shipped means parts on the line's work orders that have shipped — the same rule
+as the order page — so a fully shipped line drops out. Only open lines on orders
+that aren't completed or cancelled are listed. RFI lines are shown muted: a deal
+not yet won. There are no forecast rows: a forecast isn't a customer's order.
+
+The CSV and PDF carry the same rows (in the CSV, **Lane** = *Ship*).
 
 ### Turning a shortage into an expected delivery
 
