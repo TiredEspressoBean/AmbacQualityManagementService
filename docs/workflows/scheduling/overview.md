@@ -53,8 +53,10 @@ calendar as it stood.
 scheduled work.**
 
 View **By station** or **By material**, filter to a single station, choose the
-window — **4h / 8h / 12h / 24h**, defaulting to 8 — and export to **PDF** for
-the floor.
+window — **4h / 8h / 12h / 24h**, defaulting to 8 — and print the round's two
+sheets: the **Pick Sheet** (one walk of the shelves, by location) and the **Kit
+Sheet** (what goes to each bench). See [Picking material for
+jobs](../supply/overview.md#picking-material-for-jobs).
 
 Each station shows its jobs with a staged count (*2 jobs · 0/2 staged*), and
 each job lists its materials with quantity, **source lot** and **location** —

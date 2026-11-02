@@ -311,6 +311,55 @@ that way), heat number, received date, use-by date, company name and print date.
 See [Material Lot Tracking](../tracking/lot-tracking.md) for the underlying
 concepts.
 
+## Picking material for jobs
+
+Three printed documents take material from the stores to the work. They answer
+different questions, so they are different sheets:
+
+| Document | Covers | Printed from | Use it to |
+|----------|--------|--------------|-----------|
+| **Material Requisition** | One work order | The work order's documents, beside **Traveler** and **Part Labels** | Authorise issuing material against a job, and record who handed it over |
+| **Pick Sheet** | Every open job in the window, one row per material, ordered by **location** | **Scheduling** > **Staging List** | Walk the shelves once instead of once per job |
+| **Kit Sheet** | Each bench's next scheduled work | **Scheduling** > **Staging List** | Split what was picked into a kit per station |
+
+### The Material Requisition
+
+The per-job document, printed when the job is released. Its header carries the
+work order, part, quantity and due date, with a barcode of the work order so the
+sheet scans back to the job; a banner says up front how many lines are short.
+
+One row per component:
+
+**Find #** · **Part Number** · **Description** · **Qty/Ea** · **Qty Req'd** ·
+**Pull from** · **Lot pulled** · **Opt** · **✓**
+
+- **Qty Req'd** is the bill of materials quantity times the work order quantity.
+- **Pull from** names the lots consumption will draw, oldest expiry first;
+  **Lot pulled** is where you write the lot you actually took — the one the
+  traceability record will claim went into the unit.
+- Only lines for operations on the job's **route** are picked. A line for a
+  branch the job won't run — a rework or alternate step — is shown and marked
+  not picked, rather than left off, so it can't be mistaken for a missing BOM
+  line.
+
+It ends with an issue record — **Picked by**, **Checked by** and **Issued to /
+Cell**, each with name and date — and the note *"Record the lot you actually
+pulled … Return this sheet to production after picking."* Unsigned, it isn't a
+record of the issue.
+
+### The Pick Sheet and the Kit Sheet
+
+Both print from **Scheduling** > **Staging List** for the window chosen there (the
+next 4 to 24 hours), and for one station or all. The **Pick Sheet** is the single
+shelf walk across every job; the **Kit Sheet** then splits what was picked into
+each bench's kit. Recording what was actually staged — **Confirm**, **Took
+another**, **Mark staged** — happens on the Staging List page itself. See
+[Staging List](../scheduling/overview.md#staging-list).
+
+!!! note "Shipping has no pick step"
+    These are for issuing material to work. Shipping finished parts is ticked
+    and shipped from the Shipping board, with no pick sheet.
+
 ## Customer property
 
 Material a customer sends in for their own job — a free-issue kit, their castings

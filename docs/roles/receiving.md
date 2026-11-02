@@ -102,6 +102,14 @@ Submitting a count is the counter's job. **Applying** it needs `apply_cyclecount
 
 See [Locations & Cycle Counts](../workflows/supply/locations.md).
 
+## Picking it for jobs
+
+Material goes out to the work on three sheets: the job's **Material
+Requisition**, signed when you issue against it; the **Pick Sheet**, one walk of
+the shelves across every job in the window; and the **Kit Sheet**, which splits
+that into each bench's kit. Write the lot you actually pulled. See [Picking
+material for jobs](../workflows/supply/overview.md#picking-material-for-jobs).
+
 ## How the dock is doing
 
 [Receiving Metrics](../workflows/supply/overview.md#receiving-metrics) — lots

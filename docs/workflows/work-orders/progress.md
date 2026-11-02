@@ -191,8 +191,10 @@ rules](../../admin/setup/notification-rules.md), not by the work order.
 
 ## Reports
 
-The work order page carries the **Traveler**. Dispatch lists and labour hours
-come from scheduling. There is no work-order status report or production
+The work order page carries the **Traveler**, the **Material Requisition** — the
+per-job document stores issues material against, see [Picking material for
+jobs](../supply/overview.md#picking-material-for-jobs) — and **Part Labels**.
+Dispatch lists and labour hours come from scheduling. There is no work-order status report or production
 summary report.
 
 ## Several at once
