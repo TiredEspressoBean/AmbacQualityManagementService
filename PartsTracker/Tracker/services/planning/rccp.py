@@ -630,8 +630,9 @@ def _forecast_demand(tenant, ref: _RefData, buckets, now) -> dict:
     units, labor_total = 0, 0.0
     routes: dict = {}
     for (pt_id, month), c in sorted(cells.items(), key=lambda kv: (kv[0][1], str(kv[0][0]))):
-        # Inside the demand time fence only orders count: the forecast is shown, not planned.
-        qty = 0 if c['fenced'] else c['unclaimed']
+        # Inside the demand time fence only orders count: the forecast is shown, not
+        # planned. A month straddling the fence plans its days past it (`planned`).
+        qty = c['planned']
         if not qty:
             continue
         due = max(add_months(month, 1) - timedelta(days=1), now.date())
@@ -853,28 +854,31 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
 
 def _forecast_for_candidate(tenant, part_type_id, quantity: int, target_date: date):
     """How much of a candidate order the unclaimed forecast already expects:
-    `(absorbed, [{'month', 'quantity'}])`. Searched the way orders consume forecast —
-    the due month, then earlier months nearest first, then later, within the
-    consumption window — skipping months inside the demand time fence, where forecast
-    isn't planned and so carries no load to stand in for."""
+    `(absorbed, [{'month', 'quantity'}])`.
+
+    The due month, then EARLIER months nearest first, within the consumption window —
+    never later months (user decision 2026-11-02): a promise for January can't lean on
+    February's forecast, whose hours fall after the due date. Months inside the demand
+    time fence are skipped: forecast isn't planned there, so it carries no load to stand
+    in for."""
     from Tracker.services.planning.forecast import (
         add_months, consumption_settings, month_start, unclaimed_forecast,
     )
     _fence, window = consumption_settings(tenant)
     due = month_start(target_date)
-    reach = ([due] + [add_months(due, -k) for k in range(1, window + 1)]
-             + [add_months(due, k) for k in range(1, window + 1)])
+    reach = [due] + [add_months(due, -k) for k in range(1, window + 1)]
     cells = {m: c for (pt, m), c in unclaimed_forecast(
-        tenant, add_months(due, -window), add_months(due, window)).items()
+        tenant, add_months(due, -window), due).items()
         if str(pt) == str(part_type_id)}
     absorbed, used = 0, []
     for m in reach:
         c = cells.get(m)
-        if absorbed >= quantity or c is None or c['fenced'] or c['unclaimed'] <= 0:
+        # Only the planned part: forecast held back by the fence carries no load.
+        if absorbed >= quantity or c is None or c['planned'] <= 0:
             continue
-        take = min(c['unclaimed'], quantity - absorbed)
+        take = min(c['planned'], quantity - absorbed)
         absorbed += take
-        used.append({'month': f"{m:%Y-%m}", 'quantity': take})
+        used.append({'month': f"{m:%Y-%m}", 'quantity': take, 'rebooked': False})
     return absorbed, used
 
 
@@ -917,17 +921,37 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
         labor_h, pool_h, wc_h = _route_hours(ref, counts)
         lo, hi, _ = _load_span(buckets, wo, ref, labor_h, wc_h, start, counts)
         _commit(labor_h, wc_h, pool_h, lo, hi, 'work_orders')
-    for p in (_order_line_demand(tenant, ref, buckets, start)['placed']
-              + _forecast_demand(tenant, ref, buckets, start)['placed']):
+    forecast_placed = _forecast_demand(tenant, ref, buckets, start)['placed']
+    for p in _order_line_demand(tenant, ref, buckets, start)['placed'] + forecast_placed:
         _commit(p['labor'], p['wc'], p['pool'], p['lo'], p['hi'], p['band'])
 
     # The candidate consumes forecast before it needs capacity: an order the forecast
     # already expected isn't extra load — its hours are in the forecast band above.
-    # Searched as orders consume forecast (due month, then earlier, then later, within
-    # the window; never inside the demand time fence). Only the rest needs free hours.
+    # Due month and earlier only (`_forecast_for_candidate`); only the rest needs free
+    # hours.
     absorbed, absorbed_from = _forecast_for_candidate(tenant, part_type_id, quantity,
                                                       target_date)
-    need_qty = quantity - absorbed
+    # A SAME-MONTH absorption can't simply ride on the forecast: forecast is placed as
+    # due at month end, so its hours may fall after the due date (a promise for the 5th
+    # resting on hours worked on the 28th). Those units' forecast hours are released
+    # from the load and the units are re-booked as the candidate's own, so they must fit
+    # by the due date like any other work. Earlier months' forecast is placed before
+    # the due month and stands as it is.
+    due_label = f"{target_date:%Y-%m}"
+    rebooked = 0
+    for u in absorbed_from:
+        if u['month'] != due_label:
+            continue
+        p = next((p for p in forecast_placed if p.get('month') == due_label
+                  and str(p['part_type_id']) == str(part_type_id)), None)
+        if p is None or not p['quantity']:
+            continue
+        f = u['quantity'] / p['quantity']
+        _commit(-p['labor'] * f, {k: -v * f for k, v in p['wc'].items()},
+                {k: -v * f for k, v in p['pool'].items()}, p['lo'], p['hi'], 'forecast')
+        u['rebooked'] = True
+        rebooked += u['quantity']
+    need_qty = quantity - absorbed + rebooked
 
     # candidate routing: the process a new work order for this part type would be built
     # on — the single APPROVED, non-disassembly one (the version in force, even while a
@@ -1079,6 +1103,9 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
         'forecast_absorbed': absorbed,
         'forecast_absorbed_from': absorbed_from,
         'needs_capacity_quantity': need_qty,
+        # Of `forecast_absorbed`, the units from the due month's own forecast: re-booked
+        # to fit by the due date, so they are inside `needs_capacity_quantity`.
+        'forecast_rebooked_before_due': rebooked,
         # Zero-hour resources (e.g. an outside-process step — vendor time, not ours)
         # are omitted rather than listed as 0. The WHOLE order's content.
         'work_content_hours': {'labor': round(full_labor, 1),

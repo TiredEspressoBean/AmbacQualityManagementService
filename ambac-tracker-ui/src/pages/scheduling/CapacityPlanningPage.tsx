@@ -637,10 +637,15 @@ export function CapacityPlanningPage() {
                       {data.materials.map((m) => (
                         <tr key={m.id} className="border-t">
                           <th scope="row" className="sticky left-0 z-10 bg-background px-3 py-1.5 text-left text-xs font-medium"
-                              title={m.order_by
-                                ? `First short ${m.first_short_month} · order by ${m.order_by}${m.order_by_late ? " (late)" : ""}`
-                                  + (m.lead_time_days ? ` · ${m.lead_time_days}-day lead time` : " · no lead time set")
-                                : undefined}>
+                              title={[
+                                m.order_by
+                                  ? `First short ${m.first_short_month} · order by ${m.order_by}${m.order_by_late ? " (late)" : ""}`
+                                    + (m.lead_time_days ? ` · ${m.lead_time_days}-day lead time` : " · no lead time set")
+                                  : null,
+                                // Short earlier only once RFI or forecast is added: watch it,
+                                // nothing to order yet.
+                                m.watch_from ? `Watch: short from ${m.watch_from} (on ${m.watch_on})` : null,
+                              ].filter(Boolean).join("\n") || undefined}>
                             {m.name}
                             {m.order_by_late && (
                               <span className="ml-1.5 text-[10px] font-normal text-red-600 dark:text-red-400">order late</span>
@@ -889,6 +894,14 @@ export function CapacityPlanningPage() {
                     ? <>; {quote.data.needs_capacity_quantity} need free capacity
                         {quote.data.feasible ? ", which exists by then." : ", which isn't there by then."}</>
                     : <> — promisable against that forecast.</>}
+                  {/* The due month's own forecast is placed as due at month end, so its
+                      hours may come after the due date: those units must fit by then. */}
+                  {!!quote.data.forecast_rebooked_before_due && (
+                    <span className="block text-xs text-muted-foreground">
+                      {quote.data.forecast_rebooked_before_due} of those come from {quote.data.target_bucket}&rsquo;s
+                      own forecast, planned to month end — so they still have to fit by the due date.
+                    </span>
+                  )}
                 </p>
               )}
 

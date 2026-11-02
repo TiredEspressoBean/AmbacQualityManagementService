@@ -240,15 +240,39 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
         per = buy.get('units_per_purchase_unit')
         # WHEN to act, not what to buy (2026-11-02): the first month the running balance
         # goes below zero, and the date an order must go in to land by that month's
-        # first day — calendar days, as the requirements report computes order-by. Only
-        # the FIRST shortage: rolling later ones forward would be a buying plan, which
-        # is the ERP's. A past order-by stays shown; `order_by_late` marks it.
-        first_short = next((b for b, row in zip(buckets, series) if row['short']), None)
+        # first day — calendar days. Only the FIRST shortage: rolling later ones forward
+        # would be a buying plan, which is the ERP's. A past order-by stays shown;
+        # `order_by_late` marks it.
+        #
+        # Order-by is for shortages FIRM demand causes. One that appears only once RFI
+        # or forecast demand is added is a WATCH, not an order: `watch_from` / `watch_on`
+        # say from when, and on what (2026-11-02).
+        def _first_short(bands):
+            cover, cum = on_hand.get(mid, 0.0) - safety.get(mid, 0.0), 0.0
+            for i, b in enumerate(buckets):
+                cover += incoming[mid][i]
+                cum += sum(by_band[mid][band][i] for band in bands if band in by_band[mid])
+                if cover - cum < 0:
+                    return i
+            return None
+        firm_i = _first_short(('firm',))
+        first_short = buckets[firm_i] if firm_i is not None else None
         order_by = None
         if first_short is not None:
             need_by = date(first_short.start.year, first_short.start.month, 1)
             lead = item.lead_time_days
             order_by = (need_by - timedelta(days=lead)) if lead else need_by
+        all_i = next((i for i, row in enumerate(series) if row['short']), None)
+        watch_from = watch_on = None
+        if all_i is not None and (firm_i is None or all_i < firm_i):
+            watch_from = buckets[all_i].label
+            # The smallest addition to firm demand that makes that month short.
+            if _first_short(('firm', 'tentative')) == all_i:
+                watch_on = 'RFI'
+            elif _first_short(('firm', 'forecast')) == all_i:
+                watch_on = 'forecast'
+            else:
+                watch_on = 'RFI and forecast'
         out.append({'id': str(item_id), 'kind': kind,
                     'name': names.get(mid, str(item_id)),
                     # What a buyer keys into the ERP: part number / ERP id.
@@ -262,6 +286,8 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
                     'first_short_month': first_short.label if first_short else None,
                     'order_by': order_by,
                     'order_by_late': order_by is not None and order_by < today,
+                    'watch_from': watch_from,
+                    'watch_on': watch_on,
                     'safety_stock': safety.get(mid, 0.0), 'series': series})
 
     out.sort(key=lambda m: m['name'])

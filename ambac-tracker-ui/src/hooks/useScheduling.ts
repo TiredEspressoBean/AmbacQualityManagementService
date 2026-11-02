@@ -576,6 +576,9 @@ export type CapacityLoad = {
     first_short_month: string | null;
     order_by: string | null;
     order_by_late: boolean;
+    /** Short earlier only once RFI or forecast demand is added — a watch, not an order. */
+    watch_from: string | null;
+    watch_on: string | null;
     safety_stock: number;
     series: {
       bucket: string;
@@ -631,8 +634,11 @@ export type CtpQuote = {
   /** Of the quantity, how much the unclaimed forecast already expected — it carries
    *  that load, so only `needs_capacity_quantity` had to find free hours. */
   forecast_absorbed?: number;
-  forecast_absorbed_from?: { month: string; quantity: number }[];
+  forecast_absorbed_from?: { month: string; quantity: number; rebooked: boolean }[];
   needs_capacity_quantity?: number;
+  /** Of the absorbed, units from the due month's own forecast — re-booked to fit by
+   *  the due date, so counted in `needs_capacity_quantity`. */
+  forecast_rebooked_before_due?: number;
   work_content_hours?: Record<string, number>;
 };
 /** Quote an order against remaining capacity. Disabled until every input is set —

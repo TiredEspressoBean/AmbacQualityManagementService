@@ -12121,8 +12121,9 @@ export interface paths {
          * @description The material spread: one row per bought item, keyed as the ERP keys it, with
          *     its demand per month in stock units — firm work, RFI deals and unclaimed forecast
          *     together — beside its purchase unit and conversion, on-hand, incoming and the
-         *     balance left at the end. Beside it, WHEN to act: the first month the balance goes
-         *     short and the order-by date for it (that month's first day less the lead time).
+         *     balance left at the end. Beside it, WHEN to act: the first month FIRM demand
+         *     runs it short and the order-by date for it (that month's first day less the lead
+         *     time); a shortage only RFI or forecast demand causes is a "Watch from" instead.
          *     A spread, not a plan: no order quantities, lot sizing or later shortages rolled
          *     forward; buying is the ERP's. Behind export_data like every report.
          */
@@ -22674,6 +22675,7 @@ export interface components {
             forecast_absorbed?: number;
             forecast_absorbed_from?: components["schemas"]["CtpForecastAbsorbed"][];
             needs_capacity_quantity?: number;
+            forecast_rebooked_before_due?: number;
             work_content_hours?: {
                 [key: string]: number;
             };
@@ -23408,6 +23410,7 @@ export interface components {
         CtpForecastAbsorbed: {
             month: string;
             quantity: number;
+            rebooked: boolean;
         };
         /**
          * @description * `OPEN` - Open
@@ -26621,6 +26624,8 @@ export interface components {
             /** Format: date */
             order_by: string | null;
             order_by_late: boolean;
+            watch_from: string | null;
+            watch_on: string | null;
             /** Format: double */
             safety_stock: number;
             series: components["schemas"]["MaterialBucket"][];
@@ -27400,8 +27405,8 @@ export interface components {
             frozen_zone_days?: number;
             /** @description Days after the frozen zone where moves are discouraged. */
             slushy_zone_days?: number;
-            /** @description Months from the current one in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. 1 = the current month; 0 = off. */
-            demand_time_fence_months?: number;
+            /** @description Days from the plant's today in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. A forecast month straddling the fence is planned only for its days past it. 0 = off. */
+            demand_time_fence_days?: number;
             /** @description How many months either side of its due month an order may use up forecast: earlier months first (nearest first), then later. 0 = its due month only. */
             forecast_consumption_window_months?: number;
             /** @description Fallback outside-process turnaround (calendar days) when neither the step nor the vendor specifies one — so an OSP step always reserves elapsed time. */
@@ -31233,8 +31238,8 @@ export interface components {
             frozen_zone_days?: number;
             /** @description Days after the frozen zone where moves are discouraged. */
             slushy_zone_days?: number;
-            /** @description Months from the current one in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. 1 = the current month; 0 = off. */
-            demand_time_fence_months?: number;
+            /** @description Days from the plant's today in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. A forecast month straddling the fence is planned only for its days past it. 0 = off. */
+            demand_time_fence_days?: number;
             /** @description How many months either side of its due month an order may use up forecast: earlier months first (nearest first), then later. 0 = its due month only. */
             forecast_consumption_window_months?: number;
             /** @description Fallback outside-process turnaround (calendar days) when neither the step nor the vendor specifies one — so an OSP step always reserves elapsed time. */
@@ -40231,6 +40236,10 @@ export interface components {
             tentative: number;
             unclaimed: number;
             fenced: boolean;
+            fenced_quantity: number;
+            ordered_firm: number;
+            ordered_tentative: number;
+            planned: number;
             claimed_from: components["schemas"]["VolumeForecastSpill"][];
         };
         VolumeForecastCellInputRequest: {
@@ -40251,6 +40260,8 @@ export interface components {
             months: string[];
             rows: components["schemas"]["VolumeForecastRow"][];
             fenced_months: string[];
+            /** Format: date */
+            fence_ends: string;
         };
         VolumeForecastImportRequestRequest: {
             /** Format: binary */

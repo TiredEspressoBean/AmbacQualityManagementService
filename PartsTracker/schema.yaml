@@ -29482,8 +29482,9 @@ paths:
         The material spread: one row per bought item, keyed as the ERP keys it, with
         its demand per month in stock units — firm work, RFI deals and unclaimed forecast
         together — beside its purchase unit and conversion, on-hand, incoming and the
-        balance left at the end. Beside it, WHEN to act: the first month the balance goes
-        short and the order-by date for it (that month's first day less the lead time).
+        balance left at the end. Beside it, WHEN to act: the first month FIRM demand
+        runs it short and the order-by date for it (that month's first day less the lead
+        time); a shortage only RFI or forecast demand causes is a "Watch from" instead.
         A spread, not a plan: no order quantities, lot sizing or later shortages rolled
         forward; buying is the ERP's. Behind export_data like every report.
       parameters:
@@ -53192,6 +53193,8 @@ components:
             $ref: '#/components/schemas/CtpForecastAbsorbed'
         needs_capacity_quantity:
           type: integer
+        forecast_rebooked_before_due:
+          type: integer
         work_content_hours:
           type: object
           additionalProperties:
@@ -54742,9 +54745,12 @@ components:
           type: string
         quantity:
           type: integer
+        rebooked:
+          type: boolean
       required:
       - month
       - quantity
+      - rebooked
     CurrentStateEnum:
       enum:
       - OPEN
@@ -61654,6 +61660,12 @@ components:
           nullable: true
         order_by_late:
           type: boolean
+        watch_from:
+          type: string
+          nullable: true
+        watch_on:
+          type: string
+          nullable: true
         safety_stock:
           type: number
           format: double
@@ -61677,6 +61689,8 @@ components:
       - series
       - unit_of_measure
       - units_per_purchase_unit
+      - watch_from
+      - watch_on
     MaterialLot:
       type: object
       description: |-
@@ -63327,13 +63341,14 @@ components:
           maximum: 2147483647
           minimum: 0
           description: Days after the frozen zone where moves are discouraged.
-        demand_time_fence_months:
+        demand_time_fence_days:
           type: integer
-          maximum: 12
+          maximum: 365
           minimum: 0
-          description: Months from the current one in which forecast is not planned
+          description: Days from the plant's today in which forecast is not planned
             — only orders count, since unsold forecast that close in won't arrive.
-            1 = the current month; 0 = off.
+            A forecast month straddling the fence is planned only for its days past
+            it. 0 = off.
         forecast_consumption_window_months:
           type: integer
           maximum: 12
@@ -70171,13 +70186,14 @@ components:
           maximum: 2147483647
           minimum: 0
           description: Days after the frozen zone where moves are discouraged.
-        demand_time_fence_months:
+        demand_time_fence_days:
           type: integer
-          maximum: 12
+          maximum: 365
           minimum: 0
-          description: Months from the current one in which forecast is not planned
+          description: Days from the plant's today in which forecast is not planned
             — only orders count, since unsold forecast that close in won't arrive.
-            1 = the current month; 0 = off.
+            A forecast month straddling the fence is planned only for its days past
+            it. 0 = off.
         forecast_consumption_window_months:
           type: integer
           maximum: 12
@@ -87827,6 +87843,14 @@ components:
           type: integer
         fenced:
           type: boolean
+        fenced_quantity:
+          type: integer
+        ordered_firm:
+          type: integer
+        ordered_tentative:
+          type: integer
+        planned:
+          type: integer
         claimed_from:
           type: array
           items:
@@ -87834,8 +87858,12 @@ components:
       required:
       - claimed_from
       - fenced
+      - fenced_quantity
       - firm
       - forecast
+      - ordered_firm
+      - ordered_tentative
+      - planned
       - tentative
       - unclaimed
     VolumeForecastCellInputRequest:
@@ -87888,7 +87916,11 @@ components:
           type: array
           items:
             type: string
+        fence_ends:
+          type: string
+          format: date
       required:
+      - fence_ends
       - fenced_months
       - months
       - rows

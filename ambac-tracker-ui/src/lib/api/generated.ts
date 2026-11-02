@@ -1562,6 +1562,7 @@ export type CapableToPromise = {
   forecast_absorbed?: number | undefined;
   forecast_absorbed_from?: Array<CtpForecastAbsorbed> | undefined;
   needs_capacity_quantity?: number | undefined;
+  forecast_rebooked_before_due?: number | undefined;
   work_content_hours?: {} | undefined;
 };
 export type CtpBindingResource = {
@@ -1573,6 +1574,7 @@ export type CtpBindingResource = {
 export type CtpForecastAbsorbed = {
   month: string;
   quantity: number;
+  rebooked: boolean;
 };
 export type CapacityLoad = {
   buckets: Array<string>;
@@ -1684,6 +1686,8 @@ export type MaterialLoad = {
   first_short_month: string | null;
   order_by: string | null;
   order_by_late: boolean;
+  watch_from: string | null;
+  watch_on: string | null;
   safety_stock: number;
   series: Array<MaterialBucket>;
 };
@@ -5232,11 +5236,11 @@ export type OptimizationConfig = {
    * @maximum 2147483647
    */
   number | undefined;
-  demand_time_fence_months?: /**
-   * Months from the current one in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. 1 = the current month; 0 = off.
+  demand_time_fence_days?: /**
+   * Days from the plant's today in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. A forecast month straddling the fence is planned only for its days past it. 0 = off.
    *
    * @minimum 0
-   * @maximum 12
+   * @maximum 365
    */
   number | undefined;
   forecast_consumption_window_months?: /**
@@ -13751,12 +13755,12 @@ export type PatchedOptimizationConfigRequest = Partial<{
    */
   slushy_zone_days: number;
   /**
-   * Months from the current one in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. 1 = the current month; 0 = off.
+   * Days from the plant's today in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. A forecast month straddling the fence is planned only for its days past it. 0 = off.
    *
    * @minimum 0
-   * @maximum 12
+   * @maximum 365
    */
-  demand_time_fence_months: number;
+  demand_time_fence_days: number;
   /**
    * How many months either side of its due month an order may use up forecast: earlier months first (nearest first), then later. 0 = its due month only.
    *
@@ -18672,6 +18676,10 @@ export type VolumeForecastCell = {
   tentative: number;
   unclaimed: number;
   fenced: boolean;
+  fenced_quantity: number;
+  ordered_firm: number;
+  ordered_tentative: number;
+  planned: number;
   claimed_from: Array<VolumeForecastSpill>;
 };
 export type VolumeForecastSpill = {
@@ -18701,6 +18709,7 @@ export type VolumeForecastGrid = {
   months: Array<string>;
   rows: Array<VolumeForecastRow>;
   fenced_months: Array<string>;
+  fence_ends: string;
 };
 export type VolumeForecastRow = {
   part_type_id: string;
@@ -25121,6 +25130,7 @@ const CtpBindingResource = z.object({
 const CtpForecastAbsorbed = z.object({
   month: z.string(),
   quantity: z.number().int(),
+  rebooked: z.boolean(),
 });
 const CapableToPromise = z.object({
   feasible: z.boolean(),
@@ -25134,6 +25144,7 @@ const CapableToPromise = z.object({
   forecast_absorbed: z.number().int().optional(),
   forecast_absorbed_from: z.array(CtpForecastAbsorbed).optional(),
   needs_capacity_quantity: z.number().int().optional(),
+  forecast_rebooked_before_due: z.number().int().optional(),
   work_content_hours: z.record(z.number()).optional(),
 });
 const LaborBucket = z.object({
@@ -25242,6 +25253,8 @@ const MaterialLoad = z.object({
   first_short_month: z.string().nullable(),
   order_by: z.string().nullable(),
   order_by_late: z.boolean(),
+  watch_from: z.string().nullable(),
+  watch_on: z.string().nullable(),
   safety_stock: z.number(),
   series: z.array(MaterialBucket),
 });
@@ -25310,7 +25323,7 @@ const OptimizationConfig = z.object({
   relative_gap_limit: z.number().gte(0).optional(),
   frozen_zone_days: z.number().int().gte(0).lte(2147483647).optional(),
   slushy_zone_days: z.number().int().gte(0).lte(2147483647).optional(),
-  demand_time_fence_months: z.number().int().gte(0).lte(12).optional(),
+  demand_time_fence_days: z.number().int().gte(0).lte(365).optional(),
   forecast_consumption_window_months: z
     .number()
     .int()
@@ -25376,7 +25389,7 @@ const PatchedOptimizationConfigRequest = z
     relative_gap_limit: z.number().gte(0),
     frozen_zone_days: z.number().int().gte(0).lte(2147483647),
     slushy_zone_days: z.number().int().gte(0).lte(2147483647),
-    demand_time_fence_months: z.number().int().gte(0).lte(12),
+    demand_time_fence_days: z.number().int().gte(0).lte(365),
     forecast_consumption_window_months: z.number().int().gte(0).lte(12),
     default_outside_process_turnaround_days: z
       .number()
@@ -27808,6 +27821,10 @@ const VolumeForecastCell = z.object({
   tentative: z.number().int(),
   unclaimed: z.number().int(),
   fenced: z.boolean(),
+  fenced_quantity: z.number().int(),
+  ordered_firm: z.number().int(),
+  ordered_tentative: z.number().int(),
+  planned: z.number().int(),
   claimed_from: z.array(VolumeForecastSpill),
 });
 const VolumeForecastRow = z.object({
@@ -27820,6 +27837,7 @@ const VolumeForecastGrid = z.object({
   months: z.array(z.string()),
   rows: z.array(VolumeForecastRow),
   fenced_months: z.array(z.string()),
+  fence_ends: z.string(),
 });
 const VolumeForecastImportRequestRequest = z.object({
   file: z.instanceof(File),
@@ -53764,8 +53782,9 @@ pegged component WOs offset the requirement, so re-running is idempotent.`,
     description: `The material spread: one row per bought item, keyed as the ERP keys it, with
 its demand per month in stock units — firm work, RFI deals and unclaimed forecast
 together — beside its purchase unit and conversion, on-hand, incoming and the
-balance left at the end. Beside it, WHEN to act: the first month the balance goes
-short and the order-by date for it (that month&#x27;s first day less the lead time).
+balance left at the end. Beside it, WHEN to act: the first month FIRM demand
+runs it short and the order-by date for it (that month&#x27;s first day less the lead
+time); a shortage only RFI or forecast demand causes is a &quot;Watch from&quot; instead.
 A spread, not a plan: no order quantities, lot sizing or later shortages rolled
 forward; buying is the ERP&#x27;s. Behind export_data like every report.`,
     requestFormat: "json",

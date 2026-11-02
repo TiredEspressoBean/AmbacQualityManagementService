@@ -294,11 +294,12 @@ class OptimizationConfig(SecureModel):
     )
     # Forecast consumption in the demand outlook (services.planning.forecast). Shop
     # practice, so tenant settings rather than constants.
-    demand_time_fence_months = models.PositiveIntegerField(
-        default=1, validators=[MaxValueValidator(12)],
-        help_text="Months from the current one in which forecast is not planned — only "
-                  "orders count, since unsold forecast that close in won't arrive. "
-                  "1 = the current month; 0 = off.")
+    demand_time_fence_days = models.PositiveIntegerField(
+        default=30, validators=[MaxValueValidator(365)],
+        help_text="Days from the plant's today in which forecast is not planned — only "
+                  "orders count, since unsold forecast that close in won't arrive. A "
+                  "forecast month straddling the fence is planned only for its days past "
+                  "it. 0 = off.")
     forecast_consumption_window_months = models.PositiveIntegerField(
         default=1, validators=[MaxValueValidator(12)],
         help_text="How many months either side of its due month an order may use up "

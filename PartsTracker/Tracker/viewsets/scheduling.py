@@ -883,6 +883,11 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     'first_short_month': serializers.CharField(allow_null=True),
                     'order_by': serializers.DateField(allow_null=True),
                     'order_by_late': serializers.BooleanField(),
+                    # Short earlier than firm demand alone makes it — only once RFI or
+                    # forecast is added: from which month, and on what ('RFI',
+                    # 'forecast', 'RFI and forecast'). No order-by for that.
+                    'watch_from': serializers.CharField(allow_null=True),
+                    'watch_on': serializers.CharField(allow_null=True),
                     'safety_stock': serializers.FloatField(),
                     'series': inline_serializer(
                         name='MaterialBucket', many=True, fields={
@@ -920,8 +925,9 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         """The material spread: one row per bought item, keyed as the ERP keys it, with
         its demand per month in stock units — firm work, RFI deals and unclaimed forecast
         together — beside its purchase unit and conversion, on-hand, incoming and the
-        balance left at the end. Beside it, WHEN to act: the first month the balance goes
-        short and the order-by date for it (that month's first day less the lead time).
+        balance left at the end. Beside it, WHEN to act: the first month FIRM demand
+        runs it short and the order-by date for it (that month's first day less the lead
+        time); a shortage only RFI or forecast demand causes is a "Watch from" instead.
         A spread, not a plan: no order quantities, lot sizing or later shortages rolled
         forward; buying is the ERP's. Behind export_data like every report."""
         import io
@@ -940,7 +946,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         columns = ['Item', 'Name', 'Kind', 'Stock unit', 'Purchase unit',
                    'Stock units per purchase unit', 'On hand', 'Safety stock',
                    'Incoming', 'Lead time (days)', 'First short month', 'Order by', 'Late',
-                   *buckets, 'Total demand', 'Balance at end']
+                   'Watch from', *buckets, 'Total demand', 'Balance at end']
         rows = []
         for m in load['materials']:
             demand = [b['demand'] for b in m['series']]
@@ -959,6 +965,9 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 'First short month': m['first_short_month'],
                 'Order by': m['order_by'].isoformat() if m['order_by'] else None,
                 'Late': 'Late' if m['order_by_late'] else None,
+                # Short earlier only once RFI or forecast demand is added: watch, not order.
+                'Watch from': (f"{m['watch_from']} (on {m['watch_on']})"
+                               if m['watch_from'] else None),
                 **dict(zip(buckets, demand)),
                 'Total demand': round(sum(demand), 2),
                 # Free stock left after everything through the last month: on hand less
@@ -1031,8 +1040,12 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             'forecast_absorbed_from': inline_serializer(
                 name='CtpForecastAbsorbed', many=True, required=False, fields={
                     'month': serializers.CharField(),
-                    'quantity': serializers.IntegerField()}),
+                    'quantity': serializers.IntegerField(),
+                    # From the due month's own forecast: its hours may fall after the
+                    # due date, so these units are re-booked to fit by the due date.
+                    'rebooked': serializers.BooleanField()}),
             'needs_capacity_quantity': serializers.IntegerField(required=False),
+            'forecast_rebooked_before_due': serializers.IntegerField(required=False),
             # Keyed by resource name ("labor", then each work centre), so the shape is a
             # map rather than a fixed set of fields.
             'work_content_hours': serializers.DictField(
@@ -1540,8 +1553,15 @@ class VolumeForecastViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                         'firm': serializers.IntegerField(),
                         'tentative': serializers.IntegerField(),
                         'unclaimed': serializers.IntegerField(),
-                        # Inside the demand time fence: shown, not planned.
+                        # Wholly inside the demand time fence: shown, not planned.
                         'fenced': serializers.BooleanField(),
+                        # Of `unclaimed`, the part the fence holds back (a month
+                        # straddling it, pro-rated by days) and the part planned.
+                        'fenced_quantity': serializers.IntegerField(),
+                        # Orders DUE this month, in full: the true total ordered.
+                        'ordered_firm': serializers.IntegerField(),
+                        'ordered_tentative': serializers.IntegerField(),
+                        'planned': serializers.IntegerField(),
                         # Claims that spilled in from a neighbouring month's orders.
                         'claimed_from': inline_serializer(
                             name='VolumeForecastSpill', many=True, fields={
@@ -1550,8 +1570,10 @@ class VolumeForecastViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                                 'from_month': serializers.CharField()}),
                     })),
             }),
-            # Months inside the demand time fence (YYYY-MM): only orders are planned.
+            # Months wholly inside the demand time fence (YYYY-MM): only orders planned.
             'fenced_months': serializers.ListField(child=serializers.CharField()),
+            # The first day outside the fence (the plant's today + the fence in days).
+            'fence_ends': serializers.DateField(),
         }),
         },
     )

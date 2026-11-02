@@ -46,8 +46,8 @@ const FENCES: FieldSpec[] = [
     hint: "Near-term window whose tasks the solver keeps fixed." },
   { key: "slushy_zone_days", label: "Slushy zone (days)", kind: "int",
     hint: "Window after frozen where moves are discouraged." },
-  { key: "demand_time_fence_months", label: "Demand time fence (months)", kind: "int",
-    hint: "Months from now in which forecast isn't planned — only orders count. 1 = this month; 0 = off." },
+  { key: "demand_time_fence_days", label: "Demand time fence (days)", kind: "int",
+    hint: "Days from today in which forecast isn't planned — only orders count. A month straddling the fence plans only its days past it. 0 = off." },
   { key: "forecast_consumption_window_months", label: "Forecast consumption window (months)", kind: "int",
     hint: "How far either side of its due month an order uses up forecast: earlier months first, then later. 0 = its due month only." },
 ];

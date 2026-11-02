@@ -130,6 +130,16 @@ class ForecastConsumptionTests(_ForecastFixture, TestCase):
         self.assertEqual({k: cell[k] for k in ('forecast', 'firm', 'tentative', 'unclaimed')},
                          {'forecast': 50, 'firm': 20, 'tentative': 10, 'unclaimed': 20})
 
+    def test_a_cell_reports_the_true_total_ordered_beside_what_it_lost(self):
+        """"N ordered" is what orders due that month ask for, in full — even beyond the
+        forecast — not the capped consumption."""
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
+        self._line(100, self._mid(self.month), n=1)
+        self._line(20, self._mid(self.month), status="RFI", n=2)
+        cell = self._cell()
+        self.assertEqual((cell["ordered_firm"], cell["ordered_tentative"]), (100, 20))
+        self.assertEqual((cell["firm"], cell["tentative"], cell["unclaimed"]), (50, 0, 0))
+
     def test_orders_beyond_the_forecast_leave_nothing_unclaimed(self):
         fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=10)
         self._line(30, self._mid(self.month))
@@ -144,6 +154,21 @@ class ForecastConsumptionTests(_ForecastFixture, TestCase):
         WorkOrder.objects.create(tenant=self.tenant, ERP_id="WO-STOCK", quantity=5,
                                  process=self.process, expected_completion=self._mid(self.month))
         self.assertEqual(self._cell()['firm'], 25)
+
+    def test_a_reman_line_claims_no_new_build_forecast(self):
+        """A line whose units come in as the customer's cores is remanufacture, not a
+        new build — it doesn't use up the new-build forecast."""
+        from Tracker.models import Companies
+        from Tracker.services.reman.core_part import create_core
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
+        line = self._line(20, self._mid(self.month), n=1)
+        self._line(10, self._mid(self.month), n=2)            # a new build: claims
+        create_core(tenant=self.tenant, core_number="C-1", core_type=self.pt, order=line.order,
+                    fulfilment_mode="REPAIR_RETURN", status="RECEIVED",
+                    customer=Companies.objects.create(tenant=self.tenant, name="Fleet"),
+                    received_date=timezone.localdate(), received_by=self.user)
+        self.assertEqual(self._cell()["firm"], 10)
+        self.assertEqual(self._cell()["unclaimed"], 40)
 
     def test_cancelled_orders_and_teardowns_claim_nothing(self):
         fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
@@ -258,17 +283,36 @@ class DemandTimeFenceTests(_ForecastFixture, TestCase):
     def _forecast_units(self):
         return rccp.build_capacity_load(self.tenant, months=3)["forecast_demand"]["units"]
 
-    def test_the_default_fence_keeps_this_months_forecast_out_of_the_plan(self):
+    def _fence(self, days):
+        from Tracker.models import OptimizationConfig
+        OptimizationConfig.objects.update_or_create(tenant=self.tenant,
+                                                    defaults={"demand_time_fence_days": days})
+
+    def test_a_fence_covering_the_rest_of_the_month_keeps_its_forecast_out_of_the_plan(self):
+        # 31 days from today covers what is left of any month (the default 30 does on
+        # every day but the 1st of a 31-day month).
+        self._fence(31)
         cell = fc.unclaimed_forecast(self.tenant, self.this_month, self.this_month)[(self.pt.id, self.this_month)]
         self.assertTrue(cell["fenced"])
-        self.assertEqual(cell["unclaimed"], 40, "still shown")
+        self.assertEqual((cell["unclaimed"], cell["planned"]), (40, 0), "still shown, not planned")
         self.assertEqual(self._forecast_units(), 0)
 
     def test_fence_zero_plans_it_again(self):
-        from Tracker.models import OptimizationConfig
-        OptimizationConfig.objects.update_or_create(tenant=self.tenant,
-                                                    defaults={"demand_time_fence_months": 0})
+        self._fence(0)
         self.assertEqual(self._forecast_units(), 40)
+
+    def test_a_month_straddling_the_fence_plans_its_days_past_it(self):
+        from Tracker.services.core.clock import tenant_today
+        nxt = fc.add_months(self.this_month, 1)
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=nxt, quantity=62)
+        days_in = (fc.add_months(nxt, 1) - nxt).days
+        self._fence((nxt - tenant_today(self.tenant)).days + 10)   # ends on the 11th
+        cell = fc.unclaimed_forecast(self.tenant, nxt, nxt)[(self.pt.id, nxt)]
+        held = round(62 * 10 / days_in)
+        self.assertFalse(cell["fenced"], "only wholly fenced months are muted")
+        self.assertEqual((cell["fenced_quantity"], cell["planned"]), (held, 62 - held))
+        grid = fc.grid(self.tenant, self.this_month, 3)
+        self.assertEqual(grid["fenced_months"], [f"{self.this_month:%Y-%m}"])
 
 
 class CapableToPromiseForecastTests(_ForecastFixture, TestCase):
@@ -291,7 +335,11 @@ class CapableToPromiseForecastTests(_ForecastFixture, TestCase):
                                     step_type="TASK", work_center=self.wc)
         StepTiming.objects.create(tenant=self.tenant, step=step, cycle_time_minutes=60)
         ProcessStep.objects.create(process=proc, step=step, order=1)
-        # Two months out: clear of the default demand time fence (the current month).
+        # The fence is in days from today, so with it on, next month's plannable share
+        # depends on the date the test runs. These tests are about CTP, not the fence.
+        from Tracker.models import OptimizationConfig
+        OptimizationConfig.objects.update_or_create(tenant=self.tenant,
+                                                    defaults={"demand_time_fence_days": 0})
         self.target_month = fc.add_months(self.this_month, 2)
         self.due = fc.add_months(self.target_month, 1) - timedelta(days=1)
 
@@ -315,14 +363,35 @@ class CapableToPromiseForecastTests(_ForecastFixture, TestCase):
         labor = next(b for b in q["binding_resources"] if b["resource"] == "Labor")
         self.assertGreater(labor["load_by_band"].get("forecast", 0), 1000)
 
-    def test_a_candidate_inside_its_own_unclaimed_forecast_is_promisable(self):
-        self._forecast(self.pt, 600)
+    def test_a_candidate_inside_an_earlier_months_unclaimed_forecast_is_promisable(self):
+        """Last month's forecast is placed before the due month: its hours stand."""
+        earlier = fc.add_months(self.this_month, 1)
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=earlier, quantity=600)
         q = self._quote()
         self.assertTrue(q["feasible"], q.get("binding_resources"))
         self.assertEqual((q["forecast_absorbed"], q["needs_capacity_quantity"]), (100, 0))
         self.assertEqual(q["forecast_absorbed_from"],
-                         [{"month": f"{self.target_month:%Y-%m}", "quantity": 100}])
+                         [{"month": f"{earlier:%Y-%m}", "quantity": 100, "rebooked": False}])
         self.assertEqual(q["work_content_hours"]["labor"], 100.0, "the whole order's content")
+
+    def test_a_later_months_forecast_is_never_used(self):
+        later = fc.add_months(self.target_month, 1)
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=later, quantity=600)
+        q = self._quote()
+        self.assertEqual((q["forecast_absorbed"], q["needs_capacity_quantity"]), (0, 100))
+
+    def test_the_due_months_forecast_must_fit_by_the_due_date(self):
+        """The reported case: a big order due on the 5th rode on its month's forecast,
+        whose hours were placed at month end — "feasible, needs capacity 0" on hours that
+        come after the due date. Same-month units are re-booked to fit by the due date."""
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.target_month, quantity=600)
+        due = self.target_month + timedelta(days=4)
+        q = rccp.capable_to_promise(self.tenant, str(self.pt.id), 500, due)
+        self.assertEqual((q["forecast_absorbed"], q["forecast_rebooked_before_due"],
+                          q["needs_capacity_quantity"]), (500, 500, 500))
+        self.assertTrue(q["forecast_absorbed_from"][0]["rebooked"])
+        # ~1.1 months of one operator's hours can't carry 500 h of work.
+        self.assertFalse(q["feasible"])
 
     def test_an_rfi_lines_hours_count_against_the_promise(self):
         order = Orders.objects.create(tenant=self.tenant, name="Deal", order_status="RFI")
@@ -384,6 +453,30 @@ class ForecastPlanningTests(_ForecastFixture, TestCase):
         # 10 firm + 5 tentative claim 15 of 30: 15 unclaimed. Two O-rings each.
         self.assertEqual(totals, {"firm": 20.0, "tentative": 10.0, "forecast": 30.0})
 
+    def _oring(self):
+        return next(m for m in self._load()["materials"] if m["name"] == "O-Ring")
+
+    def test_a_shortage_only_forecast_causes_is_a_watch_not_an_order(self):
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=30)
+        m = self._oring()
+        self.assertIsNone(m["order_by"])
+        self.assertFalse(m["order_by_late"])
+        self.assertEqual(m["watch_on"], "forecast")
+        self.assertTrue(m["watch_from"])
+
+    def test_a_shortage_an_rfi_causes_watches_on_rfi(self):
+        self._line(5, self._mid(self.month), status="RFI")
+        m = self._oring()
+        self.assertIsNone(m["order_by"])
+        self.assertEqual(m["watch_on"], "RFI")
+
+    def test_a_firm_shortage_gets_an_order_by_and_no_watch(self):
+        self._line(5, self._mid(self.month))
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=30)
+        m = self._oring()
+        self.assertIsNotNone(m["order_by"])
+        self.assertIsNone(m["watch_from"], "firm is short no later than the total")
+
     def test_forecast_for_a_part_type_with_no_routing_is_flagged(self):
         bare = PartTypes.objects.create(tenant=self.tenant, name="No Route")
         fc.set_forecast(tenant=self.tenant, part_type=bare, month=self.month, quantity=5)
@@ -427,7 +520,9 @@ class ForecastApiTests(_ForecastFixture, TestCase):
         self.assertEqual(len(grid["months"]), 24)
         self.assertEqual(grid["rows"][0]["cells"][label],
                          {"forecast": 12, "firm": 0, "tentative": 0, "unclaimed": 12,
-                          "fenced": False, "claimed_from": []})
+                          "ordered_firm": 0, "ordered_tentative": 0,
+                          "fenced": False, "fenced_quantity": 0, "planned": 12,
+                          "claimed_from": []})
 
     def test_a_superseded_part_type_is_refused(self):
         c = self._client("view_volumeforecast", "add_volumeforecast", "change_volumeforecast")
@@ -442,7 +537,7 @@ class ForecastApiTests(_ForecastFixture, TestCase):
         from Tracker.serializers.scheduling import OptimizationConfigSerializer
         from Tracker.models import OptimizationConfig
         cfg = OptimizationConfig.objects.create(tenant=self.tenant)
-        ser = OptimizationConfigSerializer(cfg, data={"demand_time_fence_months": 13}, partial=True)
+        ser = OptimizationConfigSerializer(cfg, data={"demand_time_fence_days": 366}, partial=True)
         self.assertFalse(ser.is_valid())
         ser = OptimizationConfigSerializer(cfg, data={"forecast_consumption_window_months": 12}, partial=True)
         self.assertTrue(ser.is_valid(), ser.errors)

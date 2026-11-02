@@ -30,10 +30,17 @@ import {
 
 type Cell = {
   forecast: number; firm: number; tentative: number; unclaimed: number;
-  /** Inside the demand time fence: shown, not planned. */
+  /** Wholly inside the demand time fence: shown, not planned. */
   fenced?: boolean;
+  /** Of `unclaimed`: held back by the fence (a straddling month, pro-rated by days),
+   *  and planned. */
+  fenced_quantity?: number;
+  planned?: number;
   /** Claims that spilled in from a neighbouring month's orders. */
   claimed_from?: { band: string; quantity: number; from_month: string }[];
+  /** Orders DUE this month, in full — the true total ordered. */
+  ordered_firm?: number;
+  ordered_tentative?: number;
 };
 
 const FENCE_TIP = "Inside the demand time fence: only orders are planned.";
@@ -50,13 +57,20 @@ function ForecastCell({ partTypeId, month, cell, canEdit, fenced }: {
   const save = useSetForecastCells();
   const initial = cell?.forecast ? String(cell.forecast) : "";
   const [value, setValue] = useState(initial);
-  const claimed = (cell?.firm ?? 0) + (cell?.tentative ?? 0);
+  // The TRUE total ordered for this month — orders due in it, firm and RFI — which may
+  // exceed the forecast. What the forecast lost (and from which months) is the tooltip's.
+  const ordered = (cell?.ordered_firm ?? 0) + (cell?.ordered_tentative ?? 0);
+  const over = cell ? ordered - cell.forecast : 0;
   const spilled = (cell?.claimed_from ?? [])
     .map((c) => `${c.band === "tentative" ? "RFI" : "Firm"} ${c.quantity} (from ${monthLabel(c.from_month)})`);
   const title = cell
-    ? `Forecast ${cell.forecast}\nFirm orders ${cell.firm} · RFI ${cell.tentative}`
+    ? `Forecast ${cell.forecast}\nOrdered this month: firm ${cell.ordered_firm ?? 0} · RFI ${cell.ordered_tentative ?? 0}`
+      + `\nForecast used up by orders: firm ${cell.firm} · RFI ${cell.tentative}`
       + (spilled.length ? `\nof which ${spilled.join(", ")}` : "")
-      + (fenced ? `\n${FENCE_TIP}` : `\nPlanned on top of orders: ${cell.unclaimed}`)
+      + (fenced ? `\n${FENCE_TIP}`
+        : cell.fenced_quantity
+          ? `\nPlanned on top of orders: ${cell.planned} — ${cell.fenced_quantity} of the ${cell.unclaimed} unclaimed fall inside the demand time fence (days before it are pro-rated out)`
+          : `\nPlanned on top of orders: ${cell.unclaimed}`)
     : fenced ? FENCE_TIP : undefined;
 
   const commit = () => {
@@ -88,10 +102,11 @@ function ForecastCell({ partTypeId, month, cell, canEdit, fenced }: {
       ) : (
         <div className="h-7 w-16 px-1.5 py-1 text-right text-xs tabular-nums">{initial || "—"}</div>
       )}
-      {claimed > 0 && (
+      {ordered > 0 && (
         <div className={`px-1.5 text-right text-[10px] tabular-nums ${
-          cell && cell.unclaimed === 0 ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}`}>
-          {claimed} ordered
+          over > 0 ? "text-amber-700 dark:text-amber-400"
+            : cell && cell.unclaimed === 0 ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}`}>
+          {ordered} ordered{over > 0 ? ` · ${over} over forecast` : ""}
         </div>
       )}
     </td>

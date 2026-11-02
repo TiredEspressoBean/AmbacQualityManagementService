@@ -53,7 +53,7 @@ class OptimizationConfigSerializer(serializers.ModelSerializer):
             'id',
             'solver_time_limit_seconds', 'relative_gap_limit',
             'frozen_zone_days', 'slushy_zone_days',
-            'demand_time_fence_months', 'forecast_consumption_window_months',
+            'demand_time_fence_days', 'forecast_consumption_window_months',
             'default_outside_process_turnaround_days', 'default_machine_unattended',
             'match_operators', 'default_labor_model', 'default_lockstep_batch',
             'shop_rate_per_hour', 'overtime_multiplier', 'pfd_allowance_pct',

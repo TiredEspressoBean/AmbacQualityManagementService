@@ -19,7 +19,7 @@ import csv
 import io
 import re
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from Tracker.services.csv_utils import parse_date, parse_file
 
@@ -140,15 +140,25 @@ def claims_by_month(tenant, first: date, last: date) -> dict:
       the forecast was standing in for. Work pegged to a line is that line's units
       already, so counting it too would claim the month twice. Teardown work is a core
       coming back, not a new build, so it claims nothing.
+
+    A REMAN line claims nothing either (2026-11-02): one whose units come in as the
+    customer's cores — repair-and-return or exchange — recognised by cores received for
+    that order of the line's part type. The forecast is of new builds only.
     """
-    from Tracker.models import OrderLine, WorkOrder
+    from Tracker.models import OrderLine, Parts, WorkOrder
     first, end = month_start(first), add_months(month_start(last), 1)
     out: dict = defaultdict(lambda: {'firm': 0, 'tentative': 0})
-    for r in (OrderLine.objects  # tenant-safe: explicit tenant filter
-              .filter(tenant=tenant, archived=False, order__archived=False,
-                      due_date__gte=first, due_date__lt=end)
-              .exclude(status='CANCELLED').exclude(order__order_status='CANCELLED')
-              .values('part_type_id', 'due_date', 'quantity', 'order__order_status')):
+    lines = list(OrderLine.objects  # tenant-safe: explicit tenant filter
+                 .filter(tenant=tenant, archived=False, order__archived=False,
+                         due_date__gte=first, due_date__lt=end)
+                 .exclude(status='CANCELLED').exclude(order__order_status='CANCELLED')
+                 .values('order_id', 'part_type_id', 'due_date', 'quantity', 'order__order_status'))
+    reman = set(Parts.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, archived=False, core_role__isnull=False,
+        order_id__in={r['order_id'] for r in lines}).values_list('order_id', 'part_type_id'))
+    for r in lines:
+        if (r['order_id'], r['part_type_id']) in reman:
+            continue
         band = 'tentative' if r['order__order_status'] == 'RFI' else 'firm'
         out[(r['part_type_id'], month_start(r['due_date']))][band] += r['quantity']
     for r in (WorkOrder.objects  # tenant-safe: explicit tenant filter
@@ -162,13 +172,34 @@ def claims_by_month(tenant, first: date, last: date) -> dict:
 
 
 def consumption_settings(tenant) -> tuple[int, int]:
-    """(demand time fence, consumption window), in months — the tenant's shop practice,
-    kept on OptimizationConfig beside the other planning fences."""
+    """(demand time fence in DAYS, consumption window in months) — the tenant's shop
+    practice, kept on OptimizationConfig beside the other planning fences."""
     from Tracker.models import OptimizationConfig
     cfg = OptimizationConfig.objects.filter(tenant=tenant).first()  # tenant-safe: explicit tenant filter
     if cfg is None:
-        return 1, 1
-    return cfg.demand_time_fence_months, cfg.forecast_consumption_window_months
+        return 30, 1
+    return cfg.demand_time_fence_days, cfg.forecast_consumption_window_months
+
+
+def fence_end(tenant) -> date:
+    """The first day OUTSIDE the demand time fence: the plant's today plus the fence."""
+    from Tracker.services.core.clock import tenant_today
+    return tenant_today(tenant) + timedelta(days=consumption_settings(tenant)[0])
+
+
+def fenced_share(month: date, today: date, end: date) -> float:
+    """The share of `month`'s REMAINING days (from today on) that fall inside the fence
+    [today, end): 1.0 when all of them are fenced, 0.0 when none are. A month straddling
+    the fence is planned only for its days past it — its quantity pro-rated by days
+    (2026-11-02). Days already past aren't "inside the fence": with the fence off, the
+    current month's forecast is planned whole, as it always was."""
+    nxt = add_months(month, 1)
+    begin = max(month, today)
+    days = (nxt - begin).days
+    if days <= 0:
+        return 0.0
+    inside = max(0, (min(end, nxt) - begin).days)
+    return inside / days
 
 
 def unclaimed_forecast(tenant, first: date, last: date) -> dict:
@@ -182,10 +213,13 @@ def unclaimed_forecast(tenant, first: date, last: date) -> dict:
     cell goes below zero. `firm` / `tentative` are what a cell's forecast lost to orders,
     and `claimed_from` lists the part that spilled in from a neighbouring month.
 
-    `fenced` marks a month inside the demand time fence: its forecast is shown but not
-    planned, since unsold forecast that close in won't arrive — only orders count there.
-    Planning adds only `unclaimed` of unfenced cells, so a month plans
-    max(forecast, firm + tentative) for the part type.
+    The demand time fence is measured in days from the plant's today (2026-11-02):
+    forecast due inside it is shown but not planned, since unsold forecast that close in
+    won't arrive — only orders count there. `fenced` marks a month wholly inside it; a
+    month straddling it plans only the share of its days past the fence, its unclaimed
+    quantity pro-rated by days — `fenced_quantity` is the part held back and `planned`
+    what planning adds. So a month plans max(forecast, firm + tentative) for the part
+    type, less what the fence holds back.
     """
     from Tracker.services.core.clock import tenant_today
     fence, window = consumption_settings(tenant)
@@ -227,14 +261,23 @@ def unclaimed_forecast(tenant, first: date, last: date) -> dict:
                     spilled[(pt_id, m)].append(
                         {'band': band, 'quantity': use, 'from_month': f"{due:%Y-%m}"})
 
-    fence_end = add_months(month_start(tenant_today(tenant)), fence)
+    today = tenant_today(tenant)
+    end = today + timedelta(days=fence)
     out = {}
     for key, qty in fc.items():
         if not first <= key[1] <= last:
             continue
         t = taken.get(key, {'firm': 0, 'tentative': 0})
+        share = fenced_share(key[1], today, end)
+        held = round(left[key] * share)
+        asked = claims.get(key, {'firm': 0, 'tentative': 0})
         out[key] = {'forecast': qty, 'firm': t['firm'], 'tentative': t['tentative'],
-                    'unclaimed': left[key], 'fenced': key[1] < fence_end,
+                    # What orders DUE this month ask for, in full — the true total
+                    # ordered, which may exceed the forecast (`firm`/`tentative` above
+                    # are what this cell's forecast lost, capped by it).
+                    'ordered_firm': asked['firm'], 'ordered_tentative': asked['tentative'],
+                    'unclaimed': left[key], 'fenced': share >= 1.0,
+                    'fenced_quantity': held, 'planned': left[key] - held,
                     'claimed_from': spilled.get(key, [])}
     return out
 
@@ -253,9 +296,11 @@ def grid(tenant, start: date, months: int) -> dict:
              'cells': cells[pt.id]} for pt in pts]
     rows.sort(key=lambda r: r['part_type'].lower())
     from Tracker.services.core.clock import tenant_today
-    fence_end = add_months(month_start(tenant_today(tenant)), consumption_settings(tenant)[0])
+    today, end = tenant_today(tenant), fence_end(tenant)
     return {'months': [f"{m:%Y-%m}" for m in labels], 'rows': rows,
-            'fenced_months': [f"{m:%Y-%m}" for m in labels if m < fence_end]}
+            # Wholly inside the fence; a straddling month's cells say how much is held.
+            'fenced_months': [f"{m:%Y-%m}" for m in labels if fenced_share(m, today, end) >= 1.0],
+            'fence_ends': end.isoformat()}
 
 
 def template_csv() -> str:
