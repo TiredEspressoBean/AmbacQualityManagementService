@@ -25786,6 +25786,8 @@ export interface components {
             /** Format: double */
             load_hours: number;
             /** Format: double */
+            order_line_hours: number;
+            /** Format: double */
             utilization: number | null;
         };
         /**
@@ -26465,6 +26467,9 @@ export interface components {
             bucket: string;
             /** Format: double */
             demand: number;
+            demand_by_band: {
+                [key: string]: number;
+            };
             /** Format: double */
             cumulative_demand: number;
             /** Format: double */
@@ -39647,12 +39652,21 @@ export interface components {
             lot_id: string;
             reason: string;
         };
+        UnplaceableOrderLine: {
+            order: string;
+            order_id: string;
+            line_number: number;
+            part_type: string;
+            quantity: number;
+            reason: string;
+        };
         UnplannedDemand: {
             lines: number;
             units: number;
             /** Format: double */
             labor_hours: number;
-            unroutable_lines: number;
+            placed_lines: number;
+            unplaceable: components["schemas"]["UnplaceableOrderLine"][];
         };
         UnscheduledDiagnosis: {
             schedule_id: string | null;
@@ -40105,6 +40119,8 @@ export interface components {
             capacity_hours: number;
             /** Format: double */
             load_hours: number;
+            /** Format: double */
+            order_line_hours: number;
             /** Format: double */
             utilization: number | null;
         };

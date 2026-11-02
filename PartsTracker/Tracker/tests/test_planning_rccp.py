@@ -152,17 +152,6 @@ class RccpTests(_RccpFixture, TestCase):
         self.assertEqual(before["bucket"], "2026-11")
         self.assertAlmostEqual(before["capacity_hours"] - after["capacity_hours"], 5 * 8, delta=0.5)
 
-    def test_open_order_demand_not_yet_planned_is_reported_apart(self):
-        """Lines nobody has planned carry no load, so the heatmap can't show them; the
-        output says how much is waiting, costed on the approved routing."""
-        from Tracker.models import OrderLine, Orders
-        order = Orders.objects.create(tenant=self.tenant, name="Demand")
-        OrderLine.objects.create(tenant=self.tenant, order=order, line_number=1,
-                                 part_type=self.pt, quantity=5)
-        out = rccp.build_capacity_load(self.tenant, months=1)["unplanned_demand"]
-        self.assertEqual((out["lines"], out["units"], out["unroutable_lines"]), (1, 5, 0))
-        self.assertAlmostEqual(out["labor_hours"], 5.0, delta=0.01)   # 60 min/unit, attended
-
     def test_lights_out_machine_gets_calendar_hours(self):
         """A lights-out machine's capacity is wall-clock, an attended one's is shift
         hours — the runs_unattended resolution the scheduler uses."""
@@ -555,6 +544,125 @@ class RccpLoadPlacementTests(_RccpFixture, TestCase):
         series = self._labor_series()
         self.assertGreater(series[0], 0.0,
                            "in-progress work must load the current bucket")
+
+
+class RccpOrderLineDemandTests(_RccpFixture, TestCase):
+    """Open order lines no work order carries yet are placed like an undated work
+    order — back from the line's due date on the approved routing — and join the load.
+    A line that can't be placed is flagged, never dumped into the current month."""
+
+    def _line(self, qty, due, part_type=None, n=1):
+        from Tracker.models import OrderLine, Orders
+        order = Orders.objects.create(tenant=self.tenant, name=f"Demand {n}")
+        return OrderLine.objects.create(tenant=self.tenant, order=order, line_number=1,
+                                        part_type=part_type or self.pt, quantity=qty,
+                                        due_date=due)
+
+    def test_a_line_due_next_year_loads_next_year_not_today(self):
+        self._line(20, timezone.now().date() + timedelta(days=300))
+        out = rccp.build_capacity_load(self.tenant, months=24)
+        labor = out["labor"]["series"]
+        self.assertAlmostEqual(sum(b["load_hours"] for b in labor), 20.0, delta=0.5)
+        self.assertEqual(labor[0]["load_hours"], 0.0, "a line due in ten months must not load today")
+        # The share from order lines is reported alongside, so the page can say so.
+        self.assertAlmostEqual(sum(b["order_line_hours"] for b in labor), 20.0, delta=0.5)
+        cell = next(w for w in out["work_centers"] if w["name"] == "Cell A")
+        self.assertAlmostEqual(sum(b["order_line_hours"] for b in cell["series"]), 20.0, delta=0.5)
+        demand = out["unplanned_demand"]
+        self.assertEqual((demand["lines"], demand["placed_lines"], demand["units"]), (1, 1, 20))
+        self.assertEqual(demand["unplaceable"], [])
+
+    def test_work_order_hours_are_not_counted_as_order_line_hours(self):
+        self._wo(10, due=timezone.now().date() + timedelta(days=60))
+        labor = rccp.build_capacity_load(self.tenant, months=6)["labor"]["series"]
+        self.assertAlmostEqual(sum(b["load_hours"] for b in labor), 10.0, delta=0.5)
+        self.assertEqual(sum(b["order_line_hours"] for b in labor), 0.0)
+
+    def test_a_line_with_no_due_date_is_flagged_not_loaded(self):
+        self._line(5, None)
+        out = rccp.build_capacity_load(self.tenant, months=6)
+        self.assertEqual(sum(b["load_hours"] for b in out["labor"]["series"]), 0.0)
+        flagged = out["unplanned_demand"]["unplaceable"]
+        self.assertEqual([(u["quantity"], u["reason"]) for u in flagged], [(5, "No due date")])
+        self.assertEqual(out["unplanned_demand"]["placed_lines"], 0)
+
+    def test_a_line_with_no_approved_routing_is_flagged_not_loaded(self):
+        bare = PartTypes.objects.create(tenant=self.tenant, name="No Route")
+        self._line(5, timezone.now().date() + timedelta(days=60), part_type=bare)
+        out = rccp.build_capacity_load(self.tenant, months=6)
+        self.assertEqual(sum(b["load_hours"] for b in out["labor"]["series"]), 0.0)
+        flagged = out["unplanned_demand"]["unplaceable"]
+        self.assertEqual(len(flagged), 1)
+        self.assertEqual(flagged[0]["part_type"], "No Route")
+        self.assertTrue(flagged[0]["reason"])
+
+    def test_an_overdue_line_loads_now(self):
+        self._line(5, timezone.now().date() - timedelta(days=40))
+        labor = rccp.build_capacity_load(self.tenant, months=6)["labor"]["series"]
+        self.assertAlmostEqual(labor[0]["load_hours"], 5.0, delta=0.1)
+
+    def test_a_fully_planned_line_carries_no_extra_load(self):
+        line = self._line(10, timezone.now().date() + timedelta(days=60))
+        wo = self._wo(10, due=timezone.now().date() + timedelta(days=60), erp="WO-PEG")
+        wo.order_line = line
+        wo.save(update_fields=["order_line"])
+        labor = rccp.build_capacity_load(self.tenant, months=6)["labor"]["series"]
+        self.assertAlmostEqual(sum(b["load_hours"] for b in labor), 10.0, delta=0.5,
+                               msg="the line's units are the work order's — not counted twice")
+        self.assertEqual(sum(b["order_line_hours"] for b in labor), 0.0)
+
+
+class RccpOrderLineMaterialTests(_RccpFixture, TestCase):
+    """An order line has no work orders yet, so nothing carries its components: the BOM
+    is exploded through MAKE lines down to what is bought, grossed up by each routing's
+    expected yield, and the demand lands at the line's planned start."""
+
+    def setUp(self):
+        super().setUp()
+        from decimal import Decimal
+        from Tracker.models import BOM, BOMLine, Material
+        self.oring = Material.objects.create(tenant=self.tenant, name="O-Ring")
+        self.rod = Material.objects.create(tenant=self.tenant, name="Rod")
+        # A made sub-assembly whose one step scraps half of what it starts.
+        self.sub = PartTypes.objects.create(tenant=self.tenant, name="Sub")
+        sub_proc = Processes.objects.create(tenant=self.tenant, name="S", part_type=self.sub,
+                                            status=ProcessStatus.APPROVED)
+        sub_step = Steps.objects.create(tenant=self.tenant, part_type=self.sub, name="Turn",
+                                        step_type="TASK", work_center=self.wc, scrap_rate=Decimal("0.5"))
+        ProcessStep.objects.create(process=sub_proc, step=sub_step, order=1)
+
+        def bom(pt):
+            return BOM.objects.create(tenant=self.tenant, part_type=pt, revision="A",
+                                      bom_type="ASSEMBLY", status="RELEASED", is_current_version=True)
+        top = bom(self.pt)
+        BOMLine.objects.create(tenant=self.tenant, bom=top, material=self.oring,
+                               quantity=Decimal(2), source="BUY", line_number=1)
+        BOMLine.objects.create(tenant=self.tenant, bom=top, component_type=self.sub,
+                               quantity=Decimal(1), source="MAKE", line_number=2)
+        BOMLine.objects.create(tenant=self.tenant, bom=bom(self.sub), material=self.rod,
+                               quantity=Decimal(3), source="BUY", line_number=1)
+
+    def _materials(self, qty, due):
+        from Tracker.models import OrderLine, Orders
+        order = Orders.objects.create(tenant=self.tenant, name="Demand")
+        OrderLine.objects.create(tenant=self.tenant, order=order, line_number=1,
+                                 part_type=self.pt, quantity=qty, due_date=due)
+        out = rccp.build_capacity_load(self.tenant, months=24)
+        return {m["name"]: m["series"] for m in out["materials"]}
+
+    def test_bom_explodes_through_make_lines_with_yield(self):
+        mats = self._materials(4, timezone.now().date() + timedelta(days=60))
+        self.assertAlmostEqual(sum(b["demand"] for b in mats["O-Ring"]), 8.0)   # 4 × 2
+        # 4 Sub needed at 50 % yield → start 8 → 8 × 3 rods.
+        self.assertAlmostEqual(sum(b["demand"] for b in mats["Rod"]), 24.0)
+
+    def test_line_demand_is_firm_and_lands_at_the_planned_start(self):
+        mats = self._materials(4, timezone.now().date() + timedelta(days=300))
+        series = mats["O-Ring"]
+        self.assertEqual(series[0]["demand"], 0.0, "a line due next year needs no parts today")
+        loaded = [b for b in series if b["demand"]]
+        self.assertEqual(len(loaded), 1, "material lands in the start bucket, not spread")
+        self.assertEqual(loaded[0]["demand_by_band"], {"firm": 8.0})
 
 
 class RccpCriticalResourceTests(_RccpFixture, TestCase):

@@ -501,6 +501,11 @@ export type PlannedRelease = {
   is_estimate: boolean;
   released: boolean;
 };
+export type UnplannedDemand = {
+  lines: number; units: number; labor_hours: number; placed_lines: number;
+  unplaceable: { order: string; order_id: string; line_number: number; part_type: string;
+                 quantity: number; reason: string }[];
+};
 export type CapacityLoad = {
   buckets: string[];
   labor: { name: string; crew_size: number; series: CapacityBucket[] };
@@ -524,9 +529,10 @@ export type CapacityLoad = {
    *  lead days, so it reads as free rather than unknown — their load and release dates
    *  are a floor. */
   untimed_orders: { erp_id: string; step_count: number }[];
-  /** Open order-line demand not yet planned into work orders — load the lanes don't
-   *  carry yet, costed on each part type's approved routing (attended hours). */
-  unplanned_demand?: { lines: number; units: number; labor_hours: number; unroutable_lines: number };
+  /** Open order lines not yet planned into work orders. Their hours ARE in the lanes,
+   *  placed by due date on the approved routing; `unplaceable` lists the lines that
+   *  couldn't be placed (no due date, no approved routing) and so aren't. */
+  unplanned_demand?: UnplannedDemand;
   /** Material demand on the same buckets. Separate shape from the capacity lanes: a
    *  material has a balance rather than an hourly capacity, so the cell carries what is
    *  LEFT rather than a ratio — a percentage of a stock level reads as a consumption
@@ -537,6 +543,8 @@ export type CapacityLoad = {
     series: {
       bucket: string;
       demand: number;
+      /** firm / tentative / forecast → quantity in this bucket. */
+      demand_by_band: Record<string, number>;
       cumulative_demand: number;
       available: number;
       /** Stock left after everything committed through this bucket. Negative = short. */

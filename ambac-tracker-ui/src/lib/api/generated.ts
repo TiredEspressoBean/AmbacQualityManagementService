@@ -1587,6 +1587,7 @@ export type LaborBucket = {
   bucket: string;
   capacity_hours: number;
   load_hours: number;
+  order_line_hours: number;
   utilization: number | null;
 };
 export type LaborPoolCapacity = {
@@ -1610,6 +1611,7 @@ export type WorkCenterBucket = {
   bucket: string;
   capacity_hours: number;
   load_hours: number;
+  order_line_hours: number;
   utilization: number | null;
 };
 export type PlannedRelease = {
@@ -1629,7 +1631,16 @@ export type UnplannedDemand = {
   lines: number;
   units: number;
   labor_hours: number;
-  unroutable_lines: number;
+  placed_lines: number;
+  unplaceable: Array<UnplaceableOrderLine>;
+};
+export type UnplaceableOrderLine = {
+  order: string;
+  order_id: string;
+  line_number: number;
+  part_type: string;
+  quantity: number;
+  reason: string;
 };
 export type MaterialLoad = {
   id: string;
@@ -1639,6 +1650,7 @@ export type MaterialLoad = {
 export type MaterialBucket = {
   bucket: string;
   demand: number;
+  demand_by_band: {};
   cumulative_demand: number;
   available: number;
   remaining_cover: number;
@@ -24973,6 +24985,7 @@ const LaborBucket = z.object({
   bucket: z.string(),
   capacity_hours: z.number(),
   load_hours: z.number(),
+  order_line_hours: z.number(),
   utilization: z.number().nullable(),
 });
 const LaborCapacity = z.object({
@@ -24995,6 +25008,7 @@ const WorkCenterBucket = z.object({
   bucket: z.string(),
   capacity_hours: z.number(),
   load_hours: z.number(),
+  order_line_hours: z.number(),
   utilization: z.number().nullable(),
 });
 const WorkCenterCapacity = z.object({
@@ -25016,15 +25030,25 @@ const UntimedOrder = z.object({
   erp_id: z.string(),
   step_count: z.number().int(),
 });
+const UnplaceableOrderLine = z.object({
+  order: z.string(),
+  order_id: z.string(),
+  line_number: z.number().int(),
+  part_type: z.string(),
+  quantity: z.number().int(),
+  reason: z.string(),
+});
 const UnplannedDemand = z.object({
   lines: z.number().int(),
   units: z.number().int(),
   labor_hours: z.number(),
-  unroutable_lines: z.number().int(),
+  placed_lines: z.number().int(),
+  unplaceable: z.array(UnplaceableOrderLine),
 });
 const MaterialBucket = z.object({
   bucket: z.string(),
   demand: z.number(),
+  demand_by_band: z.record(z.number()),
   cumulative_demand: z.number(),
   available: z.number(),
   remaining_cover: z.number(),
@@ -30343,6 +30367,7 @@ export const schemas = {
   WorkCenterCapacity,
   PlannedRelease,
   UntimedOrder,
+  UnplaceableOrderLine,
   UnplannedDemand,
   MaterialBucket,
   MaterialLoad,

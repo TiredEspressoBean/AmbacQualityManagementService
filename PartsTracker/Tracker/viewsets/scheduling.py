@@ -745,6 +745,8 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     'bucket': serializers.CharField(),
                     'capacity_hours': serializers.FloatField(),
                     'load_hours': serializers.FloatField(),
+                    # Of the load, hours from open order lines not yet in work orders.
+                    'order_line_hours': serializers.FloatField(),
                     'utilization': serializers.FloatField(allow_null=True)})}),
             # Certification-limited labour. The aggregate `labor` lane answers "have
             # we enough people"; these answer "have we enough of the RIGHT people" —
@@ -768,6 +770,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                         'bucket': serializers.CharField(),
                         'capacity_hours': serializers.FloatField(),
                         'load_hours': serializers.FloatField(),
+                        'order_line_hours': serializers.FloatField(),
                         'utilization': serializers.FloatField(allow_null=True)})}),
             # Back-scheduled release dates — the actionable half of this endpoint. The
             # heatmap says WHERE it is tight; this says what has to start, and what is
@@ -793,13 +796,21 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             # total a filtered view is indistinguishable from a shop with two centres.
             'work_center_total': serializers.IntegerField(),
             'critical_only': serializers.BooleanField(),
-            # Open order-line demand not yet planned into work orders: real load the
-            # lanes don't carry yet, costed on each part type's approved routing.
+            # Open order lines not yet planned into work orders. Their hours ARE in the
+            # lanes above, placed by due date on the approved routing; `unplaceable`
+            # lists the lines that couldn't be placed and so aren't.
             'unplanned_demand': inline_serializer(name='UnplannedDemand', fields={
                 'lines': serializers.IntegerField(),
                 'units': serializers.IntegerField(),
                 'labor_hours': serializers.FloatField(),
-                'unroutable_lines': serializers.IntegerField()}),
+                'placed_lines': serializers.IntegerField(),
+                'unplaceable': inline_serializer(name='UnplaceableOrderLine', many=True, fields={
+                    'order': serializers.CharField(),
+                    'order_id': serializers.CharField(),
+                    'line_number': serializers.IntegerField(),
+                    'part_type': serializers.CharField(),
+                    'quantity': serializers.IntegerField(),
+                    'reason': serializers.CharField()})}),
             # Material demand on the same buckets. A separate shape from the capacity
             # lanes on purpose: a material has no hourly capacity, it has a balance, so
             # the comparison is cumulative demand against on-hand plus what arrives by
@@ -812,6 +823,8 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                         name='MaterialBucket', many=True, fields={
                             'bucket': serializers.CharField(),
                             'demand': serializers.FloatField(),
+                            # firm / tentative / forecast → quantity in this bucket.
+                            'demand_by_band': serializers.DictField(child=serializers.FloatField()),
                             'cumulative_demand': serializers.FloatField(),
                             'available': serializers.FloatField(),
                             'remaining_cover': serializers.FloatField(),

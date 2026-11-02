@@ -32,20 +32,29 @@ _ON_HAND_STATUSES = ('ACCEPTED', 'IN_USE')
 _TERMINAL_STATUSES = ('CONSUMED', 'SCRAPPED', 'REJECTED', 'RETURNED', 'CANCELLED', 'SHIPPED')
 
 
-def material_series(tenant, buckets, wo_starts: dict) -> list:
+def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None = None) -> list:
     """Per material: demand per bucket, and the stock left after it.
 
     `wo_starts` maps work-order id -> the bucket index its work begins in, which the
     caller already computed when placing capacity load. Reusing it is the point: the
     material lane and the capacity lanes then agree about when a job runs, instead of
     each deciding separately and disagreeing on the same screen.
+
+    `extra_demand` is demand not yet carried by work orders — open order lines (and, in
+    time, forecast): `[{'part_type_id', 'quantity', 'idx', 'band'}]`, placed at the bucket
+    its work would start in. Unlike a work order, whose MAKE components are child work
+    orders with their own demand, nothing carries these components yet, so the BOM is
+    exploded through its MAKE lines down to what is bought (2026-11-02). The quantity is
+    grossed up by the routing's expected yield first, as planning a work order would.
+    Each bucket's demand is also broken out by `band`.
     """
     from django.db.models import Q
     from Tracker.models import BOM, BOMLine, MaterialLot, Processes, WorkOrder
     from Tracker.services.mes.bom import buy_line_item
 
     n = len(buckets)
-    if not n or not wo_starts:
+    extra_demand = extra_demand or []
+    if not n or not (wo_starts or extra_demand):
         return []
 
     # process -> part type, so a work order can find its BOM without another query each.
@@ -74,8 +83,18 @@ def material_series(tenant, buckets, wo_starts: dict) -> list:
     # demand[(kind, id)][bucket] = quantity. Keyed by kind as well as id because a BUY
     # line can point at a raw Material or a buyable PartType, and both stock as lots.
     demand: dict = defaultdict(lambda: [0.0] * n)
+    by_band: dict = defaultdict(lambda: defaultdict(lambda: [0.0] * n))  # key -> band -> buckets
     names: dict = {}
     safety: dict = {}   # (kind, id) -> buffer held back from planning
+    items: dict = {}    # (kind, id) -> BuyItem, for the export's keys and units
+
+    def _add(buy, qty: float, idx: int, band: str):
+        demand[buy.key][idx] += qty
+        by_band[buy.key][band][idx] += qty
+        if buy.key not in names:
+            names[buy.key] = buy.name
+            safety[buy.key] = buy.safety_stock
+            items[buy.key] = buy
 
     # tenant-safe: explicit tenant filter
     for wo in (WorkOrder.objects.filter(tenant=tenant, id__in=list(wo_starts))
@@ -94,11 +113,43 @@ def material_series(tenant, buckets, wo_starts: dict) -> list:
             buy = buy_line_item(line)
             if buy is None:
                 continue
-            demand[buy.key][idx] += float(
-                Decimal(str(line.quantity)) * wo['quantity'])
-            if buy.key not in names:
-                names[buy.key] = buy.name
-                safety[buy.key] = buy.safety_stock
+            _add(buy, float(Decimal(str(line.quantity)) * wo['quantity']), idx, 'firm')
+
+    # Demand no work order carries yet: explode through MAKE lines, since no child work
+    # order exists to carry the components.
+    started_qty: dict = {}
+
+    def _started(part_type_id, good: float) -> float:
+        """Grossed up for the routing's expected scrap, as planning a work order is."""
+        from Tracker.services.mes.bom_explosion import _build_process
+        from Tracker.services.mes.yield_planning import start_quantity_for_good
+        if part_type_id not in started_qty:
+            started_qty[part_type_id] = _build_process(part_type_id)[0]
+        proc = started_qty[part_type_id]
+        if proc is None or good <= 0:
+            return good
+        return float(start_quantity_for_good(proc, int(-(-good // 1))))
+
+    def _explode(part_type_id, qty: float, idx: int, band: str, depth: int, seen: frozenset):
+        if depth > 10 or part_type_id in seen:  # a BOM cycle is an authoring error; stop
+            return
+        for line in _lines(part_type_id):
+            if line.is_optional:
+                continue
+            line_qty = float(Decimal(str(line.quantity))) * qty
+            buy = buy_line_item(line)
+            if buy is not None:
+                _add(buy, line_qty, idx, band)
+            elif line.source == 'MAKE' and line.component_type_id:
+                _explode(line.component_type_id, _started(line.component_type_id, line_qty),
+                         idx, band, depth + 1, seen | {part_type_id})
+
+    for d in extra_demand:
+        idx = d['idx']
+        if idx is None or not (0 <= idx < n) or d['quantity'] <= 0:
+            continue
+        _explode(d['part_type_id'], _started(d['part_type_id'], d['quantity']), idx,
+                 d.get('band', 'firm'), 0, frozenset())
 
     if not demand:
         return []
@@ -162,6 +213,9 @@ def material_series(tenant, buckets, wo_starts: dict) -> list:
             series.append({
                 'bucket': b.label,
                 'demand': round(demand[mid][i], 2),
+                # Where this bucket's demand comes from: firm (work orders and confirmed
+                # order lines), tentative (RFI), forecast (unclaimed forecast).
+                'demand_by_band': {band: round(v[i], 2) for band, v in by_band[mid].items()},
                 'cumulative_demand': round(cum_demand, 2),
                 'available': round(cover, 2),
                 'remaining_cover': round(remaining, 2),

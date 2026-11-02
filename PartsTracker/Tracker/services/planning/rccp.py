@@ -513,34 +513,71 @@ def _candidate_route(part_type_id) -> tuple[list, str]:
     return steps, ''
 
 
-def _unplanned_demand(tenant, ref: _RefData) -> dict:
-    """Open order lines' demand not yet turned into work orders — load the heatmap
-    can't show, because nothing carries it yet. Costed as a quote would be (the part
-    type's approved routing, attended hours only), so a low utilisation isn't read as
-    spare crew while orders wait to be planned. `unroutable_lines` have no approved
-    routing to cost them by."""
+def _order_line_demand(tenant, ref: _RefData, buckets, now) -> dict:
+    """Open order lines' demand not yet turned into work orders, PLACED like an undated
+    work order (user decision 2026-11-02): its work starts `_lead_days` before the line's
+    due date on the part type's approved routing, and its hours spread from there to the
+    due month — so a line due next year loads next year, not today.
+
+    A line that can't be placed — no due date, or no approved routing to cost it by — is
+    FLAGGED in `unplaceable`, never dumped into the current month: a guess there would
+    read as real load. One due date per line (there are no delivery schedules).
+
+    Returns `{'placed': [...], 'unplaceable': [...], 'lines', 'units', 'labor_hours'}`;
+    each placed entry carries its hours, its buckets and its part type and quantity for
+    the material lane.
+    """
+    import math
     from Tracker.models import OrderLine
-    lines = units = unroutable = 0
-    labor = 0.0
+
+    today = now.date()
+    placed, unplaceable = [], []
+    units = 0
+    labor_total = 0.0
     routes: dict = {}
     for ln in (OrderLine.objects  # tenant-safe: explicit tenant filter
                .filter(tenant=tenant, status='OPEN', order__archived=False)
-               .exclude(order__order_status__in=['COMPLETED', 'CANCELLED'])):
+               .exclude(order__order_status__in=['COMPLETED', 'CANCELLED'])
+               .select_related('order', 'part_type')):
         qty = ln.remaining_quantity
         if qty <= 0:
             continue
-        lines += 1
-        units += qty
+        row = {'order': ln.order.name, 'order_id': str(ln.order_id), 'line_number': ln.line_number,
+               'part_type': ln.part_type.name if ln.part_type else '', 'quantity': qty}
         if ln.part_type_id not in routes:
-            routes[ln.part_type_id] = _candidate_route(ln.part_type_id)[0]
-        steps = routes[ln.part_type_id]
-        if not steps:
-            unroutable += 1
+            routes[ln.part_type_id] = _candidate_route(ln.part_type_id)
+        steps, why = routes[ln.part_type_id]
+        if ln.due_date is None:
+            units += qty
+            unplaceable.append({**row, 'reason': 'No due date'})
             continue
-        labor += sum(_step_hours(ref, sid, qty)[1] for sid in steps
-                     if ref.labor_models.get(sid, 'pool') != 'off')
-    return {'lines': lines, 'units': units, 'labor_hours': round(labor, 1),
-            'unroutable_lines': unroutable}
+        if not steps:
+            units += qty
+            unplaceable.append({**row, 'reason': why or 'No approved routing'})
+            continue
+        counts = {sid: qty for sid in steps}
+        labor_h, pool_h, wc_h = _route_hours(ref, counts)
+        hi = _bucket_index(buckets, ln.due_date)
+        now_idx = _bucket_index(buckets, now) or 0
+        if hi is None:
+            if ln.due_date >= buckets[-1].end.date():
+                continue  # due beyond the horizon: not this view's load
+            hi = now_idx   # overdue: the work is owed now
+        lead = _lead_days(buckets[hi], ref, labor_h, wc_h, counts)
+        planned_start = ln.due_date - timedelta(days=int(math.ceil(lead)))
+        lo = _bucket_index(buckets, planned_start)
+        if lo is None:
+            lo = 0 if planned_start < buckets[0].start.date() else hi
+        lo = max(now_idx, lo)
+        hi = max(lo, hi)
+        units += qty
+        labor_total += labor_h
+        placed.append({**row, 'part_type_id': ln.part_type_id, 'band': 'firm',
+                       'labor': labor_h, 'pool': pool_h, 'wc': wc_h, 'lo': lo, 'hi': hi,
+                       'planned_start': planned_start, 'due_date': ln.due_date,
+                       'overdue_start': planned_start < today})
+    return {'placed': placed, 'unplaceable': unplaceable, 'lines': len(placed) + len(unplaceable),
+            'units': units, 'labor_hours': round(labor_total, 1)}
 
 
 def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -> dict:
@@ -617,6 +654,20 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
             })
     releases.sort(key=lambda r: (r['planned_start'], r['erp_id']))
 
+    # Open order lines no work order carries yet, placed by due date and spread like an
+    # undated work order (`_order_line_demand`). Their hours join the load; the share
+    # they make up is kept apart so the page can say how much is not yet planned.
+    line_demand = _order_line_demand(tenant, ref, buckets, start)
+    line_labor = [0.0] * n
+    line_wc: dict = collections.defaultdict(lambda: [0.0] * n)
+    extra_material: list = []
+    for p in line_demand['placed']:
+        _add_spread_load(p['labor'], p['wc'], p['lo'], p['hi'], n, wc_load, labor_load,
+                         p['pool'], pool_load)
+        _add_spread_load(p['labor'], p['wc'], p['lo'], p['hi'], n, line_wc, line_labor)
+        extra_material.append({'part_type_id': p['part_type_id'], 'quantity': p['quantity'],
+                               'idx': p['lo'], 'band': p['band']})
+
     def _pool_label(pool) -> str:
         """Name a pool by the certifications that define it, falling back to its size.
         Several steps can share one pool; their requirement names are unioned."""
@@ -631,23 +682,32 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         lights_out, attended = ref.wc_machine_hours.get(wc_id, (0, 0))
         return lights_out * b.calendar_hours + attended * b.working_hours
 
-    def _series(cap_fn, load):
+    def _series(cap_fn, load, from_lines=None):
         rows = []
         for i, b in enumerate(buckets):
             cap = cap_fn(b)
             ld = load[i]
             rows.append({'bucket': b.label, 'capacity_hours': round(cap, 1),
                          'load_hours': round(ld, 1),
+                         # Of the load, the hours from order lines not yet planned into
+                         # work orders.
+                         'order_line_hours': round((from_lines or [0.0] * n)[i], 1),
                          'utilization': round(ld / cap, 3) if cap > 0 else None})
         return rows
 
     return {
         'buckets': [b.label for b in buckets],
         'labor': {'name': 'Labor (dispatchable crew)', 'crew_size': ref.crew_size,
-                  'series': _series(_labor_cap, labor_load)},
-        # Demand on open order lines not yet planned into work orders — real work the
-        # series above doesn't carry yet (`_unplanned_demand`).
-        'unplanned_demand': _unplanned_demand(tenant, ref),
+                  'series': _series(_labor_cap, labor_load, line_labor)},
+        # Open order lines not yet planned into work orders. Their hours are IN the
+        # series above, placed by due date; `unplaceable` lists the lines that couldn't
+        # be placed (no due date, no approved routing) and so aren't.
+        'unplanned_demand': {
+            'lines': line_demand['lines'], 'units': line_demand['units'],
+            'labor_hours': line_demand['labor_hours'],
+            'placed_lines': len(line_demand['placed']),
+            'unplaceable': line_demand['unplaceable'],
+        },
         # Certification-limited labour, one row per distinct qualified crew that
         # actually carries gated work. The aggregate row above answers "have we enough
         # people"; these answer "have we enough of the RIGHT people", which is the
@@ -670,7 +730,7 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
             {'id': str(wc_id), 'name': ref.wc_names.get(wc_id, str(wc_id)),
              'is_critical': wc_id in ref.wc_critical,
              'series': _series(lambda b, w=wc_id: _wc_cap(w, b),
-                               wc_load.get(wc_id) or [0.0] * n)}
+                               wc_load.get(wc_id) or [0.0] * n, line_wc.get(wc_id))}
             for wc_id in sorted(set(ref.wc_names) | set(wc_load),
                                 key=lambda k: ref.wc_names.get(k, str(k)))
             if not critical_only or wc_id in ref.wc_critical
@@ -692,7 +752,7 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         # while the job runs, so a January release for an April ship needs its parts in
         # January. Reuses `wo_starts` from the capacity pass so the two lanes cannot
         # disagree about when a job runs.
-        'materials': material_series(tenant, buckets, wo_starts),
+        'materials': material_series(tenant, buckets, wo_starts, extra_material),
     }
 
 

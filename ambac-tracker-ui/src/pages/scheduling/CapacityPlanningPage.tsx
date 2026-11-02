@@ -22,7 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useCapacityLoad, useCapableToPromise, useReleaseForScheduling,
-  type CapacityBucket, type PlannedRelease, type ReleaseCheck,
+  type CapacityBucket, type PlannedRelease, type ReleaseCheck, type UnplannedDemand,
 } from "@/hooks/useScheduling";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 import { downloadCsv } from "@/lib/csv";
@@ -90,7 +90,7 @@ const TIGHT = 0.85;
 function CrewVerdict({ labor, pools, unplanned }: {
   labor: CapacityBucket[];
   pools: { name: string; qualified: number; series: CapacityBucket[] }[];
-  unplanned?: { lines: number; units: number; labor_hours: number; unroutable_lines: number };
+  unplanned?: UnplannedDemand;
 }) {
   const over = labor.filter((b) => (b.utilization ?? 0) >= 1).map((b) => b.bucket);
   const worst = peak(labor);
@@ -115,14 +115,19 @@ function CrewVerdict({ labor, pools, unplanned }: {
           Tightest skill: {tightest.p.name} at {pctOf(tightest.b)} in {tightest.b.bucket}
         </span>
       )}
-      {unplanned && unplanned.units > 0 && (
-        // Demand the heatmap can't show yet: nothing carries it until it's planned.
+      {unplanned && unplanned.placed_lines > 0 && (
+        // Placed by due date and IN the load above, though no work order carries it yet.
         <Link to="/production/orders" search={{}} className="text-muted-foreground underline underline-offset-2"
-              title="Open order lines not yet planned into work orders. Not in the load above until they are.">
-          +{unplanned.units} unit{unplanned.units === 1 ? "" : "s"} on open orders not yet planned
+              title="Open order lines not yet planned into work orders. Their hours are in the load above, placed from each line's due date on its part type's approved routing.">
+          Includes {unplanned.placed_lines} open order line{unplanned.placed_lines === 1 ? "" : "s"} not yet planned
           {unplanned.labor_hours > 0 ? ` (~${Math.round(unplanned.labor_hours)} h crew time)` : ""}
-          {unplanned.unroutable_lines > 0 ? ` · ${unplanned.unroutable_lines} with no approved routing` : ""}
         </Link>
+      )}
+      {unplanned && unplanned.unplaceable.length > 0 && (
+        <span className="text-amber-700 dark:text-amber-400"
+              title={unplanned.unplaceable.map((u) => `${u.order} line ${u.line_number} · ${u.part_type} × ${u.quantity}: ${u.reason}`).join("\n")}>
+          {unplanned.unplaceable.length} order line{unplanned.unplaceable.length === 1 ? "" : "s"} can't be placed (no due date or no approved routing) — not in the load
+        </span>
       )}
       {singles.length > 0 && (
         <Link to="/quality/training/matrix" className="text-amber-700 underline underline-offset-2 dark:text-amber-400">

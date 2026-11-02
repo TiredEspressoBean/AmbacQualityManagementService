@@ -59941,6 +59941,9 @@ components:
         load_hours:
           type: number
           format: double
+        order_line_hours:
+          type: number
+          format: double
         utilization:
           type: number
           format: double
@@ -59949,6 +59952,7 @@ components:
       - bucket
       - capacity_hours
       - load_hours
+      - order_line_hours
       - utilization
     LaborCalendarBlock:
       type: object
@@ -61377,6 +61381,11 @@ components:
         demand:
           type: number
           format: double
+        demand_by_band:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
         cumulative_demand:
           type: number
           format: double
@@ -61393,6 +61402,7 @@ components:
       - bucket
       - cumulative_demand
       - demand
+      - demand_by_band
       - remaining_cover
       - short
     MaterialLoad:
@@ -86569,6 +86579,28 @@ components:
       required:
       - lot_id
       - reason
+    UnplaceableOrderLine:
+      type: object
+      properties:
+        order:
+          type: string
+        order_id:
+          type: string
+        line_number:
+          type: integer
+        part_type:
+          type: string
+        quantity:
+          type: integer
+        reason:
+          type: string
+      required:
+      - line_number
+      - order
+      - order_id
+      - part_type
+      - quantity
+      - reason
     UnplannedDemand:
       type: object
       properties:
@@ -86579,13 +86611,18 @@ components:
         labor_hours:
           type: number
           format: double
-        unroutable_lines:
+        placed_lines:
           type: integer
+        unplaceable:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnplaceableOrderLine'
       required:
       - labor_hours
       - lines
+      - placed_lines
       - units
-      - unroutable_lines
+      - unplaceable
     UnscheduledDiagnosis:
       type: object
       properties:
@@ -87581,6 +87618,9 @@ components:
         load_hours:
           type: number
           format: double
+        order_line_hours:
+          type: number
+          format: double
         utilization:
           type: number
           format: double
@@ -87589,6 +87629,7 @@ components:
       - bucket
       - capacity_hours
       - load_hours
+      - order_line_hours
       - utilization
     WorkCenterCapacity:
       type: object
