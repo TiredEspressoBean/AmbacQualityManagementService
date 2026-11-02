@@ -207,6 +207,16 @@ class DemoScenario(BaseSeeder):
         self.log("\n--- Phase 6d: Block on Out-of-Spec Exhibit ---")
         result['oos_block'] = self._seed_oos_block(result['companies'], result['users'])
 
+        # The demand outlook exhibit for the Planner, Production Manager, Purchasing
+        # and Shipping tracks: a two-year forecast from this month, a tentative (RFI)
+        # deal and an overdue order line. See seed/demo/forecast.py.
+        self.log("\n--- Phase 6e: Demand Outlook ---")
+        from .forecast import DemoForecastSeeder
+        fc = DemoForecastSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        fc._verbose = self._verbose
+        result['forecast'] = fc.seed(result['companies'].get('customers', [])
+                                     if isinstance(result['companies'], dict) else [])
+
         # Phase 7: Documents and Approvals
         self.log("\n--- Phase 7: Documents and Approvals ---")
         result['documents'] = self._seed_documents(result['users'])
