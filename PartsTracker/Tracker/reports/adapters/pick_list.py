@@ -14,9 +14,13 @@ the signatures; calling it a pick list too made three documents claim the same n
 The PDF covers:
 - Title block: work order number, part being built, qty to produce, due date
 - Component table:
-    Find # | Part Number | Description | Qty/Ea | Qty Required | UoM | Opt | Picked
-  where "Picked" is a blank column for the picker's check/initials
-- Footer note: "Return this list to production after picking."
+    Find # | Part Number | Description | Qty/Ea | Qty Req'd | Pull from | Lot pulled | Opt | ✓
+  where "Pull from" names the lots FEFO consumption will draw, "Lot pulled" is written
+  in by the picker, and ✓ is the picker's check
+- Issue record: Picked by / Checked by / Issued to / Cell, each with name and date
+- Footer: "Record the lot you actually pulled — that is the lot the traceability
+  record will claim went into the unit. Return this sheet to production after picking."
+  (pick_list.typ is the source of truth for the printed layout.)
 
 Qty Required per line = BOMLine.quantity × WorkOrder.quantity.  This
 multiplication is performed in build_context(); the template only displays the
