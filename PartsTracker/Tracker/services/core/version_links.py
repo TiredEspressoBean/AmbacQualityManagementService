@@ -143,6 +143,9 @@ LINKS = {
     'Steps.part_type': FOLLOWS,
     'SupplierQualification.part_type': FOLLOWS,
     'ThreeDModel.part_type': FOLLOWS,
+    # A forecast for a part type is a forecast for the same part, updated. One live row
+    # per (part type, month): see `_before_follow`.
+    'VolumeForecast.part_type': FOLLOWS,
 
     # --- Processes (change control) ----------------------------------------------------
     'PartTypes.default_disassembly_process': MANAGED,
@@ -289,7 +292,24 @@ def apply_version_links(old, new, *, supersede_source: bool = True) -> None:
             _copy(owner, field, old, new)
 
 
+def _before_follow(owner, field, old, new) -> None:
+    """Make room for links whose owner is unique per target.
+
+    VolumeForecast keeps one live row per (tenant, part type, month). Should the new
+    version already hold a live row for a month the old one also has, the NEW version's
+    row stands — it was entered against the current part — and the old one is archived
+    (kept for the trail) rather than re-pointed into a duplicate."""
+    if owner.__name__ == 'VolumeForecast':
+        taken = set(owner._base_manager.filter(  # tenant-safe: rows keyed to one in-tenant target
+            part_type=new, archived=False).values_list('month', flat=True))
+        for row in owner._base_manager.filter(  # tenant-safe: rows keyed to one in-tenant target
+                part_type=old, archived=False, month__in=taken):
+            row.archive(reason='user_request',
+                        notes="Superseded by the new part version's forecast for this month")
+
+
 def _follow(owner, field, old, new) -> None:
+    _before_follow(owner, field, old, new)
     if field.many_to_many:
         through = field.remote_field.through
         col = field.m2m_reverse_field_name()           # the column holding the target

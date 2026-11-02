@@ -106,6 +106,35 @@ class VersionLinkBehaviourTests(TenantContextMixin, TestCase):
         self.assertEqual(proc.part_type_id, new.id)
         self.assertEqual(bom.part_type_id, new.id)
 
+    def test_a_part_type_edit_carries_its_volume_forecast(self):
+        """A forecast left on the old version matched no claim (double counting) and a
+        sheet import made a second row beside it."""
+        from Tracker.models import PartTypes, VolumeForecast
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Injector")
+        VolumeForecast.objects.create(tenant=self.tenant, part_type=pt,
+                                      month=date(2027, 3, 1), quantity=40)
+        new = pt.create_new_version(user=None, change_description="Renamed", name="Injector Mk2")
+        self.assertEqual(
+            list(VolumeForecast.objects.filter(archived=False).values_list('part_type_id', 'quantity')),
+            [(new.id, 40)])
+
+    def test_a_forecast_month_the_new_version_already_has_keeps_the_new_row(self):
+        """One live row per (part type, month): re-pointing must not create a duplicate.
+        The new version's row stands; the old one is archived, not lost."""
+        from Tracker.models import PartTypes, VolumeForecast
+        from Tracker.services.core.version_links import _follow
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Injector")
+        new = PartTypes.objects.create(tenant=self.tenant, name="Injector Mk2")
+        VolumeForecast.objects.create(tenant=self.tenant, part_type=pt, month=date(2027, 3, 1), quantity=40)
+        VolumeForecast.objects.create(tenant=self.tenant, part_type=pt, month=date(2027, 4, 1), quantity=50)
+        VolumeForecast.objects.create(tenant=self.tenant, part_type=new, month=date(2027, 3, 1), quantity=45)
+        _follow(VolumeForecast, VolumeForecast._meta.get_field('part_type'), pt, new)
+        live = dict(VolumeForecast.objects.filter(archived=False, part_type=new)
+                    .values_list('month', 'quantity'))
+        self.assertEqual(live, {date(2027, 3, 1): 45, date(2027, 4, 1): 50})
+        self.assertTrue(VolumeForecast.unscoped.filter(tenant=self.tenant, archived=True,
+                                                       quantity=40).exists())
+
     def test_a_step_version_copies_its_machine_eligibility(self):
         """A step version belongs to a draft process revision; the old step stays in
         force, so its eligibility is COPIED — the old step keeps its machines, and the
