@@ -65,7 +65,7 @@ or reversing a shipment on it, puts the order back to **In Progress**.
 
 | Status | Meaning |
 |--------|---------|
-| **RFI** | Request for Information - awaiting clarification |
+| **RFI** | Request for information — not yet a firm order |
 | **Pending** | Order created, not yet in production |
 | **In Progress** | Work has begun, parts are being processed |
 | **On Hold** | Order paused (quality issue, customer request) |
