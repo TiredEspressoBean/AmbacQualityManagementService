@@ -109,6 +109,28 @@ class RccpTests(_RccpFixture, TestCase):
         # Later months are whole either way.
         self.assertEqual(late[1]["capacity_hours"], whole[1]["capacity_hours"])
 
+    def test_a_yearly_closure_in_the_middle_year_of_a_long_view_comes_off_labor(self):
+        """A 24-month view from November 2026 spans 2026–2028; 2027's yearly closures
+        were skipped (only the first and last years were looked at), overstating every
+        2027 month's labor capacity."""
+        from datetime import datetime
+        from unittest import mock
+        from Tracker.models import PlantCalendarException
+        from Tracker.services.core.clock import plant_tz
+        tz = plant_tz(self.tenant)
+        now = datetime(2026, 11, 2, 12, 0, tzinfo=tz)
+        with mock.patch.object(rccp.timezone, 'now', return_value=now):
+            before = rccp.build_capacity_load(self.tenant, months=24)["labor"]["series"]
+        # Wed 14 July in 2027, stored years earlier as a yearly holiday.
+        PlantCalendarException.objects.create(
+            tenant=self.tenant, name="Summer holiday", kind="HOLIDAY", recurrence="YEARLY",
+            start_time=datetime(2020, 7, 14, 0, 0, tzinfo=tz),
+            end_time=datetime(2020, 7, 15, 0, 0, tzinfo=tz))
+        with mock.patch.object(rccp.timezone, 'now', return_value=now):
+            after = rccp.build_capacity_load(self.tenant, months=24)["labor"]["series"]
+        july = next(i for i, b in enumerate(before) if b["bucket"] == "2027-07")
+        self.assertAlmostEqual(before[july]["capacity_hours"] - after[july]["capacity_hours"], 8, delta=0.5)
+
     def test_planned_absence_comes_off_the_crews_capacity(self):
         """A booked week of PTO is a week the crew can't work — capacity is each
         person's own shift windows less their labor-calendar blocks, not headcount ×

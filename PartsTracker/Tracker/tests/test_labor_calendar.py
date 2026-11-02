@@ -126,6 +126,21 @@ class YearlyClosureTests(TenantContextMixin, TestCase):
         self.assertFalse(any(s <= noon < e for s, e in wins))
         self.assertTrue(any(s <= noon - timedelta(days=1) < e for s, e in wins))
 
+    def test_yearly_closure_in_a_middle_year_of_a_long_horizon_is_blocked(self):
+        """RCCP's labor window spans years: a 24-month view from November covers three
+        calendar years, and the middle one's closures used to be skipped."""
+        from datetime import datetime
+        from types import SimpleNamespace
+        from django.utils import timezone as tz
+        start = tz.make_aware(datetime(2026, 11, 1))
+        horizon = SimpleNamespace(start=start, end=tz.make_aware(datetime(2028, 10, 31)))
+        stored = tz.make_aware(datetime(2020, 7, 4))
+        PlantCalendarException.objects.create(
+            tenant=self.tenant, name="Independence Day", kind="HOLIDAY", recurrence="YEARLY",
+            start_time=stored, end_time=stored + timedelta(days=1))
+        years = sorted({s.year for s, _ in calendars.get_calendar_closures(self.tenant, horizon)})
+        self.assertEqual(years, [2027, 2028])
+
     def test_yearly_closure_outside_horizon_excluded(self):
         occ = self.horizon.start + timedelta(days=90)  # ~3 months out, past the 30-day horizon
         stored_start = occ.replace(year=occ.year - 1, hour=0, minute=0, second=0, microsecond=0)

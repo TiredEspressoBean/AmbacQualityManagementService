@@ -104,10 +104,12 @@ def _expand_shifts(shifts, start: datetime, end: datetime, tz=None) -> list[tupl
 
 def _yearly_closure_occurrences(e, horizon) -> list[tuple]:
     """A YEARLY closure recurs on its stored month/day span every year. Emit the
-    occurrence(s) landing in the horizon (a 30-day window touches at most two years)."""
+    occurrence(s) landing in the horizon — every year it spans, not just its first and
+    last: RCCP's labor window runs 6–60 months, and a 24-month view from November
+    covered 2026 and 2028 but skipped 2027's closures, overstating its capacity."""
     span = e.end_time - e.start_time
     out = []
-    for year in {horizon.start.year, horizon.end.year}:
+    for year in range(horizon.start.year, horizon.end.year + 1):
         try:
             occ_start = e.start_time.replace(year=year)
         except ValueError:
