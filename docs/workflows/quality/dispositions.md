@@ -158,8 +158,9 @@ Either way the record stores **who authorized it and when** — that pair is wha
 
 After the decision, severity can be **raised but not lowered** — it decides what
 the close demands, so lowering it would dodge the containment check. The field
-reads *"Decided at this severity: it can be raised, not lowered."*, and an edit
-that lowers it is refused (*"…can't change after the decision (severity may only
+reads *"Decided at this severity: it can be raised, not lowered."* and offers only
+the current severity and the ones above it. An edit that lowers it anyway is
+refused (*"…can't change after the decision (severity may only
 be raised)."*).
 
 !!! note "Annotation severity is a different scale"

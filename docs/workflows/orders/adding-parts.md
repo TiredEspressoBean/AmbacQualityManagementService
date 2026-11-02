@@ -100,7 +100,9 @@ the normal route; the form is for one-off corrections.
 | **Work Order** | No | |
 | **Archived** | No | Takes the part out of lists, with its history kept |
 
-Click **Submit**. A refused save shows the server's reason.
+Click **Submit**. A refused save shows the server's reason, under the field it is
+about. **Status** lists the statuses by their readable names — *Ready for Next
+Step*, *Awaiting QA*, *In Stock* and so on.
 
 !!! important "What the form won't do"
     Some changes have their own actions, which record why, so the form refuses
