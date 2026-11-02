@@ -830,11 +830,41 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
 
 # --- capable-to-promise ----------------------------------------------------
 
+def _forecast_for_candidate(tenant, part_type_id, quantity: int, target_date: date):
+    """How much of a candidate order the unclaimed forecast already expects:
+    `(absorbed, [{'month', 'quantity'}])`. Searched the way orders consume forecast —
+    the due month, then earlier months nearest first, then later, within the
+    consumption window — skipping months inside the demand time fence, where forecast
+    isn't planned and so carries no load to stand in for."""
+    from Tracker.services.planning.forecast import (
+        add_months, consumption_settings, month_start, unclaimed_forecast,
+    )
+    _fence, window = consumption_settings(tenant)
+    due = month_start(target_date)
+    reach = ([due] + [add_months(due, -k) for k in range(1, window + 1)]
+             + [add_months(due, k) for k in range(1, window + 1)])
+    cells = {m: c for (pt, m), c in unclaimed_forecast(
+        tenant, add_months(due, -window), add_months(due, window)).items()
+        if str(pt) == str(part_type_id)}
+    absorbed, used = 0, []
+    for m in reach:
+        c = cells.get(m)
+        if absorbed >= quantity or c is None or c['fenced'] or c['unclaimed'] <= 0:
+            continue
+        take = min(c['unclaimed'], quantity - absorbed)
+        absorbed += take
+        used.append({'month': f"{m:%Y-%m}", 'quantity': take})
+    return absorbed, used
+
+
 def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
                        months: int = 24) -> dict:
     """Can we take `quantity` of `part_type_id` due `target_date`? Explode its routing,
-    add to the existing load, and check whether any resource in the target bucket
-    crosses capacity. Returns feasibility + the binding resource + earliest-fit bucket."""
+    add to everything already planned — work orders, open order lines (firm and RFI)
+    and unclaimed forecast — and check whether any resource runs out by the due date.
+    The part of the order the unclaimed forecast already expected consumes that
+    forecast instead of adding load; only the rest needs free capacity. Returns
+    feasibility + the binding resources (with what fills them) + earliest-fit bucket."""
     import collections
 
     ref = _load_reference(tenant)
@@ -843,16 +873,40 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
     _with_crew_windows(ref, tenant, start, buckets[-1].end)
     n = len(buckets)
 
-    # existing committed load
+    # Everything already planned, exactly as the capacity page places it (2026-11-02):
+    # work orders, open order lines (firm AND tentative), and the unclaimed forecast
+    # outside the demand time fence. Unclaimed forecast is capacity already spoken for.
+    # Same placement helpers, so the page and the promise can never disagree.
     labor_load = [0.0] * n
     wc_load: dict = collections.defaultdict(lambda: [0.0] * n)
     pool_load: dict = collections.defaultdict(lambda: [0.0] * n)
+    # The same load by band, so a refusal can say whether real orders or forecast fill
+    # the months: work_orders / firm (order lines) / tentative (RFI) / forecast.
+    band_labor: dict = collections.defaultdict(lambda: [0.0] * n)
+    band_wc: dict = collections.defaultdict(lambda: collections.defaultdict(lambda: [0.0] * n))
+    band_pool: dict = collections.defaultdict(lambda: collections.defaultdict(lambda: [0.0] * n))
+
+    def _commit(labor_h, wc_h, pool_h, lo, hi, band):
+        _add_spread_load(labor_h, wc_h, lo, hi, n, wc_load, labor_load, pool_h, pool_load)
+        _add_spread_load(labor_h, wc_h, lo, hi, n, band_wc[band], band_labor[band],
+                         pool_h, band_pool[band])
+
     for wo in sched_data.get_active_workorders(tenant, within_horizon=False):
         counts = _route_counts(wo)
         labor_h, pool_h, wc_h = _route_hours(ref, counts)
         lo, hi, _ = _load_span(buckets, wo, ref, labor_h, wc_h, start, counts)
-        _add_spread_load(labor_h, wc_h, lo, hi, n, wc_load, labor_load,
-                         pool_h, pool_load)
+        _commit(labor_h, wc_h, pool_h, lo, hi, 'work_orders')
+    for p in (_order_line_demand(tenant, ref, buckets, start)['placed']
+              + _forecast_demand(tenant, ref, buckets, start)['placed']):
+        _commit(p['labor'], p['wc'], p['pool'], p['lo'], p['hi'], p['band'])
+
+    # The candidate consumes forecast before it needs capacity: an order the forecast
+    # already expected isn't extra load — its hours are in the forecast band above.
+    # Searched as orders consume forecast (due month, then earlier, then later, within
+    # the window; never inside the demand time fence). Only the rest needs free hours.
+    absorbed, absorbed_from = _forecast_for_candidate(tenant, part_type_id, quantity,
+                                                      target_date)
+    need_qty = quantity - absorbed
 
     # candidate routing: the process a new work order for this part type would be built
     # on — the single APPROVED, non-disassembly one (the version in force, even while a
@@ -867,19 +921,33 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
 
     # Candidate work content, once. Same machine/labor split as committed load — a quote
     # measured differently from the load it is quoted against is not a comparison.
-    cand_labor = 0.0
-    cand_wc: dict = collections.defaultdict(float)
-    cand_pool: dict = collections.defaultdict(float)
-    for s in cand_steps:
-        machine_h, labor_h = _step_hours(ref, s, quantity)
-        if ref.labor_models.get(s, 'pool') != 'off':
-            cand_labor += labor_h
-            pool = ref.step_pools.get(s)
-            if pool is not None and labor_h > 0:
-                cand_pool[pool] += labor_h
-        wc = ref.step_wc.get(s)
-        if wc and machine_h > 0:
-            cand_wc[wc[0]] += machine_h
+    def _content(qty):
+        labor = 0.0
+        wcs: dict = collections.defaultdict(float)
+        pools: dict = collections.defaultdict(float)
+        if qty <= 0:
+            return labor, wcs, pools
+        for s in cand_steps:
+            machine_h, labor_h = _step_hours(ref, s, qty)
+            if ref.labor_models.get(s, 'pool') != 'off':
+                labor += labor_h
+                pool = ref.step_pools.get(s)
+                if pool is not None and labor_h > 0:
+                    pools[pool] += labor_h
+            wc = ref.step_wc.get(s)
+            if wc and machine_h > 0:
+                wcs[wc[0]] += machine_h
+        return labor, wcs, pools
+
+    # The whole order's work content is reported; only the part above the forecast it
+    # consumes has to find free capacity.
+    full_labor, full_wc, _ = _content(quantity)
+    cand_labor, cand_wc, cand_pool = _content(need_qty)
+
+    def _by_band(series_by_band, upto):
+        """Committed hours through `upto`, by band — what fills the months."""
+        return {band: round(sum(s[:upto + 1]), 1)
+                for band, s in series_by_band.items() if sum(s[:upto + 1]) > 0}
 
     def _fits(upto: int, window_end: datetime) -> tuple[bool, list]:
         """Can the whole order be absorbed by the free capacity in [now, window_end)?
@@ -912,7 +980,8 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
                        for i in range(upto + 1))
             if cand_labor > free:
                 binding.append({'resource': 'Labor', 'need': round(cand_labor, 1),
-                                'free_through_target': round(free, 1)})
+                                'free_through_target': round(free, 1),
+                                'load_by_band': _by_band(band_labor, upto)})
         # Certification-limited labour. Without this a quote could clear on total crew
         # hours and then be refused by the solver, because the gated step has one
         # certified operator rather than the whole roster — a promise made on capacity
@@ -928,7 +997,9 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
                 binding.append({
                     'resource': f"Certified: {' + '.join(names)}" if names
                                 else f"Certified crew ({len(pool)})",
-                    'need': round(need, 1), 'free_through_target': round(free, 1)})
+                    'need': round(need, 1), 'free_through_target': round(free, 1),
+                    'load_by_band': _by_band({b: v[pool] for b, v in band_pool.items()
+                                              if pool in v}, upto)})
         for wc_id, need in cand_wc.items():
             if need <= 0:
                 continue
@@ -939,7 +1010,9 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
                 for i in range(upto + 1))
             if need > free:
                 binding.append({'resource': ref.wc_names.get(wc_id, str(wc_id)),
-                                'need': round(need, 1), 'free_through_target': round(free, 1)})
+                                'need': round(need, 1), 'free_through_target': round(free, 1),
+                                'load_by_band': _by_band({b: v[wc_id] for b, v in band_wc.items()
+                                                          if wc_id in v}, upto)})
         # Worst shortfall first. An order that badly overruns the shop trips EVERY
         # resource, and an unordered list of seven buries the actual constraint — the
         # one a planner would add a shift or subcontract to relieve.
@@ -980,9 +1053,14 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
         # "end of 2026-11" rather than a bare "2026-11" that looks like the refusal.
         'earliest_is_target_bucket': earliest == buckets[tgt].label,
         'quantity': quantity,
+        # Of the quantity, how much the forecast already expected (and so carries in its
+        # load), from which months — and how much had to find free capacity.
+        'forecast_absorbed': absorbed,
+        'forecast_absorbed_from': absorbed_from,
+        'needs_capacity_quantity': need_qty,
         # Zero-hour resources (e.g. an outside-process step — vendor time, not ours)
-        # are omitted rather than listed as 0.
-        'work_content_hours': {'labor': round(cand_labor, 1),
+        # are omitted rather than listed as 0. The WHOLE order's content.
+        'work_content_hours': {'labor': round(full_labor, 1),
                                **{ref.wc_names.get(k, str(k)): round(v, 1)
-                                  for k, v in sorted(cand_wc.items()) if v > 0}},
+                                  for k, v in sorted(full_wc.items()) if v > 0}},
     }

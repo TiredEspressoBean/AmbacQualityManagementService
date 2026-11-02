@@ -11894,8 +11894,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Could we take this order? Explodes the part type's routing, adds it to the
-         *     committed load, and reports whether free capacity absorbs it by the target date
+         * @description Could we take this order? Explodes the part type's routing, adds it to
+         *     everything planned (work orders, open order lines, unclaimed forecast — the
+         *     part of the order the forecast already expected consumes it), and reports whether free capacity absorbs it by the target date
          *     — plus the binding resource and the earliest date that would work.
          *
          *     Capacity is CUMULATIVE: an order due in March may use every free hour between
@@ -22670,6 +22671,9 @@ export interface components {
             earliest_feasible_bucket?: string | null;
             earliest_is_target_bucket?: boolean;
             quantity?: number;
+            forecast_absorbed?: number;
+            forecast_absorbed_from?: components["schemas"]["CtpForecastAbsorbed"][];
+            needs_capacity_quantity?: number;
             work_content_hours?: {
                 [key: string]: number;
             };
@@ -23397,6 +23401,13 @@ export interface components {
             need: number;
             /** Format: double */
             free_through_target: number;
+            load_by_band: {
+                [key: string]: number;
+            };
+        };
+        CtpForecastAbsorbed: {
+            month: string;
+            quantity: number;
         };
         /**
          * @description * `OPEN` - Open

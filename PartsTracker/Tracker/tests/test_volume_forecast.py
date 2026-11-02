@@ -228,6 +228,69 @@ class DemandTimeFenceTests(_ForecastFixture, TestCase):
         self.assertEqual(self._forecast_units(), 40)
 
 
+class CapableToPromiseForecastTests(_ForecastFixture, TestCase):
+    """CTP sees everything planned — order lines (firm and RFI) and unclaimed forecast,
+    not only work orders — and a candidate the forecast already expected consumes that
+    forecast instead of adding load. One unit is one labor hour here, against roughly
+    176 h a month of one operator."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Equipments
+        machine = Equipments.objects.create(tenant=self.tenant, name="M-1",
+                                            is_schedulable=True, runs_unattended=False)
+        self.wc.equipment.add(machine)
+        # Another product on the same crew and cell, to carry load the candidate can't use.
+        self.gadget = PartTypes.objects.create(tenant=self.tenant, name="Gadget")
+        proc = Processes.objects.create(tenant=self.tenant, name="G", part_type=self.gadget,
+                                        status=ProcessStatus.APPROVED)
+        step = Steps.objects.create(tenant=self.tenant, part_type=self.gadget, name="Cut G",
+                                    step_type="TASK", work_center=self.wc)
+        StepTiming.objects.create(tenant=self.tenant, step=step, cycle_time_minutes=60)
+        ProcessStep.objects.create(process=proc, step=step, order=1)
+        # Two months out: clear of the default demand time fence (the current month).
+        self.target_month = fc.add_months(self.this_month, 2)
+        self.due = fc.add_months(self.target_month, 1) - timedelta(days=1)
+
+    def _quote(self, qty=100):
+        return rccp.capable_to_promise(self.tenant, str(self.pt.id), qty, self.due)
+
+    def _forecast(self, part_type, qty):
+        for k in (1, 2):
+            fc.set_forecast(tenant=self.tenant, part_type=part_type,
+                            month=fc.add_months(self.this_month, k), quantity=qty)
+
+    def test_with_no_lines_and_no_forecast_the_answer_is_unchanged(self):
+        q = self._quote()
+        self.assertTrue(q["feasible"])
+        self.assertEqual((q["forecast_absorbed"], q["needs_capacity_quantity"]), (0, 100))
+
+    def test_unclaimed_forecast_alone_can_refuse_a_promise(self):
+        self._forecast(self.gadget, 600)
+        q = self._quote()
+        self.assertFalse(q["feasible"])
+        labor = next(b for b in q["binding_resources"] if b["resource"] == "Labor")
+        self.assertGreater(labor["load_by_band"].get("forecast", 0), 1000)
+
+    def test_a_candidate_inside_its_own_unclaimed_forecast_is_promisable(self):
+        self._forecast(self.pt, 600)
+        q = self._quote()
+        self.assertTrue(q["feasible"], q.get("binding_resources"))
+        self.assertEqual((q["forecast_absorbed"], q["needs_capacity_quantity"]), (100, 0))
+        self.assertEqual(q["forecast_absorbed_from"],
+                         [{"month": f"{self.target_month:%Y-%m}", "quantity": 100}])
+        self.assertEqual(q["work_content_hours"]["labor"], 100.0, "the whole order's content")
+
+    def test_an_rfi_lines_hours_count_against_the_promise(self):
+        order = Orders.objects.create(tenant=self.tenant, name="Deal", order_status="RFI")
+        OrderLine.objects.create(tenant=self.tenant, order=order, line_number=1,
+                                 part_type=self.gadget, quantity=1200, due_date=self.due)
+        q = self._quote()
+        self.assertFalse(q["feasible"])
+        labor = next(b for b in q["binding_resources"] if b["resource"] == "Labor")
+        self.assertIn("tentative", labor["load_by_band"])
+
+
 class ForecastPlanningTests(_ForecastFixture, TestCase):
     """The bands reach the capacity and material lanes."""
 

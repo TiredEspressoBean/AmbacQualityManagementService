@@ -1014,7 +1014,10 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 name='CtpBindingResource', many=True, required=False, fields={
                     'resource': serializers.CharField(),
                     'need': serializers.FloatField(),
-                    'free_through_target': serializers.FloatField()}),
+                    'free_through_target': serializers.FloatField(),
+                    # What fills the resource through the target, in hours by band:
+                    # work_orders / firm (order lines) / tentative (RFI) / forecast.
+                    'load_by_band': serializers.DictField(child=serializers.FloatField())}),
             'earliest_feasible_bucket': serializers.CharField(
                 required=False, allow_null=True),
             # True when the earliest fit is the due date's own month — it fits by
@@ -1022,6 +1025,14 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             # "end of <bucket>" rather than a bare label that reads as the refusal.
             'earliest_is_target_bucket': serializers.BooleanField(required=False),
             'quantity': serializers.IntegerField(required=False),
+            # Of the quantity: how much the unclaimed forecast already expected (it
+            # carries that load), from which months, and how much needed free capacity.
+            'forecast_absorbed': serializers.IntegerField(required=False),
+            'forecast_absorbed_from': inline_serializer(
+                name='CtpForecastAbsorbed', many=True, required=False, fields={
+                    'month': serializers.CharField(),
+                    'quantity': serializers.IntegerField()}),
+            'needs_capacity_quantity': serializers.IntegerField(required=False),
             # Keyed by resource name ("labor", then each work centre), so the shape is a
             # map rather than a fixed set of fields.
             'work_content_hours': serializers.DictField(
@@ -1030,8 +1041,9 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'], url_path='capable-to-promise')
     def capable_to_promise(self, request):
-        """Could we take this order? Explodes the part type's routing, adds it to the
-        committed load, and reports whether free capacity absorbs it by the target date
+        """Could we take this order? Explodes the part type's routing, adds it to
+        everything planned (work orders, open order lines, unclaimed forecast — the
+        part of the order the forecast already expected consumes it), and reports whether free capacity absorbs it by the target date
         — plus the binding resource and the earliest date that would work.
 
         Capacity is CUMULATIVE: an order due in March may use every free hour between

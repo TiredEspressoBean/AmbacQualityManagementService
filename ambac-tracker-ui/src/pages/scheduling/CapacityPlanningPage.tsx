@@ -214,6 +214,19 @@ function bandLines(b: CapacityBucket): string {
   return parts.length ? `\nof which ${parts.join(", ")}` : "";
 }
 
+const BAND_LABEL: Record<string, string> = {
+  work_orders: "work orders", firm: "order lines not yet planned",
+  tentative: "RFI (tentative)", forecast: "unclaimed forecast",
+};
+
+/** "work orders 120h · RFI (tentative) 40h · unclaimed forecast 300h" */
+function bandBreakdown(byBand: Record<string, number>): string {
+  return ["work_orders", "firm", "tentative", "forecast"]
+    .filter((k) => (byBand[k] ?? 0) > 0)
+    .map((k) => `${BAND_LABEL[k]} ${Math.round(byBand[k])}h`)
+    .join(" · ");
+}
+
 /** A material month's demand by band, for its tooltip — only when not all firm. */
 function materialBandLines(byBand?: Record<string, number>): string {
   const t = byBand?.tentative ?? 0, f = byBand?.forecast ?? 0;
@@ -864,6 +877,21 @@ export function CapacityPlanningPage() {
                 <p className="text-sm text-muted-foreground">{quote.data.reason}</p>
               )}
 
+              {/* The part of the order the forecast already expected isn't extra load:
+                  it consumes that forecast, and only the rest needs free hours. */}
+              {!!quote.data.forecast_absorbed && (
+                <p className="text-sm">
+                  {quote.data.forecast_absorbed === quote.data.quantity
+                    ? <>All {quote.data.quantity} were already forecast</>
+                    : <>{quote.data.forecast_absorbed} of the {quote.data.quantity} were already forecast</>}
+                  {" "}({(quote.data.forecast_absorbed_from ?? []).map((f) => `${f.quantity} in ${f.month}`).join(", ")})
+                  {quote.data.needs_capacity_quantity
+                    ? <>; {quote.data.needs_capacity_quantity} need free capacity
+                        {quote.data.feasible ? ", which exists by then." : ", which isn't there by then."}</>
+                    : <> — promisable against that forecast.</>}
+                </p>
+              )}
+
               {/* "No" without a reason is useless to whoever has to answer the
                   customer — always name what runs out, and when it would work. */}
               {!quote.data.feasible && !!quote.data.binding_resources?.length && (
@@ -877,6 +905,12 @@ export function CapacityPlanningPage() {
                       <li key={b.resource} className="text-muted-foreground">
                         <strong className="text-foreground">{b.resource}</strong> — needs{" "}
                         {b.need}h, only {b.free_through_target}h free by then.
+                        {/* Real orders or forecast standing in the way? */}
+                        {b.load_by_band && Object.keys(b.load_by_band).length > 0 && (
+                          <span className="block text-xs">
+                            Already taken by {bandBreakdown(b.load_by_band)}.
+                          </span>
+                        )}
                       </li>
                     ))}
                     {quote.data.binding_resources.length > 3 && (

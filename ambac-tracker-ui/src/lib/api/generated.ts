@@ -1559,12 +1559,20 @@ export type CapableToPromise = {
   earliest_feasible_bucket?: (string | null) | undefined;
   earliest_is_target_bucket?: boolean | undefined;
   quantity?: number | undefined;
+  forecast_absorbed?: number | undefined;
+  forecast_absorbed_from?: Array<CtpForecastAbsorbed> | undefined;
+  needs_capacity_quantity?: number | undefined;
   work_content_hours?: {} | undefined;
 };
 export type CtpBindingResource = {
   resource: string;
   need: number;
   free_through_target: number;
+  load_by_band: {};
+};
+export type CtpForecastAbsorbed = {
+  month: string;
+  quantity: number;
 };
 export type CapacityLoad = {
   buckets: Array<string>;
@@ -25108,6 +25116,11 @@ const CtpBindingResource = z.object({
   resource: z.string(),
   need: z.number(),
   free_through_target: z.number(),
+  load_by_band: z.record(z.number()),
+});
+const CtpForecastAbsorbed = z.object({
+  month: z.string(),
+  quantity: z.number().int(),
 });
 const CapableToPromise = z.object({
   feasible: z.boolean(),
@@ -25118,6 +25131,9 @@ const CapableToPromise = z.object({
   earliest_feasible_bucket: z.string().nullish(),
   earliest_is_target_bucket: z.boolean().optional(),
   quantity: z.number().int().optional(),
+  forecast_absorbed: z.number().int().optional(),
+  forecast_absorbed_from: z.array(CtpForecastAbsorbed).optional(),
+  needs_capacity_quantity: z.number().int().optional(),
   work_content_hours: z.record(z.number()).optional(),
 });
 const LaborBucket = z.object({
@@ -30611,6 +30627,7 @@ export const schemas = {
   AdherenceOpStateEnum,
   AdherenceOp,
   CtpBindingResource,
+  CtpForecastAbsorbed,
   CapableToPromise,
   LaborBucket,
   LaborCapacity,
@@ -53566,8 +53583,9 @@ part; 422 (whole move refused) if any part breaks a local constraint.`,
     method: "get",
     path: "/api/Schedules/capable-to-promise/",
     alias: "api_Schedules_capable_to_promise_retrieve",
-    description: `Could we take this order? Explodes the part type&#x27;s routing, adds it to the
-committed load, and reports whether free capacity absorbs it by the target date
+    description: `Could we take this order? Explodes the part type&#x27;s routing, adds it to
+everything planned (work orders, open order lines, unclaimed forecast — the
+part of the order the forecast already expected consumes it), and reports whether free capacity absorbs it by the target date
 — plus the binding resource and the earliest date that would work.
 
 Capacity is CUMULATIVE: an order due in March may use every free hour between

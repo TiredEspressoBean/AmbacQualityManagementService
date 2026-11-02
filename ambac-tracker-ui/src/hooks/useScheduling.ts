@@ -609,6 +609,9 @@ export function useCapacityLoad(months = 12, criticalOnly = false) {
 
 export type CtpBinding = {
   resource: string; need: number; free_through_target: number;
+  /** What fills the resource through the target, hours by band:
+   *  work_orders / firm (order lines) / tentative (RFI) / forecast. */
+  load_by_band?: Record<string, number>;
 };
 export type CtpQuote = {
   feasible: boolean;
@@ -625,6 +628,11 @@ export type CtpQuote = {
    *  the date asked for. Render "end of <bucket>" when this is true. */
   earliest_is_target_bucket?: boolean;
   quantity?: number;
+  /** Of the quantity, how much the unclaimed forecast already expected — it carries
+   *  that load, so only `needs_capacity_quantity` had to find free hours. */
+  forecast_absorbed?: number;
+  forecast_absorbed_from?: { month: string; quantity: number }[];
+  needs_capacity_quantity?: number;
   work_content_hours?: Record<string, number>;
 };
 /** Quote an order against remaining capacity. Disabled until every input is set —

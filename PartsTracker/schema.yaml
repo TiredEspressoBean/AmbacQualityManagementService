@@ -29178,8 +29178,9 @@ paths:
     get:
       operationId: api_Schedules_capable_to_promise_retrieve
       description: |-
-        Could we take this order? Explodes the part type's routing, adds it to the
-        committed load, and reports whether free capacity absorbs it by the target date
+        Could we take this order? Explodes the part type's routing, adds it to
+        everything planned (work orders, open order lines, unclaimed forecast — the
+        part of the order the forecast already expected consumes it), and reports whether free capacity absorbs it by the target date
         — plus the binding resource and the earliest date that would work.
 
         Capacity is CUMULATIVE: an order due in March may use every free hour between
@@ -53183,6 +53184,14 @@ components:
           type: boolean
         quantity:
           type: integer
+        forecast_absorbed:
+          type: integer
+        forecast_absorbed_from:
+          type: array
+          items:
+            $ref: '#/components/schemas/CtpForecastAbsorbed'
+        needs_capacity_quantity:
+          type: integer
         work_content_hours:
           type: object
           additionalProperties:
@@ -54716,10 +54725,26 @@ components:
         free_through_target:
           type: number
           format: double
+        load_by_band:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
       required:
       - free_through_target
+      - load_by_band
       - need
       - resource
+    CtpForecastAbsorbed:
+      type: object
+      properties:
+        month:
+          type: string
+        quantity:
+          type: integer
+      required:
+      - month
+      - quantity
     CurrentStateEnum:
       enum:
       - OPEN
