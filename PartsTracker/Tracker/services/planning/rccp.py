@@ -550,7 +550,8 @@ def _order_line_demand(tenant, ref: _RefData, buckets, now) -> dict:
     labor_total = 0.0
     routes: dict = {}
     for ln in (OrderLine.objects  # tenant-safe: explicit tenant filter
-               .filter(tenant=tenant, status='OPEN', order__archived=False)
+               # A deleted line is archived (API DELETE soft-deletes): no demand.
+               .filter(tenant=tenant, archived=False, status='OPEN', order__archived=False)
                .exclude(order__order_status__in=['COMPLETED', 'CANCELLED'])
                .select_related('order', 'part_type')):
         qty = ln.remaining_quantity

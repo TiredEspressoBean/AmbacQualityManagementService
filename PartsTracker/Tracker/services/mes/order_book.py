@@ -313,7 +313,7 @@ def _progress(ordered, planned, parts) -> Progress:
 
 
 def _row(order, f: _Facts) -> OrderBookRow:
-    lines = [ln for ln in order.lines.all() if ln.status == 'OPEN']
+    lines = [ln for ln in order.lines.all() if ln.status == 'OPEN' and not ln.archived]
     wos = [w for w in f.wos_by_order.get(order.id, []) if w.workorder_status != 'CANCELLED']
     linked = f.linked_parts_by_order.get(order.id, [])
     parts = [p for w in wos for p in f.parts_by_wo.get(w.id, [])] + linked
@@ -386,7 +386,7 @@ def order_detail(order, user) -> OrderDetail:
     wos = [w for w in f.wos_by_order.get(order.id, []) if w.workorder_status != 'CANCELLED']
 
     lines = []
-    for ln in order.lines.all().select_related('part_type'):
+    for ln in order.lines.filter(archived=False).select_related('part_type'):
         parts = [p for w in wos if w.order_line_id == ln.id for p in f.parts_by_wo.get(w.id, [])]
         parts += [p for p in f.linked_parts_by_order.get(order.id, []) if p.part_type_id == ln.part_type_id]
         lines.append(LineView(

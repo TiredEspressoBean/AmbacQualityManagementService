@@ -411,7 +411,7 @@ def order_shipping(order) -> dict:
     shipments, so a part shipped by hand at its Ship step counts but has no date."""
     from collections import defaultdict
     from Tracker.models import Parts
-    lines = list(order.lines.order_by("line_number"))  # tenant-safe: reverse FK from a scoped order
+    lines = list(order.lines.filter(archived=False).order_by("line_number"))  # tenant-safe: reverse FK from a scoped order
     by_line = defaultdict(list)
     for p in (Parts.objects.filter(  # tenant-safe: FK to a scoped order
             work_order__order_line__order=order, part_status="SHIPPED", archived=False)

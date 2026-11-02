@@ -618,6 +618,14 @@ class RccpOrderLineDemandTests(_RccpFixture, TestCase):
         self.assertAlmostEqual(sum(b["load_hours"] for b in labor), 10.0, delta=0.5)
         self.assertEqual(sum(b["order_line_hours"] for b in labor), 0.0)
 
+    def test_a_deleted_line_carries_no_load(self):
+        """API DELETE archives a line; an archived line is no one's demand any more."""
+        line = self._line(20, timezone.now().date() + timedelta(days=60))
+        line.archive()
+        out = rccp.build_capacity_load(self.tenant, months=6)
+        self.assertEqual(sum(b["load_hours"] for b in out["labor"]["series"]), 0.0)
+        self.assertEqual(out["unplanned_demand"]["lines"], 0)
+
     def test_a_line_with_no_due_date_is_flagged_not_loaded(self):
         self._line(5, None)
         out = rccp.build_capacity_load(self.tenant, months=6)
