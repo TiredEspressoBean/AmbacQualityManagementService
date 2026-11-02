@@ -29474,6 +29474,44 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/Schedules/material-outlook/export/{export_format}/:
+    get:
+      operationId: api_Schedules_material_outlook_export_retrieve
+      description: |-
+        The material spread: one row per bought item, keyed as the ERP keys it, with
+        its demand per month in stock units — firm work, RFI deals and unclaimed forecast
+        together — beside its purchase unit and conversion, on-hand, incoming and the
+        balance left at the end. A spread, not a plan: no lead-time offset or lot sizing;
+        buying is the ERP's. Behind export_data like every report.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: months
+        schema:
+          type: integer
+        description: Months from the current one (default 24).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/Schedules/operator_hours/:
     get:
       operationId: api_Schedules_operator_hours_retrieve
@@ -61545,16 +61583,45 @@ components:
       properties:
         id:
           type: string
+        kind:
+          type: string
         name:
           type: string
+        part_number:
+          type: string
+        unit_of_measure:
+          type: string
+        purchase_unit:
+          type: string
+        units_per_purchase_unit:
+          type: number
+          format: double
+          nullable: true
+        on_hand:
+          type: number
+          format: double
+        incoming:
+          type: number
+          format: double
+        safety_stock:
+          type: number
+          format: double
         series:
           type: array
           items:
             $ref: '#/components/schemas/MaterialBucket'
       required:
       - id
+      - incoming
+      - kind
       - name
+      - on_hand
+      - part_number
+      - purchase_unit
+      - safety_stock
       - series
+      - unit_of_measure
+      - units_per_purchase_unit
     MaterialLot:
       type: object
       description: |-

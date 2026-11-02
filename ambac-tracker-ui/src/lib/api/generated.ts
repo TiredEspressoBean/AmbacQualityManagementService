@@ -1661,7 +1661,15 @@ export type UnplaceableForecast = {
 };
 export type MaterialLoad = {
   id: string;
+  kind: string;
   name: string;
+  part_number: string;
+  unit_of_measure: string;
+  purchase_unit: string;
+  units_per_purchase_unit: number | null;
+  on_hand: number;
+  incoming: number;
+  safety_stock: number;
   series: Array<MaterialBucket>;
 };
 export type MaterialBucket = {
@@ -25139,7 +25147,15 @@ const MaterialBucket = z.object({
 });
 const MaterialLoad = z.object({
   id: z.string(),
+  kind: z.string(),
   name: z.string(),
+  part_number: z.string(),
+  unit_of_measure: z.string(),
+  purchase_unit: z.string(),
+  units_per_purchase_unit: z.number().nullable(),
+  on_hand: z.number(),
+  incoming: z.number(),
+  safety_stock: z.number(),
   series: z.array(MaterialBucket),
 });
 const CapacityLoad = z.object({
@@ -53614,6 +53630,30 @@ pegged component WOs offset the requirement, so re-running is idempotent.`,
   },
   {
     method: "get",
+    path: "/api/Schedules/material-outlook/export/:export_format/",
+    alias: "api_Schedules_material_outlook_export_retrieve",
+    description: `The material spread: one row per bought item, keyed as the ERP keys it, with
+its demand per month in stock units — firm work, RFI deals and unclaimed forecast
+together — beside its purchase unit and conversion, on-hand, incoming and the
+balance left at the end. A spread, not a plan: no lead-time offset or lot sizing;
+buying is the ERP&#x27;s. Behind export_data like every report.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "months",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
     path: "/api/Schedules/operator_hours/",
     alias: "api_Schedules_operator_hours_retrieve",
     description: `Shop hours per operator over a date range — on-shift from the attendance clock;
@@ -55907,7 +55947,10 @@ strip (services/mes/operator_day.py).`,
       },
     ],
     response: PaginatedStepExecutionListList,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutions/part_step_history/",
@@ -56029,10 +56072,7 @@ strip (services/mes/operator_day.py).`,
       },
     ],
     response: PaginatedStepExecutionList,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutions/training-overrides/",
@@ -61451,7 +61491,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.array(VersionSummary),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingTypes/export/:export_format/",
@@ -61481,10 +61524,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/TrainingTypes/import-preview/",

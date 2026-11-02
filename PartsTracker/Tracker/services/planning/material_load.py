@@ -189,6 +189,16 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
                 incoming[_key(lot)][i] += float(lot['quantity_remaining'] or 0)
                 break
 
+    # How each item is bought, for the outlook export: quantities stay in stock units,
+    # with the purchase unit and its conversion beside them for whoever orders.
+    from Tracker.models import Material, PartTypes
+    buying: dict = {}
+    for kind, model, ids in (('MATERIAL', Material, mat_ids), ('PART_TYPE', PartTypes, pt_ids)):
+        if ids:
+            for r in (model.objects.filter(tenant=tenant, id__in=ids)  # tenant-safe: explicit tenant filter
+                      .values('id', 'purchase_unit', 'units_per_purchase_unit')):
+                buying[(kind, r['id'])] = r
+
     out = []
     for mid in keys:
         # Opening cover is free stock, not physical stock: the safety buffer is held back
@@ -222,8 +232,17 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
                 'short': remaining < 0,
             })
         kind, item_id = mid
+        item, buy = items[mid], buying.get(mid, {})
+        per = buy.get('units_per_purchase_unit')
         out.append({'id': str(item_id), 'kind': kind,
                     'name': names.get(mid, str(item_id)),
+                    # What a buyer keys into the ERP: part number / ERP id.
+                    'part_number': item.part_number,
+                    'unit_of_measure': item.unit_of_measure,
+                    'purchase_unit': buy.get('purchase_unit') or 'STOCK',
+                    'units_per_purchase_unit': float(per) if per is not None else None,
+                    'on_hand': round(on_hand.get(mid, 0.0), 2),
+                    'incoming': round(sum(incoming[mid]), 2),
                     'safety_stock': safety.get(mid, 0.0), 'series': series})
 
     out.sort(key=lambda m: m['name'])

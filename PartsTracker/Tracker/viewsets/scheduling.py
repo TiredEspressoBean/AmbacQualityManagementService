@@ -100,6 +100,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         'undo': ['change_scheduledtask'],
         # Every report is behind export_data (decision 10/27).
         'work_order_hours_export': ['export_data'],
+        'material_outlook_export': ['export_data'],
     }
     crud_exempt_actions = {
         'run_dispatch', 'commit', 'discard', 'restore_previous', 'config', 'plan_work_order',
@@ -837,7 +838,19 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             'materials': inline_serializer(
                 name='MaterialLoad', many=True, fields={
                     'id': serializers.CharField(),
+                    # MATERIAL (raw material) or PART_TYPE (a bought part).
+                    'kind': serializers.CharField(),
                     'name': serializers.CharField(),
+                    # The ERP's key: a material's part number, a part type's ERP id.
+                    'part_number': serializers.CharField(),
+                    # Every quantity here is in stock units; how it is bought sits beside.
+                    'unit_of_measure': serializers.CharField(),
+                    'purchase_unit': serializers.CharField(),
+                    'units_per_purchase_unit': serializers.FloatField(allow_null=True),
+                    'on_hand': serializers.FloatField(),
+                    # Inbound lots promised within the horizon.
+                    'incoming': serializers.FloatField(),
+                    'safety_stock': serializers.FloatField(),
                     'series': inline_serializer(
                         name='MaterialBucket', many=True, fields={
                             'bucket': serializers.CharField(),
@@ -862,6 +875,76 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             critical_only=str(request.query_params.get('critical_only', '')).lower()
             in ('1', 'true', 'yes'),
         ))
+
+    @extend_schema(
+        parameters=[OpenApiParameter('months', OpenApiTypes.INT, required=False,
+                                     description="Months from the current one (default 24).")],
+        responses={(200, 'text/csv'): OpenApiTypes.BINARY,
+                   (200, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'): OpenApiTypes.BINARY},
+    )
+    @action(detail=False, methods=['get'], url_path=r'material-outlook/export/(?P<export_format>csv|xlsx)')
+    def material_outlook_export(self, request, export_format: str):
+        """The material spread: one row per bought item, keyed as the ERP keys it, with
+        its demand per month in stock units — firm work, RFI deals and unclaimed forecast
+        together — beside its purchase unit and conversion, on-hand, incoming and the
+        balance left at the end. A spread, not a plan: no lead-time offset or lot sizing;
+        buying is the ERP's. Behind export_data like every report."""
+        import io
+        import pandas as pd
+        from django.http import HttpResponse
+        from django.utils import timezone
+        from Tracker.models import Material
+        from Tracker.services.core.access_log import record_access
+        from Tracker.services.planning.rccp import build_capacity_load
+        from Tracker.services.spreadsheet_safety import csv_safe
+        from Tracker.throttling import get_client_ip
+
+        months = _int_param(request, 'months', default=24, lo=1, hi=60)
+        load = build_capacity_load(self.tenant, months=months)
+        buckets = load['buckets']
+        unit_label = {'STOCK': 'Stock unit', 'BOX': 'Box', 'LB': 'Pound'}
+        columns = ['Item', 'Name', 'Kind', 'Stock unit', 'Purchase unit',
+                   'Stock units per purchase unit', 'On hand', 'Safety stock',
+                   'Incoming', *buckets, 'Total demand', 'Balance at end']
+        rows = []
+        for m in load['materials']:
+            demand = [b['demand'] for b in m['series']]
+            rows.append({
+                'Item': m['part_number'], 'Name': m['name'],
+                'Kind': 'Material' if m['kind'] == 'MATERIAL' else 'Bought part',
+                'Stock unit': m['unit_of_measure'],
+                'Purchase unit': unit_label.get(m['purchase_unit'], m['purchase_unit']),
+                # Blank where the item is bought in its stock unit — nothing to convert.
+                'Stock units per purchase unit': (
+                    m['units_per_purchase_unit'] if m['purchase_unit'] != 'STOCK' else None),
+                'On hand': m['on_hand'], 'Safety stock': m['safety_stock'],
+                'Incoming': m['incoming'],
+                **dict(zip(buckets, demand)),
+                'Total demand': round(sum(demand), 2),
+                # Free stock left after everything through the last month: on hand less
+                # safety stock, plus incoming, less demand. Negative = short.
+                'Balance at end': m['series'][-1]['remaining_cover'] if m['series'] else None,
+            })
+        df = pd.DataFrame(rows, columns=columns)
+        filename = f"material_outlook_{timezone.localdate()}_{months}m.{export_format}"
+        if export_format == 'csv':
+            content = df.map(csv_safe).to_csv(index=False).encode('utf-8-sig')
+            content_type = 'text/csv'
+        else:
+            buf = io.BytesIO()
+            df.map(csv_safe).to_excel(buf, index=False, sheet_name='Material outlook')
+            content = buf.getvalue()
+            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response = HttpResponse(content, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        record_access(
+            obj=Material, user=request.user, action_type='bulk_export',
+            object_repr=f'Export {export_format}: Material outlook ({len(rows)} rows)',
+            remote_addr=get_client_ip(request),
+            payload={'export_format': export_format, 'row_count': len(rows),
+                     'filename': filename, 'months': months},
+        )
+        return response
 
     @extend_schema(
         parameters=[

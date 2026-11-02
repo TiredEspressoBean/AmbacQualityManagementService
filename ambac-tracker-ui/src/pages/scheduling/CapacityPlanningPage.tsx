@@ -25,6 +25,7 @@ import {
   type CapacityBucket, type CapacityLoad, type PlannedRelease, type ReleaseCheck, type UnplannedDemand,
 } from "@/hooks/useScheduling";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { downloadCsv } from "@/lib/csv";
 
 const HORIZONS = [6, 12, 24, 36];
@@ -122,7 +123,7 @@ function CrewVerdict({ labor, pools, unplanned, forecast }: {
               title="Open order lines not yet planned into work orders. Their hours are in the load above, placed from each line's due date on its part type's approved routing.">
           Includes {unplanned.placed_lines} open order line{unplanned.placed_lines === 1 ? "" : "s"} not yet planned
           {unplanned.tentative_lines > 0 && (
-            <>, {unplanned.tentative_lines} of them RFI (tentative <span className="inline-block h-1 w-3 align-middle bg-sky-500/80" aria-hidden />)</>
+            <>, {unplanned.tentative_lines} of them RFI (tentative<span className="ml-1 inline-block h-1 w-3 align-middle bg-sky-500/80" aria-hidden />)</>
           )}
           {unplanned.labor_hours > 0 ? ` (~${Math.round(unplanned.labor_hours)} h crew time)` : ""}
         </Link>
@@ -130,8 +131,7 @@ function CrewVerdict({ labor, pools, unplanned, forecast }: {
       {forecast && forecast.units > 0 && (
         <Link to="/production/forecast" className="text-muted-foreground underline underline-offset-2"
               title="Forecast volume that firm and RFI orders don't already cover, planned as due at each month's end. Its hours are in the load above.">
-          Includes {forecast.units} unit{forecast.units === 1 ? "" : "s"} of unclaimed forecast{" "}
-          <span className="inline-block h-1 w-3 align-middle bg-violet-500/80" aria-hidden />
+          Includes {forecast.units} unit{forecast.units === 1 ? "" : "s"} of unclaimed forecast<span className="ml-1 inline-block h-1 w-3 align-middle bg-violet-500/80" aria-hidden />
           {forecast.labor_hours > 0 ? ` (~${Math.round(forecast.labor_hours)} h)` : ""}
         </Link>
       )}
@@ -212,6 +212,13 @@ function bandLines(b: CapacityBucket): string {
   if (b.tentative_hours) parts.push(`${b.tentative_hours}h tentative (RFI orders)`);
   if (b.forecast_hours) parts.push(`${b.forecast_hours}h unclaimed forecast`);
   return parts.length ? `\nof which ${parts.join(", ")}` : "";
+}
+
+/** A material month's demand by band, for its tooltip — only when not all firm. */
+function materialBandLines(byBand?: Record<string, number>): string {
+  const t = byBand?.tentative ?? 0, f = byBand?.forecast ?? 0;
+  if (t <= 0 && f <= 0) return "";
+  return `\n(firm ${qty(byBand?.firm ?? 0)} · RFI ${qty(t)} · forecast ${qty(f)})`;
 }
 
 /** Tentative and forecast load, shaded apart from firm: a strip along the cell's foot,
@@ -355,7 +362,11 @@ function ReleaseRow({ r }: { r: PlannedRelease }) {
 }
 
 export function CapacityPlanningPage() {
-  const [months, setMonths] = useState(12);
+  // Purchasing's "Material outlook" link opens the two-year view: ?months=24.
+  const initialMonths = (useSearch({ strict: false }) as { months?: number }).months;
+  const [months, setMonths] = useState(
+    initialMonths && HORIZONS.includes(initialMonths) ? initialMonths : 12);
+  const canExport = usePermissionSet().has("export_data");
   // Off by default: a planner who has never flagged anything would otherwise open an
   // empty heatmap and conclude the page is broken.
   const [criticalOnly, setCriticalOnly] = useState(false);
@@ -593,7 +604,21 @@ export function CapacityPlanningPage() {
                           colSpan={buckets.length + 2}   /* + Resource + Over */
                           className="sticky left-0 bg-background px-3 pb-1 pt-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
                         >
-                          Materials — stock left after committed work (negative = short)
+                          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span>Materials — stock left after committed work (negative = short)</span>
+                            {/* The 24-month spread for buyers: per item and month, in stock
+                                units, keyed as the ERP keys it. A spread, not a plan. */}
+                            {canExport && (
+                              <span className="font-normal normal-case tracking-normal">
+                                Material outlook ({months} months):{" "}
+                                <a className="underline underline-offset-2" download
+                                   href={`/api/Schedules/material-outlook/export/xlsx/?months=${months}`}>Excel</a>
+                                {" · "}
+                                <a className="underline underline-offset-2" download
+                                   href={`/api/Schedules/material-outlook/export/csv/?months=${months}`}>CSV</a>
+                              </span>
+                            )}
+                          </span>
                         </th>
                       </tr>
                       {data.materials.map((m) => (
@@ -610,10 +635,16 @@ export function CapacityPlanningPage() {
                           {m.series.map((b) => (
                             <td key={b.bucket} className="p-0.5">
                               <div
-                                className={`rounded px-1.5 py-1.5 text-center text-[11px] tabular-nums ${coverTone(b.remaining_cover, b.available)}`}
-                                title={`${m.name} · ${b.bucket}\n${qty(b.demand)} needed this month\n${qty(b.cumulative_demand)} committed to date · ${qty(b.available)} on hand and inbound\n${b.short ? `SHORT by ${qty(-b.remaining_cover)}` : `${qty(b.remaining_cover)} left`}`}
+                                className={`relative overflow-hidden rounded px-1.5 py-1.5 text-center text-[11px] tabular-nums ${coverTone(b.remaining_cover, b.available)}`}
+                                title={`${m.name} · ${b.bucket}\n${qty(b.demand)} ${m.unit_of_measure} needed this month${materialBandLines(b.demand_by_band)}\n${qty(b.cumulative_demand)} committed to date · ${qty(b.available)} on hand and inbound\n${b.short ? `SHORT by ${qty(-b.remaining_cover)}` : `${qty(b.remaining_cover)} left`}`}
                               >
                                 {qty(b.remaining_cover)}
+                                <BandStrip b={{
+                                  bucket: b.bucket, capacity_hours: 0, utilization: null,
+                                  load_hours: b.demand,
+                                  tentative_hours: b.demand_by_band?.tentative ?? 0,
+                                  forecast_hours: b.demand_by_band?.forecast ?? 0,
+                                }} />
                               </div>
                             </td>
                           ))}

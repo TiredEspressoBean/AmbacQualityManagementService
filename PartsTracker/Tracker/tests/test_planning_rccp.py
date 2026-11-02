@@ -665,6 +665,68 @@ class RccpOrderLineMaterialTests(_RccpFixture, TestCase):
         self.assertEqual(loaded[0]["demand_by_band"], {"firm": 8.0})
 
 
+class MaterialOutlookExportTests(_RccpFixture, TestCase):
+    """The buyer's spread: one row per item, keyed as the ERP keys it, demand per month
+    in stock units with the purchase unit and its conversion beside it — no rounding to
+    packs, since buying (and lot sizing) is the ERP's."""
+
+    def setUp(self):
+        super().setUp()
+        from decimal import Decimal
+        from Tracker.models import BOM, BOMLine, Material, OrderLine, Orders
+        self.oring = Material.objects.create(
+            tenant=self.tenant, name="O-Ring", part_number="OR-7", unit_of_measure="EA",
+            purchase_unit="BOX", units_per_purchase_unit=Decimal("250"), safety_stock=Decimal("5"))
+        bom = BOM.objects.create(tenant=self.tenant, part_type=self.pt, revision="A",
+                                 bom_type="ASSEMBLY", status="RELEASED", is_current_version=True)
+        BOMLine.objects.create(tenant=self.tenant, bom=bom, material=self.oring,
+                               quantity=Decimal(3), source="BUY", line_number=1)
+        order = Orders.objects.create(tenant=self.tenant, name="Demand")
+        OrderLine.objects.create(tenant=self.tenant, order=order, line_number=1, part_type=self.pt,
+                                 quantity=7, due_date=timezone.now().date() + timedelta(days=90))
+
+    def _client(self, *perms):
+        from django.contrib.auth.models import Permission
+        from rest_framework.test import APIClient
+        from Tracker.models import TenantGroup, UserRole
+        g = TenantGroup.objects.create(tenant=self.tenant, name="g-export", is_custom=True)
+        g.permissions.add(*Permission.objects.filter(codename__in=[*perms, "full_tenant_access"]))
+        UserRole.objects.create(user=self.user, group=g)
+        c = APIClient()
+        c.force_authenticate(user=self.user)
+        c.credentials(HTTP_X_TENANT_ID=str(self.tenant.id))
+        return c
+
+    def test_material_rows_carry_the_erp_key_and_buying_units(self):
+        m = rccp.build_capacity_load(self.tenant, months=6)["materials"][0]
+        self.assertEqual((m["part_number"], m["unit_of_measure"], m["purchase_unit"],
+                          m["units_per_purchase_unit"]), ("OR-7", "EA", "BOX", 250.0))
+        self.assertEqual((m["on_hand"], m["incoming"]), (0.0, 0.0))
+
+    def test_export_is_a_monthly_spread_in_stock_units(self):
+        import csv
+        import io
+        r = self._client("view_scheduleresult", "export_data").get(
+            "/api/Schedules/material-outlook/export/csv/?months=24")
+        self.assertEqual(r.status_code, 200, r.content[:300])
+        rows = list(csv.DictReader(io.StringIO(r.content.decode("utf-8-sig"))))
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual((row["Item"], row["Stock unit"], row["Purchase unit"],
+                          row["Stock units per purchase unit"]), ("OR-7", "EA", "Box", "250.0"))
+        month_cols = [k for k in row if len(k) == 7 and k[4] == "-"]
+        self.assertEqual(len(month_cols), 24)
+        # 7 units × 3, unrounded to boxes; the balance nets safety stock.
+        self.assertEqual(sum(float(row[k] or 0) for k in month_cols), 21.0)
+        self.assertEqual(float(row["Total demand"]), 21.0)
+        self.assertEqual(float(row["Balance at end"]), -26.0)
+
+    def test_export_sits_behind_export_data(self):
+        r = self._client("view_scheduleresult").get(
+            "/api/Schedules/material-outlook/export/csv/")
+        self.assertEqual(r.status_code, 403)
+
+
 class RccpCriticalResourceTests(_RccpFixture, TestCase):
     """`critical_only` is a lens, not a different calculation.
 

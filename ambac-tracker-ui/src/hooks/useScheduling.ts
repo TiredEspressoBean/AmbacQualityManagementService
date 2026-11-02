@@ -550,7 +550,18 @@ export type CapacityLoad = {
    *  rate on a row where it is nothing of the sort. */
   materials: {
     id: string;
+    kind: "MATERIAL" | "PART_TYPE" | string;
     name: string;
+    /** The ERP's key: a material's part number, a part type's ERP id. */
+    part_number: string;
+    /** All quantities are in stock units; how the item is bought sits beside. */
+    unit_of_measure: string;
+    purchase_unit: string;
+    units_per_purchase_unit: number | null;
+    on_hand: number;
+    /** Inbound lots promised within the horizon. */
+    incoming: number;
+    safety_stock: number;
     series: {
       bucket: string;
       demand: number;

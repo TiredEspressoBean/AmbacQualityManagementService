@@ -128,5 +128,7 @@ export const CapacitySearch = z.object({
     part_type: z.string().uuid().optional().catch(undefined),
     quantity: z.coerce.number().int().positive().optional().catch(undefined),
     due: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
+    /** Horizon to open on — Purchasing's "Material outlook" link asks for 24. */
+    months: z.coerce.number().int().optional().catch(undefined),
 });
 

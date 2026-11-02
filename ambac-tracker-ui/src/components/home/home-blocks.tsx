@@ -38,7 +38,7 @@ import {
     Clock, FileCheck, FileText, FileWarning, Gauge, GitBranch, GraduationCap, Hourglass,
     Inbox, PackageSearch, PauseCircle, ScanLine, Siren, TimerReset, Truck, Wrench,
     Boxes, CalendarRange, History, LayoutGrid, ListChecks, MapPin, PackageCheck,
-    PackagePlus, ShieldCheck, ShoppingCart,
+    PackagePlus, ShieldCheck, ShoppingCart, LineChart,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { AuthUser } from "@/hooks/useAuthUser";
@@ -1427,7 +1427,7 @@ function TrainingStripBlock() {
 // role's data blocks stack under it.
 // ---------------------------------------------------------------------------
 
-type LaunchLink = { to: string; label: string; hint: string; icon: LucideIcon };
+type LaunchLink = { to: string; search?: Record<string, unknown>; label: string; hint: string; icon: LucideIcon };
 
 const LAUNCHPADS: Record<string, { title: string; links: LaunchLink[] }> = {
     Planner: {
@@ -1463,6 +1463,7 @@ const LAUNCHPADS: Record<string, { title: string; links: LaunchLink[] }> = {
         title: "Purchasing",
         links: [
             { to: "/production/requirements", label: "Shortages", hint: "What to buy, and for which work", icon: ShoppingCart },
+            { to: "/production/capacity", search: { months: 24 }, label: "Material outlook", hint: "Two years of demand by month, to export", icon: LineChart },
             { to: "/production/material-lots", label: "Expected receipts", hint: "Open PO lines and chases", icon: Truck },
             { to: "/production/supplier-quality", label: "Supplier quality", hint: "Scorecards and standing", icon: Building2 },
             { to: "/production/supplier-qualifications", label: "Supplier qualifications", hint: "Approvals and expiries", icon: ShieldCheck },
@@ -1494,6 +1495,7 @@ function LaunchpadBlock({ role }: { role: string }) {
                     <Link
                         key={l.to + l.label}
                         to={l.to as never}
+                        search={l.search as never}
                         className="flex items-start gap-3 rounded-md border p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         <l.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />

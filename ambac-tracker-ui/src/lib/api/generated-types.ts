@@ -12109,6 +12109,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Schedules/material-outlook/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The material spread: one row per bought item, keyed as the ERP keys it, with
+         *     its demand per month in stock units — firm work, RFI deals and unclaimed forecast
+         *     together — beside its purchase unit and conversion, on-hand, incoming and the
+         *     balance left at the end. A spread, not a plan: no lead-time offset or lot sizing;
+         *     buying is the ERP's. Behind export_data like every report.
+         */
+        get: operations["api_Schedules_material_outlook_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Schedules/operator_hours/": {
         parameters: {
             query?: never;
@@ -26563,7 +26586,19 @@ export interface components {
         };
         MaterialLoad: {
             id: string;
+            kind: string;
             name: string;
+            part_number: string;
+            unit_of_measure: string;
+            purchase_unit: string;
+            /** Format: double */
+            units_per_purchase_unit: number | null;
+            /** Format: double */
+            on_hand: number;
+            /** Format: double */
+            incoming: number;
+            /** Format: double */
+            safety_stock: number;
             series: components["schemas"]["MaterialBucket"][];
         };
         /**
@@ -62609,6 +62644,31 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    api_Schedules_material_outlook_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Months from the current one (default 24). */
+                months?: number;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
         };
