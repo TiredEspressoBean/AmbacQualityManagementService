@@ -5,7 +5,7 @@ what's late, chasing it, keeping the sourcing facts planning relies on, and rais
 the supplier-quality records QA settles. Every exercise is on the training shop, and
 every record it names is one the training seed creates.
 
-**About 1½ hours**, in one sitting. **Before you start:** nothing. The
+**About 1¾ hours**, in one sitting. **Before you start:** nothing. The
 [Receiving](receiving.md) track is the other half: you own the order, they own the
 delivery.
 
@@ -52,7 +52,7 @@ Every password is `demo123`.
 
 **You will:** read the purchasing home page.
 
-Log in as Priya. **Purchasing** links **Shortages**, **Expected receipts**,
+Log in as Priya. **Purchasing** links **Shortages**, **Material outlook**, **Expected receipts**,
 **Supplier quality** and **Supplier qualifications**.
 
 - **Late deliveries**: what's overdue or due within days. Each row names the
@@ -139,6 +139,37 @@ comes from; what the part *is* (its drawing, its specs) is Engineering's.
    **View SCARs** on the supplier's card lists what they owe you an answer on:
    Great Lakes has one, for `RCV-MAT-0006`. A lot carries one open SCAR: **Raise
    SCAR** on a lot that already has one opens that SCAR instead of raising another.
+
+---
+
+## 6. Two years out
+
+**You will:** export the material outlook and say which bought part to order first.
+
+**Shortages** covers the work that's open now. The outlook looks further: what the
+next two years of orders, quoted deals and the volume forecast will draw.
+
+1. On your home page, **Material outlook** opens **Capacity Planning** at 24
+   months. Scroll to **Materials**. Each bought item has a row of months: the stock
+   left after the demand to date, negative once it runs short. Hover a month for
+   what's needed in it and how much of that is firm, RFI or forecast.
+2. Hover an item's name: *First short &lt;month&gt; · order by &lt;date&gt; ·
+   &lt;n&gt;-day lead time*. The order-by date is the 1st of the first short
+   month, less the lead time. An item already past it says **order late** in red.
+3. **Material outlook (24 months): Excel**. One row per item, keyed as your ERP keys
+   it, quantities in the stock unit with the purchase unit
+   and conversion beside. **Lead time (days)**, **First short month**, **Order by**
+   and **Late** come before the months.
+
+**Exercise 6.1.** From the export, say which Common Rail Injector part is already
+late to order, which is due within days, and which fall over the next weeks. Say
+which number you'd check first if an order-by date looked wrong. (The lead time: it
+comes from the part's sourcing, module 4.)
+
+!!! important "A spread, not a buying plan"
+    The outlook says when each item first runs short. It doesn't size orders,
+    date later shortages or place anything. The sheet goes to your ERP,
+    where the buying is done.
 
 ---
 

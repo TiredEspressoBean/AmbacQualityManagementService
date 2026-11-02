@@ -5,7 +5,7 @@ schedule, solving it and finding out why work isn't on it, keeping the calendar 
 plan is built on, and getting tomorrow's work staged. Every exercise is on the
 training shop, and every record it names is one the training seed creates.
 
-**About 2 hours**, in one sitting. **Before you start:** the
+**About 2¼ hours**, in one sitting. **Before you start:** the
 [Production Manager](production-manager.md) track's modules 3–6 (promising a date,
 releasing, the schedule, what to release) use the same pages, from the manager's
 side.
@@ -247,6 +247,42 @@ can mean the floor jumped the sequence (an easier job run ahead of the planned o
 which then runs late), or that the step's standard time is padded. **Mark
 out-of-order starts** flags ops started well ahead of plan. Padded times are
 Engineering's, and worth telling them about.
+
+---
+
+## 10. Two years out: the volume forecast
+
+**You will:** read the forecast, see it move capacity, and see why a quoted deal
+can't be planned yet.
+
+Orders only reach a few months out. Past that, the plan runs on what you expect to
+build: the [volume forecast](../../workflows/scheduling/forecast.md).
+
+1. **Scheduling** > **Capacity Planning**. On the heatmap tab, *Includes &lt;N&gt;
+   units of unclaimed forecast*, beside the crew's verdict, is the forecast's share of the load. Click it: it
+   opens **Volume Forecast** (also in **Data Management** > **Equipment &
+   scheduling**).
+2. One row, **Common Rail Injector**, 24 months from this month. This month's
+   column is muted. Hover it: *Inside the demand time fence: only orders are
+   planned.* Close in, only real orders drive the plan.
+3. Hover the **fifth** month: *Firm orders 0 · RFI 60* and *Planned on top of
+   orders: 150*. `ORD-2027-RFI-FLEET`, Midwest Fleet's quoted program, uses up 60
+   of that month's 210, so only 150 adds load. Next month may show *of which Firm
+   &lt;n&gt; (from &lt;this month&gt;)*: firm orders this month's fenced forecast
+   couldn't hold, using up the next month's instead.
+4. Raise a later month by 200 and press **Enter**. Back on Capacity Planning, the
+   months running up to it carry more load. The load lands where the work starts,
+   ahead of the month it's due. Put the cell back.
+
+**Try to break it:** **Production** > **Orders** > `ORD-2027-RFI-FLEET`, **Plan
+60** on its line. It's refused: *Midwest Fleet — 2027 injector program (quoted) is
+still an RFI — its lines can't be planned into work until the order moves past
+RFI.* A quoted deal shows in the load as tentative (the sky-blue strip), but it
+commits no capacity or material until the customer's PO turns it into a firm
+order.
+
+**Import forecast** takes the same numbers as a sheet. **Template (.csv)** in its
+dialog is the layout.
 
 ---
 

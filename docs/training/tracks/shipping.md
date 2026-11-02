@@ -44,7 +44,7 @@ Every password is `demo123`.
 
 **You will:** find what's ready to go.
 
-Log in as Rosa. **Shipping dock** links **Shipments**, **Outside processing**,
+Log in as Rosa. **Shipping dock** links **Shipments**, **What ships when**, **Outside processing**,
 **Locations** and **Material lots**; **Look up** counts what's out at vendors and
 what's ready to ship.
 
@@ -133,6 +133,32 @@ theirs.
 
 The return inspection is QA's, in **Incoming Inspection**. The units stay on their
 route the whole time: outside processing is not a shipment to a customer.
+
+---
+
+## 7. What ships when
+
+**You will:** read what customers are owed and by when, and spot the line that's
+late.
+
+1. On your home page, **What ships when** opens the **Ship** section of
+   **Requirements**: every open order line still to ship, **Overdue** first, then
+   by due month.
+2. **Overdue** (in red) leads with `ORD-2024-0053`, Great Lakes Diesel's 8 Common
+   Rail Injectors. **Planned / not yet** reads *0 / 8*, and its status is *not
+   started*: nothing has been made for it.
+3. Find `ORD-2024-0042`, Midwest Fleet Services. **To ship** shows what's left *of
+   30*, the planned column shows it's all on work orders, and the status is *6 ready
+   to ship*: the six you met in module 2.
+4. `ORD-2027-RFI-FLEET` is shown muted, marked *RFI · tentative*: a quoted deal, not
+   an order yet.
+
+This page is read-only. Shipping is done on **Supply** > **Shipping**, linked
+beside the section's count.
+
+**Exercise 7.1.** Say who you'd tell about `ORD-2024-0053`, and what you'd tell
+them. (The planner or production manager: it's overdue and nothing is planned for
+it. Shipping can't fix a line with nothing built.)
 
 ---
 

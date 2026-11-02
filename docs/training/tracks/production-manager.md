@@ -98,15 +98,33 @@ Diesel's order for 6 injectors, due in three weeks, with nothing planned.
    promised date.
 2. **Check capacity** on the line. The capacity check opens with the line's part
    type, quantity and date filled in. Press **Check capacity**.
-3. *Yes — capacity exists by …*, with the work content at each resource.
+3. *Yes — capacity exists by …*, with the work content at each resource, and *All 6
+   were already forecast (6 in &lt;month&gt;) — promisable against that forecast.*
+   The forecast already expected these injectors, so the order uses up forecast
+   near its due date, never inside the demand time fence, instead of adding load.
 
-**Try to break it:** change the quantity to **1000** and check again. It says no,
-names the resources that run out, ordered by how badly, and gives the earliest month
-the order would fit.
+**Try to break it:** change the quantity to **1500**, set the date to the 20th of
+next month, and check again. It says no, names the resources that run out, ordered
+by how badly, and gives the earliest month the order would fit. Part of it was
+forecast (*&lt;n&gt; of the 1500 were already forecast …*); the rest *need free
+capacity, which isn't there by then*. Under each resource,
+*Already taken by …* says what fills those hours: work orders, order lines not yet
+planned, and the unclaimed forecast. Whether it's real orders or a forecast in the
+way decides the conversation you have next.
 
-The check is rough-cut: it adds the order to everything already committed and
-compares that with the hours your shifts provide. It is the question to ask before
-you promise; the schedule (module 5) is the answer once the work is real.
+**An order you expected:** change it to **40**, due the 20th of the month six
+months from now. *All 40 were already forecast (40 in &lt;that month&gt;) —
+promisable against that forecast.*
+
+The check is rough-cut: it adds the order to everything already in the load (work
+orders, open order lines, quoted deals and the forecast) and compares that with the
+hours your shifts provide. It is the question to ask before you promise; the
+schedule (module 5) is the answer once the work is real.
+
+**Exercise 3.1.** On the **Capacity heatmap** tab, find the busiest month in the
+Labor row. Open **Volume Forecast** from the *Includes … unclaimed forecast* link and
+find the forecast's peak month. Say why the busiest month sits before the peak.
+(Load lands where the work starts, in the run-up to each due date.)
 
 ---
 
@@ -262,16 +280,20 @@ would stop it.
 Two pages answer two different questions.
 
 **Scheduling** > **Capacity Planning** > **Capacity heatmap** asks *does the plan fit
-the month?* The headline says it: *Crew: enough for the planned work · busiest
-&lt;month&gt; at &lt;n&gt;%* (the demo's months move with the day it was set up). The
-**Labor** row compares the operator hours the work needs (setup and the hands-on
+the month?* The headline says it, one of *Crew: enough for the planned work ·
+busiest &lt;month&gt; at &lt;n&gt;%*, *Crew: tight in &lt;month&gt; (&lt;n&gt;%)*
+or *Crew: short in &lt;months&gt; (over 100%)*. With the training forecast loaded,
+expect a tight month in the run-up to the forecast's peak (the demo's months move
+with the day it was set up). The **Labor** row compares the operator hours the work needs (setup and the hands-on
 part of each operation, not a machine's whole run) with your crew's working hours
 left in each month. Under about 85% is comfortable; over 100% you're short.
 
 The load includes customer order lines not yet planned into work orders, placed
 back from their due dates: *Includes &lt;N&gt; open order lines not yet planned
 (~&lt;H&gt; h crew time)*, which links to the orders. Demand on paper counts before anyone has made a
-work order for it.
+work order for it. So does the forecast nobody has ordered yet: *Includes &lt;N&gt;
+units of unclaimed forecast*, which links to the [Volume
+Forecast](../../workflows/scheduling/forecast.md).
 
 The rows under it ask the sharper question: *enough of the right people?* Each is a
 set of qualifications and how many people hold them. A row marked **one person**
