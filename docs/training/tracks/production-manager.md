@@ -269,8 +269,8 @@ part of each operation, not a machine's whole run) with your crew's working hour
 left in each month. Under about 85% is comfortable; over 100% you're short.
 
 The load includes customer order lines not yet planned into work orders, placed
-back from their due dates: *Includes 1 open order line not yet planned (~13 h crew
-time)*, which links to the orders. Demand on paper counts before anyone has made a
+back from their due dates: *Includes &lt;N&gt; open order lines not yet planned
+(~&lt;H&gt; h crew time)*, which links to the orders. Demand on paper counts before anyone has made a
 work order for it.
 
 The rows under it ask the sharper question: *enough of the right people?* Each is a
