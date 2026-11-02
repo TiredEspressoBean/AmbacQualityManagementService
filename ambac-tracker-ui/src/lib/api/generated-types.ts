@@ -26000,6 +26000,12 @@ export interface components {
             /** Format: double */
             load_hours: number;
             /** Format: double */
+            order_line_hours: number;
+            /** Format: double */
+            tentative_hours: number;
+            /** Format: double */
+            forecast_hours: number;
+            /** Format: double */
             utilization: number | null;
         };
         LaborPoolCapacity: {

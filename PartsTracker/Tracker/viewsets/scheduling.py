@@ -765,6 +765,9 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                         'bucket': serializers.CharField(),
                         'capacity_hours': serializers.FloatField(),
                         'load_hours': serializers.FloatField(),
+                        'order_line_hours': serializers.FloatField(),
+                        'tentative_hours': serializers.FloatField(),
+                        'forecast_hours': serializers.FloatField(),
                         'utilization': serializers.FloatField(allow_null=True)})}),
             'work_centers': inline_serializer(
                 name='WorkCenterCapacity', many=True, fields={

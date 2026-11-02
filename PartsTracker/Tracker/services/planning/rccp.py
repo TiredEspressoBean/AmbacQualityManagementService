@@ -711,12 +711,15 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
     band_labor: dict = collections.defaultdict(lambda: [0.0] * n)          # band -> hours
     band_wc: dict = collections.defaultdict(                               # band -> wc -> hours
         lambda: collections.defaultdict(lambda: [0.0] * n))
+    band_pool: dict = collections.defaultdict(                             # band -> pool -> hours
+        lambda: collections.defaultdict(lambda: [0.0] * n))
     extra_material: list = []
     for p in line_demand['placed'] + forecast_demand['placed']:
         _add_spread_load(p['labor'], p['wc'], p['lo'], p['hi'], n, wc_load, labor_load,
                          p['pool'], pool_load)
         _add_spread_load(p['labor'], p['wc'], p['lo'], p['hi'], n,
-                         band_wc[p['band']], band_labor[p['band']])
+                         band_wc[p['band']], band_labor[p['band']],
+                         p['pool'], band_pool[p['band']])
         extra_material.append({'part_type_id': p['part_type_id'], 'quantity': p['quantity'],
                                'idx': p['lo'], 'band': p['band']})
 
@@ -786,7 +789,8 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         'labor_pools': [
             {'name': _pool_label(pool), 'qualified': len(pool),
              'series': _series(lambda b, p=pool: _bucket_people_hours(ref, b, p),
-                               pool_load[pool])}
+                               pool_load[pool],
+                               {band: pools[pool] for band, pools in band_pool.items() if pool in pools})}
             for pool in sorted(pool_load, key=lambda p: _pool_label(p))
         ],
         # Every work center with capacity OR load — an IDLE center must still appear,

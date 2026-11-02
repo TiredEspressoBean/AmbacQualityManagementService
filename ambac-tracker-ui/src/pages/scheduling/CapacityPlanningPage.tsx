@@ -194,7 +194,7 @@ function HeatRow({ name, series, critical, badge }: {
       {series.map((b) => (
         <td key={b.bucket} className="p-0.5">
           <div
-            className={`relative overflow-hidden rounded px-1.5 py-1.5 text-center text-[11px] tabular-nums ${tone(b.utilization)}`}
+            className={`overflow-hidden rounded px-1.5 py-1.5 text-center text-[11px] tabular-nums ${tone(b.utilization)}`}
             title={`${name} · ${b.bucket}\n${b.load_hours}h load / ${b.capacity_hours}h capacity${bandLines(b)}`}
           >
             {pct(b.utilization)}
@@ -228,7 +228,7 @@ function BandStrip({ b }: { b: CapacityBucket }) {
   if (!b.load_hours || (t <= 0 && f <= 0)) return null;
   const w = (h: number) => `${Math.min(100, (h / b.load_hours) * 100)}%`;
   return (
-    <div className="absolute inset-x-0 bottom-0 flex h-1 justify-end" aria-hidden>
+    <div className="-mx-1.5 -mb-1.5 mt-0.5 flex h-1 justify-end" aria-hidden>
       {t > 0 && <div className="h-full bg-sky-500/80" style={{ width: w(t) }} />}
       {f > 0 && <div className="h-full bg-violet-500/80" style={{ width: w(f) }} />}
     </div>
@@ -635,7 +635,7 @@ export function CapacityPlanningPage() {
                           {m.series.map((b) => (
                             <td key={b.bucket} className="p-0.5">
                               <div
-                                className={`relative overflow-hidden rounded px-1.5 py-1.5 text-center text-[11px] tabular-nums ${coverTone(b.remaining_cover, b.available)}`}
+                                className={`overflow-hidden rounded px-1.5 py-1.5 text-center text-[11px] tabular-nums ${coverTone(b.remaining_cover, b.available)}`}
                                 title={`${m.name} · ${b.bucket}\n${qty(b.demand)} ${m.unit_of_measure} needed this month${materialBandLines(b.demand_by_band)}\n${qty(b.cumulative_demand)} committed to date · ${qty(b.available)} on hand and inbound\n${b.short ? `SHORT by ${qty(-b.remaining_cover)}` : `${qty(b.remaining_cover)} left`}`}
                               >
                                 {qty(b.remaining_cover)}

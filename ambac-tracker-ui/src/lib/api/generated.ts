@@ -1602,6 +1602,9 @@ export type LaborPoolBucket = {
   bucket: string;
   capacity_hours: number;
   load_hours: number;
+  order_line_hours: number;
+  tentative_hours: number;
+  forecast_hours: number;
   utilization: number | null;
 };
 export type WorkCenterCapacity = {
@@ -25074,6 +25077,9 @@ const LaborPoolBucket = z.object({
   bucket: z.string(),
   capacity_hours: z.number(),
   load_hours: z.number(),
+  order_line_hours: z.number(),
+  tentative_hours: z.number(),
+  forecast_hours: z.number(),
   utilization: z.number().nullable(),
 });
 const LaborPoolCapacity = z.object({

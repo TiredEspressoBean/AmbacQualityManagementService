@@ -60284,6 +60284,15 @@ components:
         load_hours:
           type: number
           format: double
+        order_line_hours:
+          type: number
+          format: double
+        tentative_hours:
+          type: number
+          format: double
+        forecast_hours:
+          type: number
+          format: double
         utilization:
           type: number
           format: double
@@ -60291,7 +60300,10 @@ components:
       required:
       - bucket
       - capacity_hours
+      - forecast_hours
       - load_hours
+      - order_line_hours
+      - tentative_hours
       - utilization
     LaborPoolCapacity:
       type: object
