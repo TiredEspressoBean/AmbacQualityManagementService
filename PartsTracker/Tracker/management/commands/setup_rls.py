@@ -224,6 +224,7 @@ class Command(BaseCommand):
         'Tracker_continuousmachine',
         'Tracker_scheduleedit',
         'Tracker_orderline',
+        'Tracker_volumeforecast',
         'Tracker_repaircode',
         'Tracker_rebuildscopepreset',
         'Tracker_rebuildslotoverride',

@@ -1576,6 +1576,7 @@ export type CapacityLoad = {
   work_center_total: number;
   critical_only: boolean;
   unplanned_demand: UnplannedDemand;
+  forecast_demand: ForecastDemand;
   materials: Array<MaterialLoad>;
 };
 export type LaborCapacity = {
@@ -1588,6 +1589,8 @@ export type LaborBucket = {
   capacity_hours: number;
   load_hours: number;
   order_line_hours: number;
+  tentative_hours: number;
+  forecast_hours: number;
   utilization: number | null;
 };
 export type LaborPoolCapacity = {
@@ -1612,6 +1615,8 @@ export type WorkCenterBucket = {
   capacity_hours: number;
   load_hours: number;
   order_line_hours: number;
+  tentative_hours: number;
+  forecast_hours: number;
   utilization: number | null;
 };
 export type PlannedRelease = {
@@ -1632,6 +1637,7 @@ export type UnplannedDemand = {
   units: number;
   labor_hours: number;
   placed_lines: number;
+  tentative_lines: number;
   unplaceable: Array<UnplaceableOrderLine>;
 };
 export type UnplaceableOrderLine = {
@@ -1639,6 +1645,17 @@ export type UnplaceableOrderLine = {
   order_id: string;
   line_number: number;
   part_type: string;
+  quantity: number;
+  reason: string;
+};
+export type ForecastDemand = {
+  units: number;
+  labor_hours: number;
+  unplaceable: Array<UnplaceableForecast>;
+};
+export type UnplaceableForecast = {
+  part_type: string;
+  month: string;
   quantity: number;
   reason: string;
 };
@@ -18577,6 +18594,56 @@ export type UserRequest = {
     (string | null)
     | undefined;
 };
+export type VolumeForecastCellsInputRequest = {
+  cells: Array<VolumeForecastCellInputRequest>;
+};
+export type VolumeForecastCellInputRequest = {
+  part_type: string;
+  /**
+   * YYYY-MM
+   *
+   * @minLength 1
+   */
+  month: string;
+  /**
+   * Blank or 0 clears the cell.
+   *
+   * @minimum 0
+   */
+  quantity: number | null;
+};
+export type VolumeForecastGrid = {
+  months: Array<string>;
+  rows: Array<VolumeForecastRow>;
+};
+export type VolumeForecastRow = {
+  part_type_id: string;
+  part_type: string;
+  erp_id: string;
+  cells: {};
+};
+export type VolumeForecastCell = {
+  forecast: number;
+  firm: number;
+  tentative: number;
+  unclaimed: number;
+};
+export type VolumeForecastImportResult = {
+  created: number;
+  updated: number;
+  unchanged: number;
+  cleared: number;
+  errors: number;
+  rows: Array<VolumeForecastImportRow>;
+};
+export type VolumeForecastImportRow = {
+  row: number;
+  item: string;
+  month: string;
+  quantity: number | null;
+  outcome: string;
+  detail: string;
+};
 export type WorkAuthorization = {
   results: Array<WorkAuthorizationRow>;
 };
@@ -24986,6 +25053,8 @@ const LaborBucket = z.object({
   capacity_hours: z.number(),
   load_hours: z.number(),
   order_line_hours: z.number(),
+  tentative_hours: z.number(),
+  forecast_hours: z.number(),
   utilization: z.number().nullable(),
 });
 const LaborCapacity = z.object({
@@ -25009,6 +25078,8 @@ const WorkCenterBucket = z.object({
   capacity_hours: z.number(),
   load_hours: z.number(),
   order_line_hours: z.number(),
+  tentative_hours: z.number(),
+  forecast_hours: z.number(),
   utilization: z.number().nullable(),
 });
 const WorkCenterCapacity = z.object({
@@ -25043,7 +25114,19 @@ const UnplannedDemand = z.object({
   units: z.number().int(),
   labor_hours: z.number(),
   placed_lines: z.number().int(),
+  tentative_lines: z.number().int(),
   unplaceable: z.array(UnplaceableOrderLine),
+});
+const UnplaceableForecast = z.object({
+  part_type: z.string(),
+  month: z.string(),
+  quantity: z.number().int(),
+  reason: z.string(),
+});
+const ForecastDemand = z.object({
+  units: z.number().int(),
+  labor_hours: z.number(),
+  unplaceable: z.array(UnplaceableForecast),
 });
 const MaterialBucket = z.object({
   bucket: z.string(),
@@ -25069,6 +25152,7 @@ const CapacityLoad = z.object({
   work_center_total: z.number().int(),
   critical_only: z.boolean(),
   unplanned_demand: UnplannedDemand,
+  forecast_demand: ForecastDemand,
   materials: z.array(MaterialLoad),
 });
 const SolverStatusEnum = z.enum([
@@ -27580,6 +27664,50 @@ const PatchedUserWorkCenterMembershipRequest = z
     is_primary: z.boolean(),
   })
   .partial();
+const VolumeForecastCell = z.object({
+  forecast: z.number().int(),
+  firm: z.number().int(),
+  tentative: z.number().int(),
+  unclaimed: z.number().int(),
+});
+const VolumeForecastRow = z.object({
+  part_type_id: z.string(),
+  part_type: z.string(),
+  erp_id: z.string(),
+  cells: z.record(VolumeForecastCell),
+});
+const VolumeForecastGrid = z.object({
+  months: z.array(z.string()),
+  rows: z.array(VolumeForecastRow),
+});
+const VolumeForecastImportRequestRequest = z.object({
+  file: z.instanceof(File),
+});
+const VolumeForecastImportRow = z.object({
+  row: z.number().int(),
+  item: z.string(),
+  month: z.string(),
+  quantity: z.number().int().nullable(),
+  outcome: z.string(),
+  detail: z.string(),
+});
+const VolumeForecastImportResult = z.object({
+  created: z.number().int(),
+  updated: z.number().int(),
+  unchanged: z.number().int(),
+  cleared: z.number().int(),
+  errors: z.number().int(),
+  rows: z.array(VolumeForecastImportRow),
+});
+const VolumeForecastCellInputRequest = z.object({
+  part_type: z.string().uuid(),
+  month: z.string().min(1),
+  quantity: z.number().int().gte(0).nullable(),
+});
+const VolumeForecastCellsInputRequest = z.object({
+  cells: z.array(VolumeForecastCellInputRequest),
+});
+const VolumeForecastCellsResult = z.object({ changed: z.number().int() });
 const WorkCenterChangeover = z.object({
   id: z.string().uuid(),
   equipment: z.string().uuid(),
@@ -30369,6 +30497,8 @@ export const schemas = {
   UntimedOrder,
   UnplaceableOrderLine,
   UnplannedDemand,
+  UnplaceableForecast,
+  ForecastDemand,
   MaterialBucket,
   MaterialLoad,
   CapacityLoad,
@@ -30626,6 +30756,15 @@ export const schemas = {
   PaginatedUserWorkCenterMembershipList,
   UserWorkCenterMembershipRequest,
   PatchedUserWorkCenterMembershipRequest,
+  VolumeForecastCell,
+  VolumeForecastRow,
+  VolumeForecastGrid,
+  VolumeForecastImportRequestRequest,
+  VolumeForecastImportRow,
+  VolumeForecastImportResult,
+  VolumeForecastCellInputRequest,
+  VolumeForecastCellsInputRequest,
+  VolumeForecastCellsResult,
   WorkCenterChangeover,
   PaginatedWorkCenterChangeoverList,
   WorkCenterChangeoverRequest,
@@ -62239,6 +62378,73 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
       },
     ],
     response: UserWorkCenterMembership,
+  },
+  {
+    method: "get",
+    path: "/api/VolumeForecasts/grid/",
+    alias: "api_VolumeForecasts_grid_retrieve",
+    description: `The volume forecast: expected new builds by part type and month, beyond firm
+orders. Read as a grid (part types down, months across), edited cell by cell or by
+re-importing the sheet. Planning consumes it — see services.planning.forecast.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "months",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: VolumeForecastGrid,
+  },
+  {
+    method: "get",
+    path: "/api/VolumeForecasts/import-sheet-template/",
+    alias: "api_VolumeForecasts_import_sheet_template_retrieve",
+    description: `A blank forecast sheet with one example row.`,
+    requestFormat: "json",
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/VolumeForecasts/import-sheet/",
+    alias: "api_VolumeForecasts_import_sheet_create",
+    description: `Import a forecast sheet (.csv or .xlsx): Item, Month, Quantity, one row per part type and month. Each row replaces the forecast for the month it names; months the sheet does not name are left alone. A blank or 0 quantity clears that month.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: VolumeForecastImportResult,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/VolumeForecasts/set-cells/",
+    alias: "api_VolumeForecasts_set_cells_create",
+    description: `Set forecast cells; all or nothing.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: VolumeForecastCellsInputRequest,
+      },
+    ],
+    response: z.object({ changed: z.number().int() }),
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",

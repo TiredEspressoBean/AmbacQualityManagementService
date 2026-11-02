@@ -22,7 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useCapacityLoad, useCapableToPromise, useReleaseForScheduling,
-  type CapacityBucket, type PlannedRelease, type ReleaseCheck, type UnplannedDemand,
+  type CapacityBucket, type CapacityLoad, type PlannedRelease, type ReleaseCheck, type UnplannedDemand,
 } from "@/hooks/useScheduling";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 import { downloadCsv } from "@/lib/csv";
@@ -87,10 +87,11 @@ const TIGHT = 0.85;
 
 /** "Is my crew enough?", answered in one line above the heatmap: the aggregate crew's
  *  worst month, the tightest certified skill, and how many skills hang on one person. */
-function CrewVerdict({ labor, pools, unplanned }: {
+function CrewVerdict({ labor, pools, unplanned, forecast }: {
   labor: CapacityBucket[];
   pools: { name: string; qualified: number; series: CapacityBucket[] }[];
   unplanned?: UnplannedDemand;
+  forecast?: CapacityLoad["forecast_demand"];
 }) {
   const over = labor.filter((b) => (b.utilization ?? 0) >= 1).map((b) => b.bucket);
   const worst = peak(labor);
@@ -120,8 +121,25 @@ function CrewVerdict({ labor, pools, unplanned }: {
         <Link to="/production/orders" search={{}} className="text-muted-foreground underline underline-offset-2"
               title="Open order lines not yet planned into work orders. Their hours are in the load above, placed from each line's due date on its part type's approved routing.">
           Includes {unplanned.placed_lines} open order line{unplanned.placed_lines === 1 ? "" : "s"} not yet planned
+          {unplanned.tentative_lines > 0 && (
+            <>, {unplanned.tentative_lines} of them RFI (tentative <span className="inline-block h-1 w-3 align-middle bg-sky-500/80" aria-hidden />)</>
+          )}
           {unplanned.labor_hours > 0 ? ` (~${Math.round(unplanned.labor_hours)} h crew time)` : ""}
         </Link>
+      )}
+      {forecast && forecast.units > 0 && (
+        <Link to="/production/forecast" className="text-muted-foreground underline underline-offset-2"
+              title="Forecast volume that firm and RFI orders don't already cover, planned as due at each month's end. Its hours are in the load above.">
+          Includes {forecast.units} unit{forecast.units === 1 ? "" : "s"} of unclaimed forecast{" "}
+          <span className="inline-block h-1 w-3 align-middle bg-violet-500/80" aria-hidden />
+          {forecast.labor_hours > 0 ? ` (~${Math.round(forecast.labor_hours)} h)` : ""}
+        </Link>
+      )}
+      {forecast && forecast.unplaceable.length > 0 && (
+        <span className="text-amber-700 dark:text-amber-400"
+              title={forecast.unplaceable.map((u) => `${u.part_type} ${u.month} × ${u.quantity}: ${u.reason}`).join("\n")}>
+          Forecast for {forecast.unplaceable.length} part type-month{forecast.unplaceable.length === 1 ? "" : "s"} can't be placed (no approved routing) — not in the load
+        </span>
       )}
       {unplanned && unplanned.unplaceable.length > 0 && (
         <span className="text-amber-700 dark:text-amber-400"
@@ -176,14 +194,37 @@ function HeatRow({ name, series, critical, badge }: {
       {series.map((b) => (
         <td key={b.bucket} className="p-0.5">
           <div
-            className={`rounded px-1.5 py-1.5 text-center text-[11px] tabular-nums ${tone(b.utilization)}`}
-            title={`${name} · ${b.bucket}\n${b.load_hours}h load / ${b.capacity_hours}h capacity`}
+            className={`relative overflow-hidden rounded px-1.5 py-1.5 text-center text-[11px] tabular-nums ${tone(b.utilization)}`}
+            title={`${name} · ${b.bucket}\n${b.load_hours}h load / ${b.capacity_hours}h capacity${bandLines(b)}`}
           >
             {pct(b.utilization)}
+            <BandStrip b={b} />
           </div>
         </td>
       ))}
     </tr>
+  );
+}
+
+/** The load's not-yet-firm share, for a heat cell's tooltip. */
+function bandLines(b: CapacityBucket): string {
+  const parts: string[] = [];
+  if (b.tentative_hours) parts.push(`${b.tentative_hours}h tentative (RFI orders)`);
+  if (b.forecast_hours) parts.push(`${b.forecast_hours}h unclaimed forecast`);
+  return parts.length ? `\nof which ${parts.join(", ")}` : "";
+}
+
+/** Tentative and forecast load, shaded apart from firm: a strip along the cell's foot,
+ *  each band's width its share of the month's load. Absent when the load is all firm. */
+function BandStrip({ b }: { b: CapacityBucket }) {
+  const t = b.tentative_hours ?? 0, f = b.forecast_hours ?? 0;
+  if (!b.load_hours || (t <= 0 && f <= 0)) return null;
+  const w = (h: number) => `${Math.min(100, (h / b.load_hours) * 100)}%`;
+  return (
+    <div className="absolute inset-x-0 bottom-0 flex h-1 justify-end" aria-hidden>
+      {t > 0 && <div className="h-full bg-sky-500/80" style={{ width: w(t) }} />}
+      {f > 0 && <div className="h-full bg-violet-500/80" style={{ width: w(f) }} />}
+    </div>
   );
 }
 
@@ -472,7 +513,7 @@ export function CapacityPlanningPage() {
           </div>
 
           {data && <CrewVerdict labor={data.labor.series} pools={data.labor_pools ?? []}
-                                unplanned={data.unplanned_demand} />}
+                                unplanned={data.unplanned_demand} forecast={data.forecast_demand} />}
 
           <div className="overflow-x-auto rounded-lg border">
             {isLoading ? (

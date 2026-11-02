@@ -15,12 +15,13 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter, extend_schema, inline_serializer,
 )
-from rest_framework import serializers, status, viewsets
+from rest_framework import parsers, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
-from Tracker.models import LaborCalendarBlock, OvertimeWindow, PlantCalendarException
+from django.core.exceptions import ValidationError as DjangoValidationError
+from Tracker.models import LaborCalendarBlock, OvertimeWindow, PlantCalendarException, VolumeForecast
 from Tracker.models.scheduling import (
     Fixture, OptimizationConfig, ScheduledTask, ScheduleResult,
 )
@@ -745,8 +746,11 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     'bucket': serializers.CharField(),
                     'capacity_hours': serializers.FloatField(),
                     'load_hours': serializers.FloatField(),
-                    # Of the load, hours from open order lines not yet in work orders.
+                    # Of the load: hours from firm order lines not yet in work orders,
+                    # from RFI (tentative) lines, and from unclaimed volume forecast.
                     'order_line_hours': serializers.FloatField(),
+                    'tentative_hours': serializers.FloatField(),
+                    'forecast_hours': serializers.FloatField(),
                     'utilization': serializers.FloatField(allow_null=True)})}),
             # Certification-limited labour. The aggregate `labor` lane answers "have
             # we enough people"; these answer "have we enough of the RIGHT people" —
@@ -771,6 +775,8 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                         'capacity_hours': serializers.FloatField(),
                         'load_hours': serializers.FloatField(),
                         'order_line_hours': serializers.FloatField(),
+                        'tentative_hours': serializers.FloatField(),
+                        'forecast_hours': serializers.FloatField(),
                         'utilization': serializers.FloatField(allow_null=True)})}),
             # Back-scheduled release dates — the actionable half of this endpoint. The
             # heatmap says WHERE it is tight; this says what has to start, and what is
@@ -804,11 +810,24 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 'units': serializers.IntegerField(),
                 'labor_hours': serializers.FloatField(),
                 'placed_lines': serializers.IntegerField(),
+                # Of the placed lines, those on RFI orders: tentative, shaded apart.
+                'tentative_lines': serializers.IntegerField(),
                 'unplaceable': inline_serializer(name='UnplaceableOrderLine', many=True, fields={
                     'order': serializers.CharField(),
                     'order_id': serializers.CharField(),
                     'line_number': serializers.IntegerField(),
                     'part_type': serializers.CharField(),
+                    'quantity': serializers.IntegerField(),
+                    'reason': serializers.CharField()})}),
+            # The volume forecast's unclaimed remainder (forecast less firm and RFI
+            # orders due that month), placed as due at each month's end. Its hours are
+            # in the lanes as forecast_hours.
+            'forecast_demand': inline_serializer(name='ForecastDemand', fields={
+                'units': serializers.IntegerField(),
+                'labor_hours': serializers.FloatField(),
+                'unplaceable': inline_serializer(name='UnplaceableForecast', many=True, fields={
+                    'part_type': serializers.CharField(),
+                    'month': serializers.CharField(),
                     'quantity': serializers.IntegerField(),
                     'reason': serializers.CharField()})}),
             # Material demand on the same buckets. A separate shape from the capacity
@@ -1352,3 +1371,130 @@ class OvertimeWindowViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin
     search_fields = ['reason']
     ordering_fields = ['start_date', 'recurrence']
     ordering = ['start_date']
+
+
+class VolumeForecastViewSet(TenantScopedMixin, viewsets.GenericViewSet):
+    """The volume forecast: expected new builds by part type and month, beyond firm
+    orders. Read as a grid (part types down, months across), edited cell by cell or by
+    re-importing the sheet. Planning consumes it — see services.planning.forecast."""
+    queryset = VolumeForecast.unscoped.all()
+    # Writes are cell upserts, not CRUD: a cleared cell archives through change_.
+    action_permissions = {
+        'set_cells': ['add_volumeforecast', 'change_volumeforecast'],
+        'import_sheet': ['add_volumeforecast', 'change_volumeforecast'],
+    }
+    crud_exempt_actions = {'set_cells', 'import_sheet'}
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('months', OpenApiTypes.INT, required=False,
+                             description="Months from the current one (default 24, max 36)."),
+        ],
+        responses={200: inline_serializer(name='VolumeForecastGrid', fields={
+            'months': serializers.ListField(child=serializers.CharField()),
+            'rows': inline_serializer(name='VolumeForecastRow', many=True, fields={
+                'part_type_id': serializers.CharField(),
+                'part_type': serializers.CharField(),
+                'erp_id': serializers.CharField(),
+                # 'YYYY-MM' -> the forecast, what firm and tentative (RFI) orders due that
+                # month already claim of it, and the unclaimed remainder planning adds.
+                'cells': serializers.DictField(child=inline_serializer(
+                    name='VolumeForecastCell', fields={
+                        'forecast': serializers.IntegerField(),
+                        'firm': serializers.IntegerField(),
+                        'tentative': serializers.IntegerField(),
+                        'unclaimed': serializers.IntegerField()})),
+            })}),
+        },
+    )
+    @action(detail=False, methods=['get'])
+    def grid(self, request):
+        from django.utils import timezone
+        from Tracker.services.planning.forecast import grid
+        try:
+            months = max(1, min(36, int(request.query_params.get('months', 24))))
+        except ValueError:
+            months = 24
+        return Response(grid(self.tenant, timezone.localdate(), months))
+
+    @extend_schema(
+        request=inline_serializer(name='VolumeForecastCellsInput', fields={
+            'cells': inline_serializer(name='VolumeForecastCellInput', many=True, fields={
+                'part_type': serializers.UUIDField(),
+                'month': serializers.CharField(help_text="YYYY-MM"),
+                'quantity': serializers.IntegerField(
+                    allow_null=True, min_value=0,
+                    help_text="Blank or 0 clears the cell.")})}),
+        responses={200: inline_serializer(name='VolumeForecastCellsResult', fields={
+            'changed': serializers.IntegerField()}), 400: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=['post'], url_path='set-cells')
+    def set_cells(self, request):
+        """Set forecast cells; all or nothing."""
+        from django.db import transaction
+        from Tracker.models import PartTypes
+        from Tracker.services.planning.forecast import UNCHANGED, parse_month, set_forecast
+        cells = request.data.get('cells')
+        if not isinstance(cells, list):
+            return Response({'detail': 'Send "cells": a list.'}, status=status.HTTP_400_BAD_REQUEST)
+        changed = 0
+        try:
+            with transaction.atomic():
+                for c in cells:
+                    pt = PartTypes.objects.filter(id=c.get('part_type')).first()
+                    if pt is None:
+                        raise ValueError(f"No part type {c.get('part_type')}")
+                    month = parse_month(c.get('month'))
+                    if month is None:
+                        raise ValueError(f"'{c.get('month')}' isn't a month (YYYY-MM)")
+                    qty = c.get('quantity')
+                    qty = None if qty in (None, '') else int(qty)
+                    if set_forecast(tenant=self.tenant, part_type=pt, month=month,
+                                    quantity=qty) != UNCHANGED:
+                        changed += 1
+        except (ValueError, TypeError, DjangoValidationError) as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'changed': changed})
+
+    @extend_schema(
+        request={'multipart/form-data': inline_serializer(
+            name='VolumeForecastImportRequest', fields={'file': serializers.FileField()})},
+        responses={200: inline_serializer(name='VolumeForecastImportResult', fields={
+            'created': serializers.IntegerField(), 'updated': serializers.IntegerField(),
+            'unchanged': serializers.IntegerField(), 'cleared': serializers.IntegerField(),
+            'errors': serializers.IntegerField(),
+            'rows': inline_serializer(name='VolumeForecastImportRow', many=True, fields={
+                'row': serializers.IntegerField(), 'item': serializers.CharField(),
+                'month': serializers.CharField(),
+                'quantity': serializers.IntegerField(allow_null=True),
+                'outcome': serializers.CharField(), 'detail': serializers.CharField()})}),
+            400: OpenApiTypes.OBJECT},
+        description=(
+            "Import a forecast sheet (.csv or .xlsx): Item, Month, Quantity, one row per "
+            "part type and month. Each row replaces the forecast for the month it names; "
+            "months the sheet does not name are left alone. A blank or 0 quantity clears "
+            "that month."),
+    )
+    @action(detail=False, methods=['post'], url_path='import-sheet',
+            parser_classes=[parsers.MultiPartParser])
+    def import_sheet(self, request):
+        upload = request.FILES.get('file')
+        if upload is None:
+            return Response({'detail': 'Attach the file as "file".'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        from Tracker.services.planning.forecast import import_forecast
+        try:
+            result = import_forecast(tenant=self.tenant, file=upload, filename=upload.name)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(result)
+
+    @extend_schema(responses={(200, 'text/csv'): OpenApiTypes.STR},
+                   description="A blank forecast sheet with one example row.")
+    @action(detail=False, methods=['get'], url_path='import-sheet-template')
+    def import_sheet_template(self, request):
+        from django.http import HttpResponse
+        from Tracker.services.planning.forecast import template_csv
+        resp = HttpResponse(template_csv(), content_type='text/csv; charset=utf-8')
+        resp['Content-Disposition'] = 'attachment; filename="volume_forecast_template.csv"'
+        return resp

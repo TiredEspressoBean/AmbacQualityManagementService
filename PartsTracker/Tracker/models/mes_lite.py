@@ -2878,6 +2878,42 @@ class OrderLine(SecureModel):
         return max(0, self.quantity - self.planned_quantity)
 
 
+class VolumeForecast(SecureModel):
+    """Expected volume of one part type in one month: the demand nobody has ordered yet.
+
+    By part type only — no customer — and new builds only (2026-11-02). Firm orders and
+    RFI deals CONSUME it: planning takes max(forecast, firm + tentative) for the part
+    type and month, so a forecast already met by orders adds nothing, and the outlook
+    shows the unclaimed remainder apart.
+
+    One row per (part type, month), upserted by the forecast sheet and the grid; a
+    cleared cell is archived rather than deleted, so the audit trail keeps what the
+    forecast said. Not versioned: a forecast is a planning input revised every month,
+    not a controlled specification.
+    """
+
+    part_type = models.ForeignKey(
+        'Tracker.PartTypes', on_delete=models.PROTECT, related_name='volume_forecasts')
+    # Always the first of the month — the month is the unit, not a day in it.
+    month = models.DateField()
+    quantity = models.PositiveIntegerField()
+
+    class Meta:
+        verbose_name = 'Volume Forecast'
+        verbose_name_plural = 'Volume Forecasts'
+        ordering = ['part_type', 'month']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'part_type', 'month'],
+                condition=models.Q(archived=False),
+                name='unique_live_volume_forecast',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.part_type} {self.month:%Y-%m}: {self.quantity}"
+
+
 class WorkOrderPriority(models.IntegerChoices):
     """Priority levels for work orders. Lower number = higher priority."""
     URGENT = 1, "Urgent"

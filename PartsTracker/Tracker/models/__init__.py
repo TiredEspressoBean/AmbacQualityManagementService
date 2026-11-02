@@ -119,6 +119,7 @@ from .mes_lite import (
     WorkOrderStatus,
     OrderLine,
     OrderLineStatus,
+    VolumeForecast,
     WorkOrderPriority,
     ProcessStatus,
 
@@ -464,6 +465,7 @@ __all__ = [
     'WorkOrderStatus',
     'OrderLine',
     'OrderLineStatus',
+    'VolumeForecast',
     'ProcessStatus',
     'StepExecution',
     'OutsideProcessShipment',

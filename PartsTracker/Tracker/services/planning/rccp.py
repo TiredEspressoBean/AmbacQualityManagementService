@@ -527,10 +527,8 @@ def _order_line_demand(tenant, ref: _RefData, buckets, now) -> dict:
     each placed entry carries its hours, its buckets and its part type and quantity for
     the material lane.
     """
-    import math
     from Tracker.models import OrderLine
 
-    today = now.date()
     placed, unplaceable = [], []
     units = 0
     labor_total = 0.0
@@ -543,41 +541,90 @@ def _order_line_demand(tenant, ref: _RefData, buckets, now) -> dict:
         if qty <= 0:
             continue
         row = {'order': ln.order.name, 'order_id': str(ln.order_id), 'line_number': ln.line_number,
-               'part_type': ln.part_type.name if ln.part_type else '', 'quantity': qty}
-        if ln.part_type_id not in routes:
-            routes[ln.part_type_id] = _candidate_route(ln.part_type_id)
-        steps, why = routes[ln.part_type_id]
-        if ln.due_date is None:
-            units += qty
-            unplaceable.append({**row, 'reason': 'No due date'})
-            continue
-        if not steps:
-            units += qty
-            unplaceable.append({**row, 'reason': why or 'No approved routing'})
-            continue
-        counts = {sid: qty for sid in steps}
-        labor_h, pool_h, wc_h = _route_hours(ref, counts)
-        hi = _bucket_index(buckets, ln.due_date)
-        now_idx = _bucket_index(buckets, now) or 0
-        if hi is None:
-            if ln.due_date >= buckets[-1].end.date():
-                continue  # due beyond the horizon: not this view's load
-            hi = now_idx   # overdue: the work is owed now
-        lead = _lead_days(buckets[hi], ref, labor_h, wc_h, counts)
-        planned_start = ln.due_date - timedelta(days=int(math.ceil(lead)))
-        lo = _bucket_index(buckets, planned_start)
-        if lo is None:
-            lo = 0 if planned_start < buckets[0].start.date() else hi
-        lo = max(now_idx, lo)
-        hi = max(lo, hi)
+               'part_type': ln.part_type.name if ln.part_type else '', 'quantity': qty,
+               # An RFI is a deal not yet won: planned for, shaded apart (2026-11-02).
+               'band': 'tentative' if ln.order.order_status == 'RFI' else 'firm'}
+        entry, why = _place_demand(ref, buckets, now, ln.part_type_id, qty, ln.due_date, routes)
+        if entry is None and why is None:
+            continue  # due beyond the horizon: not this view's load
         units += qty
-        labor_total += labor_h
-        placed.append({**row, 'part_type_id': ln.part_type_id, 'band': 'firm',
-                       'labor': labor_h, 'pool': pool_h, 'wc': wc_h, 'lo': lo, 'hi': hi,
-                       'planned_start': planned_start, 'due_date': ln.due_date,
-                       'overdue_start': planned_start < today})
+        if entry is None:
+            unplaceable.append({**row, 'reason': why})
+            continue
+        labor_total += entry['labor']
+        placed.append({**row, **entry})
     return {'placed': placed, 'unplaceable': unplaceable, 'lines': len(placed) + len(unplaceable),
             'units': units, 'labor_hours': round(labor_total, 1)}
+
+
+def _place_demand(ref: _RefData, buckets, now, part_type_id, qty, due, routes: dict):
+    """Place `qty` of a part type due on `due` like an undated work order: its work
+    starts `_lead_days` before the due date on the approved routing and spreads from
+    there to the due month. Returns `(entry, None)`, `(None, reason)` when it can't be
+    placed, or `(None, None)` when it is due beyond the horizon."""
+    import math
+
+    if part_type_id not in routes:
+        routes[part_type_id] = _candidate_route(part_type_id)
+    steps, why = routes[part_type_id]
+    if due is None:
+        return None, 'No due date'
+    if not steps:
+        return None, why or 'No approved routing'
+    counts = {sid: qty for sid in steps}
+    labor_h, pool_h, wc_h = _route_hours(ref, counts)
+    hi = _bucket_index(buckets, due)
+    now_idx = _bucket_index(buckets, now) or 0
+    if hi is None:
+        if due >= buckets[-1].end.date():
+            return None, None
+        hi = now_idx   # overdue: the work is owed now
+    lead = _lead_days(buckets[hi], ref, labor_h, wc_h, counts)
+    planned_start = due - timedelta(days=int(math.ceil(lead)))
+    lo = _bucket_index(buckets, planned_start)
+    if lo is None:
+        lo = 0 if planned_start < buckets[0].start.date() else hi
+    lo = max(now_idx, lo)
+    hi = max(lo, hi)
+    return {'part_type_id': part_type_id, 'labor': labor_h, 'pool': pool_h, 'wc': wc_h,
+            'lo': lo, 'hi': hi, 'planned_start': planned_start, 'due_date': due,
+            'overdue_start': planned_start < now.date()}, None
+
+
+def _forecast_demand(tenant, ref: _RefData, buckets, now) -> dict:
+    """The volume forecast's UNCLAIMED remainder — forecast less what firm and tentative
+    orders already take that month — placed as if due at the month's end.
+
+    Returns `{'placed', 'unplaceable', 'units', 'labor_hours'}`, shaped like
+    `_order_line_demand`'s, with band `forecast`."""
+    from Tracker.models import PartTypes
+    from Tracker.services.planning.forecast import add_months, unclaimed_forecast
+
+    first = buckets[0].start.date()
+    cells = unclaimed_forecast(tenant, first, buckets[-1].start.date())
+    names = dict(PartTypes.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, id__in={pt for pt, _m in cells}).values_list('id', 'name'))
+    placed, unplaceable = [], []
+    units, labor_total = 0, 0.0
+    routes: dict = {}
+    for (pt_id, month), c in sorted(cells.items(), key=lambda kv: (kv[0][1], str(kv[0][0]))):
+        qty = c['unclaimed']
+        if not qty:
+            continue
+        due = max(add_months(month, 1) - timedelta(days=1), now.date())
+        row = {'part_type': names.get(pt_id, ''), 'month': f"{month:%Y-%m}", 'quantity': qty,
+               'band': 'forecast'}
+        entry, why = _place_demand(ref, buckets, now, pt_id, qty, due, routes)
+        if entry is None and why is None:
+            continue
+        units += qty
+        if entry is None:
+            unplaceable.append({**row, 'reason': why})
+            continue
+        labor_total += entry['labor']
+        placed.append({**row, **entry})
+    return {'placed': placed, 'unplaceable': unplaceable, 'units': units,
+            'labor_hours': round(labor_total, 1)}
 
 
 def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -> dict:
@@ -657,14 +704,19 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
     # Open order lines no work order carries yet, placed by due date and spread like an
     # undated work order (`_order_line_demand`). Their hours join the load; the share
     # they make up is kept apart so the page can say how much is not yet planned.
+    # Unclaimed volume forecast joins the same way, as its own band. RFI lines are
+    # 'tentative' and forecast 'forecast': planned for, but shaded apart from firm.
     line_demand = _order_line_demand(tenant, ref, buckets, start)
-    line_labor = [0.0] * n
-    line_wc: dict = collections.defaultdict(lambda: [0.0] * n)
+    forecast_demand = _forecast_demand(tenant, ref, buckets, start)
+    band_labor: dict = collections.defaultdict(lambda: [0.0] * n)          # band -> hours
+    band_wc: dict = collections.defaultdict(                               # band -> wc -> hours
+        lambda: collections.defaultdict(lambda: [0.0] * n))
     extra_material: list = []
-    for p in line_demand['placed']:
+    for p in line_demand['placed'] + forecast_demand['placed']:
         _add_spread_load(p['labor'], p['wc'], p['lo'], p['hi'], n, wc_load, labor_load,
                          p['pool'], pool_load)
-        _add_spread_load(p['labor'], p['wc'], p['lo'], p['hi'], n, line_wc, line_labor)
+        _add_spread_load(p['labor'], p['wc'], p['lo'], p['hi'], n,
+                         band_wc[p['band']], band_labor[p['band']])
         extra_material.append({'part_type_id': p['part_type_id'], 'quantity': p['quantity'],
                                'idx': p['lo'], 'band': p['band']})
 
@@ -682,23 +734,27 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         lights_out, attended = ref.wc_machine_hours.get(wc_id, (0, 0))
         return lights_out * b.calendar_hours + attended * b.working_hours
 
-    def _series(cap_fn, load, from_lines=None):
+    def _series(cap_fn, load, by_band=None):
+        by_band = by_band or {}
+        zero = [0.0] * n
         rows = []
         for i, b in enumerate(buckets):
             cap = cap_fn(b)
             ld = load[i]
             rows.append({'bucket': b.label, 'capacity_hours': round(cap, 1),
                          'load_hours': round(ld, 1),
-                         # Of the load, the hours from order lines not yet planned into
-                         # work orders.
-                         'order_line_hours': round((from_lines or [0.0] * n)[i], 1),
+                         # Of the load: hours from firm order lines not yet planned into
+                         # work orders, from RFI lines, and from unclaimed forecast.
+                         'order_line_hours': round(by_band.get('firm', zero)[i], 1),
+                         'tentative_hours': round(by_band.get('tentative', zero)[i], 1),
+                         'forecast_hours': round(by_band.get('forecast', zero)[i], 1),
                          'utilization': round(ld / cap, 3) if cap > 0 else None})
         return rows
 
     return {
         'buckets': [b.label for b in buckets],
         'labor': {'name': 'Labor (dispatchable crew)', 'crew_size': ref.crew_size,
-                  'series': _series(_labor_cap, labor_load, line_labor)},
+                  'series': _series(_labor_cap, labor_load, band_labor)},
         # Open order lines not yet planned into work orders. Their hours are IN the
         # series above, placed by due date; `unplaceable` lists the lines that couldn't
         # be placed (no due date, no approved routing) and so aren't.
@@ -706,7 +762,16 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
             'lines': line_demand['lines'], 'units': line_demand['units'],
             'labor_hours': line_demand['labor_hours'],
             'placed_lines': len(line_demand['placed']),
+            'tentative_lines': sum(1 for p in line_demand['placed'] if p['band'] == 'tentative'),
             'unplaceable': line_demand['unplaceable'],
+        },
+        # The volume forecast's unclaimed remainder (forecast less firm and tentative
+        # orders that month), placed as due at each month's end. Its hours are IN the
+        # series above as forecast_hours; `unplaceable` lists part types with forecast
+        # but no approved routing.
+        'forecast_demand': {
+            'units': forecast_demand['units'], 'labor_hours': forecast_demand['labor_hours'],
+            'unplaceable': forecast_demand['unplaceable'],
         },
         # Certification-limited labour, one row per distinct qualified crew that
         # actually carries gated work. The aggregate row above answers "have we enough
@@ -730,7 +795,8 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
             {'id': str(wc_id), 'name': ref.wc_names.get(wc_id, str(wc_id)),
              'is_critical': wc_id in ref.wc_critical,
              'series': _series(lambda b, w=wc_id: _wc_cap(w, b),
-                               wc_load.get(wc_id) or [0.0] * n, line_wc.get(wc_id))}
+                               wc_load.get(wc_id) or [0.0] * n,
+                               {band: wcs[wc_id] for band, wcs in band_wc.items() if wc_id in wcs})}
             for wc_id in sorted(set(ref.wc_names) | set(wc_load),
                                 key=lambda k: ref.wc_names.get(k, str(k)))
             if not critical_only or wc_id in ref.wc_critical

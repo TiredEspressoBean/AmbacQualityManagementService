@@ -487,6 +487,9 @@ export function useRequirements() {
 
 export type CapacityBucket = {
   bucket: string; capacity_hours: number; load_hours: number;
+  /** Of `load_hours`: firm order lines not yet in work orders, RFI (tentative) lines,
+   *  and unclaimed volume forecast. The rest is work orders. */
+  order_line_hours?: number; tentative_hours?: number; forecast_hours?: number;
   utilization: number | null;
 };
 /** A back-scheduled release date: when this order has to START to hit its due date.
@@ -503,6 +506,8 @@ export type PlannedRelease = {
 };
 export type UnplannedDemand = {
   lines: number; units: number; labor_hours: number; placed_lines: number;
+  /** Of the placed lines, those on RFI orders (tentative). */
+  tentative_lines: number;
   unplaceable: { order: string; order_id: string; line_number: number; part_type: string;
                  quantity: number; reason: string }[];
 };
@@ -533,6 +538,12 @@ export type CapacityLoad = {
    *  placed by due date on the approved routing; `unplaceable` lists the lines that
    *  couldn't be placed (no due date, no approved routing) and so aren't. */
   unplanned_demand?: UnplannedDemand;
+  /** The volume forecast's unclaimed remainder (forecast less firm and RFI orders due
+   *  that month). Its hours are in the lanes as `forecast_hours`. */
+  forecast_demand?: {
+    units: number; labor_hours: number;
+    unplaceable: { part_type: string; month: string; quantity: number; reason: string }[];
+  };
   /** Material demand on the same buckets. Separate shape from the capacity lanes: a
    *  material has a balance rather than an hourly capacity, so the cell carries what is
    *  LEFT rather than a ratio — a percentage of a stock level reads as a consumption

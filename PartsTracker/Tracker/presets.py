@@ -92,6 +92,8 @@ STAFF_VIEW_PERMISSIONS = [
     'view_stepequipmentaffinity', 'view_workcenterchangeover', 'view_fixture',
     'view_optimizationconfig', 'view_continuousmachine',
     'view_laborcalendarblock', 'view_overtimewindow', 'view_plantcalendarexception',
+    # The volume forecast the two-year outlook plans against.
+    'view_volumeforecast',
     # Milestones & life tracking
     'view_milestone', 'view_milestonetemplate',
     'view_lifelimitdefinition', 'view_parttypelifelimit', 'view_lifetracking',
@@ -685,6 +687,9 @@ SCHEDULING_PLANNER_PERMISSIONS = [
     'add_laborcalendarblock', 'change_laborcalendarblock', 'delete_laborcalendarblock',
     'add_overtimewindow', 'change_overtimewindow', 'delete_overtimewindow',
     'add_plantcalendarexception', 'change_plantcalendarexception', 'delete_plantcalendarexception',
+    # Expected volume by part type and month — what the outlook plans beyond firm orders.
+    # A cleared cell archives through change_ (no delete endpoint).
+    'add_volumeforecast', 'change_volumeforecast',
 ]
 
 GROUP_PRESETS = {
@@ -1081,6 +1086,9 @@ GROUP_PRESETS = {
             # unstaffable blocker at release reads exactly this.
             'add_userworkcentermembership', 'change_userworkcentermembership',
             'delete_userworkcentermembership',
+            # The volume forecast: expected demand beyond firm orders, by part type
+            # and month — the planner's input to the two-year outlook.
+            'add_volumeforecast', 'change_volumeforecast',
         ],
     },
 

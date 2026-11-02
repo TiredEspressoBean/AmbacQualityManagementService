@@ -41180,6 +41180,114 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserWorkCenterMembership'
           description: ''
+  /api/VolumeForecasts/grid/:
+    get:
+      operationId: api_VolumeForecasts_grid_retrieve
+      description: |-
+        The volume forecast: expected new builds by part type and month, beyond firm
+        orders. Read as a grid (part types down, months across), edited cell by cell or by
+        re-importing the sheet. Planning consumes it — see services.planning.forecast.
+      parameters:
+      - in: query
+        name: months
+        schema:
+          type: integer
+        description: Months from the current one (default 24, max 36).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolumeForecastGrid'
+          description: ''
+  /api/VolumeForecasts/import-sheet/:
+    post:
+      operationId: api_VolumeForecasts_import_sheet_create
+      description: 'Import a forecast sheet (.csv or .xlsx): Item, Month, Quantity,
+        one row per part type and month. Each row replaces the forecast for the month
+        it names; months the sheet does not name are left alone. A blank or 0 quantity
+        clears that month.'
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VolumeForecastImportRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolumeForecastImportResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/VolumeForecasts/import-sheet-template/:
+    get:
+      operationId: api_VolumeForecasts_import_sheet_template_retrieve
+      description: A blank forecast sheet with one example row.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+          description: ''
+  /api/VolumeForecasts/set-cells/:
+    post:
+      operationId: api_VolumeForecasts_set_cells_create
+      description: Set forecast cells; all or nothing.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VolumeForecastCellsInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VolumeForecastCellsInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VolumeForecastCellsInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VolumeForecastCellsResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/WorkCenterChangeovers/:
     get:
       operationId: api_WorkCenterChangeovers_list
@@ -53073,6 +53181,8 @@ components:
           type: boolean
         unplanned_demand:
           $ref: '#/components/schemas/UnplannedDemand'
+        forecast_demand:
+          $ref: '#/components/schemas/ForecastDemand'
         materials:
           type: array
           items:
@@ -53080,6 +53190,7 @@ components:
       required:
       - buckets
       - critical_only
+      - forecast_demand
       - labor
       - labor_pools
       - materials
@@ -58453,6 +58564,22 @@ components:
       required:
       - execution_id
       - flagged
+    ForecastDemand:
+      type: object
+      properties:
+        units:
+          type: integer
+        labor_hours:
+          type: number
+          format: double
+        unplaceable:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnplaceableForecast'
+      required:
+      - labor_hours
+      - units
+      - unplaceable
     FpiReading:
       type: object
       properties:
@@ -59944,6 +60071,12 @@ components:
         order_line_hours:
           type: number
           format: double
+        tentative_hours:
+          type: number
+          format: double
+        forecast_hours:
+          type: number
+          format: double
         utilization:
           type: number
           format: double
@@ -59951,8 +60084,10 @@ components:
       required:
       - bucket
       - capacity_hours
+      - forecast_hours
       - load_hours
       - order_line_hours
+      - tentative_hours
       - utilization
     LaborCalendarBlock:
       type: object
@@ -86579,6 +86714,22 @@ components:
       required:
       - lot_id
       - reason
+    UnplaceableForecast:
+      type: object
+      properties:
+        part_type:
+          type: string
+        month:
+          type: string
+        quantity:
+          type: integer
+        reason:
+          type: string
+      required:
+      - month
+      - part_type
+      - quantity
+      - reason
     UnplaceableOrderLine:
       type: object
       properties:
@@ -86613,6 +86764,8 @@ components:
           format: double
         placed_lines:
           type: integer
+        tentative_lines:
+          type: integer
         unplaceable:
           type: array
           items:
@@ -86621,6 +86774,7 @@ components:
       - labor_hours
       - lines
       - placed_lines
+      - tentative_lines
       - units
       - unplaceable
     UnscheduledDiagnosis:
@@ -87443,6 +87597,144 @@ components:
           minLength: 1
       required:
       - reason
+    VolumeForecastCell:
+      type: object
+      properties:
+        forecast:
+          type: integer
+        firm:
+          type: integer
+        tentative:
+          type: integer
+        unclaimed:
+          type: integer
+      required:
+      - firm
+      - forecast
+      - tentative
+      - unclaimed
+    VolumeForecastCellInputRequest:
+      type: object
+      properties:
+        part_type:
+          type: string
+          format: uuid
+        month:
+          type: string
+          minLength: 1
+          description: YYYY-MM
+        quantity:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: Blank or 0 clears the cell.
+      required:
+      - month
+      - part_type
+      - quantity
+    VolumeForecastCellsInputRequest:
+      type: object
+      properties:
+        cells:
+          type: array
+          items:
+            $ref: '#/components/schemas/VolumeForecastCellInputRequest'
+      required:
+      - cells
+    VolumeForecastCellsResult:
+      type: object
+      properties:
+        changed:
+          type: integer
+      required:
+      - changed
+    VolumeForecastGrid:
+      type: object
+      properties:
+        months:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/VolumeForecastRow'
+      required:
+      - months
+      - rows
+    VolumeForecastImportRequestRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+      required:
+      - file
+    VolumeForecastImportResult:
+      type: object
+      properties:
+        created:
+          type: integer
+        updated:
+          type: integer
+        unchanged:
+          type: integer
+        cleared:
+          type: integer
+        errors:
+          type: integer
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/VolumeForecastImportRow'
+      required:
+      - cleared
+      - created
+      - errors
+      - rows
+      - unchanged
+      - updated
+    VolumeForecastImportRow:
+      type: object
+      properties:
+        row:
+          type: integer
+        item:
+          type: string
+        month:
+          type: string
+        quantity:
+          type: integer
+          nullable: true
+        outcome:
+          type: string
+        detail:
+          type: string
+      required:
+      - detail
+      - item
+      - month
+      - outcome
+      - quantity
+      - row
+    VolumeForecastRow:
+      type: object
+      properties:
+        part_type_id:
+          type: string
+        part_type:
+          type: string
+        erp_id:
+          type: string
+        cells:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/VolumeForecastCell'
+      required:
+      - cells
+      - erp_id
+      - part_type
+      - part_type_id
     WIPSummary:
       type: object
       description: Serializer for WIP summary by step.
@@ -87621,6 +87913,12 @@ components:
         order_line_hours:
           type: number
           format: double
+        tentative_hours:
+          type: number
+          format: double
+        forecast_hours:
+          type: number
+          format: double
         utilization:
           type: number
           format: double
@@ -87628,8 +87926,10 @@ components:
       required:
       - bucket
       - capacity_hours
+      - forecast_hours
       - load_hours
       - order_line_hours
+      - tentative_hours
       - utilization
     WorkCenterCapacity:
       type: object

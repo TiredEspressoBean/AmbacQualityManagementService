@@ -16583,6 +16583,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/VolumeForecasts/grid/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The volume forecast: expected new builds by part type and month, beyond firm
+         *     orders. Read as a grid (part types down, months across), edited cell by cell or by
+         *     re-importing the sheet. Planning consumes it — see services.planning.forecast.
+         */
+        get: operations["api_VolumeForecasts_grid_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/VolumeForecasts/import-sheet/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import a forecast sheet (.csv or .xlsx): Item, Month, Quantity, one row per part type and month. Each row replaces the forecast for the month it names; months the sheet does not name are left alone. A blank or 0 quantity clears that month. */
+        post: operations["api_VolumeForecasts_import_sheet_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/VolumeForecasts/import-sheet-template/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A blank forecast sheet with one example row. */
+        get: operations["api_VolumeForecasts_import_sheet_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/VolumeForecasts/set-cells/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Set forecast cells; all or nothing. */
+        post: operations["api_VolumeForecasts_set_cells_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkCenterChangeovers/": {
         parameters: {
             query?: never;
@@ -22587,6 +22659,7 @@ export interface components {
             work_center_total: number;
             critical_only: boolean;
             unplanned_demand: components["schemas"]["UnplannedDemand"];
+            forecast_demand: components["schemas"]["ForecastDemand"];
             materials: components["schemas"]["MaterialLoad"][];
         };
         CaptureDraftError: {
@@ -25141,6 +25214,12 @@ export interface components {
             execution_id: string;
             flagged: boolean;
         };
+        ForecastDemand: {
+            units: number;
+            /** Format: double */
+            labor_hours: number;
+            unplaceable: components["schemas"]["UnplaceableForecast"][];
+        };
         FpiReading: {
             /** Format: uuid */
             id: string;
@@ -25787,6 +25866,10 @@ export interface components {
             load_hours: number;
             /** Format: double */
             order_line_hours: number;
+            /** Format: double */
+            tentative_hours: number;
+            /** Format: double */
+            forecast_hours: number;
             /** Format: double */
             utilization: number | null;
         };
@@ -39652,6 +39735,12 @@ export interface components {
             lot_id: string;
             reason: string;
         };
+        UnplaceableForecast: {
+            part_type: string;
+            month: string;
+            quantity: number;
+            reason: string;
+        };
         UnplaceableOrderLine: {
             order: string;
             order_id: string;
@@ -39666,6 +39755,7 @@ export interface components {
             /** Format: double */
             labor_hours: number;
             placed_lines: number;
+            tentative_lines: number;
             unplaceable: components["schemas"]["UnplaceableOrderLine"][];
         };
         UnscheduledDiagnosis: {
@@ -40046,6 +40136,58 @@ export interface components {
         VoidShipmentRequestRequest: {
             reason: string;
         };
+        VolumeForecastCell: {
+            forecast: number;
+            firm: number;
+            tentative: number;
+            unclaimed: number;
+        };
+        VolumeForecastCellInputRequest: {
+            /** Format: uuid */
+            part_type: string;
+            /** @description YYYY-MM */
+            month: string;
+            /** @description Blank or 0 clears the cell. */
+            quantity: number | null;
+        };
+        VolumeForecastCellsInputRequest: {
+            cells: components["schemas"]["VolumeForecastCellInputRequest"][];
+        };
+        VolumeForecastCellsResult: {
+            changed: number;
+        };
+        VolumeForecastGrid: {
+            months: string[];
+            rows: components["schemas"]["VolumeForecastRow"][];
+        };
+        VolumeForecastImportRequestRequest: {
+            /** Format: binary */
+            file: string;
+        };
+        VolumeForecastImportResult: {
+            created: number;
+            updated: number;
+            unchanged: number;
+            cleared: number;
+            errors: number;
+            rows: components["schemas"]["VolumeForecastImportRow"][];
+        };
+        VolumeForecastImportRow: {
+            row: number;
+            item: string;
+            month: string;
+            quantity: number | null;
+            outcome: string;
+            detail: string;
+        };
+        VolumeForecastRow: {
+            part_type_id: string;
+            part_type: string;
+            erp_id: string;
+            cells: {
+                [key: string]: components["schemas"]["VolumeForecastCell"];
+            };
+        };
         /** @description Serializer for WIP summary by step. */
         WIPSummary: {
             /** Format: uuid */
@@ -40121,6 +40263,10 @@ export interface components {
             load_hours: number;
             /** Format: double */
             order_line_hours: number;
+            /** Format: double */
+            tentative_hours: number;
+            /** Format: double */
+            forecast_hours: number;
             /** Format: double */
             utilization: number | null;
         };
@@ -70943,6 +71089,115 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserWorkCenterMembership"];
+                };
+            };
+        };
+    };
+    api_VolumeForecasts_grid_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Months from the current one (default 24, max 36). */
+                months?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeForecastGrid"];
+                };
+            };
+        };
+    };
+    api_VolumeForecasts_import_sheet_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["VolumeForecastImportRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeForecastImportResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_VolumeForecasts_import_sheet_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    api_VolumeForecasts_set_cells_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VolumeForecastCellsInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["VolumeForecastCellsInputRequest"];
+                "multipart/form-data": components["schemas"]["VolumeForecastCellsInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeForecastCellsResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

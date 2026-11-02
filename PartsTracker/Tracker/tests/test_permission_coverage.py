@@ -130,6 +130,9 @@ SOFT_DELETE_MODELS = {
     # asked for something survives the decision not to build it, and work orders peg to
     # the line with PROTECT anyway.
     'orderline',
+    # A cleared forecast cell is archived through change_ (set-cells / the sheet); there
+    # is no delete endpoint.
+    'volumeforecast',
     'workorderhold', 'stepoverride',
     'fpirecord', 'qualityreportequipment', 'qualityreportpersonnel',
     'stepexecutionequipment',

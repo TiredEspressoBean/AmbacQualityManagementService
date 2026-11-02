@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from django.db import transaction
 
-from Tracker.models import OrderLineStatus, WorkOrder
+from Tracker.models import OrderLineStatus, OrdersStatus, WorkOrder
 
 
 class CannotPlan(ValueError):
@@ -40,6 +40,12 @@ def plan_order_line(line, *, user=None, quantity: int | None = None,
 
     if line.status == OrderLineStatus.CANCELLED:
         raise CannotPlan("This line is cancelled.")
+    # An RFI is a deal not yet won: the outlook plans for it as tentative demand, but
+    # committing capacity and material to it waits until the order is firm (2026-11-02).
+    if line.order.order_status == OrdersStatus.RFI:
+        raise CannotPlan(
+            f"{line.order.name} is still an RFI — its lines can't be planned into work "
+            f"until the order moves past RFI.")
 
     remaining = line.remaining_quantity
     if remaining <= 0:

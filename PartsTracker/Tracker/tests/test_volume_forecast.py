@@ -1,0 +1,263 @@
+"""Volume forecast and tentative demand — the outlook beyond firm orders (2026-11-02).
+
+A forecast is part type × month × quantity. Firm orders and RFI deals CONSUME it, so a
+month plans max(forecast, firm + tentative): the forecast adds only its unclaimed
+remainder. RFI lines are tentative — planned for, shaded apart, and refused by
+`plan_order_line` until the order moves past RFI.
+"""
+import io
+from datetime import date, timedelta
+from datetime import time as dtime
+from decimal import Decimal
+
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework.test import APIClient
+
+from Tracker.models import (
+    BOM, BOMLine, Material, OrderLine, Orders, PartTypes, Processes, ProcessStatus,
+    ProcessStep, Shift, Steps, StepTiming, Tenant, TenantGroup, UserRole, VolumeForecast,
+    WorkCenter, WorkOrder,
+)
+from Tracker.services.mes.order_line import CannotPlan, plan_order_line
+from Tracker.services.planning import forecast as fc
+from Tracker.services.planning import rccp
+from Tracker.tests.base import TenantContextMixin
+
+
+class _ForecastFixture(TenantContextMixin):
+    """One operator on a Mon-Fri 8h shift; a Widget built in one 60 min step, so one
+    unit is one labor hour."""
+
+    def setUp(self):
+        super().setUp()
+        self.tenant = Tenant.objects.create(name="FC", slug="forecast", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        self.user = get_user_model().objects.create_user(
+            username="fc-planner", email="fc@c.test", password="x", tenant=self.tenant)
+        shift = Shift.objects.create(
+            tenant=self.tenant, code="DAY", name="Day", start_time=dtime(8, 0),
+            end_time=dtime(16, 0), days_of_week="0,1,2,3,4", is_active=True)
+        self.user.default_shift = shift
+        self.user.save(update_fields=["default_shift"])
+        self.wc = WorkCenter.objects.create(tenant=self.tenant, name="Cell A", code="A")
+        self.pt = PartTypes.objects.create(tenant=self.tenant, name="Widget", ERP_id="W-100")
+        self.process = Processes.objects.create(
+            tenant=self.tenant, name="W", part_type=self.pt, status=ProcessStatus.APPROVED)
+        self.step = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Cut",
+                                         step_type="TASK", work_center=self.wc)
+        StepTiming.objects.create(tenant=self.tenant, step=self.step, cycle_time_minutes=60)
+        ProcessStep.objects.create(process=self.process, step=self.step, order=1)
+        self.this_month = fc.month_start(timezone.localdate())
+        # Far enough out that lead time never pushes it into the past.
+        self.month = fc.add_months(self.this_month, 6)
+
+    def _line(self, qty, due, status="PENDING", n=1):
+        order = Orders.objects.create(tenant=self.tenant, name=f"Order {n}", order_status=status)
+        return OrderLine.objects.create(tenant=self.tenant, order=order, line_number=1,
+                                        part_type=self.pt, quantity=qty, due_date=due)
+
+    def _mid(self, month):
+        return month + timedelta(days=14)
+
+
+class ForecastCellTests(_ForecastFixture, TestCase):
+
+    def test_set_update_unchanged_and_clear(self):
+        set_ = lambda q: fc.set_forecast(tenant=self.tenant, part_type=self.pt,  # noqa: E731
+                                         month=self._mid(self.month), quantity=q)
+        self.assertEqual(set_(40), fc.CREATED)
+        self.assertEqual(set_(40), fc.UNCHANGED)
+        self.assertEqual(set_(55), fc.UPDATED)
+        row = VolumeForecast.objects.get(part_type=self.pt, archived=False)
+        self.assertEqual((row.month, row.quantity), (self.month, 55))   # stored as the 1st
+        self.assertEqual(set_(None), fc.CLEARED)
+        self.assertFalse(VolumeForecast.objects.filter(archived=False).exists())
+        # The cleared row survives, archived: the trail keeps what the forecast said.
+        self.assertTrue(VolumeForecast.unscoped.filter(tenant=self.tenant, archived=True).exists())
+        self.assertEqual(set_(10), fc.CREATED, "a cleared cell can be set again")
+
+    def test_months_as_planners_write_them(self):
+        for text in ("2027-03", "3/2027", "Mar 2027", "March-27", "2027-03-15"):
+            self.assertEqual(fc.parse_month(text), date(2027, 3, 1), text)
+        self.assertIsNone(fc.parse_month("2027-13"))
+        self.assertIsNone(fc.parse_month("soon"))
+
+
+class ForecastImportTests(_ForecastFixture, TestCase):
+
+    def _import(self, text):
+        return fc.import_forecast(tenant=self.tenant, file=io.BytesIO(text.encode()),
+                                  filename="forecast.csv")
+
+    def test_rows_land_and_a_bad_row_is_reported_not_fatal(self):
+        out = self._import("Item*,Month*,Quantity*\nW-100,2027-03,40\nNOPE,2027-03,5\n"
+                           "Widget,2027-04,12\nW-100,later,3\n")
+        self.assertEqual((out["created"], out["errors"]), (2, 2))
+        self.assertEqual(
+            {(r.month, r.quantity) for r in VolumeForecast.objects.filter(archived=False)},
+            {(date(2027, 3, 1), 40), (date(2027, 4, 1), 12)})
+        self.assertIn("No part type 'NOPE'", out["rows"][1]["detail"])
+
+    def test_rerun_replaces_the_months_it_names_and_leaves_the_rest(self):
+        self._import("Item,Month,Quantity\nW-100,2027-03,40\nW-100,2027-04,12\n")
+        out = self._import("Item,Month,Quantity\nW-100,2027-03,45\nW-100,2027-05,0\n")
+        self.assertEqual((out["updated"], out["unchanged"]), (1, 1))
+        self.assertEqual(
+            {(r.month, r.quantity) for r in VolumeForecast.objects.filter(archived=False)},
+            {(date(2027, 3, 1), 45), (date(2027, 4, 1), 12)})
+
+    def test_a_zero_clears_a_month(self):
+        self._import("Item,Month,Quantity\nW-100,2027-03,40\n")
+        out = self._import("Item,Month,Quantity\nW-100,2027-03,0\n")
+        self.assertEqual(out["cleared"], 1)
+        self.assertFalse(VolumeForecast.objects.filter(archived=False).exists())
+
+
+class ForecastConsumptionTests(_ForecastFixture, TestCase):
+    """max(forecast, firm + tentative), by part type and month due."""
+
+    def _cell(self):
+        return fc.unclaimed_forecast(self.tenant, self.month, self.month)[(self.pt.id, self.month)]
+
+    def test_firm_and_tentative_orders_use_up_the_forecast(self):
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
+        self._line(20, self._mid(self.month), n=1)
+        self._line(10, self._mid(self.month), status="RFI", n=2)
+        self.assertEqual(self._cell(), {'forecast': 50, 'firm': 20, 'tentative': 10, 'unclaimed': 20})
+
+    def test_orders_beyond_the_forecast_leave_nothing_unclaimed(self):
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=10)
+        self._line(30, self._mid(self.month))
+        self.assertEqual(self._cell()['unclaimed'], 0)
+
+    def test_work_on_a_line_is_not_counted_twice_but_a_stock_build_counts(self):
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
+        line = self._line(20, self._mid(self.month))
+        WorkOrder.objects.create(tenant=self.tenant, ERP_id="WO-PEG", quantity=20,
+                                 process=self.process, order_line=line,
+                                 expected_completion=self._mid(self.month))
+        WorkOrder.objects.create(tenant=self.tenant, ERP_id="WO-STOCK", quantity=5,
+                                 process=self.process, expected_completion=self._mid(self.month))
+        self.assertEqual(self._cell()['firm'], 25)
+
+    def test_cancelled_orders_and_teardowns_claim_nothing(self):
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
+        self._line(20, self._mid(self.month), status="CANCELLED")
+        teardown = Processes.objects.create(tenant=self.tenant, name="Tear", part_type=self.pt,
+                                            status=ProcessStatus.APPROVED, is_disassembly=True)
+        WorkOrder.objects.create(tenant=self.tenant, ERP_id="WO-TD", quantity=5, process=teardown,
+                                 expected_completion=self._mid(self.month))
+        self.assertEqual(self._cell()['unclaimed'], 50)
+
+
+class ForecastPlanningTests(_ForecastFixture, TestCase):
+    """The bands reach the capacity and material lanes."""
+
+    def setUp(self):
+        super().setUp()
+        self.oring = Material.objects.create(tenant=self.tenant, name="O-Ring")
+        bom = BOM.objects.create(tenant=self.tenant, part_type=self.pt, revision="A",
+                                 bom_type="ASSEMBLY", status="RELEASED", is_current_version=True)
+        BOMLine.objects.create(tenant=self.tenant, bom=bom, material=self.oring,
+                               quantity=Decimal(2), source="BUY", line_number=1)
+
+    def _load(self):
+        return rccp.build_capacity_load(self.tenant, months=12)
+
+    @staticmethod
+    def _sum(series, key):
+        return sum(b[key] for b in series)
+
+    def test_unclaimed_forecast_loads_as_forecast(self):
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=30)
+        self._line(10, self._mid(self.month))
+        out = self._load()
+        labor = out["labor"]["series"]
+        self.assertAlmostEqual(self._sum(labor, "order_line_hours"), 10.0, delta=0.5)
+        self.assertAlmostEqual(self._sum(labor, "forecast_hours"), 20.0, delta=0.5)
+        self.assertAlmostEqual(self._sum(labor, "load_hours"), 30.0, delta=0.5,
+                               msg="max(forecast, firm): 30, not 30 + 10")
+        self.assertEqual(out["forecast_demand"]["units"], 20)
+        self.assertEqual(labor[0]["forecast_hours"], 0.0, "forecast six months out loads later")
+
+    def test_rfi_lines_are_tentative(self):
+        self._line(8, self._mid(self.month), status="RFI")
+        out = self._load()
+        labor = out["labor"]["series"]
+        self.assertAlmostEqual(self._sum(labor, "tentative_hours"), 8.0, delta=0.5)
+        self.assertEqual(self._sum(labor, "order_line_hours"), 0.0)
+        self.assertEqual(out["unplanned_demand"]["tentative_lines"], 1)
+
+    def test_material_carries_each_band(self):
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=30)
+        self._line(10, self._mid(self.month), n=1)
+        self._line(5, self._mid(self.month), status="RFI", n=2)
+        series = next(m for m in self._load()["materials"] if m["name"] == "O-Ring")["series"]
+        totals: dict = {}
+        for b in series:
+            for band, q in b["demand_by_band"].items():
+                totals[band] = totals.get(band, 0) + q
+        # 10 firm + 5 tentative claim 15 of 30: 15 unclaimed. Two O-rings each.
+        self.assertEqual(totals, {"firm": 20.0, "tentative": 10.0, "forecast": 30.0})
+
+    def test_forecast_for_a_part_type_with_no_routing_is_flagged(self):
+        bare = PartTypes.objects.create(tenant=self.tenant, name="No Route")
+        fc.set_forecast(tenant=self.tenant, part_type=bare, month=self.month, quantity=5)
+        out = self._load()
+        self.assertEqual(self._sum(out["labor"]["series"], "forecast_hours"), 0.0)
+        self.assertEqual([u["part_type"] for u in out["forecast_demand"]["unplaceable"]], ["No Route"])
+
+
+class RfiPlanningRefusalTests(_ForecastFixture, TestCase):
+
+    def test_an_rfi_line_cannot_be_planned_into_work(self):
+        line = self._line(5, self._mid(self.month), status="RFI")
+        with self.assertRaisesMessage(CannotPlan, "still an RFI"):
+            plan_order_line(line, user=self.user)
+        line.order.order_status = "PENDING"
+        line.order.save(update_fields=["order_status"])
+        line.refresh_from_db()
+        self.assertEqual(plan_order_line(line, user=self.user).quantity, 5)
+
+
+class ForecastApiTests(_ForecastFixture, TestCase):
+
+    def _client(self, *perms):
+        g = TenantGroup.objects.create(tenant=self.tenant, name=f"g-{len(perms)}", is_custom=True)
+        g.permissions.add(*Permission.objects.filter(codename__in=[*perms, "full_tenant_access"]))
+        UserRole.objects.create(user=self.user, group=g)
+        c = APIClient()
+        c.force_authenticate(user=self.user)
+        c.credentials(HTTP_X_TENANT_ID=str(self.tenant.id))
+        return c
+
+    def test_planner_sets_cells_and_reads_the_grid(self):
+        c = self._client("view_volumeforecast", "add_volumeforecast", "change_volumeforecast")
+        label = f"{self.month:%Y-%m}"
+        r = c.post("/api/VolumeForecasts/set-cells/",
+                   {"cells": [{"part_type": str(self.pt.id), "month": label, "quantity": 12}]},
+                   format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["changed"], 1)
+        grid = c.get("/api/VolumeForecasts/grid/").json()
+        self.assertEqual(len(grid["months"]), 24)
+        self.assertEqual(grid["rows"][0]["cells"][label],
+                         {"forecast": 12, "firm": 0, "tentative": 0, "unclaimed": 12})
+
+    def test_viewer_cannot_edit(self):
+        c = self._client("view_volumeforecast")
+        r = c.post("/api/VolumeForecasts/set-cells/",
+                   {"cells": [{"part_type": str(self.pt.id), "month": "2027-03", "quantity": 1}]},
+                   format="json")
+        self.assertEqual(r.status_code, 403)
+
+    def test_a_bad_cell_changes_nothing(self):
+        c = self._client("view_volumeforecast", "add_volumeforecast", "change_volumeforecast")
+        r = c.post("/api/VolumeForecasts/set-cells/", {"cells": [
+            {"part_type": str(self.pt.id), "month": "2027-03", "quantity": 4},
+            {"part_type": str(self.pt.id), "month": "never", "quantity": 4}]}, format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(VolumeForecast.objects.exists())

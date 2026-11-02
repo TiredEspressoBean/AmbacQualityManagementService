@@ -283,6 +283,7 @@ router.register(r'Fixtures', FixtureViewSet, basename='Fixtures')
 router.register(r'PlantCalendarExceptions', PlantCalendarExceptionViewSet, basename='PlantCalendarExceptions')
 router.register(r'LaborCalendarBlocks', LaborCalendarBlockViewSet, basename='LaborCalendarBlocks')
 router.register(r'OvertimeWindows', OvertimeWindowViewSet, basename='OvertimeWindows')
+router.register(r'VolumeForecasts', VolumeForecastViewSet, basename='VolumeForecasts')
 # The scheduler's setup data (standard times, machine eligibility, changeovers).
 router.register(r'StepTimings', StepTimingViewSet, basename='StepTimings')
 router.register(r'StepEquipmentAffinities', StepEquipmentAffinityViewSet, basename='StepEquipmentAffinities')

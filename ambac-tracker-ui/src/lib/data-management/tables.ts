@@ -75,6 +75,9 @@ export const DATA_MANAGEMENT: DMGroup[] = [
             { key: "tooling", name: "Tooling", list: "/editor/tooling", add: "/editor/tooling/new", endpoint: "Fixtures", model: "fixture" },
             { key: "work-centers", name: "Work Centers", list: "/admin/work-centers", endpoint: "WorkCenters", model: "workcenter", versioned: true },
             { key: "shifts", name: "Shifts", list: "/editor/shifts", endpoint: "Shifts", model: "shift", versioned: true },
+            // Revised monthly: expected new builds by part type and month. Its own page
+            // edits and imports it (the sheet replaces the months it names).
+            { key: "volume-forecast", name: "Volume Forecast", list: "/production/forecast", endpoint: "VolumeForecasts", model: "volumeforecast" },
         ],
     },
     {

@@ -212,6 +212,7 @@ from .scheduling import (
     PlantCalendarExceptionViewSet,
     LaborCalendarBlockViewSet,
     OvertimeWindowViewSet,
+    VolumeForecastViewSet,
 )
 
 # Digital Work Instructions ViewSets
@@ -439,6 +440,7 @@ __all__ = [
     'PlantCalendarExceptionViewSet',
     'LaborCalendarBlockViewSet',
     'OvertimeWindowViewSet',
+    'VolumeForecastViewSet',
 
     # Digital Work Instructions
     'SubstepViewSet',
