@@ -21,12 +21,43 @@ so treat it as a planning aid, not a commitment.
 
 | View | Shows |
 |------|-------|
-| **Capacity heatmap** | Committed load against available capacity, month by month |
+| **Capacity heatmap** | Load — work orders and open order lines — against available capacity, month by month |
 | **What to release** | Work that should be released now to hit its dates |
 | **Could we take this order?** | Whether a prospective order fits |
 
 The horizon is a selector — **6, 12, 24 or 36 months**, defaulting to 12. Export
 to **CSV** for planning offline.
+
+## What's in the load
+
+The heatmap's load is the work orders, **plus open order lines not yet planned
+into work orders**. A customer order that hasn't been turned into a work order
+yet still asks for the crew and machines, so it counts:
+
+- Each such line is placed as if it were a work order: its work starts its
+  routing's lead time before the line's due date, on the part type's
+  **approved** routing, and its hours spread from there to the due month. A line
+  due next year loads next year; a line already overdue loads the current month.
+- A line already covered by work orders adds nothing more — the work orders carry
+  it.
+- Its material is in the load too: the line's bill of materials is exploded
+  through the parts you make down to the items you buy, each made level grossed
+  up by its routing's expected yield, landing in the month the line's work would
+  start.
+
+The crew verdict says how much of the load is lines like these — *Includes
+&lt;N&gt; open order lines not yet planned* — so you can tell demand you have
+committed to work from demand still on paper.
+
+!!! warning "Lines that can't be placed aren't in the load"
+    A line with **no due date**, or whose part type has **no approved routing**,
+    can't be placed. The page says so in amber — *&lt;N&gt; order lines can't be
+    placed (no due date or no approved routing) — not in the load* — and hovering
+    lists each line and its reason. Fix the line or the routing; until then that
+    demand is invisible here.
+
+**Could we take this order?** is different: it measures against work orders
+only, not against open order lines.
 
 ## Could we take this order?
 
