@@ -80,6 +80,42 @@ type-months can't be placed (no approved routing) — not in the load*.
 **Could we take this order?** is different: it measures against work orders
 only, not against open order lines, RFIs or the forecast.
 
+## Material outlook
+
+The **Materials** rows show, for each bought item, the demand landing in each
+month — work orders, open order lines, RFIs and the unclaimed forecast together.
+Demand is exploded through the bill of materials down to the items you buy,
+each made level grossed up by its routing's expected yield, and lands in the
+month the work starts, not the month it is due.
+
+Hover a month for the quantity in the item's stock unit — *&lt;n&gt; EA needed
+this month* — and, where some of it isn't firm, the split *(firm &lt;x&gt; · RFI
+&lt;y&gt; · forecast &lt;z&gt;)*. The same sky-blue and violet strip as the
+capacity cells shows the RFI and forecast share.
+
+### Exporting it
+
+The Materials header carries **Material outlook (&lt;N&gt; months): Excel ·
+CSV**, for the horizon selected on the page. It needs `export_data`, and each
+export is recorded as a bulk export. Purchasing's home has a **Material
+outlook** tile that opens this page at 24 months.
+
+One row per bought item, keyed the way the ERP keys it:
+
+| Column | Holds |
+|--------|-------|
+| **Item** | A material's part number, or a bought part type's ERP id |
+| **Name**, **Kind** | *Material* or *Bought part* |
+| **Stock unit**, **Purchase unit**, **Stock units per purchase unit** | How it is counted and bought; the last is blank when it is bought in the stock unit |
+| **On hand**, **Safety stock**, **Incoming** | Incoming is lots promised within the horizon |
+| One column per month (`YYYY-MM`) | Demand in **stock units** |
+| **Total demand**, **Balance at end** | Balance at end = on hand − safety stock + incoming − total demand; negative is short |
+
+!!! warning "A spread, not a buying plan"
+    The export spreads demand over months; it doesn't plan purchases. There is
+    no lead-time offset, no rounding to purchase packs, and no planned orders —
+    buying stays in your ERP, which this sheet feeds.
+
 ## Could we take this order?
 
 Ask for a quantity of a part type by a date. The answer names the **binding

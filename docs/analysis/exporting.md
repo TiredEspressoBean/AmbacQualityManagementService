@@ -99,6 +99,7 @@ filtered to that order.
 | **Table Exports** | Click **Export** on any data table (Orders, Parts, Quality Reports, etc.) |
 | **Part Traveler** | The **Traveler** button on the part detail page — *"this serial's as-built traveler: its work order's routing, filled with who did each step, what was measured, the lots that went in"*. Also available at `GET /api/Parts/{id}/traveler/` |
 | **SPC Report** | The **SPC Report** button on the SPC page |
+| **Material outlook** | **Capacity Planning** > the Materials header > **Excel** or **CSV** — demand for every bought item by month. See [Material outlook](../workflows/scheduling/capacity.md#material-outlook) |
 
 A PDF report button offers **Download PDF** or **Email me**, which builds the
 PDF in the background and emails it to you.
