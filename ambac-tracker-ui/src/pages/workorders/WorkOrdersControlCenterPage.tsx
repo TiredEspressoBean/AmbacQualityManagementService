@@ -389,18 +389,16 @@ export function WorkOrdersControlCenterPage() {
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        {/* Build-plan import: spawns multiple WOs (and their
-                            parts) from a planner spreadsheet. Reuses the
-                            generic CSV import dialog; build-plan column
-                            mapping + known-ignored columns + notes-append
-                            behavior live on the backend serializer. */}
+                        {/* The generic work-order import (POST /api/WorkOrders/import/).
+                            The Ambac build-plan importer is a separate serializer that
+                            this does not reach, kept unwired by decision. */}
                         <DataImportDialog
                             modelName="WorkOrders"
-                            displayName="Build Plan"
+                            displayName="Work Orders"
                             trigger={
                                 <Button variant="outline" size="sm" className="gap-2">
                                     <Upload className="h-4 w-4" />
-                                    Import Build Plan
+                                    Import Work Orders
                                 </Button>
                             }
                             onImportComplete={() => {
