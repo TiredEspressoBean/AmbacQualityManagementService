@@ -28,7 +28,15 @@ import {
   type ForecastImportResult, useForecastGrid, useImportForecast, useSetForecastCells,
 } from "@/hooks/useVolumeForecast";
 
-type Cell = { forecast: number; firm: number; tentative: number; unclaimed: number };
+type Cell = {
+  forecast: number; firm: number; tentative: number; unclaimed: number;
+  /** Inside the demand time fence: shown, not planned. */
+  fenced?: boolean;
+  /** Claims that spilled in from a neighbouring month's orders. */
+  claimed_from?: { band: string; quantity: number; from_month: string }[];
+};
+
+const FENCE_TIP = "Inside the demand time fence: only orders are planned.";
 
 const monthLabel = (m: string) => {
   const [y, mo] = m.split("-").map(Number);
@@ -36,17 +44,20 @@ const monthLabel = (m: string) => {
 };
 
 /** One editable cell. Saves on blur or Enter when the value changed; blank or 0 clears. */
-function ForecastCell({ partTypeId, month, cell, canEdit }: {
-  partTypeId: string; month: string; cell?: Cell; canEdit: boolean;
+function ForecastCell({ partTypeId, month, cell, canEdit, fenced }: {
+  partTypeId: string; month: string; cell?: Cell; canEdit: boolean; fenced: boolean;
 }) {
   const save = useSetForecastCells();
   const initial = cell?.forecast ? String(cell.forecast) : "";
   const [value, setValue] = useState(initial);
   const claimed = (cell?.firm ?? 0) + (cell?.tentative ?? 0);
+  const spilled = (cell?.claimed_from ?? [])
+    .map((c) => `${c.band === "tentative" ? "RFI" : "Firm"} ${c.quantity} (from ${monthLabel(c.from_month)})`);
   const title = cell
-    ? `Forecast ${cell.forecast}\nFirm orders ${cell.firm} · RFI ${cell.tentative}\n`
-      + `Planned on top of orders: ${cell.unclaimed}`
-    : undefined;
+    ? `Forecast ${cell.forecast}\nFirm orders ${cell.firm} · RFI ${cell.tentative}`
+      + (spilled.length ? `\nof which ${spilled.join(", ")}` : "")
+      + (fenced ? `\n${FENCE_TIP}` : `\nPlanned on top of orders: ${cell.unclaimed}`)
+    : fenced ? FENCE_TIP : undefined;
 
   const commit = () => {
     const trimmed = value.trim();
@@ -63,7 +74,7 @@ function ForecastCell({ partTypeId, month, cell, canEdit }: {
   };
 
   return (
-    <td className="p-0.5 align-top" title={title}>
+    <td className={`p-0.5 align-top ${fenced ? "bg-muted/50 opacity-70" : ""}`} title={title}>
       {canEdit ? (
         <Input
           value={value}
@@ -171,6 +182,8 @@ function ImportForecastDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
 export function ForecastPage() {
   const { data, isLoading } = useForecastGrid(24);
+  // Months inside the demand time fence: editable, but only orders are planned there.
+  const fenced = new Set<string>(data?.fenced_months ?? []);
   const { has } = usePermissionSet();
   const canEdit = has("add_volumeforecast") && has("change_volumeforecast");
   const { data: partTypesData } = useRetrievePartTypes({ limit: 500 });
@@ -219,7 +232,10 @@ export function ForecastPage() {
               <tr className="bg-muted/40">
                 <th className="sticky left-0 z-10 bg-muted/40 px-3 py-2 text-left text-xs font-medium">Part type</th>
                 {(data?.months ?? []).map((m) => (
-                  <th key={m} className="px-1.5 py-2 text-right text-xs font-medium whitespace-nowrap">{monthLabel(m)}</th>
+                  <th key={m} title={fenced.has(m) ? FENCE_TIP : undefined}
+                      className={`px-1.5 py-2 text-right text-xs font-medium whitespace-nowrap ${fenced.has(m) ? "text-muted-foreground" : ""}`}>
+                    {monthLabel(m)}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -240,7 +256,8 @@ export function ForecastPage() {
                   {(data?.months ?? []).map((m) => (
                     <ForecastCell key={`${m}:${(r.cells as Record<string, Cell>)[m]?.forecast ?? ""}`}
                                   partTypeId={r.part_type_id} month={m}
-                                  cell={(r.cells as Record<string, Cell>)[m]} canEdit={canEdit} />
+                                  cell={(r.cells as Record<string, Cell>)[m]} canEdit={canEdit}
+                                  fenced={fenced.has(m)} />
                   ))}
                 </tr>
               ))}

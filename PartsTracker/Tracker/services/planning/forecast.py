@@ -161,18 +161,73 @@ def claims_by_month(tenant, first: date, last: date) -> dict:
     return dict(out)
 
 
+def consumption_settings(tenant) -> tuple[int, int]:
+    """(demand time fence, consumption window), in months — the tenant's shop practice,
+    kept on OptimizationConfig beside the other planning fences."""
+    from Tracker.models import OptimizationConfig
+    cfg = OptimizationConfig.objects.filter(tenant=tenant).first()  # tenant-safe: explicit tenant filter
+    if cfg is None:
+        return 1, 1
+    return cfg.demand_time_fence_months, cfg.forecast_consumption_window_months
+
+
 def unclaimed_forecast(tenant, first: date, last: date) -> dict:
-    """`{(part_type_id, month_start): {'forecast', 'firm', 'tentative', 'unclaimed'}}` for
-    every cell with a forecast. Planning adds only `unclaimed` — forecast less what firm
-    and tentative orders already take, never below zero — so a month plans
-    max(forecast, firm + tentative)."""
-    fc = forecast_by_month(tenant, first, last)
-    claims = claims_by_month(tenant, first, last) if fc else {}
+    """`{(part_type_id, month_start): cell}` for every cell with a forecast, where a cell
+    is `{'forecast', 'firm', 'tentative', 'unclaimed', 'fenced', 'claimed_from'}`.
+
+    Orders consume forecast (2026-11-02), each in the standard order: its due month,
+    then EARLIER months nearest first, then LATER months, within the consumption window
+    — so an order due 2 March isn't left double-counted against February's forecast.
+    Orders are taken in due-month order, firm before tentative within a month, and no
+    cell goes below zero. `firm` / `tentative` are what a cell's forecast lost to orders,
+    and `claimed_from` lists the part that spilled in from a neighbouring month.
+
+    `fenced` marks a month inside the demand time fence: its forecast is shown but not
+    planned, since unsold forecast that close in won't arrive — only orders count there.
+    Planning adds only `unclaimed` of unfenced cells, so a month plans
+    max(forecast, firm + tentative) for the part type.
+    """
+    from Tracker.services.core.clock import tenant_today
+    fence, window = consumption_settings(tenant)
+    first, last = month_start(first), month_start(last)
+    # Orders and forecast just outside the range still trade with the cells inside it.
+    lo, hi = add_months(first, -window), add_months(last, window)
+    fc = forecast_by_month(tenant, lo, hi)
+    if not fc:
+        return {}
+    claims = claims_by_month(tenant, lo, hi)
+
+    left = dict(fc)
+    taken: dict = defaultdict(lambda: {'firm': 0, 'tentative': 0})
+    spilled: dict = defaultdict(list)
+    for (pt_id, due) in sorted(claims, key=lambda k: (k[1], str(k[0]))):
+        reach = ([due] + [add_months(due, -k) for k in range(1, window + 1)]
+                 + [add_months(due, k) for k in range(1, window + 1)])
+        for band in ('firm', 'tentative'):
+            qty = claims[(pt_id, due)][band]
+            for m in reach:
+                if qty <= 0:
+                    break
+                avail = left.get((pt_id, m), 0)
+                if avail <= 0:
+                    continue
+                use = min(avail, qty)
+                left[(pt_id, m)] -= use
+                qty -= use
+                taken[(pt_id, m)][band] += use
+                if m != due:
+                    spilled[(pt_id, m)].append(
+                        {'band': band, 'quantity': use, 'from_month': f"{due:%Y-%m}"})
+
+    fence_end = add_months(month_start(tenant_today(tenant)), fence)
     out = {}
     for key, qty in fc.items():
-        c = claims.get(key, {'firm': 0, 'tentative': 0})
-        out[key] = {'forecast': qty, 'firm': c['firm'], 'tentative': c['tentative'],
-                    'unclaimed': max(0, qty - c['firm'] - c['tentative'])}
+        if not first <= key[1] <= last:
+            continue
+        t = taken.get(key, {'firm': 0, 'tentative': 0})
+        out[key] = {'forecast': qty, 'firm': t['firm'], 'tentative': t['tentative'],
+                    'unclaimed': left[key], 'fenced': key[1] < fence_end,
+                    'claimed_from': spilled.get(key, [])}
     return out
 
 
@@ -189,7 +244,10 @@ def grid(tenant, start: date, months: int) -> dict:
     rows = [{'part_type_id': str(pt.id), 'part_type': pt.name, 'erp_id': pt.ERP_id or "",
              'cells': cells[pt.id]} for pt in pts]
     rows.sort(key=lambda r: r['part_type'].lower())
-    return {'months': [f"{m:%Y-%m}" for m in labels], 'rows': rows}
+    from Tracker.services.core.clock import tenant_today
+    fence_end = add_months(month_start(tenant_today(tenant)), consumption_settings(tenant)[0])
+    return {'months': [f"{m:%Y-%m}" for m in labels], 'rows': rows,
+            'fenced_months': [f"{m:%Y-%m}" for m in labels if m < fence_end]}
 
 
 def template_csv() -> str:

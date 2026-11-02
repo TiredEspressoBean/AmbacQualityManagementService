@@ -292,6 +292,18 @@ class OptimizationConfig(SecureModel):
     slushy_zone_days = models.PositiveIntegerField(
         default=7, help_text="Days after the frozen zone where moves are discouraged.",
     )
+    # Forecast consumption in the demand outlook (services.planning.forecast). Shop
+    # practice, so tenant settings rather than constants.
+    demand_time_fence_months = models.PositiveIntegerField(
+        default=1,
+        help_text="Months from the current one in which forecast is not planned — only "
+                  "orders count, since unsold forecast that close in won't arrive. "
+                  "1 = the current month; 0 = off.")
+    forecast_consumption_window_months = models.PositiveIntegerField(
+        default=1,
+        help_text="How many months either side of its due month an order may use up "
+                  "forecast: earlier months first (nearest first), then later. "
+                  "0 = its due month only.")
     default_outside_process_turnaround_days = models.PositiveIntegerField(
         default=7,
         help_text="Fallback outside-process turnaround (calendar days) when neither the step "

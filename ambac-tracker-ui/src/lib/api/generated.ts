@@ -5224,6 +5224,20 @@ export type OptimizationConfig = {
    * @maximum 2147483647
    */
   number | undefined;
+  demand_time_fence_months?: /**
+   * Months from the current one in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. 1 = the current month; 0 = off.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  forecast_consumption_window_months?: /**
+   * How many months either side of its due month an order may use up forecast: earlier months first (nearest first), then later. 0 = its due month only.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
   default_outside_process_turnaround_days?: /**
    * Fallback outside-process turnaround (calendar days) when neither the step nor the vendor specifies one — so an OSP step always reserves elapsed time.
    *
@@ -13729,6 +13743,20 @@ export type PatchedOptimizationConfigRequest = Partial<{
    */
   slushy_zone_days: number;
   /**
+   * Months from the current one in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. 1 = the current month; 0 = off.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  demand_time_fence_months: number;
+  /**
+   * How many months either side of its due month an order may use up forecast: earlier months first (nearest first), then later. 0 = its due month only.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  forecast_consumption_window_months: number;
+  /**
    * Fallback outside-process turnaround (calendar days) when neither the step nor the vendor specifies one — so an OSP step always reserves elapsed time.
    *
    * @minimum 0
@@ -18630,6 +18658,19 @@ export type UserRequest = {
     (string | null)
     | undefined;
 };
+export type VolumeForecastCell = {
+  forecast: number;
+  firm: number;
+  tentative: number;
+  unclaimed: number;
+  fenced: boolean;
+  claimed_from: Array<VolumeForecastSpill>;
+};
+export type VolumeForecastSpill = {
+  band: string;
+  quantity: number;
+  from_month: string;
+};
 export type VolumeForecastCellsInputRequest = {
   cells: Array<VolumeForecastCellInputRequest>;
 };
@@ -18651,18 +18692,13 @@ export type VolumeForecastCellInputRequest = {
 export type VolumeForecastGrid = {
   months: Array<string>;
   rows: Array<VolumeForecastRow>;
+  fenced_months: Array<string>;
 };
 export type VolumeForecastRow = {
   part_type_id: string;
   part_type: string;
   erp_id: string;
   cells: {};
-};
-export type VolumeForecastCell = {
-  forecast: number;
-  firm: number;
-  tentative: number;
-  unclaimed: number;
 };
 export type VolumeForecastImportResult = {
   created: number;
@@ -25258,6 +25294,13 @@ const OptimizationConfig = z.object({
   relative_gap_limit: z.number().gte(0).optional(),
   frozen_zone_days: z.number().int().gte(0).lte(2147483647).optional(),
   slushy_zone_days: z.number().int().gte(0).lte(2147483647).optional(),
+  demand_time_fence_months: z.number().int().gte(0).lte(2147483647).optional(),
+  forecast_consumption_window_months: z
+    .number()
+    .int()
+    .gte(0)
+    .lte(2147483647)
+    .optional(),
   default_outside_process_turnaround_days: z
     .number()
     .int()
@@ -25317,6 +25360,8 @@ const PatchedOptimizationConfigRequest = z
     relative_gap_limit: z.number().gte(0),
     frozen_zone_days: z.number().int().gte(0).lte(2147483647),
     slushy_zone_days: z.number().int().gte(0).lte(2147483647),
+    demand_time_fence_months: z.number().int().gte(0).lte(2147483647),
+    forecast_consumption_window_months: z.number().int().gte(0).lte(2147483647),
     default_outside_process_turnaround_days: z
       .number()
       .int()
@@ -27736,11 +27781,18 @@ const PatchedUserWorkCenterMembershipRequest = z
     is_primary: z.boolean(),
   })
   .partial();
+const VolumeForecastSpill = z.object({
+  band: z.string(),
+  quantity: z.number().int(),
+  from_month: z.string(),
+});
 const VolumeForecastCell = z.object({
   forecast: z.number().int(),
   firm: z.number().int(),
   tentative: z.number().int(),
   unclaimed: z.number().int(),
+  fenced: z.boolean(),
+  claimed_from: z.array(VolumeForecastSpill),
 });
 const VolumeForecastRow = z.object({
   part_type_id: z.string(),
@@ -27751,6 +27803,7 @@ const VolumeForecastRow = z.object({
 const VolumeForecastGrid = z.object({
   months: z.array(z.string()),
   rows: z.array(VolumeForecastRow),
+  fenced_months: z.array(z.string()),
 });
 const VolumeForecastImportRequestRequest = z.object({
   file: z.instanceof(File),
@@ -30829,6 +30882,7 @@ export const schemas = {
   PaginatedUserWorkCenterMembershipList,
   UserWorkCenterMembershipRequest,
   PatchedUserWorkCenterMembershipRequest,
+  VolumeForecastSpill,
   VolumeForecastCell,
   VolumeForecastRow,
   VolumeForecastGrid,

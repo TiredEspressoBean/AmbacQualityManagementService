@@ -27389,6 +27389,10 @@ export interface components {
             frozen_zone_days?: number;
             /** @description Days after the frozen zone where moves are discouraged. */
             slushy_zone_days?: number;
+            /** @description Months from the current one in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. 1 = the current month; 0 = off. */
+            demand_time_fence_months?: number;
+            /** @description How many months either side of its due month an order may use up forecast: earlier months first (nearest first), then later. 0 = its due month only. */
+            forecast_consumption_window_months?: number;
             /** @description Fallback outside-process turnaround (calendar days) when neither the step nor the vendor specifies one — so an OSP step always reserves elapsed time. */
             default_outside_process_turnaround_days?: number;
             /** @description This facility's operating model: whether machines run lights-out (unattended, 24/7) BY DEFAULT. False (default): machines only run on shift unless a specific machine is marked lights-out — the safe choice, since assuming capacity a shop can't staff produces an unexecutable plan. True: an automated shop where machines run overnight by default. Each machine's `runs_unattended` overrides this; a machine left unset inherits it. */
@@ -31218,6 +31222,10 @@ export interface components {
             frozen_zone_days?: number;
             /** @description Days after the frozen zone where moves are discouraged. */
             slushy_zone_days?: number;
+            /** @description Months from the current one in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. 1 = the current month; 0 = off. */
+            demand_time_fence_months?: number;
+            /** @description How many months either side of its due month an order may use up forecast: earlier months first (nearest first), then later. 0 = its due month only. */
+            forecast_consumption_window_months?: number;
             /** @description Fallback outside-process turnaround (calendar days) when neither the step nor the vendor specifies one — so an OSP step always reserves elapsed time. */
             default_outside_process_turnaround_days?: number;
             /** @description This facility's operating model: whether machines run lights-out (unattended, 24/7) BY DEFAULT. False (default): machines only run on shift unless a specific machine is marked lights-out — the safe choice, since assuming capacity a shop can't staff produces an unexecutable plan. True: an automated shop where machines run overnight by default. Each machine's `runs_unattended` overrides this; a machine left unset inherits it. */
@@ -40211,6 +40219,8 @@ export interface components {
             firm: number;
             tentative: number;
             unclaimed: number;
+            fenced: boolean;
+            claimed_from: components["schemas"]["VolumeForecastSpill"][];
         };
         VolumeForecastCellInputRequest: {
             /** Format: uuid */
@@ -40229,6 +40239,7 @@ export interface components {
         VolumeForecastGrid: {
             months: string[];
             rows: components["schemas"]["VolumeForecastRow"][];
+            fenced_months: string[];
         };
         VolumeForecastImportRequestRequest: {
             /** Format: binary */
@@ -40257,6 +40268,11 @@ export interface components {
             cells: {
                 [key: string]: components["schemas"]["VolumeForecastCell"];
             };
+        };
+        VolumeForecastSpill: {
+            band: string;
+            quantity: number;
+            from_month: string;
         };
         /** @description Serializer for WIP summary by step. */
         WIPSummary: {

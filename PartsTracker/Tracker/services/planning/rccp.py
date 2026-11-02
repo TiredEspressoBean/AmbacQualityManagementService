@@ -593,7 +593,8 @@ def _place_demand(ref: _RefData, buckets, now, part_type_id, qty, due, routes: d
 
 def _forecast_demand(tenant, ref: _RefData, buckets, now) -> dict:
     """The volume forecast's UNCLAIMED remainder — forecast less what firm and tentative
-    orders already take that month — placed as if due at the month's end.
+    orders already take (within the consumption window) — placed as if due at the
+    month's end. Months inside the demand time fence carry none.
 
     Returns `{'placed', 'unplaceable', 'units', 'labor_hours'}`, shaped like
     `_order_line_demand`'s, with band `forecast`."""
@@ -608,7 +609,8 @@ def _forecast_demand(tenant, ref: _RefData, buckets, now) -> dict:
     units, labor_total = 0, 0.0
     routes: dict = {}
     for (pt_id, month), c in sorted(cells.items(), key=lambda kv: (kv[0][1], str(kv[0][0]))):
-        qty = c['unclaimed']
+        # Inside the demand time fence only orders count: the forecast is shown, not planned.
+        qty = 0 if c['fenced'] else c['unclaimed']
         if not qty:
             continue
         due = max(add_months(month, 1) - timedelta(days=1), now.date())

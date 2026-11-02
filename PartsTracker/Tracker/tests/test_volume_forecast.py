@@ -126,7 +126,9 @@ class ForecastConsumptionTests(_ForecastFixture, TestCase):
         fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
         self._line(20, self._mid(self.month), n=1)
         self._line(10, self._mid(self.month), status="RFI", n=2)
-        self.assertEqual(self._cell(), {'forecast': 50, 'firm': 20, 'tentative': 10, 'unclaimed': 20})
+        cell = self._cell()
+        self.assertEqual({k: cell[k] for k in ('forecast', 'firm', 'tentative', 'unclaimed')},
+                         {'forecast': 50, 'firm': 20, 'tentative': 10, 'unclaimed': 20})
 
     def test_orders_beyond_the_forecast_leave_nothing_unclaimed(self):
         fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=10)
@@ -151,6 +153,79 @@ class ForecastConsumptionTests(_ForecastFixture, TestCase):
         WorkOrder.objects.create(tenant=self.tenant, ERP_id="WO-TD", quantity=5, process=teardown,
                                  expected_completion=self._mid(self.month))
         self.assertEqual(self._cell()['unclaimed'], 50)
+
+
+class ConsumptionWindowTests(_ForecastFixture, TestCase):
+    """An order uses up forecast in nearby months: its own first, then earlier months
+    nearest first, then later — within the tenant's window, never below zero."""
+
+    def _set(self, month, qty):
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=month, quantity=qty)
+
+    def _cells(self):
+        lo, hi = fc.add_months(self.month, -3), fc.add_months(self.month, 3)
+        return {m: c for (pt, m), c in fc.unclaimed_forecast(self.tenant, lo, hi).items()}
+
+    def _window(self, months):
+        from Tracker.models import OptimizationConfig
+        OptimizationConfig.objects.update_or_create(
+            tenant=self.tenant, defaults={"forecast_consumption_window_months": months})
+
+    def test_an_order_with_no_forecast_in_its_month_consumes_the_month_before_then_after(self):
+        before, after = fc.add_months(self.month, -1), fc.add_months(self.month, 1)
+        self._set(before, 10)
+        self._set(after, 10)
+        self._line(15, self._mid(self.month))
+        cells = self._cells()
+        self.assertEqual(cells[before]["unclaimed"], 0, "earlier month first")
+        self.assertEqual(cells[after]["unclaimed"], 5, "then the later one")
+        self.assertEqual(cells[before]["claimed_from"],
+                         [{"band": "firm", "quantity": 10, "from_month": f"{self.month:%Y-%m}"}])
+
+    def test_an_order_larger_than_its_month_spills_into_the_window(self):
+        after = fc.add_months(self.month, 1)
+        self._set(self.month, 20)
+        self._set(after, 20)
+        self._line(30, self._mid(self.month), status="RFI")
+        cells = self._cells()
+        self.assertEqual((cells[self.month]["unclaimed"], cells[self.month]["tentative"]), (0, 20))
+        self.assertEqual((cells[after]["unclaimed"], cells[after]["tentative"]), (10, 10))
+
+    def test_nothing_goes_below_zero_and_nothing_reaches_past_the_window(self):
+        far = fc.add_months(self.month, 2)
+        self._set(far, 10)
+        self._line(500, self._mid(self.month))
+        self.assertEqual(self._cells()[far]["unclaimed"], 10, "two months out is past a 1-month window")
+
+    def test_window_zero_is_same_month_only(self):
+        before = fc.add_months(self.month, -1)
+        self._set(before, 10)
+        self._line(15, self._mid(self.month))
+        self._window(0)
+        self.assertEqual(self._cells()[before]["unclaimed"], 10)
+
+
+class DemandTimeFenceTests(_ForecastFixture, TestCase):
+    """Inside the fence only orders are planned: the forecast is shown, not loaded."""
+
+    def setUp(self):
+        super().setUp()
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.this_month, quantity=40)
+
+    def _forecast_units(self):
+        return rccp.build_capacity_load(self.tenant, months=3)["forecast_demand"]["units"]
+
+    def test_the_default_fence_keeps_this_months_forecast_out_of_the_plan(self):
+        cell = fc.unclaimed_forecast(self.tenant, self.this_month, self.this_month)[(self.pt.id, self.this_month)]
+        self.assertTrue(cell["fenced"])
+        self.assertEqual(cell["unclaimed"], 40, "still shown")
+        self.assertEqual(self._forecast_units(), 0)
+
+    def test_fence_zero_plans_it_again(self):
+        from Tracker.models import OptimizationConfig
+        OptimizationConfig.objects.update_or_create(tenant=self.tenant,
+                                                    defaults={"demand_time_fence_months": 0})
+        self.assertEqual(self._forecast_units(), 40)
 
 
 class ForecastPlanningTests(_ForecastFixture, TestCase):
@@ -245,7 +320,8 @@ class ForecastApiTests(_ForecastFixture, TestCase):
         grid = c.get("/api/VolumeForecasts/grid/").json()
         self.assertEqual(len(grid["months"]), 24)
         self.assertEqual(grid["rows"][0]["cells"][label],
-                         {"forecast": 12, "firm": 0, "tentative": 0, "unclaimed": 12})
+                         {"forecast": 12, "firm": 0, "tentative": 0, "unclaimed": 12,
+                          "fenced": False, "claimed_from": []})
 
     def test_viewer_cannot_edit(self):
         c = self._client("view_volumeforecast")

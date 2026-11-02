@@ -63302,6 +63302,20 @@ components:
           maximum: 2147483647
           minimum: 0
           description: Days after the frozen zone where moves are discouraged.
+        demand_time_fence_months:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Months from the current one in which forecast is not planned
+            — only orders count, since unsold forecast that close in won't arrive.
+            1 = the current month; 0 = off.
+        forecast_consumption_window_months:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: 'How many months either side of its due month an order may
+            use up forecast: earlier months first (nearest first), then later. 0 =
+            its due month only.'
         default_outside_process_turnaround_days:
           type: integer
           maximum: 2147483647
@@ -70132,6 +70146,20 @@ components:
           maximum: 2147483647
           minimum: 0
           description: Days after the frozen zone where moves are discouraged.
+        demand_time_fence_months:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Months from the current one in which forecast is not planned
+            — only orders count, since unsold forecast that close in won't arrive.
+            1 = the current month; 0 = off.
+        forecast_consumption_window_months:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: 'How many months either side of its due month an order may
+            use up forecast: earlier months first (nearest first), then later. 0 =
+            its due month only.'
         default_outside_process_turnaround_days:
           type: integer
           maximum: 2147483647
@@ -87772,7 +87800,15 @@ components:
           type: integer
         unclaimed:
           type: integer
+        fenced:
+          type: boolean
+        claimed_from:
+          type: array
+          items:
+            $ref: '#/components/schemas/VolumeForecastSpill'
       required:
+      - claimed_from
+      - fenced
       - firm
       - forecast
       - tentative
@@ -87823,7 +87859,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/VolumeForecastRow'
+        fenced_months:
+          type: array
+          items:
+            type: string
       required:
+      - fenced_months
       - months
       - rows
     VolumeForecastImportRequestRequest:
@@ -87899,6 +87940,19 @@ components:
       - erp_id
       - part_type
       - part_type_id
+    VolumeForecastSpill:
+      type: object
+      properties:
+        band:
+          type: string
+        quantity:
+          type: integer
+        from_month:
+          type: string
+      required:
+      - band
+      - from_month
+      - quantity
     WIPSummary:
       type: object
       description: Serializer for WIP summary by step.

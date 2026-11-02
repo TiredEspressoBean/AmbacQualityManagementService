@@ -1527,8 +1527,20 @@ class VolumeForecastViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                         'forecast': serializers.IntegerField(),
                         'firm': serializers.IntegerField(),
                         'tentative': serializers.IntegerField(),
-                        'unclaimed': serializers.IntegerField()})),
-            })}),
+                        'unclaimed': serializers.IntegerField(),
+                        # Inside the demand time fence: shown, not planned.
+                        'fenced': serializers.BooleanField(),
+                        # Claims that spilled in from a neighbouring month's orders.
+                        'claimed_from': inline_serializer(
+                            name='VolumeForecastSpill', many=True, fields={
+                                'band': serializers.CharField(),
+                                'quantity': serializers.IntegerField(),
+                                'from_month': serializers.CharField()}),
+                    })),
+            }),
+            # Months inside the demand time fence (YYYY-MM): only orders are planned.
+            'fenced_months': serializers.ListField(child=serializers.CharField()),
+        }),
         },
     )
     @action(detail=False, methods=['get'])
