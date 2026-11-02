@@ -472,17 +472,18 @@ def sourcing_requirements(tenant) -> dict:
 def ship_lane(tenant) -> list:
     """What customers are owed, by when: one row per open order line still to ship.
 
-    Read-only — shipping itself stays on the shipping pages. Shipped counts SHIPPED parts
-    on the line's work orders (as `shipping.order_shipping` does), so a line fully shipped
-    drops out. Of what is still to ship, `planned` is covered by work orders and
+    Read-only — shipping itself stays on the shipping pages. Shipped and ready count the
+    same units `planned_quantity` counts as coverage: parts on the line's work orders,
+    plus units received for the order of the line's part type and worked elsewhere (a
+    repair-and-return core on its teardown work order). A line fully shipped drops out. Of what is still to ship, `planned` is covered by work orders and
     `unplanned` is not yet. RFI lines are `tentative`: a deal not yet won, shown apart.
     No forecast rows — a forecast is not a customer's ask and has nothing to ship.
 
     Overdue lines first, then by due date; lines with no due date last.
     """
     from collections import Counter
-    from django.db.models import Count, Q
-    from Tracker.models import OrderLine
+    from django.db.models import Count, F, Q
+    from Tracker.models import OrderLine, Parts
     from Tracker.services.core.clock import tenant_today
     from Tracker.services.mes.shipping import _ready_parts
 
@@ -494,16 +495,41 @@ def ship_lane(tenant) -> list:
         .select_related('order__company', 'part_type')
         .annotate(shipped=Count('work_orders__parts', filter=Q(
             work_orders__parts__part_status='SHIPPED', work_orders__parts__archived=False))))
-    ready = Counter(p.work_order.order_line_id for p in _ready_parts(tenant)
-                    if p.work_order_id and p.work_order.order_line_id)
+    ready: Counter = Counter()
+    # A unit received FOR the order and worked elsewhere — a repair-and-return core on
+    # its teardown work order — covers the line just as `planned_quantity` counts it, so
+    # it ships and readies the line the same way. Keyed by (order, part type) and dealt
+    # out to that order's lines of the part type in line order.
+    ready_elsewhere: Counter = Counter()
+    for p in _ready_parts(tenant):
+        if p.work_order_id and p.work_order.order_line_id:
+            ready[p.work_order.order_line_id] += 1
+        elif p.order_id:
+            ready_elsewhere[(p.order_id, p.part_type_id)] += 1
+    shipped_elsewhere = Counter(
+        (r['order_id'], r['part_type_id']) for r in
+        Parts.objects.filter(  # tenant-safe: explicit tenant filter
+            tenant=tenant, archived=False, part_status='SHIPPED',
+            order_id__in={ln.order_id for ln in lines}, work_order__isnull=False)
+        .exclude(work_order__related_order_id=F('order_id'))
+        .values('order_id', 'part_type_id'))
+
+    def _deal(pool: Counter, key, want: int) -> int:
+        n = min(pool.get(key, 0), max(0, want))
+        pool[key] -= n
+        return n
 
     rows = []
-    for ln in lines:
-        to_ship = ln.quantity - ln.shipped
+    for ln in sorted(lines, key=lambda x: (x.order_id, x.line_number)):
+        key = (ln.order_id, ln.part_type_id)
+        shipped = ln.shipped + _deal(shipped_elsewhere, key, ln.quantity - ln.shipped)
+        to_ship = ln.quantity - shipped
         if to_ship <= 0:
             continue
+        ln.shipped = shipped
         unplanned = ln.remaining_quantity
         n_ready = ready.get(ln.id, 0)
+        n_ready += _deal(ready_elsewhere, key, to_ship - n_ready)
         if n_ready:
             note = f"{n_ready} ready to ship"
         elif ln.planned_quantity > ln.shipped:

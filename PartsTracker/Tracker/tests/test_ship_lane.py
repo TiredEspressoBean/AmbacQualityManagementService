@@ -83,6 +83,28 @@ class ShipLaneTests(TenantContextMixin, TestCase):
         self.assertEqual((row["planned"], row["unplanned"]), (4, 4))
         self.assertEqual(row["note"], "in work")
 
+    def _unit_worked_elsewhere(self, line, status):
+        """A unit received FOR the order, worked on its own teardown work order — the
+        way a repair-and-return core is — that `planned_quantity` counts as coverage."""
+        teardown = Processes.objects.create(tenant=self.tenant, name="Tear", part_type=self.pt,
+                                            status=ProcessStatus.APPROVED, is_disassembly=True)
+        wo = WorkOrder.objects.create(tenant=self.tenant, ERP_id=f"TD-{status}", quantity=1,
+                                      process=teardown)
+        return Parts.objects.create(tenant=self.tenant, ERP_id=f"CORE-{status}", part_type=self.pt,
+                                    work_order=wo, step=self.step, order=line.order,
+                                    part_status=status)
+
+    def test_a_repair_and_return_unit_shipped_elsewhere_clears_the_line(self):
+        line = self._line(1, self.today + timedelta(days=5), name="RR")
+        self._unit_worked_elsewhere(line, "SHIPPED")
+        self.assertEqual(ship_lane(self.tenant), [])
+
+    def test_a_repair_and_return_unit_awaiting_pickup_reads_ready(self):
+        line = self._line(2, self.today + timedelta(days=5), name="RR")
+        self._unit_worked_elsewhere(line, "AWAITING_PICKUP")
+        row = ship_lane(self.tenant)[0]
+        self.assertEqual((row["to_ship"], row["ready"], row["note"]), (2, 1, "1 ready to ship"))
+
     def test_an_untouched_line_is_not_started_and_wholly_unplanned(self):
         self._line(4, self.today + timedelta(days=20), name="NEW")
         row = ship_lane(self.tenant)[0]
