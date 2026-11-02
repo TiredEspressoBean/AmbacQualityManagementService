@@ -1,5 +1,5 @@
 "use client"
-import { apiErrorMessage } from "@/lib/api/describeApiError"
+import { apiErrorBody, apiErrorField, apiErrorMessage } from "@/lib/api/describeApiError"
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { Combobox } from "@/components/ui/combobox";
 import {useEffect, useState} from "react"
@@ -11,6 +11,7 @@ import {Button} from "@/components/ui/button"
 import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from "@/components/ui/form"
 import {Input} from "@/components/ui/input"
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
+import {getStatusLabel} from "@/components/ui/status-badge"
 import {Checkbox} from "@/components/ui/checkbox"
 
 import {useRetrieveOrders} from '@/hooks/useRetrieveOrders.ts'
@@ -144,6 +145,22 @@ export default function PartFormPage() {
     const createPart = useCreatePart({ handlesErrors: true });
     const updatePart = useUpdatePart({ handlesErrors: true });
 
+    // A refusal aimed at one field ("INJ-… has an open disposition …") goes under that
+    // field, where the change was made; the toast carries the sentence without the
+    // field name the generic message would put in front of it.
+    const FIELDS: (keyof FormValues)[] = ["ERP_id", "part_status", "order", "part_type", "step", "work_order"];
+    function showFieldRefusal(error: unknown): string | undefined {
+        const body = apiErrorBody(error);
+        for (const field of FIELDS) {
+            const message = apiErrorField(body, field);
+            if (message) {
+                form.setError(field, { message });
+                return message;
+            }
+        }
+        return undefined;
+    }
+
     function onSubmit(values: FormValues) {
         if (mode === "edit" && partId) {
             updatePart.mutate({
@@ -153,7 +170,7 @@ export default function PartFormPage() {
                     toast.success("Part updated successfully!");
                 }, onError: (error) => {
                     console.error("Failed to update part:", error);
-                    toast.error(apiErrorMessage(error) ?? "Failed to update the part.");
+                    toast.error(showFieldRefusal(error) ?? apiErrorMessage(error) ?? "Failed to update the part.");
                 },
             });
         } else {
@@ -163,7 +180,7 @@ export default function PartFormPage() {
                     form.reset(); // optionally reset the form
                 }, onError: (error) => {
                     console.error("Failed to create part:", error);
-                    toast.error(apiErrorMessage(error) ?? "Failed to create the part.");
+                    toast.error(showFieldRefusal(error) ?? apiErrorMessage(error) ?? "Failed to create the part.");
                 },
             });
         }
@@ -220,7 +237,7 @@ export default function PartFormPage() {
                                 </FormControl>
                                 <SelectContent>
                                     {PART_STATUS.map((status) => (<SelectItem key={status} value={status}>
-                                        {status.replace("_", " ")} {/* optional formatting */}
+                                        {getStatusLabel(status)}
                                     </SelectItem>))}
                                 </SelectContent>
                             </Select>

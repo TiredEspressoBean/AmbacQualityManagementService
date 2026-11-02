@@ -638,12 +638,16 @@ export default function EditDispositionFormPage() {
                                                             </SelectTrigger>
                                                         </FormControl>
                                                         <SelectContent>
-                                                            {schemas.SeverityEnum.options.map((sev) => (
-                                                                <SelectItem key={sev} value={sev}
-                                                                    disabled={isDecided && SEVERITY_RANK.indexOf(sev) < SEVERITY_RANK.indexOf(disposition?.severity ?? "MINOR")}>
-                                                                    {severityLabels[sev] ?? sev}
-                                                                </SelectItem>
-                                                            ))}
+                                                            {/* Once decided, only the severities it may rise to are listed —
+                                                                not greyed-out ones, which a screen reader skips, leaving
+                                                                its user a list that disagrees with what's on screen. */}
+                                                            {schemas.SeverityEnum.options
+                                                                .filter((sev) => !isDecided || SEVERITY_RANK.indexOf(sev) >= SEVERITY_RANK.indexOf(disposition?.severity ?? "MINOR"))
+                                                                .map((sev) => (
+                                                                    <SelectItem key={sev} value={sev}>
+                                                                        {severityLabels[sev] ?? sev}
+                                                                    </SelectItem>
+                                                                ))}
                                                         </SelectContent>
                                                     </Select>
                                                     <FormDescription>

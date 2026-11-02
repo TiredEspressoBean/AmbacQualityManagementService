@@ -374,6 +374,15 @@ export function getStatusColors(status: string): string {
 }
 
 /**
+ * The words a status reads as ("Ready for Next Step"), the same the badge shows —
+ * for a select or a sentence that names a status.
+ */
+export function getStatusLabel(status: string): string {
+    return STATUS_CONFIG[normalizeStatus(status)]?.label
+        ?? status.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
  * Helper to get the icon component for a status.
  */
 export function getStatusIcon(status: string): LucideIcon {
