@@ -44,6 +44,9 @@ LINKS = {
     # --- ApprovalTemplate (spec: who approves) ----------------------------------------
     'DocumentType.approval_template': FOLLOWS,
     'SamplingRuleSet.gate_approval_template': FOLLOWS,
+    # A request keeps the template it was made from: its rules are the ones it was
+    # asked under, not a later edit's (2026-10-29).
+    'ApprovalRequest.template': STAYS,
 
     # --- BOM (composite; its override copies the lines) --------------------------------
     'BOMLine.bom': MODEL,

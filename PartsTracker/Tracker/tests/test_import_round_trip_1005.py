@@ -63,10 +63,12 @@ class ImportRoundTripTests(APITestCase):
         # so an exported ID used to reach the model as text and fail.
         from Tracker.models import PartTypes, Processes
         pump = PartTypes.objects.create(tenant=self.tenant, name="Pump")
-        process = Processes.objects.create(tenant=self.tenant, name="Teardown", part_type=pump)
+        # It must be a disassembly process (validated since 2026-10-29).
+        process = Processes.objects.create(tenant=self.tenant, name="Teardown", part_type=pump,
+                                           is_disassembly=True)
         body = self._import("PartTypes", f"name,default_disassembly_process\nPump,{process.id}\n")
         self.assertEqual(body["summary"]["errors"], 0, body)
-        # The disassembly process is part of the part's definition, so setting it versions
-        # the part: the current version carries it.
+        # The current version carries it (it's the teardown picker's preselection, saved
+        # without a new version).
         current = PartTypes.objects.get(name="Pump", is_current_version=True)
         self.assertEqual(current.default_disassembly_process_id, process.id)

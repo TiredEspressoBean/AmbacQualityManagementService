@@ -1495,7 +1495,8 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             writer.writerow([csv_safe(v) for v in (
                 r['part_erp_id'], r['part_type'], r['step'], "; ".join(r['error_types']), r['date'],
                 r['inspector'], r['order'], r['work_order'], r['disposition_type'] or "Pending")])
-        filename = f"defects-{timezone.now().date().isoformat()}.csv"
+        from Tracker.services.core.clock import tenant_today
+        filename = f"defects-{tenant_today(self.tenant).isoformat()}.csv"
         response = HttpResponse(out.getvalue().encode('utf-8-sig'), content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         record_access(

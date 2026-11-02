@@ -2061,7 +2061,8 @@ class LogEntryViewSet(viewsets.ReadOnlyModelViewSet):
             'IP address': e.remote_addr or '',
         } for e in qs], columns=['Timestamp', 'User', 'Action', 'Record type', 'Record',
                                  'Record id', 'Changes', 'IP address'])
-        filename = f"audit-log-{timezone.now().date().isoformat()}.{export_format}"
+        from Tracker.services.core.clock import tenant_today
+        filename = f"audit-log-{tenant_today(getattr(request, 'tenant', None)).isoformat()}.{export_format}"
         if export_format == 'csv':
             content = df.map(csv_safe).to_csv(index=False).encode('utf-8-sig')
             content_type = 'text/csv'
