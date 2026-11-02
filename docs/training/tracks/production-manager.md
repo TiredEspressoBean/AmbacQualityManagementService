@@ -263,10 +263,15 @@ Two pages answer two different questions.
 
 **Scheduling** > **Capacity Planning** > **Capacity heatmap** asks *does the plan fit
 the month?* The headline says it: *Crew: enough for the planned work · busiest
-2026-10 at 42%*. The **Labor** row compares the operator hours the work needs (setup
-and the hands-on part of each operation, not a machine's whole run) with your crew's
-working hours left in each month. Under about 85% is comfortable; over 100% you're
-short.
+&lt;month&gt; at &lt;n&gt;%* (the demo's months move with the day it was set up). The
+**Labor** row compares the operator hours the work needs (setup and the hands-on
+part of each operation, not a machine's whole run) with your crew's working hours
+left in each month. Under about 85% is comfortable; over 100% you're short.
+
+The load includes customer order lines not yet planned into work orders, placed
+back from their due dates: *Includes 1 open order line not yet planned (~13 h crew
+time)*, which links to the orders. Demand on paper counts before anyone has made a
+work order for it.
 
 The rows under it ask the sharper question: *enough of the right people?* Each is a
 set of qualifications and how many people hold them. A row marked **one person**
