@@ -853,6 +853,13 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     'on_hand': serializers.FloatField(),
                     # Inbound lots promised within the horizon.
                     'incoming': serializers.FloatField(),
+                    # When to act: the first month the balance goes short, and that
+                    # month's first day less the purchase lead time. Null when never
+                    # short in the horizon. Only the first shortage — not a buying plan.
+                    'lead_time_days': serializers.IntegerField(allow_null=True),
+                    'first_short_month': serializers.CharField(allow_null=True),
+                    'order_by': serializers.DateField(allow_null=True),
+                    'order_by_late': serializers.BooleanField(),
                     'safety_stock': serializers.FloatField(),
                     'series': inline_serializer(
                         name='MaterialBucket', many=True, fields={
@@ -890,8 +897,10 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         """The material spread: one row per bought item, keyed as the ERP keys it, with
         its demand per month in stock units — firm work, RFI deals and unclaimed forecast
         together — beside its purchase unit and conversion, on-hand, incoming and the
-        balance left at the end. A spread, not a plan: no lead-time offset or lot sizing;
-        buying is the ERP's. Behind export_data like every report."""
+        balance left at the end. Beside it, WHEN to act: the first month the balance goes
+        short and the order-by date for it (that month's first day less the lead time).
+        A spread, not a plan: no order quantities, lot sizing or later shortages rolled
+        forward; buying is the ERP's. Behind export_data like every report."""
         import io
         import pandas as pd
         from django.http import HttpResponse
@@ -908,7 +917,8 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         unit_label = {'STOCK': 'Stock unit', 'BOX': 'Box', 'LB': 'Pound'}
         columns = ['Item', 'Name', 'Kind', 'Stock unit', 'Purchase unit',
                    'Stock units per purchase unit', 'On hand', 'Safety stock',
-                   'Incoming', *buckets, 'Total demand', 'Balance at end']
+                   'Incoming', 'Lead time (days)', 'First short month', 'Order by', 'Late',
+                   *buckets, 'Total demand', 'Balance at end']
         rows = []
         for m in load['materials']:
             demand = [b['demand'] for b in m['series']]
@@ -922,6 +932,11 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     m['units_per_purchase_unit'] if m['purchase_unit'] != 'STOCK' else None),
                 'On hand': m['on_hand'], 'Safety stock': m['safety_stock'],
                 'Incoming': m['incoming'],
+                # When to act on the FIRST shortage only — not a buying plan.
+                'Lead time (days)': m['lead_time_days'],
+                'First short month': m['first_short_month'],
+                'Order by': m['order_by'].isoformat() if m['order_by'] else None,
+                'Late': 'Late' if m['order_by_late'] else None,
                 **dict(zip(buckets, demand)),
                 'Total demand': round(sum(demand), 2),
                 # Free stock left after everything through the last month: on hand less

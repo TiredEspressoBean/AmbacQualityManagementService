@@ -199,6 +199,10 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
                       .values('id', 'purchase_unit', 'units_per_purchase_unit')):
                 buying[(kind, r['id'])] = r
 
+    from datetime import date, timedelta
+    from django.utils import timezone
+    today = timezone.localdate()
+
     out = []
     for mid in keys:
         # Opening cover is free stock, not physical stock: the safety buffer is held back
@@ -234,6 +238,17 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
         kind, item_id = mid
         item, buy = items[mid], buying.get(mid, {})
         per = buy.get('units_per_purchase_unit')
+        # WHEN to act, not what to buy (2026-11-02): the first month the running balance
+        # goes below zero, and the date an order must go in to land by that month's
+        # first day — calendar days, as the requirements report computes order-by. Only
+        # the FIRST shortage: rolling later ones forward would be a buying plan, which
+        # is the ERP's. A past order-by stays shown; `order_by_late` marks it.
+        first_short = next((b for b, row in zip(buckets, series) if row['short']), None)
+        order_by = None
+        if first_short is not None:
+            need_by = date(first_short.start.year, first_short.start.month, 1)
+            lead = item.lead_time_days
+            order_by = (need_by - timedelta(days=lead)) if lead else need_by
         out.append({'id': str(item_id), 'kind': kind,
                     'name': names.get(mid, str(item_id)),
                     # What a buyer keys into the ERP: part number / ERP id.
@@ -243,6 +258,10 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
                     'units_per_purchase_unit': float(per) if per is not None else None,
                     'on_hand': round(on_hand.get(mid, 0.0), 2),
                     'incoming': round(sum(incoming[mid]), 2),
+                    'lead_time_days': item.lead_time_days,
+                    'first_short_month': first_short.label if first_short else None,
+                    'order_by': order_by,
+                    'order_by_late': order_by is not None and order_by < today,
                     'safety_stock': safety.get(mid, 0.0), 'series': series})
 
     out.sort(key=lambda m: m['name'])

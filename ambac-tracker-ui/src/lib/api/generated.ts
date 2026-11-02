@@ -1672,6 +1672,10 @@ export type MaterialLoad = {
   units_per_purchase_unit: number | null;
   on_hand: number;
   incoming: number;
+  lead_time_days: number | null;
+  first_short_month: string | null;
+  order_by: string | null;
+  order_by_late: boolean;
   safety_stock: number;
   series: Array<MaterialBucket>;
 };
@@ -25161,6 +25165,10 @@ const MaterialLoad = z.object({
   units_per_purchase_unit: z.number().nullable(),
   on_hand: z.number(),
   incoming: z.number(),
+  lead_time_days: z.number().int().nullable(),
+  first_short_month: z.string().nullable(),
+  order_by: z.string().nullable(),
+  order_by_late: z.boolean(),
   safety_stock: z.number(),
   series: z.array(MaterialBucket),
 });
@@ -53641,8 +53649,10 @@ pegged component WOs offset the requirement, so re-running is idempotent.`,
     description: `The material spread: one row per bought item, keyed as the ERP keys it, with
 its demand per month in stock units — firm work, RFI deals and unclaimed forecast
 together — beside its purchase unit and conversion, on-hand, incoming and the
-balance left at the end. A spread, not a plan: no lead-time offset or lot sizing;
-buying is the ERP&#x27;s. Behind export_data like every report.`,
+balance left at the end. Beside it, WHEN to act: the first month the balance goes
+short and the order-by date for it (that month&#x27;s first day less the lead time).
+A spread, not a plan: no order quantities, lot sizing or later shortages rolled
+forward; buying is the ERP&#x27;s. Behind export_data like every report.`,
     requestFormat: "json",
     parameters: [
       {

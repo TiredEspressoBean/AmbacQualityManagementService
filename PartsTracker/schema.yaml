@@ -29481,8 +29481,10 @@ paths:
         The material spread: one row per bought item, keyed as the ERP keys it, with
         its demand per month in stock units — firm work, RFI deals and unclaimed forecast
         together — beside its purchase unit and conversion, on-hand, incoming and the
-        balance left at the end. A spread, not a plan: no lead-time offset or lot sizing;
-        buying is the ERP's. Behind export_data like every report.
+        balance left at the end. Beside it, WHEN to act: the first month the balance goes
+        short and the order-by date for it (that month's first day less the lead time).
+        A spread, not a plan: no order quantities, lot sizing or later shortages rolled
+        forward; buying is the ERP's. Behind export_data like every report.
       parameters:
       - in: path
         name: export_format
@@ -61615,6 +61617,18 @@ components:
         incoming:
           type: number
           format: double
+        lead_time_days:
+          type: integer
+          nullable: true
+        first_short_month:
+          type: string
+          nullable: true
+        order_by:
+          type: string
+          format: date
+          nullable: true
+        order_by_late:
+          type: boolean
         safety_stock:
           type: number
           format: double
@@ -61623,11 +61637,15 @@ components:
           items:
             $ref: '#/components/schemas/MaterialBucket'
       required:
+      - first_short_month
       - id
       - incoming
       - kind
+      - lead_time_days
       - name
       - on_hand
+      - order_by
+      - order_by_late
       - part_number
       - purchase_unit
       - safety_stock

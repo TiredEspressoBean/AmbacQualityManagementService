@@ -12120,8 +12120,10 @@ export interface paths {
          * @description The material spread: one row per bought item, keyed as the ERP keys it, with
          *     its demand per month in stock units — firm work, RFI deals and unclaimed forecast
          *     together — beside its purchase unit and conversion, on-hand, incoming and the
-         *     balance left at the end. A spread, not a plan: no lead-time offset or lot sizing;
-         *     buying is the ERP's. Behind export_data like every report.
+         *     balance left at the end. Beside it, WHEN to act: the first month the balance goes
+         *     short and the order-by date for it (that month's first day less the lead time).
+         *     A spread, not a plan: no order quantities, lot sizing or later shortages rolled
+         *     forward; buying is the ERP's. Behind export_data like every report.
          */
         get: operations["api_Schedules_material_outlook_export_retrieve"];
         put?: never;
@@ -26603,6 +26605,11 @@ export interface components {
             on_hand: number;
             /** Format: double */
             incoming: number;
+            lead_time_days: number | null;
+            first_short_month: string | null;
+            /** Format: date */
+            order_by: string | null;
+            order_by_late: boolean;
             /** Format: double */
             safety_stock: number;
             series: components["schemas"]["MaterialBucket"][];

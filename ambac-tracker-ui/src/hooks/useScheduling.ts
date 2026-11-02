@@ -561,6 +561,12 @@ export type CapacityLoad = {
     on_hand: number;
     /** Inbound lots promised within the horizon. */
     incoming: number;
+    /** When to act on the FIRST shortage only: the month the balance goes short, and
+     *  that month's first day less the purchase lead time. Null when never short. */
+    lead_time_days: number | null;
+    first_short_month: string | null;
+    order_by: string | null;
+    order_by_late: boolean;
     safety_stock: number;
     series: {
       bucket: string;

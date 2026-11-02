@@ -623,8 +623,15 @@ export function CapacityPlanningPage() {
                       </tr>
                       {data.materials.map((m) => (
                         <tr key={m.id} className="border-t">
-                          <th scope="row" className="sticky left-0 z-10 bg-background px-3 py-1.5 text-left text-xs font-medium">
+                          <th scope="row" className="sticky left-0 z-10 bg-background px-3 py-1.5 text-left text-xs font-medium"
+                              title={m.order_by
+                                ? `First short ${m.first_short_month} · order by ${m.order_by}${m.order_by_late ? " (late)" : ""}`
+                                  + (m.lead_time_days ? ` · ${m.lead_time_days}-day lead time` : " · no lead time set")
+                                : undefined}>
                             {m.name}
+                            {m.order_by_late && (
+                              <span className="ml-1.5 text-[10px] font-normal text-red-600 dark:text-red-400">order late</span>
+                            )}
                           </th>
                           {/* A material has no "months over capacity" — it has a balance,
                               not a rate. Held empty so the buckets stay aligned with the

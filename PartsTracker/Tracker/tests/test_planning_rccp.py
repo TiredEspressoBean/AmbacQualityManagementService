@@ -721,6 +721,65 @@ class MaterialOutlookExportTests(_RccpFixture, TestCase):
         self.assertEqual(float(row["Total demand"]), 21.0)
         self.assertEqual(float(row["Balance at end"]), -26.0)
 
+    # --- when to act: first short month and order-by -------------------------
+
+    def _row(self):
+        return rccp.build_capacity_load(self.tenant, months=12)["materials"][0]
+
+    def _stock(self, qty):
+        from datetime import date
+        from decimal import Decimal
+        from Tracker.models import MaterialLot
+        MaterialLot.objects.create(
+            tenant=self.tenant, lot_number=f"LOT-{qty}", material=self.oring,
+            received_date=date.today(), received_by=self.user, quantity=Decimal(qty),
+            quantity_remaining=Decimal(qty), unit_of_measure="EA", status="ACCEPTED")
+
+    def _first_of(self, label):
+        from datetime import date
+        y, m = map(int, label.split("-"))
+        return date(y, m, 1)
+
+    def test_order_by_is_the_first_short_month_less_the_lead_time(self):
+        # 5 + 21 needed against 10: the balance goes short when the line's parts land.
+        self._stock(10)
+        self.oring.purchase_lead_time_days = 20
+        self.oring.save(update_fields=["purchase_lead_time_days"])
+        row = self._row()
+        short = next(b["bucket"] for b in row["series"] if b["short"])
+        self.assertEqual(row["first_short_month"], short)
+        self.assertEqual(row["lead_time_days"], 20)
+        self.assertEqual(row["order_by"], self._first_of(short) - timedelta(days=20))
+        self.assertEqual(row["order_by_late"], row["order_by"] < timezone.localdate())
+
+    def test_never_short_leaves_order_by_blank(self):
+        self._stock(1000)
+        row = self._row()
+        self.assertIsNone(row["first_short_month"])
+        self.assertIsNone(row["order_by"])
+        self.assertFalse(row["order_by_late"])
+
+    def test_no_lead_time_orders_by_the_first_short_month(self):
+        self._stock(10)
+        row = self._row()
+        self.assertIsNone(row["lead_time_days"])
+        self.assertEqual(row["order_by"], self._first_of(row["first_short_month"]))
+
+    def test_export_carries_when_to_act_before_the_months(self):
+        import csv
+        import io
+        self.oring.purchase_lead_time_days = 400   # certainly already late
+        self.oring.save(update_fields=["purchase_lead_time_days"])
+        r = self._client("view_scheduleresult", "export_data").get(
+            "/api/Schedules/material-outlook/export/csv/?months=12")
+        reader = csv.DictReader(io.StringIO(r.content.decode("utf-8-sig")))
+        cols = reader.fieldnames
+        self.assertEqual(cols[cols.index("Incoming") + 1:cols.index("Incoming") + 5],
+                         ["Lead time (days)", "First short month", "Order by", "Late"])
+        row = next(reader)
+        self.assertEqual((row["Lead time (days)"], row["Late"]), ("400", "Late"))
+        self.assertTrue(row["Order by"])
+
     def test_export_sits_behind_export_data(self):
         r = self._client("view_scheduleresult").get(
             "/api/Schedules/material-outlook/export/csv/")
