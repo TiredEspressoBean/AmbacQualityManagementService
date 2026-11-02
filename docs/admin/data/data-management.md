@@ -56,7 +56,8 @@ step*, *on the machine*. It has no form of its own.
 ### Equipment & scheduling
 
 **Equipment** `rev` (with **Changeovers**, edited on the machine), **Equipment
-Types** `rev`, **Tooling**, **Work Centers** `rev`, **Shifts** `rev`.
+Types** `rev`, **Tooling**, **Work Centers** `rev`, **Shifts** `rev`, **Volume
+Forecast** (opens the [forecast grid](../../workflows/scheduling/forecast.md)).
 
 ### Quality
 

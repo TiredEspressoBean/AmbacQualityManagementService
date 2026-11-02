@@ -99,7 +99,7 @@ For example:
 
 | Status | Meaning |
 |--------|---------|
-| **RFI** | Request for information — not yet a firm order |
+| **RFI** | Request for information — not yet a firm order. Its lines count as **tentative** demand in [capacity planning](../scheduling/capacity.md#rfis-and-the-forecast), and can't be planned into work: *"&lt;order&gt; is still an RFI — its lines can't be planned into work until the order moves past RFI."* |
 | **Pending** | Created, not started |
 | **In progress** | Work underway |
 | **On hold** | Temporarily paused |

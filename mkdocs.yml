@@ -89,6 +89,7 @@ nav:
       - Schedule (Gantt): workflows/scheduling/gantt.md
       - Releasing Work: workflows/scheduling/releasing.md
       - Capacity Planning: workflows/scheduling/capacity.md
+      - Volume Forecast: workflows/scheduling/forecast.md
       - How the Numbers Are Made: workflows/scheduling/how-the-numbers-are-made.md
       - Scheduling Setup: workflows/scheduling/setup.md
     - Supply:

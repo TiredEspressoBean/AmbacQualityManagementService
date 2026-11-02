@@ -21,7 +21,7 @@ so treat it as a planning aid, not a commitment.
 
 | View | Shows |
 |------|-------|
-| **Capacity heatmap** | Load — work orders and open order lines — against available capacity, month by month |
+| **Capacity heatmap** | Load — work orders, open order lines and the unclaimed forecast — against available capacity, month by month |
 | **What to release** | Work that should be released now to hit its dates |
 | **Could we take this order?** | Whether a prospective order fits |
 
@@ -49,6 +49,27 @@ The crew verdict says how much of the load is lines like these — *Includes
 &lt;N&gt; open order lines not yet planned* — so you can tell demand you have
 committed to work from demand still on paper.
 
+### RFIs and the forecast
+
+Two more kinds of demand are in the load, and both are **shaded apart from firm
+work**:
+
+- **RFI orders are tentative.** An RFI order's open lines load capacity and
+  material like any order line, but as *tentative* — the deal may not close.
+  The verdict counts them: *…open order lines not yet planned, &lt;K&gt; of them
+  RFI (tentative)*. An RFI line can't be planned into work until the order moves
+  past RFI — see [Order Status](../orders/order-status.md).
+- **The unclaimed forecast.** The [volume forecast](forecast.md) adds whatever
+  orders due that month don't already cover. The verdict says *Includes
+  &lt;U&gt; units of unclaimed forecast*, linking to the forecast.
+
+A heatmap cell carrying either has a thin strip along its bottom edge — **sky
+blue** for tentative (RFI), **violet** for unclaimed forecast — as wide as that
+share of the month's load. Hovering adds *of which &lt;X&gt;h tentative (RFI
+orders), &lt;Y&gt;h unclaimed forecast*. Forecast for a part type with no approved
+routing can't be placed; an amber line says so — *Forecast for &lt;N&gt; part
+type-months can't be placed (no approved routing) — not in the load*.
+
 !!! warning "Lines that can't be placed aren't in the load"
     A line with **no due date**, or whose part type has **no approved routing**,
     can't be placed. The page says so in amber — *&lt;N&gt; order lines can't be
@@ -57,7 +78,7 @@ committed to work from demand still on paper.
     demand is invisible here.
 
 **Could we take this order?** is different: it measures against work orders
-only, not against open order lines.
+only, not against open order lines, RFIs or the forecast.
 
 ## Could we take this order?
 

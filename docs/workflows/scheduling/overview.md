@@ -13,7 +13,8 @@ resource, in what order, and whether the plant can absorb what's been promised.
 |------|---------|
 | **[Schedule (Gantt)](gantt.md)** | What runs where, and in what order |
 | **Calendar** | When the plant is *not* working |
-| **[Capacity Planning](capacity.md)** | Can we absorb the next 12 months of demand? |
+| **[Capacity Planning](capacity.md)** | Can we absorb the coming months of demand — firm orders, RFIs and the forecast? |
+| **[Volume Forecast](forecast.md)** | What new builds we expect, by part type and month |
 | **Staging List** | What to put at each bench before the operator arrives |
 | **Operator Hours** | Attendance, and the job time on operators' step records |
 | **Requirements** | What to buy, build, and procure to hit the schedule |
