@@ -39,7 +39,23 @@ class Bucket:
     start: datetime
     end: datetime       # exclusive
     working_hours: float   # per-person shift hours in the bucket (labor basis)
-    calendar_hours: float  # wall-clock hours in the bucket (lights-out basis)
+    calendar_hours: float  # wall-clock hours less plant closures (lights-out basis)
+
+
+def _open_hours(tenant, start: datetime, end: datetime) -> float:
+    """Wall-clock hours in [start, end) less plant closures — what a lights-out machine
+    offers. A closure stops EVERY machine, lights-out included, matching the solver
+    (`calendars.get_calendar_closures`), with yearly closures in every year (user
+    decision 2026-11-02). If a closure ever needs to leave lights-out running, that is a
+    flag on the closure, read here and in the solver — not a planning-only exception.
+    Machine downtime is not subtracted."""
+    from Tracker.services.scheduling.data import HorizonData
+    if end <= start:
+        return 0.0
+    horizon = HorizonData(start=start, end=end, frozen_end=start, slushy_end=start)
+    closed = sum(max(0.0, (min(b, end) - max(a, start)).total_seconds())
+                 for a, b in calendars.get_calendar_closures(tenant, horizon))
+    return max(0.0, (end - start).total_seconds() - closed) / 3600
 
 
 def _month_buckets(tenant, start: datetime, months: int) -> list[Bucket]:
@@ -58,7 +74,7 @@ def _month_buckets(tenant, start: datetime, months: int) -> list[Bucket]:
         avail_from = max(cur, start)
         windows = calendars.get_working_windows(tenant, avail_from, nxt)
         working = sum((b - a).total_seconds() / 3600 for a, b in windows)
-        calendar = (nxt - avail_from).total_seconds() / 3600
+        calendar = _open_hours(tenant, avail_from, nxt)
         out.append(Bucket(f"{y:04d}-{m:02d}", cur, nxt, working, calendar))
         y, m, cur = ny, nm, nxt
     return out
@@ -70,7 +86,7 @@ def window_bucket(tenant, start: datetime, end: datetime, label: str = "window")
     monthly series."""
     windows = calendars.get_working_windows(tenant, start, end)
     working = sum((b - a).total_seconds() / 3600 for a, b in windows)
-    calendar = (end - start).total_seconds() / 3600
+    calendar = _open_hours(tenant, start, end)
     return Bucket(label, start, end, working, calendar)
 
 
@@ -139,7 +155,7 @@ def _window_hours(tenant, bucket: Bucket, win_start: datetime,
         return bucket.working_hours, bucket.calendar_hours
     windows = calendars.get_working_windows(tenant, a, b)
     working = sum((y - x).total_seconds() / 3600 for x, y in windows)
-    return working, (b - a).total_seconds() / 3600
+    return working, _open_hours(tenant, a, b)
 
 
 def _bucket_index(buckets: list[Bucket], when: date | datetime) -> int | None:

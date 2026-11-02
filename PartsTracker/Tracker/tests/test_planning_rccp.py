@@ -162,6 +162,46 @@ class RccpTests(_RccpFixture, TestCase):
                      if w["name"] == "Cell A")["series"][0]["capacity_hours"]
         self.assertGreater(after, before)
 
+    def _lights_out_cell(self, now, months):
+        from unittest import mock
+        with mock.patch.object(rccp.timezone, 'now', return_value=now):
+            return next(w for w in rccp.build_capacity_load(self.tenant, months=months)["work_centers"]
+                        if w["name"] == "Cell A")["series"]
+
+    def test_a_plant_closure_stops_lights_out_machines_too(self):
+        """A closure stops every machine, as in the solver: a 2-day shutdown takes 48 h
+        off each lights-out machine's month."""
+        from datetime import datetime
+        from Tracker.models import PlantCalendarException
+        from Tracker.services.core.clock import plant_tz
+        tz = plant_tz(self.tenant)
+        now = datetime(2026, 11, 2, 12, 0, tzinfo=tz)
+        Equipments.objects.filter(pk=self.machine.pk).update(runs_unattended=True)
+        before = self._lights_out_cell(now, 3)
+        PlantCalendarException.objects.create(
+            tenant=self.tenant, name="Shutdown", kind="SHUTDOWN",
+            start_time=datetime(2026, 12, 21, 0, 0, tzinfo=tz),
+            end_time=datetime(2026, 12, 23, 0, 0, tzinfo=tz))
+        after = self._lights_out_cell(now, 3)
+        dec = next(i for i, b in enumerate(before) if b["bucket"] == "2026-12")
+        self.assertAlmostEqual(before[dec]["capacity_hours"] - after[dec]["capacity_hours"], 48, delta=0.5)
+
+    def test_a_yearly_closure_in_a_middle_year_stops_lights_out_machines(self):
+        from datetime import datetime
+        from Tracker.models import PlantCalendarException
+        from Tracker.services.core.clock import plant_tz
+        tz = plant_tz(self.tenant)
+        now = datetime(2026, 11, 2, 12, 0, tzinfo=tz)
+        Equipments.objects.filter(pk=self.machine.pk).update(runs_unattended=True)
+        before = self._lights_out_cell(now, 24)
+        PlantCalendarException.objects.create(
+            tenant=self.tenant, name="Summer holiday", kind="HOLIDAY", recurrence="YEARLY",
+            start_time=datetime(2020, 7, 14, 0, 0, tzinfo=tz),
+            end_time=datetime(2020, 7, 15, 0, 0, tzinfo=tz))
+        after = self._lights_out_cell(now, 24)
+        july = next(i for i, b in enumerate(before) if b["bucket"] == "2027-07")
+        self.assertAlmostEqual(before[july]["capacity_hours"] - after[july]["capacity_hours"], 24, delta=0.5)
+
     # --- load --------------------------------------------------------------
 
     def test_load_counts_remaining_work_of_active_orders(self):
