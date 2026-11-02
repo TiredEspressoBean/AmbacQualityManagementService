@@ -28,6 +28,26 @@ so treat it as a planning aid, not a commitment.
 The horizon is a selector — **6, 12, 24 or 36 months**, defaulting to 12. Export
 to **CSV** for planning offline.
 
+## Where the capacity comes from
+
+Capacity is read from the [Calendar](overview.md#calendar) and the roster — the
+same working time the scheduler plans against:
+
+| Row | Hours available |
+|-----|-----------------|
+| **Labor** | Each shop-floor operator's own shift, plus that shift's overtime, less plant closures, company-wide blocks and their own time off (PTO, sick, training) |
+| **A work centre** | Its attended machines × the plant's working hours (shifts plus overtime, less closures), plus its lights-out machines × every hour of the month |
+| **A certification pool** | The labor hours of the operators qualified for that work, worked out the same way as Labor |
+
+- **Yearly closures** count in every year of the view, so a 24- or 36-month
+  horizon loses each year's shutdown, not just the first.
+- The current month offers only what is **left** of it.
+- It is **today's** roster carried forward. A hire, a new shift or a newly
+  qualified operator counts only once they are on the roster or trained. There
+  is no way to plan one ahead.
+- Lights-out machines are credited every hour, closures included; machine
+  downtime is not taken off here.
+
 ## What's in the load
 
 The heatmap's load is the work orders, **plus open order lines not yet planned
