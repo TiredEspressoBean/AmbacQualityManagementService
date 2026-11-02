@@ -80,8 +80,8 @@ type-months can't be placed (no approved routing) — not in the load*.
     lists each line and its reason. Fix the line or the routing; until then that
     demand is invisible here.
 
-**Could we take this order?** is different: it measures against work orders
-only, not against open order lines, RFIs or the forecast.
+**Could we take this order?** measures against the same load — see [What it
+counts](#what-it-counts).
 
 ## Material outlook
 
@@ -144,6 +144,34 @@ to the customer.
 A refusal names **every** resource that fell short, ordered by how far short
 they came rather than by absolute hours. If it comes back with nothing, nothing
 in the planning horizon fits.
+
+### What it counts
+
+The hours already spoken for are **all the planned load**: work orders, open
+order lines not yet on work orders, RFIs (tentative) and the unclaimed forecast
+outside the [demand time fence](forecast.md#the-demand-time-fence). So the
+forecast alone can turn an answer into *Not by …*.
+
+On a refusal, each short resource says what is standing in the way — *Already
+taken by work orders &lt;a&gt;h · order lines not yet planned &lt;b&gt;h · RFI
+(tentative) &lt;c&gt;h · unclaimed forecast &lt;d&gt;h* — naming only the kinds
+present. Whether real orders or a forecast are in the way is a different
+conversation.
+
+### When the order was already forecast
+
+An order you expected shouldn't be refused for colliding with its own forecast.
+So the quantity asked for first uses up its part type's **unclaimed** forecast,
+the way a real order does: its due month, then earlier months nearest first,
+then later ones, within the [consumption
+window](forecast.md#orders-use-up-the-forecast) — never inside the demand time
+fence. Only the rest needs free capacity, and the answer says so:
+
+- *&lt;n&gt; of the &lt;q&gt; were already forecast (&lt;n&gt; in
+  &lt;month&gt;); &lt;m&gt; need free capacity, which exists by then.* — or
+  *…, which isn't there by then.*
+- *All &lt;q&gt; were already forecast (…) — promisable against that
+  forecast.*
 
 !!! info "It measures the window, not the month"
     Capacity-to-promise counts the hours available between **now and the date
