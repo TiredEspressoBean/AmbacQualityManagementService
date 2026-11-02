@@ -190,8 +190,16 @@ def unclaimed_forecast(tenant, first: date, last: date) -> dict:
     from Tracker.services.core.clock import tenant_today
     fence, window = consumption_settings(tenant)
     first, last = month_start(first), month_start(last)
-    # Orders and forecast just outside the range still trade with the cells inside it.
-    lo, hi = add_months(first, -window), add_months(last, window)
+    this_month = month_start(tenant_today(tenant))
+    # Consumption is computed from a FIXED anchor — the current month — and then sliced,
+    # so a cell reads the same whichever range is asked about (the grid and a quote
+    # must not disagree). Past months drop out on both sides: a past-due order's work is
+    # already in the load as overdue, and a past month's forecast is history (standard
+    # practice). Up to `last + window` is enough: an order takes its own month, then
+    # earlier months, before any later one, so nothing beyond that reaches `last`.
+    lo, hi = this_month, add_months(last, window)
+    if hi < lo:
+        return {}
     fc = forecast_by_month(tenant, lo, hi)
     if not fc:
         return {}
