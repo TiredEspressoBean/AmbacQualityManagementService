@@ -14,8 +14,9 @@ What each track needs to find, and what provides it:
   Production Manager — "Could we take this order?": a modest order inside a forecast
     month answers "already forecast"; a large one answers no, with what fills the
     months and the earliest month it fits. Capacity in the 12-month view runs from
-    under 60% to one month over capacity, which sits BEFORE the forecast peak
-    because load lands in the run-up to each due date.
+    under 60% to a tight busiest month, which sits BEFORE the forecast peak because
+    load lands in the run-up to each due date. Don't count on an over-capacity month:
+    where the run-up lands depends on measured flow times, which shift per seed.
   Purchasing — the material outlook export: the forecast runs the injector's bought
     parts short at different times, so one order-by date is already past and the
     others fall over the next few months.
@@ -41,9 +42,9 @@ from ..base import BaseSeeder
 
 PART_TYPE = 'Common Rail Injector'
 # Units a month, starting THIS month (index 0, inside the demand time fence).
-# Tuned on the demo crew (about 1.8 crew hours an injector): the first year puts
-# every capacity band in the 12-month view, with the peak's run-up over capacity;
-# the second year runs tight without going over.
+# Tuned on the demo crew (about 1.8 crew hours an injector): the first year's
+# run-up to its peak reads tight (85-100%) in the 12-month view, and the second
+# year runs tight in several months.
 PROFILE = [150, 150, 170, 190, 210, 250, 300, 350, 380, 350, 280, 220,
            200, 210, 230, 250, 280, 320, 360, 420, 340, 290, 240, 210]
 
