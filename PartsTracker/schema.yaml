@@ -63329,14 +63329,14 @@ components:
           description: Days after the frozen zone where moves are discouraged.
         demand_time_fence_months:
           type: integer
-          maximum: 2147483647
+          maximum: 12
           minimum: 0
           description: Months from the current one in which forecast is not planned
             — only orders count, since unsold forecast that close in won't arrive.
             1 = the current month; 0 = off.
         forecast_consumption_window_months:
           type: integer
-          maximum: 2147483647
+          maximum: 12
           minimum: 0
           description: 'How many months either side of its due month an order may
             use up forecast: earlier months first (nearest first), then later. 0 =
@@ -70173,14 +70173,14 @@ components:
           description: Days after the frozen zone where moves are discouraged.
         demand_time_fence_months:
           type: integer
-          maximum: 2147483647
+          maximum: 12
           minimum: 0
           description: Months from the current one in which forecast is not planned
             — only orders count, since unsold forecast that close in won't arrive.
             1 = the current month; 0 = off.
         forecast_consumption_window_months:
           type: integer
-          maximum: 2147483647
+          maximum: 12
           minimum: 0
           description: 'How many months either side of its due month an order may
             use up forecast: earlier months first (nearest first), then later. 0 =

@@ -927,7 +927,6 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         import io
         import pandas as pd
         from django.http import HttpResponse
-        from django.utils import timezone
         from Tracker.models import Material
         from Tracker.services.core.access_log import record_access
         from Tracker.services.planning.rccp import build_capacity_load
@@ -967,7 +966,8 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 'Balance at end': m['series'][-1]['remaining_cover'] if m['series'] else None,
             })
         df = pd.DataFrame(rows, columns=columns)
-        filename = f"material_outlook_{timezone.localdate()}_{months}m.{export_format}"
+        from Tracker.services.core.clock import tenant_today
+        filename = f"material_outlook_{tenant_today(self.tenant)}_{months}m.{export_format}"
         if export_format == 'csv':
             content = df.map(csv_safe).to_csv(index=False).encode('utf-8-sig')
             content_type = 'text/csv'
@@ -1557,13 +1557,13 @@ class VolumeForecastViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     )
     @action(detail=False, methods=['get'])
     def grid(self, request):
-        from django.utils import timezone
+        from Tracker.services.core.clock import tenant_today
         from Tracker.services.planning.forecast import grid
         try:
             months = max(1, min(36, int(request.query_params.get('months', 24))))
         except ValueError:
             months = 24
-        return Response(grid(self.tenant, timezone.localdate(), months))
+        return Response(grid(self.tenant, tenant_today(self.tenant), months))
 
     @extend_schema(
         request=inline_serializer(name='VolumeForecastCellsInput', fields={
@@ -1589,9 +1589,12 @@ class VolumeForecastViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         try:
             with transaction.atomic():
                 for c in cells:
-                    pt = PartTypes.objects.filter(id=c.get('part_type')).first()
+                    # The current, live version only — as the sheet import resolves items.
+                    # A forecast on a superseded version matches no order's claims.
+                    pt = PartTypes.objects.filter(id=c.get('part_type'), archived=False,
+                                                  is_current_version=True).first()
                     if pt is None:
-                        raise ValueError(f"No part type {c.get('part_type')}")
+                        raise ValueError(f"No current part type {c.get('part_type')}")
                     month = parse_month(c.get('month'))
                     if month is None:
                         raise ValueError(f"'{c.get('month')}' isn't a month (YYYY-MM)")

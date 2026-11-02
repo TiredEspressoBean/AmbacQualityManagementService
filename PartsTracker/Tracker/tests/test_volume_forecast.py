@@ -205,6 +205,49 @@ class ConsumptionWindowTests(_ForecastFixture, TestCase):
         self.assertEqual(self._cells()[before]["unclaimed"], 10)
 
 
+class ConsumptionAnchorTests(_ForecastFixture, TestCase):
+    """Consumption is computed from the current month and then sliced, so a cell reads
+    the same whichever range is asked about; past-due orders consume nothing."""
+
+    def _cell(self, month, first, last):
+        return fc.unclaimed_forecast(self.tenant, first, last)[(self.pt.id, month)]["unclaimed"]
+
+    def test_a_cell_does_not_depend_on_the_range_asked_about(self):
+        m1, m2, m3 = (fc.add_months(self.this_month, k) for k in (1, 2, 3))
+        for m in (m1, m2, m3):
+            fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=m, quantity=10)
+        # M1's order takes M1 then spills into M2; M2's order, finding M2 gone, takes M3.
+        self._line(25, self._mid(m1), n=1)
+        self._line(10, self._mid(m2), n=2)
+        narrow = self._cell(m3, m3, m3)
+        wide = self._cell(m3, self.this_month, fc.add_months(m3, 3))
+        self.assertEqual((narrow, wide), (0, 0))
+
+    def test_a_past_due_order_consumes_no_forecast(self):
+        nxt = fc.add_months(self.this_month, 1)
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.this_month, quantity=30)
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=nxt, quantity=30)
+        self._line(20, self.this_month - timedelta(days=10))   # due last month: overdue
+        cells = fc.unclaimed_forecast(self.tenant, self.this_month, nxt)
+        self.assertEqual((cells[(self.pt.id, self.this_month)]["unclaimed"],
+                          cells[(self.pt.id, nxt)]["unclaimed"]), (30, 30))
+
+
+class PlantMonthTests(_ForecastFixture, TestCase):
+    """Buckets are the plant's months, matching the fence (which uses the plant's day)."""
+
+    def test_buckets_follow_the_plant_month_not_utc(self):
+        from datetime import datetime, timezone as dt_tz
+        from unittest import mock
+        self.tenant.default_timezone = "America/Chicago"
+        self.tenant.save(update_fields=["default_timezone"])
+        # 03:00 UTC on 1 December is still 30 November in Chicago.
+        now = datetime(2026, 12, 1, 3, 0, tzinfo=dt_tz.utc)
+        with mock.patch.object(rccp.timezone, "now", return_value=now):
+            buckets = rccp.build_capacity_load(self.tenant, months=2)["buckets"]
+        self.assertEqual(buckets, ["2026-11", "2026-12"])
+
+
 class DemandTimeFenceTests(_ForecastFixture, TestCase):
     """Inside the fence only orders are planned: the forecast is shown, not loaded."""
 
@@ -385,6 +428,24 @@ class ForecastApiTests(_ForecastFixture, TestCase):
         self.assertEqual(grid["rows"][0]["cells"][label],
                          {"forecast": 12, "firm": 0, "tentative": 0, "unclaimed": 12,
                           "fenced": False, "claimed_from": []})
+
+    def test_a_superseded_part_type_is_refused(self):
+        c = self._client("view_volumeforecast", "add_volumeforecast", "change_volumeforecast")
+        old = PartTypes.objects.create(tenant=self.tenant, name="Old", is_current_version=False)
+        r = c.post("/api/VolumeForecasts/set-cells/",
+                   {"cells": [{"part_type": str(old.id), "month": "2027-03", "quantity": 5}]},
+                   format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(VolumeForecast.objects.exists())
+
+    def test_demand_settings_are_bounded(self):
+        from Tracker.serializers.scheduling import OptimizationConfigSerializer
+        from Tracker.models import OptimizationConfig
+        cfg = OptimizationConfig.objects.create(tenant=self.tenant)
+        ser = OptimizationConfigSerializer(cfg, data={"demand_time_fence_months": 13}, partial=True)
+        self.assertFalse(ser.is_valid())
+        ser = OptimizationConfigSerializer(cfg, data={"forecast_consumption_window_months": 12}, partial=True)
+        self.assertTrue(ser.is_valid(), ser.errors)
 
     def test_viewer_cannot_edit(self):
         c = self._client("view_volumeforecast")

@@ -5236,14 +5236,14 @@ export type OptimizationConfig = {
    * Months from the current one in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. 1 = the current month; 0 = off.
    *
    * @minimum 0
-   * @maximum 2147483647
+   * @maximum 12
    */
   number | undefined;
   forecast_consumption_window_months?: /**
    * How many months either side of its due month an order may use up forecast: earlier months first (nearest first), then later. 0 = its due month only.
    *
    * @minimum 0
-   * @maximum 2147483647
+   * @maximum 12
    */
   number | undefined;
   default_outside_process_turnaround_days?: /**
@@ -13754,14 +13754,14 @@ export type PatchedOptimizationConfigRequest = Partial<{
    * Months from the current one in which forecast is not planned — only orders count, since unsold forecast that close in won't arrive. 1 = the current month; 0 = off.
    *
    * @minimum 0
-   * @maximum 2147483647
+   * @maximum 12
    */
   demand_time_fence_months: number;
   /**
    * How many months either side of its due month an order may use up forecast: earlier months first (nearest first), then later. 0 = its due month only.
    *
    * @minimum 0
-   * @maximum 2147483647
+   * @maximum 12
    */
   forecast_consumption_window_months: number;
   /**
@@ -25310,12 +25310,12 @@ const OptimizationConfig = z.object({
   relative_gap_limit: z.number().gte(0).optional(),
   frozen_zone_days: z.number().int().gte(0).lte(2147483647).optional(),
   slushy_zone_days: z.number().int().gte(0).lte(2147483647).optional(),
-  demand_time_fence_months: z.number().int().gte(0).lte(2147483647).optional(),
+  demand_time_fence_months: z.number().int().gte(0).lte(12).optional(),
   forecast_consumption_window_months: z
     .number()
     .int()
     .gte(0)
-    .lte(2147483647)
+    .lte(12)
     .optional(),
   default_outside_process_turnaround_days: z
     .number()
@@ -25376,8 +25376,8 @@ const PatchedOptimizationConfigRequest = z
     relative_gap_limit: z.number().gte(0),
     frozen_zone_days: z.number().int().gte(0).lte(2147483647),
     slushy_zone_days: z.number().int().gte(0).lte(2147483647),
-    demand_time_fence_months: z.number().int().gte(0).lte(2147483647),
-    forecast_consumption_window_months: z.number().int().gte(0).lte(2147483647),
+    demand_time_fence_months: z.number().int().gte(0).lte(12),
+    forecast_consumption_window_months: z.number().int().gte(0).lte(12),
     default_outside_process_turnaround_days: z
       .number()
       .int()

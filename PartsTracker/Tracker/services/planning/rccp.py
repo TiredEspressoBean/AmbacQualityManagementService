@@ -65,7 +65,11 @@ def _month_buckets(tenant, start: datetime, months: int) -> list[Bucket]:
     `start`, not the 1st. Load is future work, so counting the month's elapsed days as
     capacity read late in a month as an idle crew — on 21 October, 792 h available
     against work that only the remaining third of the month could carry."""
+    from Tracker.services.core.clock import plant_tz
     out: list[Bucket] = []
+    # Months are the PLANT's months. Cut at UTC midnight, the buckets and the demand
+    # time fence (which uses the plant's day) disagreed about the month near its end.
+    start = start.astimezone(plant_tz(tenant))
     y, m = start.year, start.month
     cur = start.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     for _ in range(months):

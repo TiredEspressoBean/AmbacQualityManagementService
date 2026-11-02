@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from .core import SecureModel
@@ -295,12 +295,12 @@ class OptimizationConfig(SecureModel):
     # Forecast consumption in the demand outlook (services.planning.forecast). Shop
     # practice, so tenant settings rather than constants.
     demand_time_fence_months = models.PositiveIntegerField(
-        default=1,
+        default=1, validators=[MaxValueValidator(12)],
         help_text="Months from the current one in which forecast is not planned — only "
                   "orders count, since unsold forecast that close in won't arrive. "
                   "1 = the current month; 0 = off.")
     forecast_consumption_window_months = models.PositiveIntegerField(
-        default=1,
+        default=1, validators=[MaxValueValidator(12)],
         help_text="How many months either side of its due month an order may use up "
                   "forecast: earlier months first (nearest first), then later. "
                   "0 = its due month only.")
