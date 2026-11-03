@@ -63,7 +63,53 @@ throttled. You cannot clear your own competency gap.
 The same shape applies if the step is already assigned to another operator:
 taking it over needs a supervisor's authorization and a reason, and the
 handover is recorded alongside the competence check. Nothing is changed on the
-record unless the authorization succeeds.
+record unless the authorization succeeds. A supervisor can also move the step
+to you directly — see [Picking work back up](#picking-work-back-up).
+
+## Picking work back up
+
+A step you started and haven't finished stays yours, with its entries saved,
+until you complete it or a supervisor moves it.
+
+**Resume**, on your home page's **In progress** tile, takes you straight back
+when one thing is open. When several are, it opens **Pick up where you left
+off**: your open steps and loads, most recently started first, each with its
+step, the part (or *Load · N parts*), the work order, *Running* or *Assigned*
+with how long ago, and how far it got — *2 of 3 done* counts substeps confirmed
+or drafted. Pick one; it opens at its first substep not yet done.
+
+On a work order, **Continue work (N)** — beside **Start Work**, shown only when
+you have something open on that order — opens the same list narrowed to it,
+titled **Continue work on this order**. That is the way back after leaving a
+job part-way: go to its traveller and carry on.
+
+### Supervisors: taking over and handing off
+
+A **Shift Lead**, **Production Manager**, **QA Manager** or **QA Inspector**
+(and Tenant Admin) holds `reassign_stepexecution`. In the same list they can
+switch from **Mine** to **Everyone's**: each row then shows who holds it, and an
+amber **Off the clock** badge when that person isn't clocked in. **Off the clock
+only** narrows the list to those.
+
+Under someone else's step:
+
+- **Take over** — *Take over this step*: give a reason (**Why**), and it is
+  yours, with its progress.
+- **Hand off…** — *Hand off this step*: pick who it goes to (**Hand to**) and
+  say why. It then appears in their own list.
+
+No second person signs: the supervisor is the one signed in, and the record
+keeps who it moved from and to, who moved it, why, and when. Loads aren't moved
+this way — they are shared work.
+
+!!! important "Whoever ends up holding the step must be trained for it"
+    A supervisor who isn't trained for the step can't take it over — *"You
+    aren't trained for this step (missing: &lt;training&gt;). A second person
+    can authorize you through Start Work's supervisor override."* Handing it to
+    an untrained operator records the supervisor's own [training
+    override](#a-supervisor-can-authorize-you-anyway); a QA Inspector, who
+    doesn't hold that override, can only hand a step to someone already
+    trained.
 
 ## The player
 
@@ -80,12 +126,19 @@ For each substep:
 Your entry is saved when you move off it, and the player advances.
 
 !!! tip "Your work is saved as you go"
-    Moving between substeps saves what you have entered as a **draft** — on
-    *Confirm & next*, *Back*, the progress rail, or *Edit* from the review screen.
-    So if the tablet is closed, the battery dies, or the job is handed to the next
-    shift, reopening the step brings your entries back.
+    What you enter is saved as a **draft** as you work — a moment after you stop
+    typing, and whenever you move between substeps, leave the step for any other
+    page, switch away from the tab or close it, or log out. So if the tablet is
+    closed, the battery dies, or the job is handed to the next shift, reopening
+    the step brings your entries back.
 
-    Note it saves when you **leave a substep**, not on every keystroke.
+    Reopening it lands on the **first substep not yet done**, not necessarily
+    the one you were last on — so nothing earlier is skipped.
+
+    Only whoever holds the step can save to it. If it has been handed to someone
+    else while you still have it open, you're told: *"Your entries aren't being
+    saved — This step is now &lt;name&gt;'s. What you entered here wasn't
+    saved."*
 
 !!! warning "A draft is not a record — Complete step is"
     Nothing is official until you tap **Complete step**. That is what writes the

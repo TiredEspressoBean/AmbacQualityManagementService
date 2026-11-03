@@ -87,7 +87,8 @@ shows everything.
 - **Up next**: the job to do now, ranked by priority, then due date, then how long
   it has waited.
 - **Then**: the jobs behind it.
-- **In progress**: a job you started and haven't finished. **Resume** takes you back.
+- **In progress**: a job you started and haven't finished. **Resume** takes you back;
+  with more than one open, it asks which — **Pick up where you left off**.
 - **Scan**: type or scan a work order, serial, lot or location.
 
 Above the tiles, an orange line for each **first piece** of yours waiting on QA:

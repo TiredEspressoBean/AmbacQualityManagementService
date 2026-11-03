@@ -276,23 +276,26 @@ If FPI is required at your step:
 
 ## End of Shift
 
-### There is nothing to hand over
+### What you leave open stays yours
 
-Work is batched and nobody stops half way through a part. You finish the units
-you finish; whoever is on next picks up the rest of the batch. **Each part
-carries its own record with its own name on it**, so a batch worked by two
-people across a shift change is a hundred attributed records, not a transfer.
+**Each part carries its own record with its own name on it**, so a batch worked
+by two people across a shift change is a set of attributed records, not a
+transfer. You finish the units you finish; whoever is on next picks up the rest.
 
-There is no "hand over" action, and there is nothing to update to say you have
-stopped — because nothing was ever held open in your name.
+A step you **started and didn't finish** is different: it stays in your name,
+with what you entered on it saved. Tomorrow, **Resume** brings you back to it.
+If someone else needs to finish it tonight, a supervisor takes it over or hands
+it on — see [Picking work back up](../workflows/dwi/running.md#picking-work-back-up).
+Once you have clocked out, a supervisor sees your open steps marked **Off the
+clock**.
 
 ### What does matter before you go
 
 - **Complete any step you actually finished.** A lot cannot advance until every
   part in it is done, so an uncompleted step of yours holds up everyone else's.
-- **Submit, don't leave drafts.** Confirming a substep saves it as a draft;
-  until you tap **Complete step** nothing is official and the part has not
-  moved.
+- **Finish what you can.** Your entries are kept, but nothing is official until
+  you tap **Complete step** — the part has not moved, and nothing is on the
+  record.
 - **Tell your lead about anything you couldn't run**, rather than leaving it for
   the next person to rediscover.
 
