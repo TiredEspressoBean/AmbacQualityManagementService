@@ -313,6 +313,49 @@ def assert_startable(part, work_order) -> None:
 REASSIGNABLE_STATUSES = ('PENDING', 'CLAIMED', 'IN_PROGRESS')
 
 
+def carry_to_load(execution, *, to, snapshot) -> int:
+    """A visit that changes hands while its part is in an open load at the step takes
+    the load's other open visits with it: the load is one piece of work, and the
+    operator never moves through its parts one by one (walk 2026-11-03 — a take-over
+    at Start Work moved one visit of four, and the load stayed with its old holder).
+
+    Each carried visit records the same hand-off (`snapshot`, with its own previous
+    holder and snapshot, and which visit it was carried with). Its status is left as
+    it was. Returns how many were carried.
+    """
+    from Tracker.models import BatchExecution, StepExecution
+
+    if not execution.part_id:
+        return 0
+    load = (BatchExecution.objects
+            .filter(step_id=execution.step_id, parts=execution.part_id,
+                    completed_at__isnull=True, archived=False)
+            .first())
+    if load is None:
+        return 0
+    others = (StepExecution.objects  # tenant-safe: FK-correlated to a scoped load's parts
+              .filter(step_id=execution.step_id, part__in=load.parts.all(),
+                      exited_at__isnull=True, archived=False,
+                      status__in=REASSIGNABLE_STATUSES)
+              .exclude(pk=execution.pk).exclude(assigned_to=to)
+              .select_related('assigned_to'))
+    carried = 0
+    for v in others:
+        snap = {k: val for k, val in snapshot.items() if k != 'previous'}
+        hand = dict(snap.get('reassignment') or {})
+        hand.update({'from': v.assigned_to_id,
+                     'from_name': _person(v.assigned_to) if v.assigned_to else ''})
+        snap['reassignment'] = hand
+        snap['carried_with'] = str(execution.id)
+        if v.training_authorization:
+            snap['previous'] = v.training_authorization
+        v.assigned_to = to
+        v.training_authorization = snap
+        v.save(update_fields=['assigned_to', 'training_authorization', 'updated_at'])
+        carried += 1
+    return carried
+
+
 def reassign_execution(execution, *, by, to, reason):
     """A supervisor taking over a step in progress (`to` is themselves) or handing it
     to a named operator (user decision 2026-11-03). Holding `reassign_stepexecution` is
@@ -342,7 +385,10 @@ def reassign_execution(execution, *, by, to, reason):
         raise ValidationError("Say why the step is changing hands.")
     if execution.status not in REASSIGNABLE_STATUSES or execution.exited_at is not None:
         raise ValidationError("Only a step still in progress can change hands.")
-    if execution.assigned_to_id == to.id:
+    # Already theirs: nothing to move — unless the part is in an open load whose other
+    # visits aren't, which is taking over the load (carried below).
+    already = execution.assigned_to_id == to.id
+    if already and not _load_has_others(execution, to):
         raise ValidationError(f"This step is already {_person(to)}'s.")
 
     may_authorize = by.id != to.id and by.has_tenant_perm('override_training_gate', execution.tenant)
@@ -362,10 +408,27 @@ def reassign_execution(execution, *, by, to, reason):
     if execution.training_authorization:
         snapshot['previous'] = execution.training_authorization
 
-    execution.assigned_to = to
-    execution.training_authorization = snapshot
-    execution.save(update_fields=['assigned_to', 'training_authorization', 'updated_at'])
+    if not already:
+        execution.assigned_to = to
+        execution.training_authorization = snapshot
+        execution.save(update_fields=['assigned_to', 'training_authorization', 'updated_at'])
+    carry_to_load(execution, to=to, snapshot=snapshot)
     return execution
+
+
+def _load_has_others(execution, to) -> bool:
+    """Is the visit's part in an open load at the step with visits `to` doesn't hold?"""
+    from Tracker.models import BatchExecution, StepExecution
+    if not execution.part_id:
+        return False
+    load = (BatchExecution.objects
+            .filter(step_id=execution.step_id, parts=execution.part_id,
+                    completed_at__isnull=True, archived=False).first())
+    return bool(load) and (StepExecution.objects  # tenant-safe: FK-correlated to a scoped load's parts
+                           .filter(step_id=execution.step_id, part__in=load.parts.all(),
+                                   exited_at__isnull=True, archived=False,
+                                   status__in=REASSIGNABLE_STATUSES)
+                           .exclude(assigned_to=to).exists())
 
 
 def start_execution(execution, operator, *, authorizer=None, reason=None):
@@ -401,6 +464,9 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     execution.status = 'IN_PROGRESS'
     execution.training_authorization = snapshot
     execution.save()
+    # Taking over a part in an open load takes the load: its other visits come too.
+    if reassignment is not None:
+        carry_to_load(execution, to=operator, snapshot=snapshot)
     # Work has actually begun, so the work order is no longer merely pending. No-op
     # once it is past PENDING. Distinct from release, which authorizes it (release.py).
     from Tracker.services.mes.work_order import mark_started

@@ -123,7 +123,9 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
     });
     const openItem = useOpenInFlight();
     const items = data?.items ?? [];
-    const mine = (item: InFlightItem) => item.holder_id === me?.pk;
+    // In "Mine" every row is the asker's — a load lists for each of its holders, under
+    // the one holding most; in Everyone's, the shown holder decides.
+    const mine = (item: InFlightItem) => !everyone || item.holder_id === me?.pk;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -200,8 +202,9 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                                         )}
                                     </div>
                                 </button>
-                                {/* A load is shared work, not one person's step: nothing to take over. */}
-                                {supervisor && item.kind === "part" && (
+                                {/* A load moves as one: taking over or handing off any of its
+                                    visits takes the load's other open visits with it. */}
+                                {supervisor && (item.kind === "part" || item.resume_execution_id) && (
                                     <div className="flex gap-2 border-t px-3 py-2">
                                         {!mine(item) && (
                                             <Button size="sm" variant="outline" onClick={() => setMoving({ item, mode: "take" })}>
@@ -248,13 +251,15 @@ function ReassignDialog({ item, mode, meId, onClose, onTaken }: {
     const qc = useQueryClient();
     const [reason, setReason] = useState("");
     const [to, setTo] = useState<string>("");
-    const { data: people } = useQuery({ ...handOffCandidatesOptions(item.id), enabled: mode === "hand" });
+    // A load is moved through one of its visits; the rest of the load follows it.
+    const executionId = item.kind === "load" ? (item.resume_execution_id as string) : item.id;
+    const { data: people } = useQuery({ ...handOffCandidatesOptions(executionId), enabled: mode === "hand" });
     const target = mode === "take" ? meId : Number(to) || undefined;
     const reassign = useMutation({
         mutationFn: () => api.api_StepExecutions_reassign_create(
             { to: target as number, reason },
             {
-                params: { id: item.id },
+                params: { id: executionId },
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
                 suppressErrorToast: true,
             },
@@ -283,7 +288,9 @@ function ReassignDialog({ item, mode, meId, onClose, onTaken }: {
                 <DialogHeader>
                     <DialogTitle>{mode === "take" ? "Take over this step" : "Hand off this step"}</DialogTitle>
                     <DialogDescription>
-                        {item.step_name} · {item.part_erp_id ?? "—"}
+                        {item.step_name} · {item.kind === "load"
+                            ? `load of ${item.part_count} part${item.part_count === 1 ? "" : "s"}, all moving together`
+                            : item.part_erp_id ?? "—"}
                         {item.holder_name ? `, now ${item.holder_name}'s` : ""}. It keeps its
                         progress: {mode === "take" ? "you continue" : "they continue"} where it was left.
                     </DialogDescription>

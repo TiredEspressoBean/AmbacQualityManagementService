@@ -117,6 +117,48 @@ class StepReassignTests(TenantContextMixin, VectorTestCase):
         self.assertEqual(names[0], "trained")
         self.assertIn("op2", names)
 
+    def _load_of_three(self):
+        """A load at the step: this test's visit plus two more parts, all op's."""
+        from Tracker.models import BatchExecution
+        part = self.ex.part
+        others = []
+        for i in range(2):
+            p = Parts.objects.create(tenant=self.tenant, ERP_id=f"P-R{i}", part_type=part.part_type,
+                                     work_order=part.work_order, step=self.step)
+            others.append(StepExecution.objects.create(
+                tenant=self.tenant, part=p, step=self.step, assigned_to=self.op,
+                status="IN_PROGRESS", started_at=timezone.now()))
+        load = BatchExecution.objects.create(tenant=self.tenant, work_order=part.work_order,
+                                             step=self.step, started_by=self.op)
+        load.parts.set([part] + [o.part for o in others])
+        return load, others
+
+    def test_handing_off_a_visit_in_an_open_load_takes_the_load(self):
+        load, others = self._load_of_three()
+        reassign_execution(self.ex, by=self.lead, to=self.op2, reason="Op went home")
+        for v in [self.ex, *others]:
+            v.refresh_from_db()
+            self.assertEqual(v.assigned_to_id, self.op2.id)
+        self.assertEqual(others[0].training_authorization["carried_with"], str(self.ex.id))
+        # The load is now op2's in their picker, under them.
+        from Tracker.services.mes.in_flight import in_flight
+        row = next(i for i in in_flight(self.tenant, user=self.op2).items if i.kind == "load")
+        self.assertEqual(row.holder_id, self.op2.id)
+        self.assertFalse([i for i in in_flight(self.tenant, user=self.op).items if i.kind == "load"])
+
+    def test_a_load_already_partly_theirs_is_taken_over_whole(self):
+        load, others = self._load_of_three()
+        StepExecution.objects.filter(pk=self.ex.pk).update(assigned_to=self.op2)
+        self.ex.refresh_from_db()
+        # op2 holds one of three: the load lists for op2 too, under op (the majority).
+        from Tracker.services.mes.in_flight import in_flight
+        row = next(i for i in in_flight(self.tenant, user=self.op2).items if i.kind == "load")
+        self.assertEqual(row.holder_id, self.op.id)
+        reassign_execution(self.ex, by=self.lead, to=self.op2, reason="Finishing the load")
+        for v in others:
+            v.refresh_from_db()
+            self.assertEqual(v.assigned_to_id, self.op2.id)
+
     def test_both_qa_roles_and_the_supervisors_hold_it(self):
         from Tracker.presets import GROUP_PRESETS
         holders = {k for k, g in GROUP_PRESETS.items() if "reassign_stepexecution" in g["permissions"]}

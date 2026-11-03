@@ -13,9 +13,12 @@ assigned to someone else"):
         approval). These are COUNTED (`waiting`), not listed, so they aren't lost;
       - a terminal (Ship) step — Shipping's queue, not unfinished operator work;
       - a part in an open load at that step — its work is the load's row.
-  - **loads**: a BatchExecution not yet completed, held by whoever started it —
-    loading (OPEN) or sealed and running (RUNNING): a running load still has its
-    completion-phase substeps and its Complete to come.
+  - **loads**: a BatchExecution not yet completed — loading (OPEN) or sealed and
+    running (RUNNING): a running load still has its completion-phase substeps and its
+    Complete to come. A load is HELD by whoever holds its member parts' visits at the
+    step (walk 2026-11-03: a take-over moves the visits, and the load went with
+    whoever had started it): it lists for each of them, under the one holding most
+    (its starter on a tie), and its starter only when none of its visits is held.
 
 Progress counts a substep as done when it is confirmed (a live completion) or has a
 draft — "where the work has got to", not a quality figure. A part visit counts its
@@ -32,7 +35,7 @@ at clock-out, so a break never trips it and clocking back in clears it.
 """
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone as dt_timezone
 from uuid import UUID
@@ -102,22 +105,49 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
              .select_related('step', 'work_order', 'started_by'))
     if not everyone:
         execs = execs.filter(assigned_to=user)
-        loads = loads.filter(started_by=user)
     if work_order_id:
         execs = execs.filter(part__work_order_id=work_order_id)
         loads = loads.filter(work_order_id=work_order_id)
     execs, loads = list(execs), list(loads)
 
+    # Who holds each load: the holders of its member parts' visits at its step.
+    members = defaultdict(list)
+    for b_id, part_id in (BatchExecution.parts.through.objects  # tenant-safe: keyed to scoped loads
+                          .filter(batchexecution_id__in=[b.id for b in loads])
+                          .values_list('batchexecution_id', 'parts_id')):
+        members[b_id].append(part_id)
+    member_visit = {
+        (v.part_id, v.step_id): v
+        for v in (StepExecution.objects
+                  .filter(tenant=tenant, archived=False, exited_at__isnull=True,
+                          part_id__in={p for ps in members.values() for p in ps})
+                  .select_related('assigned_to'))
+    }
+    load_holder, load_holder_ids = {}, {}
+    for b in loads:
+        held = [member_visit[(p, b.step_id)].assigned_to for p in members[b.id]
+                if (p, b.step_id) in member_visit and member_visit[(p, b.step_id)].assigned_to_id]
+        if not held:
+            load_holder[b.id], load_holder_ids[b.id] = b.started_by, {b.started_by_id}
+            continue
+        counts = Counter(u.id for u in held)
+        top = max(counts.values())
+        leaders = [u for u in held if counts[u.id] == top]
+        load_holder[b.id] = next((u for u in leaders if u.id == b.started_by_id), leaders[0])
+        load_holder_ids[b.id] = set(counts)
+    if not everyone:
+        loads = [b for b in loads if user.id in load_holder_ids[b.id]]
+
     from Tracker.models import TimeEntry
     from Tracker.services.mes.labor_report import ATTENDANCE_TYPES
-    holders = {e.assigned_to_id for e in execs} | {b.started_by_id for b in loads}
+    holders = {e.assigned_to_id for e in execs} | {load_holder[b.id].id for b in loads}
     on_clock = set(TimeEntry.objects
                    .filter(tenant=tenant, archived=False, user_id__in=holders,
                            end_time__isnull=True, entry_type__in=ATTENDANCE_TYPES)
                    .values_list('user_id', flat=True))
     if off_clock:
         execs = [e for e in execs if e.assigned_to_id not in on_clock]
-        loads = [b for b in loads if b.started_by_id not in on_clock]
+        loads = [b for b in loads if load_holder[b.id].id not in on_clock]
 
     # A part in an open load at its step is worked as the load: fold its visit in.
     in_open_load = set(BatchExecution.parts.through.objects  # tenant-safe: keyed to scoped loads
@@ -188,33 +218,23 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
             resume_execution_id=e.id, resume_part_id=e.part_id,
         ))
 
-    # A load opens on one of its parts' visits at the step, where the batch panel is.
-    members = defaultdict(list)
-    for b_id, part_id in (BatchExecution.parts.through.objects  # tenant-safe: keyed to scoped loads
-                          .filter(batchexecution_id__in=[b.id for b in loads])
-                          .values_list('batchexecution_id', 'parts_id')):
-        members[b_id].append(part_id)
-    open_visit = {
-        (part_id, step_id): ex_id
-        for ex_id, part_id, step_id in (StepExecution.objects
-                                        .filter(tenant=tenant, archived=False,
-                                                exited_at__isnull=True,
-                                                part_id__in={p for ps in members.values() for p in ps})
-                                        .values_list('id', 'part_id', 'step_id'))
-    }
+    # A load opens on one of its parts' visits at the step, where the batch panel is —
+    # one the asker holds, when they hold any.
     for b in loads:
         total, done = progress(per_load[b.step_id], done_by_load[b.id], b.capture_draft)
-        resume = next(((p, open_visit[(p, b.step_id)]) for p in members[b.id]
-                       if (p, b.step_id) in open_visit), (None, None))
+        visits = [member_visit[(p, b.step_id)] for p in members[b.id] if (p, b.step_id) in member_visit]
+        pick = next((v for v in visits if v.assigned_to_id == user.id), visits[0] if visits else None)
+        resume = (pick.part_id, pick.id) if pick else (None, None)
+        holder = load_holder[b.id]
         out.append(InFlightItem(
             kind='load', id=b.id, step_id=b.step_id, step_name=b.step.name,
             part_id=None, part_erp_id=None, part_count=len(members[b.id]),
             work_order_id=b.work_order_id, work_order_erp_id=b.work_order.ERP_id,
             status='RUNNING' if b.sealed_at else 'OPEN', sealed_at=b.sealed_at,
-            holder_id=b.started_by_id, holder_name=_name(b.started_by),
+            holder_id=holder.id, holder_name=_name(holder),
             started_at=b.started_at, entered_at=b.started_at,
             substeps_total=total, substeps_done=done,
-            holder_off_clock=b.started_by_id not in on_clock,
+            holder_off_clock=holder.id not in on_clock,
             resume_execution_id=resume[1], resume_part_id=resume[0],
         ))
 
