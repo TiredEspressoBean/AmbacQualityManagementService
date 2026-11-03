@@ -18,6 +18,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { PartContext } from "@/components/dwi/shared/PartContext";
 import { Loader2, Package, Lock, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -425,6 +426,23 @@ export function BatchPanel({
  *  back to the step unloaded; its loading captures are voided; the discard is recorded. */
 function DiscardLoadButton({ batchId, onDone }: { batchId: string; onDone?: () => void }) {
     const discard = useDiscardBatch();
+    const navigate = useNavigate();
+    const run = (release: boolean) => discard.mutate({ id: batchId, release }, {
+        onSuccess: () => {
+            if (release) {
+                // "I shouldn't have started this at all": back Home.
+                toast.success("Load discarded and its parts released to the queue");
+                void navigate({ to: "/" });
+            } else {
+                toast.success("Load discarded: its parts are back at the step");
+                onDone?.();
+            }
+        },
+        onError: (err: unknown) => toast.error("The load wasn't discarded", {
+            description: (err as { response?: { data?: { detail?: string } } })
+                ?.response?.data?.detail ?? "Try again.",
+        }),
+    });
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -439,17 +457,17 @@ function DiscardLoadButton({ batchId, onDone }: { batchId: string; onDone?: () =
                     <AlertDialogDescription>
                         Its parts go back to the step, unloaded, ready for a new load. Anything
                         captured for it so far is voided. The discard is recorded.
+                        {" "}If you shouldn't have started them at all, release the parts too:
+                        they go back to the queue, unassigned and not started.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Keep it</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => discard.mutate({ id: batchId }, {
-                        onSuccess: () => onDone?.(),
-                        onError: (err: unknown) => toast.error("The load wasn't discarded", {
-                            description: (err as { response?: { data?: { detail?: string } } })
-                                ?.response?.data?.detail ?? "Try again.",
-                        }),
-                    })}>
+                    <AlertDialogAction className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                        onClick={() => run(true)}>
+                        Discard and release the parts
+                    </AlertDialogAction>
+                    <AlertDialogAction onClick={() => run(false)}>
                         Discard load
                     </AlertDialogAction>
                 </AlertDialogFooter>

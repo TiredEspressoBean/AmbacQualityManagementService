@@ -924,10 +924,15 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     @extend_schema(
         request=inline_serializer(name='DiscardBatchRequest', fields={
-            'reason': drf_serializers.CharField(required=False, allow_blank=True)}),
+            'reason': drf_serializers.CharField(required=False, allow_blank=True),
+            'release': drf_serializers.BooleanField(
+                required=False, default=False,
+                help_text="Also put the parts' visits at this step back in the queue: "
+                          "unassigned and unstarted.")}),
         responses={
             200: inline_serializer(name='DiscardBatchResponse', fields={
-                'batch_id': drf_serializers.UUIDField()}),
+                'batch_id': drf_serializers.UUIDField(),
+                'released': drf_serializers.IntegerField()}),
             400: inline_serializer(name='DiscardBatchError', fields={
                 'detail': drf_serializers.CharField()}),
         },
@@ -941,10 +946,12 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         from Tracker.services.dwi.batch_lifecycle import discard_batch
         batch = self.get_object()
         try:
-            discard_batch(batch=batch, user=request.user, reason=request.data.get('reason', ''))
+            released = discard_batch(batch=batch, user=request.user,
+                                     reason=request.data.get('reason', ''),
+                                     release=request.data.get('release') in (True, 'true', '1', 1))
         except ValidationError as exc:
             return Response({'detail': '; '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'batch_id': str(batch.id)})
+        return Response({'batch_id': str(batch.id), 'released': released})
 
     @extend_schema(
         request=inline_serializer(name='AddBatchPartsRequest', fields={

@@ -19773,8 +19773,13 @@ const BatchCompleteError = z.object({
   detail: z.string(),
   problems: z.array(z.string()),
 });
-const DiscardBatchRequestRequest = z.object({ reason: z.string() }).partial();
-const DiscardBatchResponse = z.object({ batch_id: z.string().uuid() });
+const DiscardBatchRequestRequest = z
+  .object({ reason: z.string(), release: z.boolean().default(false) })
+  .partial();
+const DiscardBatchResponse = z.object({
+  batch_id: z.string().uuid(),
+  released: z.number().int(),
+});
 const DiscardBatchError = z.object({ detail: z.string() });
 const RemoveBatchPartRequestRequest = z.object({
   part: z.string().uuid(),
@@ -32935,7 +32940,7 @@ the load isn&#x27;t sealed or a required completion-phase substep isn&#x27;t don
       {
         name: "body",
         type: "Body",
-        schema: z.object({ reason: z.string() }).partial(),
+        schema: DiscardBatchRequestRequest,
       },
       {
         name: "id",
@@ -32943,7 +32948,7 @@ the load isn&#x27;t sealed or a required completion-phase substep isn&#x27;t don
         schema: z.string().uuid(),
       },
     ],
-    response: z.object({ batch_id: z.string().uuid() }),
+    response: DiscardBatchResponse,
     errors: [
       {
         status: 400,

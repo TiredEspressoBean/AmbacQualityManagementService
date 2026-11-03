@@ -56737,14 +56737,22 @@ components:
       properties:
         reason:
           type: string
+        release:
+          type: boolean
+          default: false
+          description: 'Also put the parts'' visits at this step back in the queue:
+            unassigned and unstarted.'
     DiscardBatchResponse:
       type: object
       properties:
         batch_id:
           type: string
           format: uuid
+        released:
+          type: integer
       required:
       - batch_id
+      - released
     DispositionAffectedPart:
       type: object
       description: |-

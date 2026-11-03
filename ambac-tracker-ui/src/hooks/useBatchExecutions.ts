@@ -151,17 +151,19 @@ export function useRemoveBatchPart() {
 }
 
 /** Abandon a load started by mistake, while it's still loading: its parts go back to
- *  the step unloaded. */
+ *  the step unloaded — and with `release`, their visits here go back to the queue,
+ *  unassigned and unstarted. */
 export function useDiscardBatch() {
     const qc = useQueryClient();
-    return useMutation<unknown, unknown, { id: string }>({
-        mutationFn: ({ id }) =>
-            api.api_BatchExecutions_discard_create({}, { params: { id }, headers: csrfHeaders() }),
+    return useMutation<unknown, unknown, { id: string; release?: boolean }>({
+        mutationFn: ({ id, release }) =>
+            api.api_BatchExecutions_discard_create({ release: !!release }, { params: { id }, headers: csrfHeaders() }),
         onSuccess: () => {
             invalidateBatches(qc);
             // Gone from Resume / Continue work at once.
             qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "step-executions" });
         },
-        meta: { suppressGlobalError: true, successMessage: "Load discarded: its parts are back at the step" },
+        // The panel says which (discarded, or discarded and released).
+        meta: { suppressGlobalError: true },
     });
 }

@@ -392,15 +392,22 @@ def membership_changes(batch) -> list[dict]:
 
 
 LOAD_DISCARDED = "Load discarded while loading"
+RELEASED_WITH_LOAD = "Released with the discarded load"
 
 
-def discard_batch(*, batch: "BatchExecution", user: "User", reason: str = "") -> None:
+def discard_batch(*, batch: "BatchExecution", user: "User", reason: str = "",
+                  release: bool = False) -> int:
     """Abandon a load started by mistake, while it's still loading (user decision
     2026-11-03 — a one-part load had no way out: its only part has no ×, and with no
     other candidates there's nothing to add). Its parts go back to the step unloaded,
     free for a new load. Its loading captures are voided (any report they made is
     superseded) and its draft dropped; the load itself is archived, not deleted, and
     the discard is recorded with its parts.
+
+    `release` is "I shouldn't have started this at all": the parts' visits at THIS step
+    also go back to the queue — unassigned and unstarted, as before Start Work — each
+    recorded as an edit of its holder (who, when, "Released with the discarded load").
+    Their visits elsewhere are untouched. Returns how many visits were released.
 
     Raises:
         ValidationError: the load is sealed (the cycle has run: correct it instead), or
@@ -431,7 +438,36 @@ def discard_batch(*, batch: "BatchExecution", user: "User", reason: str = "") ->
             new_value="", reason=why, edited_by=user)
         batch.capture_draft = {}
         batch.save(update_fields=['capture_draft'])
+        released = _release_visits(batch, user) if release else 0
         batch.delete()  # SecureModel: archives
+    return released
+
+
+def _release_visits(batch, user) -> int:
+    """The load's parts' open visits at its step, back to the queue: unassigned,
+    unstarted. The hand-back is a RecordEdit on each visit — not the training snapshot,
+    which the advancement gate trusts when set; an unstarted visit has none."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import RecordEdit, StepExecution
+    ct = ContentType.objects.get_for_model(StepExecution)
+    released = 0
+    for v in (StepExecution.objects  # tenant-safe: FK-correlated to a scoped load's parts
+              .filter(step_id=batch.step_id, part__in=batch.parts.all(), exited_at__isnull=True,
+                      archived=False, status__in=('PENDING', 'CLAIMED', 'IN_PROGRESS'))
+              .select_related('assigned_to')):
+        holder = v.assigned_to
+        v.assigned_to = None
+        v.status = 'PENDING'
+        v.started_at = None
+        v.training_authorization = None
+        v.save(update_fields=['assigned_to', 'status', 'started_at', 'training_authorization',
+                              'updated_at'])
+        RecordEdit.objects.create(
+            tenant=batch.tenant, content_type=ct, object_id=v.id, field_name="assigned_to",
+            old_value=(holder.get_full_name() or holder.get_username()) if holder else "",
+            new_value="", reason=RELEASED_WITH_LOAD, edited_by=user)
+        released += 1
+    return released
 
 
 REMOVED = "REMOVED"

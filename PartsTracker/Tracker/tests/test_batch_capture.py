@@ -236,6 +236,28 @@ class BatchCaptureWritePathTests(TenantContextMixin, VectorTestCase):
         with self.assertRaisesMessage(ValidationError, "sealed"):
             discard_batch(batch=sealed, user=self.user)
 
+    def test_discard_and_release_puts_the_visits_back_in_the_queue(self):
+        """'I shouldn't have started this at all': the parts' visits at this step go
+        back unassigned and unstarted, recorded; their visits elsewhere stay."""
+        from django.utils import timezone
+        from Tracker.models import RecordEdit, StepExecution
+        from Tracker.services.dwi.batch_lifecycle import RELEASED_WITH_LOAD, discard_batch
+        other_step = Steps.objects.create(tenant=self.tenant, part_type=self.part_type,
+                                          name="Elsewhere", step_type="TASK")
+        here = [StepExecution.objects.create(tenant=self.tenant, part=p, step=self.step,
+                                             assigned_to=self.user, status="IN_PROGRESS",
+                                             started_at=timezone.now()) for p in self.parts]
+        there = StepExecution.objects.create(tenant=self.tenant, part=self.parts[0], step=other_step,
+                                             assigned_to=self.user, status="IN_PROGRESS",
+                                             started_at=timezone.now())
+        self.assertEqual(discard_batch(batch=self.batch, user=self.user, release=True), 2)
+        for v in here:
+            v.refresh_from_db()
+            self.assertEqual((v.assigned_to_id, v.status, v.started_at), (None, "PENDING", None))
+            self.assertTrue(RecordEdit.objects.filter(object_id=v.id, reason=RELEASED_WITH_LOAD).exists())
+        there.refresh_from_db()
+        self.assertEqual(there.assigned_to_id, self.user.id)
+
     def test_a_loads_parts_cant_be_rewritten_by_patch(self):
         from rest_framework.test import APIClient
         self.user.is_superuser = True

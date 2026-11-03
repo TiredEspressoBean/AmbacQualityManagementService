@@ -24299,10 +24299,16 @@ export interface components {
         };
         DiscardBatchRequestRequest: {
             reason?: string;
+            /**
+             * @description Also put the parts' visits at this step back in the queue: unassigned and unstarted.
+             * @default false
+             */
+            release: boolean;
         };
         DiscardBatchResponse: {
             /** Format: uuid */
             batch_id: string;
+            released: number;
         };
         /**
          * @description A member part of a batch disposition's load — shown in the form's
