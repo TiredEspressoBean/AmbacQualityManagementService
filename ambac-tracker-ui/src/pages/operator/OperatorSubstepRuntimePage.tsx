@@ -38,7 +38,8 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useSubsteps, useSubmitSubstep, useSaveCaptureDraft } from "@/hooks/useSubsteps";
+import { useSubsteps, useSubmitSubstep } from "@/hooks/useSubsteps";
+import { useDraftAutosave } from "@/lib/dwi/capture-draft-saver";
 import { useSignaturePrompt } from "@/components/dwi/useSignaturePrompt";
 import type { Substep } from "@/hooks/useSubsteps";
 import { getCookie } from "@/lib/utils";
@@ -225,34 +226,71 @@ export function OperatorSubstepRuntimePage() {
         captureStateOptions(search.execution, Boolean(search.execution) && !isUnitMode));
     const { data: stepExecution } = useQuery(stepExecutionOptions(search.execution));
 
-    const hydratedExecutionRef = useRef<string | null>(null);
+    // Autosave the substep on screen (services: save-draft). Batch substeps are the
+    // load's, and receiving's unit-by-unit passes start fresh, so neither is drafted.
+    // Held off until the stored draft has loaded (`hydratedFor`), so an empty screen
+    // is never saved over it.
+    const [hydratedFor, setHydratedFor] = useState<string | null>(null);
+    // One "couldn't save" warning per visit, not one per substep.
+    const draftWarned = useRef(false);
+    const draftable = Boolean(search.execution) && !isUnitMode
+        && Boolean(activeSubstep) && activeSubstep?.scope !== "batch";
+    const { markSaved } = useDraftAutosave({
+        current: draftable && search.execution && activeSubstep
+            ? {
+                executionId: search.execution,
+                substepId: activeSubstep.id,
+                responses: (responsesBySubstepId[activeSubstep.id] ?? {}) as Record<string, unknown>,
+            }
+            : null,
+        ready: Boolean(search.execution) && hydratedFor === search.execution,
+        onRefused: (detail) => toast.error("Your entries aren't being saved", { description: detail }),
+        onFailed: () => {
+            if (draftWarned.current) return;
+            draftWarned.current = true;
+            toast.warning("Couldn't save your progress", {
+                description: "It's still on this screen, and Complete step records it. " +
+                    "Closing this step now would lose it.",
+            });
+        },
+    });
+
     useEffect(() => {
         const exec = search.execution;
         if (!exec || isUnitMode || !captureState || sortedForBind.length === 0) return;
-        if (hydratedExecutionRef.current === exec) return; // once per execution
+        if (hydratedFor === exec) return; // once per execution
         const state = captureState as Record<string, Record<string, unknown>>;
         if (!state || Object.keys(state).length === 0) {
-            hydratedExecutionRef.current = exec;
+            setHydratedFor(exec);
             return;
         }
-        hydratedExecutionRef.current = exec;
+        markSaved(exec, state);
+        setHydratedFor(exec);
         // Functional guards so a stored state never clobbers in-session edits.
         setResponsesBySubstepId((prev) => (Object.keys(prev).length ? prev : state));
-        setConfirmedIds((prev) => {
-            if (prev.size) return prev;
-            const next = new Set<string>();
-            for (const s of sortedForBind) {
-                const resp = state[s.id];
-                if (
-                    resp &&
-                    findMissingRequired(s.body_blocks, resp).length === 0
-                ) {
-                    next.add(s.id);
-                }
+        const done = new Set<string>();
+        for (const s of sortedForBind) {
+            const resp = state[s.id];
+            if (resp && findMissingRequired(s.body_blocks, resp).length === 0) done.add(s.id);
+        }
+        setConfirmedIds((prev) => (prev.size ? prev : done));
+        // Opened without a position (Resume, a link): continue at the first substep
+        // not yet complete, or the review when all are. Batch substeps are the load's,
+        // worked from the batch panel, so they don't hold the position back.
+        if (search.at == null) {
+            const next = sortedForBind.findIndex((s) => s.scope !== "batch" && !done.has(s.id));
+            const at = next === -1 ? sortedForBind.length : next;
+            if (at > 0) {
+                navigate({
+                    to: "/operator/steps/$stepId/substeps",
+                    params: { stepId: stepId as string },
+                    search: (prev) => ({ ...prev, at }),
+                    replace: true,
+                });
             }
-            return next;
-        });
-    }, [captureState, search.execution, isUnitMode, sortedForBind]);
+        }
+    }, [captureState, search.execution, search.at, isUnitMode, sortedForBind, hydratedFor,
+        markSaved, navigate, stepId]);
 
     // Eagerly pre-bind a QualityReports row when the operator lands on an
     // inspection-point substep. PartAnnotation (and other QR-aware capture
@@ -288,11 +326,8 @@ export function OperatorSubstepRuntimePage() {
     }, [activeSubstepId, activeIsInspectionPoint, search.execution, qrIdBySubstepId]);
 
     const submit = useSubmitSubstep();
-    const saveDraft = useSaveCaptureDraft();
     // Verified signatures for `requires_signature` substeps, asked for at Complete step.
     const signaturePrompt = useSignaturePrompt();
-    // One "couldn't save" warning per visit, not one per substep.
-    const draftWarned = useRef(false);
     const completeStep = useCompleteStep();
 
     // FPI hold state for the review stage. `can_advance_from_step` blocks EVERY
@@ -417,33 +452,9 @@ export function OperatorSubstepRuntimePage() {
     const isReview = at >= sortedSubsteps.length;
     const current = isReview ? null : sortedSubsteps[at];
 
-    // Leaving a substep — forward, back, or a jump from the rail or the review — saves
-    // what's on it as a draft, so the step resumes here after a closed tablet or a
-    // handover. Nothing official: Complete step commits. Batch substeps are recorded
-    // for the load, and receiving's unit-by-unit passes start fresh by design.
-    const saveDraftOfCurrent = () => {
-        if (!current || !search.execution || isUnitMode || current.scope === "batch") return;
-        saveDraft.mutate(
-            {
-                executionId: search.execution,
-                substepId: current.id,
-                responses: responsesBySubstepId[current.id] ?? {},
-            },
-            {
-                onError: () => {
-                    if (draftWarned.current) return;
-                    draftWarned.current = true;
-                    toast.warning("Couldn't save your progress", {
-                        description: "It's still on this screen, and Complete step records it. " +
-                            "Closing this step now would lose it.",
-                    });
-                },
-            },
-        );
-    };
-
+    // Leaving a substep saves its draft on the way (useDraftAutosave), as does leaving
+    // the step, hiding the tab, or logging out.
     const goTo = (idx: number) => {
-        if (idx !== at) saveDraftOfCurrent();
         navigate({
             to: "/operator/steps/$stepId/substeps",
             params: { stepId },

@@ -4,19 +4,24 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { api } from "@/lib/api/generated"
 import { getCookie } from "@/lib/utils"
+import { flushDrafts } from "@/lib/dwi/capture-draft-saver"
 
 export function LogoutMenuItem() {
     const queryClient = useQueryClient()
     const navigate = useNavigate()
 
     const logout = useMutation({
-        mutationFn: () =>
-            api.auth_logout_create(undefined, {
+        // An operator's unsaved step entries go first: sent after the session ends,
+        // they would be refused.
+        mutationFn: async () => {
+            await flushDrafts()
+            return api.auth_logout_create(undefined, {
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken") ?? "",
                 },
                 withCredentials: true,
-            }),
+            })
+        },
         onSuccess: () => {
             queryClient.clear()
             navigate({ to: "/login" })

@@ -31894,7 +31894,8 @@ paths:
       operationId: api_StepExecutions_save_draft_create
       description: Save one substep's work in progress, so the step resumes where
         the operator left off. Records nothing official — that happens at Complete
-        step, through substep submit.
+        step, through substep submit. Once the step is someone's, only they may save
+        to it (403 otherwise).
       parameters:
       - in: path
         name: id
@@ -31932,6 +31933,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CaptureDraftError'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureDraftRefused'
           description: ''
   /api/StepExecutions/duration_stats/:
     get:
@@ -53463,6 +53470,13 @@ components:
       - work_center_total
       - work_centers
     CaptureDraftError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CaptureDraftRefused:
       type: object
       properties:
         detail:

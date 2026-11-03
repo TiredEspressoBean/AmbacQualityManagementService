@@ -1495,6 +1495,23 @@ class CaptureDraftTests(DwiPhase1BaseTestCase):
             with self.assertRaises(ValidationError):
                 self._draft(substep, {"x": 1})
 
+    def test_only_the_steps_owner_saves_to_its_draft(self):
+        """A tab left open on a step handed to someone else autosaves; it must not
+        write over the new owner's draft (2026-11-03)."""
+        from django.core.exceptions import PermissionDenied
+        from Tracker.services.dwi.operator_capture import save_capture_draft
+        owner = User.objects.create_user(username="owner", email="o@x.test", password="x",
+                                         tenant=self.tenant)
+        other = User.objects.create_user(username="former", email="f@x.test", password="x",
+                                         tenant=self.tenant)
+        self.step_execution.assigned_to = owner
+        self.step_execution.save(update_fields=["assigned_to"])
+        save_capture_draft(self.step_execution, self.substep, {"n": {"value": "1"}}, by=owner)
+        with self.assertRaises(PermissionDenied):
+            save_capture_draft(self.step_execution, self.substep, {"n": {"value": "2"}}, by=other)
+        self.step_execution.refresh_from_db()
+        self.assertEqual(self.step_execution.capture_draft[str(self.substep.id)], {"n": {"value": "1"}})
+
     def test_the_api_saves_for_whoever_may_record_substeps(self):
         from django.contrib.auth.models import Permission
         from rest_framework.test import APIClient

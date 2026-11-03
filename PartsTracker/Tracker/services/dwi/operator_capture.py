@@ -1415,20 +1415,30 @@ def build_capture_state(step_execution) -> dict:
 # Drafts — work in progress between substeps
 # -------------------------------------------------------------------------
 
-def save_capture_draft(step_execution, substep, responses: dict) -> dict:
+def save_capture_draft(step_execution, substep, responses: dict, *, by=None) -> dict:
     """Save one substep's in-progress responses on its step execution.
 
     Nothing official happens: no completion, measurement or report. Those are
     `submit_substep`'s, at "Complete step". This is only so the work survives a
     closed tablet or a handover — the player hydrates it via `build_capture_state`.
 
+    `by` is who is saving. Once the step is someone's (`assigned_to`), only they may
+    save to it: a tab still open on a step since handed to someone else autosaves, and
+    would otherwise write over the new owner's draft.
+
     Raises:
+        PermissionDenied: the step is assigned to someone other than `by`.
         ValidationError: the substep isn't on this execution's step, or is
             batch-scope (those are recorded once per load, not drafted per part).
     """
-    from django.core.exceptions import ValidationError
+    from django.core.exceptions import PermissionDenied, ValidationError
     from Tracker.models import SubstepScope
 
+    if by is not None and step_execution.assigned_to_id and step_execution.assigned_to_id != by.id:
+        owner = step_execution.assigned_to
+        raise PermissionDenied(
+            f"This step is now {owner.get_full_name() or owner.get_username()}'s. "
+            "What you entered here wasn't saved.")
     if substep.step_id != step_execution.step_id:
         raise ValidationError("That substep isn't part of this step.")
     if substep.scope == SubstepScope.BATCH:

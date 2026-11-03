@@ -13234,7 +13234,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Save one substep's work in progress, so the step resumes where the operator left off. Records nothing official — that happens at Complete step, through substep submit. */
+        /** @description Save one substep's work in progress, so the step resumes where the operator left off. Records nothing official — that happens at Complete step, through substep submit. Once the step is someone's, only they may save to it (403 otherwise). */
         post: operations["api_StepExecutions_save_draft_create"];
         delete?: never;
         options?: never;
@@ -22813,6 +22813,9 @@ export interface components {
             materials: components["schemas"]["MaterialLoad"][];
         };
         CaptureDraftError: {
+            detail: string;
+        };
+        CaptureDraftRefused: {
             detail: string;
         };
         CaptureDraftRequestRequest: {
@@ -64825,6 +64828,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaptureDraftError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureDraftRefused"];
                 };
             };
         };

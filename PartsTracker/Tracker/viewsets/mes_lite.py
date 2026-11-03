@@ -3958,10 +3958,14 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
             400: inline_serializer(name='CaptureDraftError', fields={
                 'detail': serializers.CharField(),
             }),
+            403: inline_serializer(name='CaptureDraftRefused', fields={
+                'detail': serializers.CharField(),
+            }),
         },
         description="Save one substep's work in progress, so the step resumes where the "
                     "operator left off. Records nothing official — that happens at "
-                    "Complete step, through substep submit.",
+                    "Complete step, through substep submit. Once the step is someone's, "
+                    "only they may save to it (403 otherwise).",
     )
     @action(detail=True, methods=['post'], url_path='save-draft')
     def save_draft(self, request, pk=None):
@@ -3970,10 +3974,15 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
         from rest_framework.generics import get_object_or_404
         from Tracker.services.dwi.operator_capture import save_capture_draft
 
+        from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+
         execution = self.get_object()
         substep = get_object_or_404(Substep, pk=request.data.get('substep'))
         try:
-            draft = save_capture_draft(execution, substep, request.data.get('responses') or {})
+            draft = save_capture_draft(execution, substep, request.data.get('responses') or {},
+                                       by=request.user)
+        except DjangoPermissionDenied as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
         except DjangoValidationError as e:
             return Response({'detail': '; '.join(e.messages)},
                             status=status.HTTP_400_BAD_REQUEST)

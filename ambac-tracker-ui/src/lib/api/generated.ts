@@ -25994,6 +25994,7 @@ const CaptureDraftRequestRequest = z.object({
 });
 const CaptureDraftResponse = z.object({ saved_substeps: z.array(z.string()) });
 const CaptureDraftError = z.object({ detail: z.string() });
+const CaptureDraftRefused = z.object({ detail: z.string() });
 const StepDurationStats = z.object({
   step_id: z.string().uuid(),
   step_name: z.string(),
@@ -30849,6 +30850,7 @@ export const schemas = {
   CaptureDraftRequestRequest,
   CaptureDraftResponse,
   CaptureDraftError,
+  CaptureDraftRefused,
   StepDurationStats,
   MyLastFinished,
   MyDay,
@@ -56143,7 +56145,7 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
     method: "post",
     path: "/api/StepExecutions/:id/save-draft/",
     alias: "api_StepExecutions_save_draft_create",
-    description: `Save one substep&#x27;s work in progress, so the step resumes where the operator left off. Records nothing official — that happens at Complete step, through substep submit.`,
+    description: `Save one substep&#x27;s work in progress, so the step resumes where the operator left off. Records nothing official — that happens at Complete step, through substep submit. Once the step is someone&#x27;s, only they may save to it (403 otherwise).`,
     requestFormat: "json",
     parameters: [
       {
@@ -56161,6 +56163,10 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
     errors: [
       {
         status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+      {
+        status: 403,
         schema: z.object({ detail: z.string() }),
       },
     ],
