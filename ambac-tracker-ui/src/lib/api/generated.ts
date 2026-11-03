@@ -19773,6 +19773,9 @@ const BatchCompleteError = z.object({
   detail: z.string(),
   problems: z.array(z.string()),
 });
+const DiscardBatchRequestRequest = z.object({ reason: z.string() }).partial();
+const DiscardBatchResponse = z.object({ batch_id: z.string().uuid() });
+const DiscardBatchError = z.object({ detail: z.string() });
 const RemoveBatchPartRequestRequest = z.object({
   part: z.string().uuid(),
   reason: z.string().optional(),
@@ -30332,6 +30335,9 @@ export const schemas = {
   AddBatchPartsError,
   BatchCompleteResponse,
   BatchCompleteError,
+  DiscardBatchRequestRequest,
+  DiscardBatchResponse,
+  DiscardBatchError,
   RemoveBatchPartRequestRequest,
   RemoveBatchPartResponseOutcomeEnum,
   RemoveBatchPartResponse,
@@ -32916,6 +32922,32 @@ the load isn&#x27;t sealed or a required completion-phase substep isn&#x27;t don
       {
         status: 400,
         schema: BatchCompleteError,
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/BatchExecutions/:id/discard/",
+    alias: "api_BatchExecutions_discard_create",
+    description: `Abandon a load started by mistake, while it&#x27;s still loading. Its parts go back to the step unloaded; its loading captures are voided and its draft dropped; the load is archived and the discard recorded.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string() }).partial(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({ batch_id: z.string().uuid() }),
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
       },
     ],
   },
@@ -36391,7 +36423,10 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "post",
     path: "/api/CustomerShipments/:id/void/",
@@ -36411,10 +36446,7 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/CustomerShipments/delivery-performance/",
@@ -41527,7 +41559,10 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: z.object({ status: z.string() }),
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/integrations/catalog/",
@@ -41550,10 +41585,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: z.array(IntegrationCatalogItem),
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/JobRoles/",
@@ -45793,7 +45825,10 @@ field metadata).`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/OrderBook/:id/",
@@ -45811,10 +45846,7 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: OrderDetail,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/OrderBook/book/",
@@ -51251,7 +51283,10 @@ Usage:
       },
     ],
     response: QualityReports,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "put",
     path: "/api/QualityReports/:id/",
@@ -51295,10 +51330,7 @@ Usage:
       },
     ],
     response: QualityReports,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/QualityReports/:id/",
@@ -56318,7 +56350,10 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       },
     ],
     response: StepExecution,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepExecutions/:id/flag-override/",
@@ -56338,10 +56373,7 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       },
     ],
     response: FlagOverrideResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutions/:id/hand-off-candidates/",
@@ -62066,7 +62098,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: ImportStatusResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingRequirements/import-template/:template_format/",
@@ -62081,10 +62116,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/TrainingRequirements/import/",

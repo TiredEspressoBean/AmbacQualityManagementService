@@ -391,6 +391,49 @@ def membership_changes(batch) -> list[dict]:
     } for r in rows]
 
 
+LOAD_DISCARDED = "Load discarded while loading"
+
+
+def discard_batch(*, batch: "BatchExecution", user: "User", reason: str = "") -> None:
+    """Abandon a load started by mistake, while it's still loading (user decision
+    2026-11-03 — a one-part load had no way out: its only part has no ×, and with no
+    other candidates there's nothing to add). Its parts go back to the step unloaded,
+    free for a new load. Its loading captures are voided (any report they made is
+    superseded) and its draft dropped; the load itself is archived, not deleted, and
+    the discard is recorded with its parts.
+
+    Raises:
+        ValidationError: the load is sealed (the cycle has run: correct it instead), or
+            a failed check has already contained it (its disposition decides).
+    """
+    from Tracker.models import BatchExecution, QuarantineDisposition, SubstepCompletion
+    from Tracker.services.qms.report_supersede import void_completion
+
+    with transaction.atomic():
+        batch = BatchExecution.objects.select_for_update().get(pk=batch.id)
+        if batch.archived:
+            return
+        if batch.sealed_at is not None:
+            raise ValidationError("This load is sealed; the cycle has run. Correct its parts instead.")
+        if QuarantineDisposition.objects.filter(archived=False, batch_execution=batch,  # tenant-safe: keyed to a scoped batch
+                                                current_state__in=["OPEN", "IN_PROGRESS"]).exists():
+            raise ValidationError("A failed check has contained this load; its disposition decides "
+                                  "what happens to it.")
+        why = (reason or "").strip() or LOAD_DISCARDED
+        for c in SubstepCompletion.objects.filter(batch_execution=batch, is_voided=False):  # tenant-safe: keyed to a scoped batch
+            void_completion(c, user, why)
+        from django.contrib.contenttypes.models import ContentType
+        from Tracker.models import RecordEdit
+        RecordEdit.objects.create(
+            tenant=batch.tenant, content_type=ContentType.objects.get_for_model(BatchExecution),
+            object_id=batch.id, field_name="parts",
+            old_value=", ".join(batch.parts.order_by('ERP_id').values_list('ERP_id', flat=True)),
+            new_value="", reason=why, edited_by=user)
+        batch.capture_draft = {}
+        batch.save(update_fields=['capture_draft'])
+        batch.delete()  # SecureModel: archives
+
+
 REMOVED = "REMOVED"
 ROLLBACK_PENDING = "ROLLBACK_PENDING"
 

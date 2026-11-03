@@ -2490,6 +2490,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/BatchCompleteError'
           description: ''
+  /api/BatchExecutions/{id}/discard/:
+    post:
+      operationId: api_BatchExecutions_discard_create
+      description: Abandon a load started by mistake, while it's still loading. Its
+        parts go back to the step unloaded; its loading captures are voided and its
+        draft dropped; the load is archived and the discard recorded.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this batch execution.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscardBatchRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiscardBatchRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiscardBatchRequestRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscardBatchResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscardBatchError'
+          description: ''
   /api/BatchExecutions/{id}/remove-part/:
     post:
       operationId: api_BatchExecutions_remove_part_create
@@ -56682,6 +56725,26 @@ components:
       required:
       - component_type
       - core_type
+    DiscardBatchError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    DiscardBatchRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    DiscardBatchResponse:
+      type: object
+      properties:
+        batch_id:
+          type: string
+          format: uuid
+      required:
+      - batch_id
     DispositionAffectedPart:
       type: object
       description: |-

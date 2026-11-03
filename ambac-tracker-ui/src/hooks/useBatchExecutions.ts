@@ -149,3 +149,19 @@ export function useRemoveBatchPart() {
         meta: { suppressGlobalError: true, successMessage: "Taken out of the load" },
     });
 }
+
+/** Abandon a load started by mistake, while it's still loading: its parts go back to
+ *  the step unloaded. */
+export function useDiscardBatch() {
+    const qc = useQueryClient();
+    return useMutation<unknown, unknown, { id: string }>({
+        mutationFn: ({ id }) =>
+            api.api_BatchExecutions_discard_create({}, { params: { id }, headers: csrfHeaders() }),
+        onSuccess: () => {
+            invalidateBatches(qc);
+            // Gone from Resume / Continue work at once.
+            qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "step-executions" });
+        },
+        meta: { suppressGlobalError: true, successMessage: "Load discarded: its parts are back at the step" },
+    });
+}

@@ -22,6 +22,10 @@ import { PartContext } from "@/components/dwi/shared/PartContext";
 import { Loader2, Package, Lock, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
     invalidateBatches,
@@ -29,6 +33,7 @@ import {
     useAddBatchParts,
     useCompleteBatchExecution,
     useCreateBatchExecution,
+    useDiscardBatch,
     useRemoveBatchPart,
     useSealBatchExecution,
 } from "@/hooks/useBatchExecutions";
@@ -244,6 +249,7 @@ export function BatchPanel({
                                             {(b.parts ?? []).length} part{(b.parts ?? []).length === 1 ? "" : "s"} · started {new Date(b.started_at).toLocaleString()}
                                         </div>
                                     </div>
+                                    <DiscardLoadButton batchId={b.id} onDone={onChange} />
                                     {sealPoint ? (
                                         <span className="max-w-[12rem] text-right text-[11px] text-muted-foreground">
                                             Confirming “{sealPoint.title}” seals the load.
@@ -412,6 +418,43 @@ export function BatchPanel({
                 </div>
             </div>
         </div>
+    );
+}
+
+/** Abandon a load started by mistake, while it's loading (before seal). Its parts go
+ *  back to the step unloaded; its loading captures are voided; the discard is recorded. */
+function DiscardLoadButton({ batchId, onDone }: { batchId: string; onDone?: () => void }) {
+    const discard = useDiscardBatch();
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-muted-foreground"
+                    disabled={discard.isPending}>
+                    Discard load
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Discard this load?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Its parts go back to the step, unloaded, ready for a new load. Anything
+                        captured for it so far is voided. The discard is recorded.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Keep it</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => discard.mutate({ id: batchId }, {
+                        onSuccess: () => onDone?.(),
+                        onError: (err: unknown) => toast.error("The load wasn't discarded", {
+                            description: (err as { response?: { data?: { detail?: string } } })
+                                ?.response?.data?.detail ?? "Try again.",
+                        }),
+                    })}>
+                        Discard load
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 }
 

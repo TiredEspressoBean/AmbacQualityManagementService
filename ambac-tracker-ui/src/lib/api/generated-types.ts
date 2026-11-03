@@ -763,6 +763,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/BatchExecutions/{id}/discard/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Abandon a load started by mistake, while it's still loading. Its parts go back to the step unloaded; its loading captures are voided and its draft dropped; the load is archived and the discard recorded. */
+        post: operations["api_BatchExecutions_discard_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/BatchExecutions/{id}/remove-part/": {
         parameters: {
             query?: never;
@@ -24277,6 +24294,16 @@ export interface components {
             line_number?: number;
             archived?: boolean;
         };
+        DiscardBatchError: {
+            detail: string;
+        };
+        DiscardBatchRequestRequest: {
+            reason?: string;
+        };
+        DiscardBatchResponse: {
+            /** Format: uuid */
+            batch_id: string;
+        };
         /**
          * @description A member part of a batch disposition's load — shown in the form's
          *     affected-load panel so QA can see which parts the failed cycle covers and
@@ -43243,6 +43270,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BatchCompleteError"];
+                };
+            };
+        };
+    };
+    api_BatchExecutions_discard_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this batch execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DiscardBatchRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DiscardBatchRequestRequest"];
+                "multipart/form-data": components["schemas"]["DiscardBatchRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscardBatchResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscardBatchError"];
                 };
             };
         };

@@ -213,6 +213,29 @@ class BatchCaptureWritePathTests(TenantContextMixin, VectorTestCase):
         with self.assertRaisesMessage(ValidationError, "complete"):
             add_parts_to_batch(batch=self.batch, parts=[another], user=self.user)
 
+    def test_a_loading_load_started_by_mistake_is_discarded(self):
+        """User decision 2026-11-03: a one-part load had no way out. Discard (before seal)
+        frees its parts, voids its loading captures, archives it, records it."""
+        from django.utils import timezone
+        from Tracker.models import BatchExecution, RecordEdit
+        from Tracker.services.dwi.batch_lifecycle import (
+            assert_no_open_batch_overlap, discard_batch,
+        )
+        submit_substep(substep=self.batch_substep, batch_execution=self.batch, user=self.user,
+                       captures=[{"node_id": str(uuid4()), "kind": "attestation", "confirm": True}])
+        discard_batch(batch=self.batch, user=self.user)
+        self.assertTrue(BatchExecution.unscoped.get(pk=self.batch.pk).archived)
+        self.assertFalse(SubstepCompletion.objects.filter(batch_execution=self.batch, is_voided=False).exists())
+        self.assertEqual(RecordEdit.objects.get(object_id=self.batch.id).old_value, "P-BC-0, P-BC-1")
+        assert_no_open_batch_overlap(step=self.step, parts=self.parts)  # free for a new load
+
+        sealed = BatchExecution.objects.create(tenant=self.tenant, work_order=self.wo, step=self.step,
+                                               started_by=self.user)
+        BatchExecution.objects.filter(pk=sealed.pk).update(sealed_at=timezone.now())
+        sealed.refresh_from_db()
+        with self.assertRaisesMessage(ValidationError, "sealed"):
+            discard_batch(batch=sealed, user=self.user)
+
     def test_a_loads_parts_cant_be_rewritten_by_patch(self):
         from rest_framework.test import APIClient
         self.user.is_superuser = True

@@ -923,6 +923,30 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         return Response({'batch_id': str(batch.id), 'part': str(part.id), 'outcome': outcome})
 
     @extend_schema(
+        request=inline_serializer(name='DiscardBatchRequest', fields={
+            'reason': drf_serializers.CharField(required=False, allow_blank=True)}),
+        responses={
+            200: inline_serializer(name='DiscardBatchResponse', fields={
+                'batch_id': drf_serializers.UUIDField()}),
+            400: inline_serializer(name='DiscardBatchError', fields={
+                'detail': drf_serializers.CharField()}),
+        },
+        description="Abandon a load started by mistake, while it's still loading. Its parts "
+                    "go back to the step unloaded; its loading captures are voided and its "
+                    "draft dropped; the load is archived and the discard recorded.",
+    )
+    @action(detail=True, methods=['post'], url_path='discard')
+    def discard(self, request, pk=None):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.dwi.batch_lifecycle import discard_batch
+        batch = self.get_object()
+        try:
+            discard_batch(batch=batch, user=request.user, reason=request.data.get('reason', ''))
+        except ValidationError as exc:
+            return Response({'detail': '; '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'batch_id': str(batch.id)})
+
+    @extend_schema(
         request=inline_serializer(name='AddBatchPartsRequest', fields={
             'parts': drf_serializers.ListField(child=drf_serializers.UUIDField()),
             'reason': drf_serializers.CharField(required=False, allow_blank=True)}),
