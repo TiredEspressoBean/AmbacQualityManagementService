@@ -52,7 +52,7 @@ which one the scheduler is using:
 - *Using authored*, *Using measured*, *Using the step's expected duration*, or
   *Not set*
 - the measurement — *measured 18.73 min per piece · 16 runs*, *measured 3.05 min ·
-  16 runs* for setup, or *measured 12.86 min per load · 14 loads · loading 6.43 min
+  16 runs* for setup, or *measured 29.71 min per load · 14 loads · loading 13.07 min
   per load* for a batch step
 - *differs by more than 25%* when the authored time is that far from the
   measurement

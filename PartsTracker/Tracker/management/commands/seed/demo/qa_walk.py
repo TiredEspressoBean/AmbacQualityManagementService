@@ -433,6 +433,18 @@ class DemoQaWalkSeeder(BaseSeeder):
             self._submit(ss, batch_execution=batch)
         seal_batch(batch=batch, user=self.mike)
         complete_batch(batch=batch, user=self.mike)
+        # The walk does load, seal and complete in one instant; a real load takes
+        # time — loading, then the run. Left at zero, every walked load reads as a
+        # 0-minute run on Step Timings and drags the measured cycle far below the
+        # authored one. Keep its completion where it happened and lay the load and
+        # the run out before it: 10–13 min loading, a 28–32 min run.
+        self._loads_walked = getattr(self, '_loads_walked', 0) + 1
+        n = self._loads_walked
+        batch.refresh_from_db()
+        completed = batch.completed_at
+        sealed = completed - timedelta(minutes=28 + n % 5)
+        BatchExecution.objects.filter(pk=batch.pk).update(
+            started_at=sealed - timedelta(minutes=10 + n % 4), sealed_at=sealed)
         for part in parts:
             part.refresh_from_db()
 

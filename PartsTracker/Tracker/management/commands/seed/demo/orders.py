@@ -871,8 +871,9 @@ class DemoOrdersSeeder(BaseSeeder):
                 be.parts.set(load)
                 started = now - timedelta(days=8, hours=i)
                 sealed = started + timedelta(minutes=15)
-                # The run: about half an hour, varying a little load to load.
-                completed = sealed + timedelta(minutes=30 + (i % 3) * 5)
+                # The run: about half an hour, varying a little load to load (by the
+                # load count — `i` steps by 6, so `i % 3` never varied).
+                completed = sealed + timedelta(minutes=28 + (count % 5))
                 # started_at is auto_now_add; .update() bypasses it to backdate.
                 BatchExecution.objects.filter(pk=be.pk).update(
                     started_at=started, sealed_at=sealed, completed_at=completed,
