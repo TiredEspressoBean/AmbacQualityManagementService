@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
@@ -224,7 +224,11 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                     <p className="text-xs text-muted-foreground">{waitingLine(data, everyone ? "everyone" : "my")}</p>
                 )}
                 <div className="flex justify-end">
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+                    {/* Radix's own close control, as the corner X is: the walk saw a plain
+                        onClick here leave the dialog open. */}
+                    <DialogClose asChild>
+                        <Button variant="outline">Close</Button>
+                    </DialogClose>
                 </div>
                 {moving && (
                     <ReassignDialog
