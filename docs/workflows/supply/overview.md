@@ -589,6 +589,19 @@ See [Compliance Reports](../../compliance/reports.md#receiving-inspection-record
 
 A held lot shows an amber **Held at receiving** panel on its inspection page.
 
+The lot's own label carries no status, so a held lot sitting on a rack needs
+something that says so: **Hold tag** on the lot's page prints one while the lot
+is in quarantine or rejected. Under *DO NOT USE UNTIL RELEASED* it reads:
+
+- **HOLD** — held for named reasons, listed in words: *Unqualified supplier*,
+  *Awaiting heat number*
+- **QUARANTINE** — awaiting a disposition, with the VDMR, the quality report and
+  the finding (*Whole lot reject requested*)
+- **REJECTED** — rejected, with the same
+
+with the lot, quantity and location, and a box to sign on release. See [Tagging
+it](../quality/quarantine.md#tagging-it).
+
 !!! important "A lot can be held for several reasons at once"
     Awaiting CoC *and* Awaiting heat number *and* Unqualified supplier is a
     normal state, not a confused one. Each hold gets **its own card and its own

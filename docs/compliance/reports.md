@@ -85,6 +85,7 @@ generates the PDF and either downloads it or emails it to you.
 | `cycle_count_report` | Cycle Count Report | A submitted count |
 | `material_lot_label` | Material Lot Label | Material lot |
 | `location_label` | Location Label | Storage location |
+| `hold_tag` | Hold Tag | A held or rejected material lot; a held part's row in Quarantined Parts; its disposition |
 
 #### Return to Vendor (RTV) Sheet
 
