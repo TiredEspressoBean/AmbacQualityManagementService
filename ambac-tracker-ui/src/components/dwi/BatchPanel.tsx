@@ -42,7 +42,7 @@ import { buildCaptures, findMissingRequired } from "@/lib/dwi/build-captures";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { api } from "@/lib/api/generated";
 import { batchCompletionsOptions } from "@/components/dwi/StepCompletionsList";
-import { useDraftAutosave } from "@/lib/dwi/capture-draft-saver";
+import { draftsSettled, useDraftAutosave } from "@/lib/dwi/capture-draft-saver";
 
 export type CohortPart = { id: string; label: string; /** why it can't be loaded */ held?: string };
 
@@ -410,10 +410,17 @@ export function BatchPanel({
 
 const EMPTY_DOC = { type: "doc", content: [] } as const;
 
+// Read fresh on every visit, after any draft save still in flight (as the runtime's
+// capture state): a cached copy is the load as it was when last opened.
 const batchCaptureStateOptions = (batchId: string) =>
     queryOptions({
         queryKey: ["batch-capture-state", batchId],
-        queryFn: () => api.api_BatchExecutions_capture_state_retrieve({ params: { id: batchId } }),
+        queryFn: async () => {
+            await draftsSettled();
+            return api.api_BatchExecutions_capture_state_retrieve({ params: { id: batchId } });
+        },
+        staleTime: 0,
+        gcTime: 0,
     });
 
 /**

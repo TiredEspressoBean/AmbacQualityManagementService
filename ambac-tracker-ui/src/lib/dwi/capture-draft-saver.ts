@@ -84,6 +84,18 @@ export async function flushDrafts(): Promise<void> {
     await Promise.all([...flushers].map((f) => f().catch(() => undefined)));
 }
 
+// Draft saves still on their way to the server (globalThis for the same reason).
+const gi = globalThis as { __uqmesDraftsInFlight?: Set<Promise<unknown>> };
+const inFlight = (gi.__uqmesDraftsInFlight ??= new Set<Promise<unknown>>());
+
+/** Resolves once every draft save already sent has landed. Reading a step's stored
+ *  captures waits on this: leaving a step sends its last entries, and reopening it
+ *  straight away must not read the draft from before them (walk 2026-11-03 — the
+ *  previous value came back). */
+export async function draftsSettled(): Promise<void> {
+    await Promise.allSettled([...inFlight]);
+}
+
 /**
  * Autosave the current substep's responses. `ready` holds saving off until the
  * stored draft has been loaded — an empty screen saved before then would erase it.
@@ -110,6 +122,9 @@ export function useDraftAutosave({
     const pending = useRef<DraftPayload | null>(null);
     const timer = useRef<number | undefined>(undefined);
     const stopped = useRef(false);
+    // Saves go one at a time, in the order they were made: two in flight together
+    // could land out of order, and the older entries would win on the server.
+    const chain = useRef<Promise<unknown>>(Promise.resolve());
     const callbacks = useRef({ onRefused, onSignedOut, onFailed });
     callbacks.current = { onRefused, onSignedOut, onFailed };
 
@@ -122,7 +137,11 @@ export function useDraftAutosave({
         if (!d || stopped.current) return;
         const json = JSON.stringify(d.responses);
         if ((saved.current.get(key(d)) ?? "{}") === json) return;
-        const { status, detail } = await postDraft(d, keepalive);
+        const run = chain.current.then(() => postDraft(d, keepalive));
+        chain.current = run.catch(() => undefined);
+        inFlight.add(run);
+        void run.finally(() => inFlight.delete(run));
+        const { status, detail } = await run;
         if (status >= 200 && status < 300) {
             saved.current.set(key(d), json);
         } else if (status === 403) {

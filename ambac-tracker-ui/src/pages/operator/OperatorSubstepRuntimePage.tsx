@@ -39,7 +39,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSubsteps, useSubmitSubstep } from "@/hooks/useSubsteps";
-import { useDraftAutosave } from "@/lib/dwi/capture-draft-saver";
+import { draftsSettled, useDraftAutosave } from "@/lib/dwi/capture-draft-saver";
 import { useSignaturePrompt } from "@/components/dwi/useSignaturePrompt";
 import type { Substep } from "@/hooks/useSubsteps";
 import { getCookie } from "@/lib/utils";
@@ -83,13 +83,21 @@ import {
 } from "./completion-adapters";
 import type { OperatorRuntimeSearchParams } from "@/lib/routes/operator-runtime-search";
 
+// What the step holds — read fresh on every visit, never from a cache (walk 2026-11-03:
+// reopening within the cache's life showed the draft from the start of the previous
+// visit, and the runtime hydrates once, so the newer entries never appeared). It waits
+// for draft saves still in flight, so the exit save of the visit just left is in it.
 const captureStateOptions = (executionId: unknown, enabled: boolean) =>
     queryOptions({
         queryKey: ["capture-state", executionId],
-        queryFn: () =>
-            api.api_StepExecutions_capture_state_retrieve({
+        queryFn: async () => {
+            await draftsSettled();
+            return api.api_StepExecutions_capture_state_retrieve({
                 params: { id: executionId as string },
-            }),
+            });
+        },
+        staleTime: 0,
+        gcTime: 0,
         enabled,
     });
 
@@ -213,6 +221,18 @@ export function OperatorSubstepRuntimePage() {
         setResponsesBySubstepId({});
         setConfirmedIds(new Set());
     }, [search.unit, isUnitMode]);
+
+    // A different visit — the queue moving to the next part keeps this page mounted —
+    // starts from its own stored captures, not the last part's entries: hydration keeps
+    // whatever is already on screen, so they carried over and autosave would have
+    // written them into the next part's draft. Declared before the hydration effect, so
+    // in one commit the clear runs first. The inspection-report bindings are per visit
+    // too (each part's inspection has its own report), so they clear with it.
+    useEffect(() => {
+        setResponsesBySubstepId({});
+        setConfirmedIds(new Set());
+        setQrIdBySubstepId({});
+    }, [search.execution]);
 
     // Hydrate prior captures from the server (the source of truth). Opening an
     // execution whose operator already did the work should show their entered
