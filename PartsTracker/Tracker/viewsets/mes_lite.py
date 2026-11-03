@@ -3425,7 +3425,8 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
                           'flag_override': ['override_training_gate'],
                           # Take over / hand off a step in progress: the leads, the
                           # production manager, the QA manager (2026-11-03).
-                          'reassign': ['reassign_stepexecution']}
+                          'reassign': ['reassign_stepexecution'],
+                          'hand_off_candidates': ['reassign_stepexecution']}
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
         'part': ['exact', 'isnull'],
@@ -3813,6 +3814,23 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
                          work_order_id=request.query_params.get('work_order') or None,
                          off_clock=flag('off_clock'))
         return Response(InFlightItemSerializer(rows, many=True).data)
+
+    @extend_schema(
+        responses={200: inline_serializer(name='HandOffCandidate', many=True, fields={
+            'user_id': serializers.IntegerField(),
+            'name': serializers.CharField(),
+            'trained': serializers.BooleanField(),
+            'at_station': serializers.BooleanField(),
+        })},
+        description="Who this step can be handed to: active staff who record substeps, "
+                    "not its holder, not customer or read-only accounts. Trained for the "
+                    "step first, then rostered at its station.",
+    )
+    @action(detail=True, methods=['get'], url_path='hand-off-candidates', pagination_class=None)
+    def hand_off_candidates(self, request, pk=None):
+        from dataclasses import asdict
+        from Tracker.services.mes.in_flight import hand_off_candidates
+        return Response([asdict(c) for c in hand_off_candidates(self.get_object())])
 
     @extend_schema(
         request=inline_serializer(name='ReassignStepRequest', fields={

@@ -40,6 +40,7 @@ import { useMyDispositions } from "@/hooks/useMyDispositions";
 import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals";
 import { usePendingFpis } from "@/hooks/usePendingFpis";
 import { ScanBox } from "@/components/home/home-blocks";
+import { WorkInProgressCard } from "@/components/operator/InFlightPicker";
 import { parseDateOnly } from "@/lib/date-only";
 import { fpiForContext } from "@/lib/fpi-context";
 
@@ -468,6 +469,9 @@ export function QaHomePage({ user }: { user: AuthUser }) {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <MyActionsPanel user={user} />
                 <GaugeNagTile />
+                {/* Everyone's open work, to take over or hand off (QA holds
+                    reassign_stepexecution); renders nothing without it. */}
+                <WorkInProgressCard />
             </div>
         </div>
     );

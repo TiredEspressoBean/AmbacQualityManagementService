@@ -26052,6 +26052,12 @@ const FlagOverrideResponse = z.object({
   execution_id: z.string().uuid(),
   flagged: z.boolean(),
 });
+const HandOffCandidate = z.object({
+  user_id: z.number().int(),
+  name: z.string(),
+  trained: z.boolean(),
+  at_station: z.boolean(),
+});
 const ReassignStepRequestRequest = z.object({
   to: z.number().int(),
   reason: z.string().min(1),
@@ -30951,6 +30957,7 @@ export const schemas = {
   ClaimStepInputRequest,
   FlagOverrideInputRequest,
   FlagOverrideResponse,
+  HandOffCandidate,
   ReassignStepRequestRequest,
   ReassignStepError,
   CaptureDraftRequestRequest,
@@ -56320,6 +56327,123 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
     response: FlagOverrideResponse,
   },
   {
+    method: "get",
+    path: "/api/StepExecutions/:id/hand-off-candidates/",
+    alias: "api_StepExecutions_hand_off_candidates_list",
+    description: `Who this step can be handed to: active staff who record substeps, not its holder, not customer or read-only accounts. Trained for the step first, then rostered at its station.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "assigned_to",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "assigned_to__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "part__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "CANCELLED",
+            "CLAIMED",
+            "COMPLETED",
+            "IN_PROGRESS",
+            "PENDING",
+            "ROLLED_BACK",
+            "SKIPPED",
+          ])
+          .optional(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__process_memberships__process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center__in",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
+      },
+      {
+        name: "step__work_center__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "step__work_center__kind",
+        type: "Query",
+        schema: z
+          .enum(["INSPECTION", "OSP", "PRODUCTION", "RECEIVING"])
+          .optional(),
+      },
+      {
+        name: "step__work_center__kind__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
+        name: "visit_number",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "visit_number__gte",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "visit_number__lte",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: z.array(HandOffCandidate),
+  },
+  {
     method: "post",
     path: "/api/StepExecutions/:id/reassign/",
     alias: "api_StepExecutions_reassign_create",
@@ -62013,7 +62137,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.unknown(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingRequirements/import-status/:task_id/",
@@ -62028,10 +62155,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: ImportStatusResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingRequirements/import-template/:template_format/",

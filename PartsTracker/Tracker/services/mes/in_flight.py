@@ -176,3 +176,41 @@ def _is_uuid(s) -> bool:
         return True
     except ValueError:
         return False
+
+
+@dataclass(frozen=True)
+class HandOffCandidate:
+    user_id: int
+    name: str
+    trained: bool  # qualified for the step, as the training gate reads it
+    at_station: bool  # rostered at the step's work center
+
+
+def hand_off_candidates(execution) -> list[HandOffCandidate]:
+    """Who a supervisor can hand a step to: the tenant's own active staff who record
+    substeps (not customer-portal accounts, not read-only roles), minus its holder.
+    Trained for the step first, then rostered at its station, then the rest — a
+    hand-off to someone untrained needs the training override (lifecycle.reassign)."""
+    from Tracker.models import User, UserWorkCenterMembership
+    from Tracker.services.training import check_training_authorization
+
+    tenant = execution.tenant
+    step = execution.step
+    process = getattr(execution.subject_work_order, 'process', None)
+    station = set()
+    if getattr(step, 'work_center_id', None):
+        station = set(UserWorkCenterMembership.objects
+                      .filter(tenant=tenant, work_center_id=step.work_center_id, archived=False)
+                      .values_list('user_id', flat=True))
+    out = []
+    for u in (User.objects.filter(tenant=tenant, is_active=True, user_type=User.UserType.INTERNAL)
+              .exclude(pk=execution.assigned_to_id).order_by('first_name', 'last_name', 'username')):
+        if not u.has_tenant_perm('add_substepcompletion', tenant) or u.is_customer(tenant):
+            continue
+        out.append(HandOffCandidate(
+            user_id=u.id, name=_name(u),
+            trained=check_training_authorization(u, step, process=process).authorized,
+            at_station=u.id in station,
+        ))
+    out.sort(key=lambda c: (not c.trained, not c.at_station))
+    return out

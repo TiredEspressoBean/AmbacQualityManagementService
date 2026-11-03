@@ -13283,6 +13283,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/StepExecutions/{id}/hand-off-candidates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Who this step can be handed to: active staff who record substeps, not its holder, not customer or read-only accounts. Trained for the step first, then rostered at its station. */
+        get: operations["api_StepExecutions_hand_off_candidates_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StepExecutions/{id}/reassign/": {
         parameters: {
             query?: never;
@@ -25626,6 +25643,12 @@ export interface components {
          * @enum {string}
          */
         GeneratedReportStatusEnum: "PENDING" | "COMPLETED" | "FAILED";
+        HandOffCandidate: {
+            user_id: number;
+            name: string;
+            trained: boolean;
+            at_station: boolean;
+        };
         /** @description Harvested component serializer */
         HarvestedComponent: {
             /** Format: uuid */
@@ -65055,6 +65078,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FlagOverrideResponse"];
+                };
+            };
+        };
+    };
+    api_StepExecutions_hand_off_candidates_list: {
+        parameters: {
+            query?: {
+                assigned_to?: number;
+                assigned_to__isnull?: boolean;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part?: string;
+                part__isnull?: boolean;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `PENDING` - Pending
+                 *     * `CLAIMED` - Claimed
+                 *     * `IN_PROGRESS` - In Progress
+                 *     * `COMPLETED` - Completed
+                 *     * `SKIPPED` - Skipped
+                 *     * `CANCELLED` - Cancelled
+                 *     * `ROLLED_BACK` - Rolled Back
+                 */
+                status?: "CANCELLED" | "CLAIMED" | "COMPLETED" | "IN_PROGRESS" | "PENDING" | "ROLLED_BACK" | "SKIPPED";
+                /** @description Multiple values may be separated by commas. */
+                status__in?: string[];
+                step?: string;
+                step__process_memberships__process?: string;
+                step__work_center?: string;
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__in?: string[];
+                step__work_center__isnull?: boolean;
+                /**
+                 * @description * `PRODUCTION` - Production
+                 *     * `INSPECTION` - Inspection
+                 *     * `RECEIVING` - Receiving
+                 *     * `OSP` - Outside Process
+                 */
+                step__work_center__kind?: "INSPECTION" | "OSP" | "PRODUCTION" | "RECEIVING";
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__kind__in?: string[];
+                visit_number?: number;
+                visit_number__gte?: number;
+                visit_number__lte?: number;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step Execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandOffCandidate"][];
                 };
             };
         };

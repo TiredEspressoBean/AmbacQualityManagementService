@@ -92,6 +92,31 @@ class StepReassignTests(TenantContextMixin, VectorTestCase):
         with self.assertRaises(NotQualified):
             reassign_execution(self.ex, by=inspector, to=self.op2, reason="cover")
 
+    def test_hand_off_candidates_are_staff_who_work_steps_trained_first(self):
+        from Tracker.services.mes.in_flight import hand_off_candidates
+        User = get_user_model()
+        portal = User.objects.create_user(username="cust", email="c@r.test", password="x",
+                                          tenant=self.tenant, user_type=User.UserType.PORTAL)
+        self._grant(portal, "add_substepcompletion")
+        viewer = User.objects.create_user(username="auditor", email="a@r.test", password="x",
+                                          tenant=self.tenant)
+        self._grant(viewer, "view_stepexecution")
+        trained = User.objects.create_user(username="trained", email="t@r.test", password="x",
+                                           tenant=self.tenant)
+        self._grant(trained, "add_substepcompletion")
+        self._grant(self.op2, "add_substepcompletion")
+        tt = TrainingType.objects.create(tenant=self.tenant, name="Lapping")
+        TrainingRequirement.objects.create(tenant=self.tenant, training_type=tt, step=self.step)
+        from Tracker.models import TrainingRecord
+        TrainingRecord.objects.create(tenant=self.tenant, user=trained, training_type=tt,
+                                      completed_date=timezone.now().date())
+        names = [c.name for c in hand_off_candidates(self.ex)]
+        self.assertNotIn("cust", names)
+        self.assertNotIn("auditor", names)
+        self.assertNotIn("op", names, "not its holder")
+        self.assertEqual(names[0], "trained")
+        self.assertIn("op2", names)
+
     def test_both_qa_roles_and_the_supervisors_hold_it(self):
         from Tracker.presets import GROUP_PRESETS
         holders = {k for k, g in GROUP_PRESETS.items() if "reassign_stepexecution" in g["permissions"]}

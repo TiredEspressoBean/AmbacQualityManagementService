@@ -28,7 +28,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
-import { usersOptions } from "@/hooks/useRetrieveUsers";
 import { api } from "@/lib/api/generated";
 import type { components } from "@/lib/api/generated-types";
 import { getCookie } from "@/lib/utils";
@@ -48,6 +47,15 @@ export const inFlightOptions = (workOrderId?: string, scope: Omit<Scope, "workOr
                 ...(scope.offClock ? { off_clock: true } : {}),
             },
         }) as Promise<InFlightItem[]>,
+    });
+
+export type HandOffCandidate = components["schemas"]["HandOffCandidate"];
+
+/** Who a step can be handed to: staff who record substeps, trained first. */
+const handOffCandidatesOptions = (executionId: string) =>
+    queryOptions({
+        queryKey: ["step-executions", "hand-off-candidates", executionId],
+        queryFn: () => api.api_StepExecutions_hand_off_candidates_list({ params: { id: executionId } }) as Promise<HandOffCandidate[]>,
     });
 
 /** Open the runtime on an in-flight item: the visit itself, or a load from one of its parts. */
@@ -77,17 +85,22 @@ function since(item: InFlightItem) {
 
 const isSupervisor = (perms: { has: (perm: string) => boolean }) => perms.has("reassign_stepexecution");
 
-export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick up where you left off" }: {
+export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick up where you left off",
+    initialEveryone = false, initialOffClock = false }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     workOrderId?: string;
     title?: string;
+    /** Open on everyone's work (a supervisor with nothing of their own here). */
+    initialEveryone?: boolean;
+    /** Open narrowed to work whose holder is off the clock. */
+    initialOffClock?: boolean;
 }) {
     const perms = usePermissionSet();
     const supervisor = isSupervisor(perms);
     const { data: me } = useAuthUser();
-    const [everyone, setEveryone] = useState(false);
-    const [offClock, setOffClock] = useState(false);
+    const [everyone, setEveryone] = useState(initialEveryone);
+    const [offClock, setOffClock] = useState(initialOffClock);
     const [moving, setMoving] = useState<{ item: InFlightItem; mode: "take" | "hand" } | null>(null);
     const { data, isLoading } = useQuery({
         ...inFlightOptions(workOrderId, { everyone: supervisor && everyone, offClock: supervisor && everyone && offClock }),
@@ -217,16 +230,19 @@ function ReassignDialog({ item, mode, meId, onClose, onTaken }: {
     const qc = useQueryClient();
     const [reason, setReason] = useState("");
     const [to, setTo] = useState<string>("");
-    const { data: users } = useQuery({
-        ...usersOptions({ is_active: true, limit: 500, ordering: "first_name" }),
-        enabled: mode === "hand",
-    });
+    const { data: people } = useQuery({ ...handOffCandidatesOptions(item.id), enabled: mode === "hand" });
     const target = mode === "take" ? meId : Number(to) || undefined;
     const reassign = useMutation({
         mutationFn: () => api.api_StepExecutions_reassign_create(
             { to: target as number, reason },
-            { params: { id: item.id }, headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" } },
+            {
+                params: { id: item.id },
+                headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+                suppressErrorToast: true,
+            },
         ),
+        // The dialog's own toast says why; no second, generic one.
+        meta: { suppressGlobalError: true },
         onSuccess: () => {
             void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "step-executions" });
             if (mode === "take") {
@@ -242,7 +258,6 @@ function ReassignDialog({ item, mode, meId, onClose, onTaken }: {
             toast.error("The step didn't change hands", { description: detail ?? "Try again." });
         },
     });
-    const people = (users?.results ?? []).filter((u) => u.id !== item.holder_id);
 
     return (
         <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -261,9 +276,13 @@ function ReassignDialog({ item, mode, meId, onClose, onTaken }: {
                         <Select value={to} onValueChange={(v) => v && setTo(v)}>
                             <SelectTrigger><SelectValue placeholder="Pick an operator" /></SelectTrigger>
                             <SelectContent>
-                                {people.map((u) => (
-                                    <SelectItem key={u.id} value={String(u.id)}>
-                                        {[u.first_name, u.last_name].filter(Boolean).join(" ") || u.username}
+                                {(people ?? []).map((c) => (
+                                    <SelectItem key={c.user_id} value={String(c.user_id)}>
+                                        {c.name}
+                                        <span className="ml-2 text-xs text-muted-foreground">
+                                            {c.trained ? "trained" : "not trained for this step"}
+                                            {c.at_station ? " · at this station" : ""}
+                                        </span>
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -303,7 +322,40 @@ export function ContinueWorkButton({ workOrderId }: { workOrderId: string }) {
                 Continue work{count ? ` (${count})` : ""}
             </Button>
             <InFlightPicker open={open} onOpenChange={setOpen} workOrderId={workOrderId}
-                title="Continue work on this order" />
+                title="Continue work on this order" initialEveryone={supervisor && !count} />
         </>
+    );
+}
+
+/** A supervisor's way in to everyone's work in progress from their home page:
+ *  how much is open across the plant and how much is held by someone off the clock,
+ *  each opening the picker on Everyone's. Renders nothing for anyone else. */
+export function WorkInProgressCard() {
+    const supervisor = isSupervisor(usePermissionSet());
+    const { data } = useQuery({ ...inFlightOptions(undefined, { everyone: true }), enabled: supervisor });
+    const [open, setOpen] = useState<null | "all" | "off">(null);
+    if (!supervisor) return null;
+    const items = data ?? [];
+    const off = items.filter((i) => i.holder_off_clock).length;
+    return (
+        <div className="rounded-lg border bg-card p-4">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Work in progress</div>
+            <p className="my-2 text-sm text-muted-foreground">
+                Steps and loads open across the plant. Take one over, or hand it to someone.
+            </p>
+            <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => setOpen("all")}>
+                    Work in progress ({items.length})
+                </Button>
+                <Button variant="outline" disabled={!off} onClick={() => setOpen("off")}
+                    className={off ? "border-amber-500 text-amber-700 dark:text-amber-400" : ""}>
+                    Off the clock ({off})
+                </Button>
+            </div>
+            {open && (
+                <InFlightPicker open onOpenChange={(o) => { if (!o) setOpen(null); }}
+                    title="Work in progress" initialEveryone initialOffClock={open === "off"} />
+            )}
+        </div>
     );
 }

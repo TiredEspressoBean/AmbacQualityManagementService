@@ -40,6 +40,8 @@ function request(d: DraftPayload, keepalive: boolean) {
     const config = {
         params: { id: d.executionId },
         headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+        // A refusal (the step is someone else's now) is said by the runtime's own toast.
+        suppressErrorToast: true,
         // axios's fetch adapter, for `keepalive`: the request outlives the page.
         ...(keepalive ? { adapter: "fetch" as const, fetchOptions: { keepalive: true } } : {}),
     };

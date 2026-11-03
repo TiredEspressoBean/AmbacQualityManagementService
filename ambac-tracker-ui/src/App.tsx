@@ -73,7 +73,8 @@ export default function App() {
                             if (window.location.pathname !== '/forbidden') {
                                 router.navigate({ to: '/forbidden' });
                             }
-                        } else if (errorDetail && isLoggedIn && !isPublicPath403) {
+                        } else if (errorDetail && isLoggedIn && !isPublicPath403
+                            && !error.config?.suppressErrorToast) {
                             // For other 403s with a message, show toast but don't redirect
                             // Only show if logged in and not on public pages
                             toast.error("Permission Denied", {

@@ -31996,6 +31996,156 @@ paths:
               schema:
                 $ref: '#/components/schemas/FlagOverrideResponse'
           description: ''
+  /api/StepExecutions/{id}/hand-off-candidates/:
+    get:
+      operationId: api_StepExecutions_hand_off_candidates_list
+      description: 'Who this step can be handed to: active staff who record substeps,
+        not its holder, not customer or read-only accounts. Trained for the step first,
+        then rostered at its station.'
+      parameters:
+      - in: query
+        name: assigned_to
+        schema:
+          type: integer
+      - in: query
+        name: assigned_to__isnull
+        schema:
+          type: boolean
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Execution.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: part__isnull
+        schema:
+          type: boolean
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - CANCELLED
+          - CLAIMED
+          - COMPLETED
+          - IN_PROGRESS
+          - PENDING
+          - ROLLED_BACK
+          - SKIPPED
+        description: |-
+          * `PENDING` - Pending
+          * `CLAIMED` - Claimed
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `SKIPPED` - Skipped
+          * `CANCELLED` - Cancelled
+          * `ROLLED_BACK` - Rolled Back
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__process_memberships__process
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center__in
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step__work_center__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: step__work_center__kind
+        schema:
+          type: string
+          enum:
+          - INSPECTION
+          - OSP
+          - PRODUCTION
+          - RECEIVING
+        description: |-
+          * `PRODUCTION` - Production
+          * `INSPECTION` - Inspection
+          * `RECEIVING` - Receiving
+          * `OSP` - Outside Process
+      - in: query
+        name: step__work_center__kind__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: visit_number
+        schema:
+          type: integer
+      - in: query
+        name: visit_number__gte
+        schema:
+          type: integer
+      - in: query
+        name: visit_number__lte
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HandOffCandidate'
+          description: ''
   /api/StepExecutions/{id}/reassign/:
     post:
       operationId: api_StepExecutions_reassign_create
@@ -59517,6 +59667,22 @@ components:
         * `PENDING` - Pending
         * `COMPLETED` - Completed
         * `FAILED` - Failed
+    HandOffCandidate:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        name:
+          type: string
+        trained:
+          type: boolean
+        at_station:
+          type: boolean
+      required:
+      - at_station
+      - name
+      - trained
+      - user_id
     HarvestedComponent:
       type: object
       description: Harvested component serializer
