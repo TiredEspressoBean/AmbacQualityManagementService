@@ -591,15 +591,17 @@ A held lot shows an amber **Held at receiving** panel on its inspection page.
 
 The lot's own label carries no status, so a held lot sitting on a rack needs
 something that says so: **Hold tag** on the lot's page prints one while the lot
-is in quarantine or rejected. Under *DO NOT USE UNTIL RELEASED* it reads:
+is in quarantine or rejected. It reads:
 
 - **HOLD** — held for named reasons, listed in words: *Unqualified supplier*,
-  *Awaiting heat number*
+  *Awaiting heat number* — under *DO NOT USE UNTIL RELEASED*
 - **QUARANTINE** — awaiting a disposition, with the VDMR, the quality report and
-  the finding (*Whole lot reject requested*)
-- **REJECTED** — rejected, with the same
+  the finding (*Whole lot reject requested*) — under *DO NOT USE UNTIL RELEASED*
+- **REJECTED** — with the same, under *DO NOT USE — TO BE RETURNED OR SCRAPPED*
 
-with the lot, quantity and location, and a box to sign on release. See [Tagging
+with the lot, quantity and location. A held or quarantined lot's tag ends with a
+box to sign on release; a rejected lot's with **Closure** — who returned or
+scrapped it, and the RTV or scrap reference. See [Tagging
 it](../quality/quarantine.md#tagging-it).
 
 !!! important "A lot can be held for several reasons at once"

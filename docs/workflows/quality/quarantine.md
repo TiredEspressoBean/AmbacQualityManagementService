@@ -147,15 +147,20 @@ tag**: a printed page to attach to the part or its container.
 
 **Hold tag** is on each held row of **Quarantined Parts** (a quarantined part, or
 one needing rework), and beside **NCR Report** on a disposition while its part is
-held. The tag reads **QUARANTINE** (awaiting its disposition), **HOLD** (on hold
-or needing rework) or **REJECTED** (dispositioned scrap), under *DO NOT USE UNTIL
-RELEASED*, and carries:
+held. Its heading says what state the item is in:
+
+| Heading | When | Under it | Box at the foot |
+|---------|------|----------|-----------------|
+| **QUARANTINE** | Awaiting its disposition | *DO NOT USE UNTIL RELEASED* | **Release** — *Released by*: name, date, disposition or reason released |
+| **HOLD** | On hold, or needing rework | *DO NOT USE UNTIL RELEASED* | **Release**, as above |
+| **REJECTED** | Dispositioned scrap | *DO NOT USE — TO BE RETURNED OR SCRAPPED* | **Closure** — *Returned / scrapped by*: name, date, RTV or scrap reference |
+
+A rejected item is never released — it ends when it leaves — so its tag closes
+with who sent it back or scrapped it. Every tag also carries:
 
 - **Item** — part type, serial, quantity, location, work order and step
 - **Why it is held** — the NCR, the quality reports and the finding
 - **Placed by** and **Placed** — from the record's history
-- **Release** — a box for whoever releases it to sign: name, date, and the
-  disposition or reason
 
 A part that isn't held has no tag to print: *&lt;serial&gt; isn't held
 (&lt;status&gt;) — nothing to tag.* Like every report it needs `export_data`.
