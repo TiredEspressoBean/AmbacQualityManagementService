@@ -77,6 +77,9 @@ generates the PDF and either downloads it or emails it to you.
 | `rtv_sheet` | Return to Vendor (RTV) Sheet | Rejected material lot |
 | `shipment_coc` | Certificate of Conformance | Shipment detail |
 | `packing_list` | Packing List | Shipment detail |
+| `returned_as_received` | Returned As Received | Shipment detail, and on shipping, when a unit goes back unrepaired — in place of a CoC for that unit |
+| `over_and_above_scope` | Over-and-Above Scope | **Scope for customer** on a returning core awaiting authorisation, or in rebuild with work needing it |
+| `over_and_above_scope_lot` | Over-and-Above Scope (lot) | **Scope for customer** on several cores picked on a teardown work order's **Cores** card |
 | `lot_trace` | Lot Trace | Material lot |
 | `cycle_count_sheet` | Cycle Count Sheet | A count, before counting |
 | `cycle_count_report` | Cycle Count Report | A submitted count |
