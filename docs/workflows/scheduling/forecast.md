@@ -37,6 +37,10 @@ against February's forecast for the same build. Orders are taken in due-month
 order, firm before RFI within a month, and a month's forecast never goes below
 zero.
 
+Only this month and later take part. An order already past its due date uses up
+no forecast — its work is in the load as overdue — and past months' forecast
+drops out. A cell reads the same whichever months you look at.
+
 Then each month:
 
 - plans the larger of its forecast and what orders have used up — only the
@@ -47,11 +51,20 @@ Then each month:
 ## The demand time fence
 
 Close in, a forecast is not worth planning against — only real orders should
-drive the next few weeks. Inside the **demand time fence**, the forecast is
-**shown but not planned**: capacity, the material lane and the material outlook
-export count only firm and RFI orders there. Fenced month columns are muted on
-this page — *"Inside the demand time fence: only orders are planned."* — and stay
-editable. With the default of 1, the current month carries no forecast load.
+drive the next few weeks. Inside the **demand time fence**, counted in days
+from today, the forecast is **shown but not planned**: capacity, the material
+lane and the material outlook export count only firm and RFI orders there.
+
+- A month **wholly** inside the fence is muted on this page — *"Inside the
+  demand time fence: only orders are planned."* — and stays editable.
+- A month the fence **straddles** plans only its days past the fence: its
+  unclaimed forecast is pro-rated by days, counting from today (days already
+  gone aren't fenced). Its tooltip says how much is held back — *Planned on top
+  of orders: &lt;P&gt; — &lt;F&gt; of the &lt;U&gt; unclaimed fall inside the
+  demand time fence (days before it are pro-rated out)*.
+
+The fence moves with today, so it protects the same number of days whatever
+the date — the default is the next 30.
 
 ## Settings
 
@@ -60,13 +73,18 @@ change scheduling settings:
 
 | Setting | Default | Means |
 |---------|---------|-------|
-| **Demand time fence (months)** | 1 | *"Months from now in which forecast isn't planned — only orders count. 1 = this month; 0 = off."* |
-| **Forecast consumption window (months)** | 1 | *"How far either side of its due month an order uses up forecast: earlier months first, then later. 0 = its due month only."* |
+| **Demand time fence (days)** | 30 | *"Days from today in which forecast isn't planned — only orders count. A month straddling the fence plans only its days past it. 0 = off."* At most 365. |
+| **Forecast consumption window (months)** | 1 | *"How far either side of its due month an order uses up forecast: earlier months first, then later. 0 = its due month only."* At most 12. |
 
-What counts as claiming it: order lines that aren't cancelled, at their full
-quantity, plus work orders that aren't on any order line. A work order on an
-order line is that line's own units, not counted twice. Teardown and
-disassembly work claims nothing: the forecast covers new builds only.
+What counts as claiming it: order lines that aren't cancelled or deleted, at
+their full quantity, plus work orders that aren't on any order line. A work
+order on an order line is that line's own units, not counted twice. The
+forecast covers **new builds only**, so remanufacturing claims nothing:
+teardown and disassembly work, and order lines whose units come in as the
+customer's own cores (repair and return, or exchange).
+
+A forecast belongs to its part type: when the part type is revised to a new
+version, its forecast moves with it.
 
 ## Importing a forecast
 
