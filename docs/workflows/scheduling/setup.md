@@ -10,9 +10,9 @@ sidebar — they are configuration you revisit occasionally, not a daily surface
 
 !!! important "These are the inputs every other number rests on"
     Capacity heatmaps, release-by dates and delivery promises are all computed
-    from what is in these three tables. Where a step has no authored timing, the
-    planner falls back to measured history, then to the step's own expected
-    duration. An operation with **none of the three** contributes **no load** —
+    from what is in these three tables. Where a step has no authored time, the
+    planner falls back to the step's [measured time](#measured-times), then to
+    its own expected duration. An operation with **none of the three** contributes **no load** —
     so the shop looks emptier than it is, start-by dates come out too late and
     promises come out too generous. Capacity planning names the orders affected.
 
@@ -42,6 +42,62 @@ which is what lets one person tend several machines.
 !!! note "The step is the row's key"
     A timing belongs to exactly one step, so the step cannot be changed on an
     existing row. If you picked the wrong step, delete it and add the right one.
+
+### Measured times
+
+Step times change with the lot, the crew and the job, so beside each authored
+**Setup** and **Cycle** the page shows what the step's own records measure, and
+which one the scheduler is using:
+
+- *Using authored*, *Using measured*, *Using the step's expected duration*, or
+  *Not set*
+- the measurement — *measured 18.73 min per piece · 16 runs*, *measured 3.05 min ·
+  16 runs* for setup, or *measured 34.29 min per load · 14 loads* for a batch step
+- *differs by more than 25%* when the authored time is that far from the
+  measurement
+
+**An authored time always wins.** A measurement is used only where no time is
+authored (an authored 0 counts as none):
+
+| Aspect | Used, in order |
+|--------|----------------|
+| **Cycle** | Authored → measured → the step's expected duration → none |
+| **Setup** | Authored → measured, when it could be separated → 0 |
+
+Load / unload, external setup and attention can't be told apart in the records,
+so they are authored only.
+
+**How a step is measured.** A *run* is one work order's first pass through the
+step: the worked time of its parts there — overlapping time counted once, not per
+part — against how many pieces it covered.
+
+- **Setup and per piece.** Runs of different lot sizes separate the fixed setup
+  from the time per piece. That needs at least **8 runs** over at least **3 lot
+  sizes**, the largest at least twice the smallest. Otherwise the cycle is the
+  plain average per piece, marked *(average)*, and setup reads *not separated
+  from per-piece time* — hover it for why.
+- **A batch step** (one with work captured once per load — a wash, an oven) is
+  measured **per load**: from loading to the load's release, sealed loads only.
+  Its setup reads *a batch step is measured per load*.
+- A measurement needs at least **5 runs** (or **5 loads**); until then it reads
+  *not enough runs yet* or *not enough loads yet*, with the count so far.
+- Counted the way [Operator Hours](overview.md#where-direct-time-comes-from)
+  counts: rework, time on hold and time out for outside processing are left out,
+  and a step left running stops at the operator's next clock-out. Only the last
+  year counts, so a measurement follows the step as it is run now.
+
+**Use measured** copies the measured setup and cycle into the authored timing
+and saves it at once — *Measured times saved to &lt;step&gt;*. It shows only
+where a measurement differs from what is authored, and nothing is ever changed
+for you. On the step's own form, the **Timing** section shows the same lines and
+its **Use measured** fills the field, to save like any edit.
+
+The drift threshold is **Timing drift flag (%)** in **Scheduling settings**, under
+**Convergence & setup** — default 25, **0** turns the flag off.
+
+**Who edits them:** Engineering and Planner, as well as Production Manager and
+Tenant Admin (`change_steptiming`; `add_steptiming` to add one). A step's timing
+can be edited from its form even while the step itself is locked by its process.
 
 ## Machine Eligibility
 

@@ -126,7 +126,8 @@ operator already makes by starting and completing work:
 - Time while the work order was **on hold**, or the part was **out for outside
   processing**, is left out.
 - **Rework** is a repeat visit to a step, or a rework step.
-- Setup and run time are not separated.
+- Setup and run time are not separated here. Step Timings separates them per
+  step, across runs — see [Measured times](setup.md#measured-times).
 
 ### By work order
 
