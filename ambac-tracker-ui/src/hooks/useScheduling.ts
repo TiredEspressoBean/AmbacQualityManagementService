@@ -568,8 +568,10 @@ export type CapacityLoad = {
     purchase_unit: string;
     units_per_purchase_unit: number | null;
     on_hand: number;
-    /** Inbound lots promised within the horizon. */
+    /** Inbound lots promised within the horizon, plus late ones (counted this month). */
     incoming: number;
+    /** Of `incoming`, lots already past their promised date and still expected. */
+    incoming_late: number;
     /** When to act on the FIRST shortage only: the month the balance goes short, and
      *  that month's first day less the purchase lead time. Null when never short. */
     lead_time_days: number | null;

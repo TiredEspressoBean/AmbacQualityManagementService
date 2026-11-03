@@ -116,12 +116,16 @@ def set_forecast(*, tenant, part_type, month: date, quantity: int | None) -> str
 
 
 def forecast_by_month(tenant, first: date, last: date) -> dict:
-    """{(part_type_id, month_start): quantity} for live rows in [first, last]."""
+    """{(part_type_id, month_start): quantity} for live rows in [first, last].
+
+    A forecast for an ARCHIVED part type is no one's demand: it neither loads nor shows.
+    (A superseded version needs nothing here — its forecast FOLLOWS to the new one.)"""
     from Tracker.models import VolumeForecast
     return {
         (r['part_type_id'], r['month']): r['quantity']
         for r in VolumeForecast.objects.filter(  # tenant-safe: explicit tenant filter
-            tenant=tenant, archived=False, month__gte=month_start(first), month__lte=last)
+            tenant=tenant, archived=False, part_type__archived=False,
+            month__gte=month_start(first), month__lte=last)
         .values('part_type_id', 'month', 'quantity')
     }
 
@@ -242,6 +246,7 @@ def unclaimed_forecast(tenant, first: date, last: date) -> dict:
     left = dict(fc)
     taken: dict = defaultdict(lambda: {'firm': 0, 'tentative': 0})
     spilled: dict = defaultdict(list)
+    leftover: dict = defaultdict(int)   # (pt, due month) -> ordered beyond every reachable forecast
     for (pt_id, due) in sorted(claims, key=lambda k: (k[1], str(k[0]))):
         reach = ([due] + [add_months(due, -k) for k in range(1, window + 1)]
                  + [add_months(due, k) for k in range(1, window + 1)])
@@ -260,6 +265,7 @@ def unclaimed_forecast(tenant, first: date, last: date) -> dict:
                 if m != due:
                     spilled[(pt_id, m)].append(
                         {'band': band, 'quantity': use, 'from_month': f"{due:%Y-%m}"})
+            leftover[(pt_id, due)] += qty
 
     today = tenant_today(tenant)
     end = today + timedelta(days=fence)
@@ -276,6 +282,10 @@ def unclaimed_forecast(tenant, first: date, last: date) -> dict:
                     # ordered, which may exceed the forecast (`firm`/`tentative` above
                     # are what this cell's forecast lost, capped by it).
                     'ordered_firm': asked['firm'], 'ordered_tentative': asked['tentative'],
+                    # Of what's ordered this month, what no forecast within the window
+                    # could absorb — "over forecast" judged AFTER consumption, so an
+                    # order covered by next month's forecast isn't called over.
+                    'over_forecast': leftover.get(key, 0),
                     'unclaimed': left[key], 'fenced': share >= 1.0,
                     'fenced_quantity': held, 'planned': left[key] - held,
                     'claimed_from': spilled.get(key, [])}

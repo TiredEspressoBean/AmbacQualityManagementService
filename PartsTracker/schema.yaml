@@ -61648,6 +61648,9 @@ components:
         incoming:
           type: number
           format: double
+        incoming_late:
+          type: number
+          format: double
         lead_time_days:
           type: integer
           nullable: true
@@ -61677,6 +61680,7 @@ components:
       - first_short_month
       - id
       - incoming
+      - incoming_late
       - kind
       - lead_time_days
       - name
@@ -87849,6 +87853,8 @@ components:
           type: integer
         ordered_tentative:
           type: integer
+        over_forecast:
+          type: integer
         planned:
           type: integer
         claimed_from:
@@ -87863,6 +87869,7 @@ components:
       - forecast
       - ordered_firm
       - ordered_tentative
+      - over_forecast
       - planned
       - tentative
       - unclaimed

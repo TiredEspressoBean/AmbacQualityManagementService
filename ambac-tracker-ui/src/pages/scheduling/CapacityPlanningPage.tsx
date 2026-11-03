@@ -639,7 +639,7 @@ export function CapacityPlanningPage() {
                           <th scope="row" className="sticky left-0 z-10 bg-background px-3 py-1.5 text-left text-xs font-medium"
                               title={[
                                 m.order_by
-                                  ? `First short ${m.first_short_month} · order by ${m.order_by}${m.order_by_late ? " (late)" : ""}`
+                                  ? `First short (firm) ${m.first_short_month} · order by ${m.order_by}${m.order_by_late ? " (late)" : ""}`
                                     + (m.lead_time_days ? ` · ${m.lead_time_days}-day lead time` : " · no lead time set")
                                   : null,
                                 // Short earlier only once RFI or forecast is added: watch it,

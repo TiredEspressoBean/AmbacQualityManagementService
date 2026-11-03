@@ -874,8 +874,10 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     'purchase_unit': serializers.CharField(),
                     'units_per_purchase_unit': serializers.FloatField(allow_null=True),
                     'on_hand': serializers.FloatField(),
-                    # Inbound lots promised within the horizon.
+                    # Inbound lots promised within the horizon, plus late ones (promised
+                    # before it and still expected), which count in the current month.
                     'incoming': serializers.FloatField(),
+                    'incoming_late': serializers.FloatField(),
                     # When to act: the first month the balance goes short, and that
                     # month's first day less the purchase lead time. Null when never
                     # short in the horizon. Only the first shortage — not a buying plan.
@@ -945,7 +947,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         unit_label = {'STOCK': 'Stock unit', 'BOX': 'Box', 'LB': 'Pound'}
         columns = ['Item', 'Name', 'Kind', 'Stock unit', 'Purchase unit',
                    'Stock units per purchase unit', 'On hand', 'Safety stock',
-                   'Incoming', 'Lead time (days)', 'First short month', 'Order by', 'Late',
+                   'Incoming', 'Incoming (late)', 'Lead time (days)', 'First short (firm)', 'Order by', 'Late',
                    'Watch from', *buckets, 'Total demand', 'Balance at end']
         rows = []
         for m in load['materials']:
@@ -960,9 +962,13 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     m['units_per_purchase_unit'] if m['purchase_unit'] != 'STOCK' else None),
                 'On hand': m['on_hand'], 'Safety stock': m['safety_stock'],
                 'Incoming': m['incoming'],
+                # Already past its promised date and still expected: counted as supply
+                # in the current month.
+                'Incoming (late)': m['incoming_late'] or None,
                 # When to act on the FIRST shortage only — not a buying plan.
                 'Lead time (days)': m['lead_time_days'],
-                'First short month': m['first_short_month'],
+                # FIRM demand's first shortage — the lane's red cells count all demand.
+                'First short (firm)': m['first_short_month'],
                 'Order by': m['order_by'].isoformat() if m['order_by'] else None,
                 'Late': 'Late' if m['order_by_late'] else None,
                 # Short earlier only once RFI or forecast demand is added: watch, not order.
@@ -1561,6 +1567,8 @@ class VolumeForecastViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                         # Orders DUE this month, in full: the true total ordered.
                         'ordered_firm': serializers.IntegerField(),
                         'ordered_tentative': serializers.IntegerField(),
+                        # Ordered this month beyond every forecast the window reaches.
+                        'over_forecast': serializers.IntegerField(),
                         'planned': serializers.IntegerField(),
                         # Claims that spilled in from a neighbouring month's orders.
                         'claimed_from': inline_serializer(
@@ -1611,17 +1619,21 @@ class VolumeForecastViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         try:
             with transaction.atomic():
                 for c in cells:
-                    # The current, live version only — as the sheet import resolves items.
-                    # A forecast on a superseded version matches no order's claims.
-                    pt = PartTypes.objects.filter(id=c.get('part_type'), archived=False,
-                                                  is_current_version=True).first()
+                    qty = c.get('quantity')
+                    qty = None if qty in (None, '') else int(qty)
+                    # Setting a forecast takes the current, live version only — as the
+                    # sheet import resolves items; a forecast on a superseded version
+                    # matches no order's claims. CLEARING takes any part type, so a
+                    # stale row can always be removed.
+                    pts = PartTypes.objects.filter(id=c.get('part_type'))
+                    if qty:
+                        pts = pts.filter(archived=False, is_current_version=True)
+                    pt = pts.first()
                     if pt is None:
                         raise ValueError(f"No current part type {c.get('part_type')}")
                     month = parse_month(c.get('month'))
                     if month is None:
                         raise ValueError(f"'{c.get('month')}' isn't a month (YYYY-MM)")
-                    qty = c.get('quantity')
-                    qty = None if qty in (None, '') else int(qty)
                     if set_forecast(tenant=self.tenant, part_type=pt, month=month,
                                     quantity=qty) != UNCHANGED:
                         changed += 1

@@ -41,6 +41,8 @@ type Cell = {
   /** Orders DUE this month, in full — the true total ordered. */
   ordered_firm?: number;
   ordered_tentative?: number;
+  /** Ordered this month beyond every forecast the consumption window reaches. */
+  over_forecast?: number;
 };
 
 const FENCE_TIP = "Inside the demand time fence: only orders are planned.";
@@ -60,11 +62,14 @@ function ForecastCell({ partTypeId, month, cell, canEdit, fenced }: {
   // The TRUE total ordered for this month — orders due in it, firm and RFI — which may
   // exceed the forecast. What the forecast lost (and from which months) is the tooltip's.
   const ordered = (cell?.ordered_firm ?? 0) + (cell?.ordered_tentative ?? 0);
-  const over = cell ? ordered - cell.forecast : 0;
+  // Judged AFTER consumption: what no forecast within the window could absorb — an
+  // order covered by next month's forecast isn't over.
+  const over = cell?.over_forecast ?? 0;
   const spilled = (cell?.claimed_from ?? [])
     .map((c) => `${c.band === "tentative" ? "RFI" : "Firm"} ${c.quantity} (from ${monthLabel(c.from_month)})`);
   const title = cell
-    ? `Forecast ${cell.forecast}\nOrdered this month: firm ${cell.ordered_firm ?? 0} · RFI ${cell.ordered_tentative ?? 0}`
+    ? `Forecast ${cell.forecast}\nOrdered or planned this month: firm ${cell.ordered_firm ?? 0} (order lines and stock builds) · RFI ${cell.ordered_tentative ?? 0}`
+      + (over > 0 ? `\n${over} beyond every forecast within the consumption window` : "")
       + `\nForecast used up by orders: firm ${cell.firm} · RFI ${cell.tentative}`
       + (spilled.length ? `\nof which ${spilled.join(", ")}` : "")
       + (fenced ? `\n${FENCE_TIP}`
@@ -106,7 +111,7 @@ function ForecastCell({ partTypeId, month, cell, canEdit, fenced }: {
         <div className={`px-1.5 text-right text-[10px] tabular-nums ${
           over > 0 ? "text-amber-700 dark:text-amber-400"
             : cell && cell.unclaimed === 0 ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}`}>
-          {ordered} ordered{over > 0 ? ` · ${over} over forecast` : ""}
+          {ordered} ordered or planned{over > 0 ? ` · ${over} over forecast` : ""}
         </div>
       )}
     </td>

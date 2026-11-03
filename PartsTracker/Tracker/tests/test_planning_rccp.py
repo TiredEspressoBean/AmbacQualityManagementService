@@ -822,11 +822,26 @@ class MaterialOutlookExportTests(_RccpFixture, TestCase):
             "/api/Schedules/material-outlook/export/csv/?months=12")
         reader = csv.DictReader(io.StringIO(r.content.decode("utf-8-sig")))
         cols = reader.fieldnames
-        self.assertEqual(cols[cols.index("Incoming") + 1:cols.index("Incoming") + 5],
-                         ["Lead time (days)", "First short month", "Order by", "Late"])
+        self.assertEqual(cols[cols.index("Incoming") + 1:cols.index("Incoming") + 7],
+                         ["Incoming (late)", "Lead time (days)", "First short (firm)",
+                          "Order by", "Late", "Watch from"])
         row = next(reader)
         self.assertEqual((row["Lead time (days)"], row["Late"]), ("400", "Late"))
         self.assertTrue(row["Order by"])
+
+    def test_a_late_receipt_still_counts_as_supply_this_month(self):
+        """A lot promised before the horizon and not yet received is late, not gone: it
+        covers demand in the current month rather than vanishing (false Late flags)."""
+        from decimal import Decimal
+        from Tracker.services.mes.material_lot import upsert_expected_receipt
+        upsert_expected_receipt(
+            tenant=self.tenant, erp_po_number="PO-LATE", erp_po_line="1", quantity=Decimal(100),
+            promised_date=timezone.localdate() - timedelta(days=60), material=self.oring,
+            material_type=None, supplier=None, unit_of_measure="EA")
+        row = self._row()
+        self.assertEqual((row["incoming"], row["incoming_late"]), (100.0, 100.0))
+        self.assertEqual(row["series"][0]["available"], 95.0, "100 late less 5 safety")
+        self.assertIsNone(row["first_short_month"], "21 needed, 95 coming")
 
     def test_export_sits_behind_export_data(self):
         r = self._client("view_scheduleresult").get(

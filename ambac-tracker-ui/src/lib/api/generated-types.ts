@@ -26619,6 +26619,8 @@ export interface components {
             on_hand: number;
             /** Format: double */
             incoming: number;
+            /** Format: double */
+            incoming_late: number;
             lead_time_days: number | null;
             first_short_month: string | null;
             /** Format: date */
@@ -40239,6 +40241,7 @@ export interface components {
             fenced_quantity: number;
             ordered_firm: number;
             ordered_tentative: number;
+            over_forecast: number;
             planned: number;
             claimed_from: components["schemas"]["VolumeForecastSpill"][];
         };

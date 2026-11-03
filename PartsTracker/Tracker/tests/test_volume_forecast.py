@@ -140,6 +140,23 @@ class ForecastConsumptionTests(_ForecastFixture, TestCase):
         self.assertEqual((cell["ordered_firm"], cell["ordered_tentative"]), (100, 20))
         self.assertEqual((cell["firm"], cell["tentative"], cell["unclaimed"]), (50, 0, 0))
 
+    def test_over_forecast_is_judged_after_consumption(self):
+        """Orders a later month's forecast covers aren't "over"; only what no forecast in
+        the window could absorb is."""
+        nxt = fc.add_months(self.month, 1)
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=nxt, quantity=50)
+        self._line(80, self._mid(self.month))
+        self.assertEqual(self._cell()["over_forecast"], 0, "30 covered by next month")
+        self._line(70, self._mid(self.month), n=2)
+        self.assertEqual(self._cell()["over_forecast"], 50, "150 asked, 100 reachable")
+
+    def test_an_archived_part_types_forecast_neither_loads_nor_shows(self):
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
+        PartTypes.objects.filter(pk=self.pt.pk).update(archived=True)
+        self.assertEqual(fc.unclaimed_forecast(self.tenant, self.month, self.month), {})
+        self.assertEqual(fc.grid(self.tenant, self.this_month, 12)["rows"], [])
+
     def test_orders_beyond_the_forecast_leave_nothing_unclaimed(self):
         fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=10)
         self._line(30, self._mid(self.month))
@@ -520,7 +537,7 @@ class ForecastApiTests(_ForecastFixture, TestCase):
         self.assertEqual(len(grid["months"]), 24)
         self.assertEqual(grid["rows"][0]["cells"][label],
                          {"forecast": 12, "firm": 0, "tentative": 0, "unclaimed": 12,
-                          "ordered_firm": 0, "ordered_tentative": 0,
+                          "ordered_firm": 0, "ordered_tentative": 0, "over_forecast": 0,
                           "fenced": False, "fenced_quantity": 0, "planned": 12,
                           "claimed_from": []})
 
@@ -541,6 +558,19 @@ class ForecastApiTests(_ForecastFixture, TestCase):
         self.assertFalse(ser.is_valid())
         ser = OptimizationConfigSerializer(cfg, data={"forecast_consumption_window_months": 12}, partial=True)
         self.assertTrue(ser.is_valid(), ser.errors)
+
+    def test_a_stale_forecast_on_a_superseded_part_type_can_still_be_cleared(self):
+        """Setting refuses a non-current part type, but a CLEAR always goes through — or
+        a stale row could never be removed."""
+        c = self._client("view_volumeforecast", "add_volumeforecast", "change_volumeforecast")
+        old = PartTypes.objects.create(tenant=self.tenant, name="Old", is_current_version=False)
+        VolumeForecast.objects.create(tenant=self.tenant, part_type=old,
+                                      month=date(2027, 3, 1), quantity=5)
+        r = c.post("/api/VolumeForecasts/set-cells/",
+                   {"cells": [{"part_type": str(old.id), "month": "2027-03", "quantity": None}]},
+                   format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertFalse(VolumeForecast.objects.filter(archived=False).exists())
 
     def test_viewer_cannot_edit(self):
         c = self._client("view_volumeforecast")

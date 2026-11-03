@@ -176,17 +176,26 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
         on_hand[k] = on_hand.get(k, 0.0) + float(r['quantity_remaining'] or 0)
 
     # Incoming, placed in the bucket it is promised for — a receipt that lands in March
-    # cannot cover a February commitment.
+    # cannot cover a February commitment. A lot promised BEFORE the first bucket and not
+    # yet received is late, not gone: it is still expected, so it counts as supply in the
+    # current bucket (dropping it read items short and flagged false Late order-bys), and
+    # `incoming_late` keeps it visible as a late receipt.
     incoming: dict = defaultdict(lambda: [0.0] * n)
+    incoming_late: dict = defaultdict(float)
     for lot in (MaterialLot.objects.filter(archived=False,
             tenant=tenant, promised_date__isnull=False, quantity_remaining__gt=0)
             .filter(lot_scope)
             .exclude(status__in=_ON_HAND_STATUSES + _TERMINAL_STATUSES + ('QUARANTINE',))  # held: not supply
             .values('material_id', 'material_type_id', 'promised_date',
                     'quantity_remaining')):
+        qty = float(lot['quantity_remaining'] or 0)
+        if lot['promised_date'] < buckets[0].start.date():
+            incoming[_key(lot)][0] += qty
+            incoming_late[_key(lot)] += qty
+            continue
         for i, b in enumerate(buckets):
             if b.start.date() <= lot['promised_date'] < b.end.date():
-                incoming[_key(lot)][i] += float(lot['quantity_remaining'] or 0)
+                incoming[_key(lot)][i] += qty
                 break
 
     # How each item is bought, for the outlook export: quantities stay in stock units,
@@ -200,8 +209,8 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
                 buying[(kind, r['id'])] = r
 
     from datetime import date, timedelta
-    from django.utils import timezone
-    today = timezone.localdate()
+    from Tracker.services.core.clock import tenant_today
+    today = tenant_today(tenant)   # the plant's day: drives `order_by_late`
 
     out = []
     for mid in keys:
@@ -282,6 +291,8 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
                     'units_per_purchase_unit': float(per) if per is not None else None,
                     'on_hand': round(on_hand.get(mid, 0.0), 2),
                     'incoming': round(sum(incoming[mid]), 2),
+                    # Of `incoming`, lots whose promised date has already passed.
+                    'incoming_late': round(incoming_late.get(mid, 0.0), 2),
                     'lead_time_days': item.lead_time_days,
                     'first_short_month': first_short.label if first_short else None,
                     'order_by': order_by,

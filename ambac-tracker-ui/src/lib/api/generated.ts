@@ -1682,6 +1682,7 @@ export type MaterialLoad = {
   units_per_purchase_unit: number | null;
   on_hand: number;
   incoming: number;
+  incoming_late: number;
   lead_time_days: number | null;
   first_short_month: string | null;
   order_by: string | null;
@@ -18679,6 +18680,7 @@ export type VolumeForecastCell = {
   fenced_quantity: number;
   ordered_firm: number;
   ordered_tentative: number;
+  over_forecast: number;
   planned: number;
   claimed_from: Array<VolumeForecastSpill>;
 };
@@ -25249,6 +25251,7 @@ const MaterialLoad = z.object({
   units_per_purchase_unit: z.number().nullable(),
   on_hand: z.number(),
   incoming: z.number(),
+  incoming_late: z.number(),
   lead_time_days: z.number().int().nullable(),
   first_short_month: z.string().nullable(),
   order_by: z.string().nullable(),
@@ -27824,6 +27827,7 @@ const VolumeForecastCell = z.object({
   fenced_quantity: z.number().int(),
   ordered_firm: z.number().int(),
   ordered_tentative: z.number().int(),
+  over_forecast: z.number().int(),
   planned: z.number().int(),
   claimed_from: z.array(VolumeForecastSpill),
 });

@@ -84,6 +84,15 @@ def _month_buckets(tenant, start: datetime, months: int) -> list[Bucket]:
     return out
 
 
+def _plant_date(buckets, when) -> date:
+    """`when`'s date on the plant's clock — the buckets are cut in plant time, so their
+    timezone is the plant's. `now.date()` on a UTC datetime is tomorrow's date for the
+    plant's evening, flipping overdue flags a day early."""
+    if not isinstance(when, datetime):
+        return when
+    return when.astimezone(buckets[0].start.tzinfo).date() if buckets else when.date()
+
+
 def window_bucket(tenant, start: datetime, end: datetime, label: str = "window") -> Bucket:
     """One arbitrary [start, end) bucket — the same capacity basis as a month bucket,
     for callers that need a single span (e.g. the solver's horizon) rather than a
@@ -484,7 +493,7 @@ def _load_span(buckets, wo, ref, labor_hrs: float, wc_hrs: dict, now,
     """
     import math
 
-    today = now.date() if hasattr(now, 'date') else now
+    today = _plant_date(buckets, now)
     hi = _bucket_index(buckets, wo.expected_completion or now)
 
     if wo.expected_start is not None:
@@ -609,7 +618,7 @@ def _place_demand(ref: _RefData, buckets, now, part_type_id, qty, due, routes: d
     hi = max(lo, hi)
     return {'part_type_id': part_type_id, 'labor': labor_h, 'pool': pool_h, 'wc': wc_h,
             'lo': lo, 'hi': hi, 'planned_start': planned_start, 'due_date': due,
-            'overdue_start': planned_start < now.date()}, None
+            'overdue_start': planned_start < _plant_date(buckets, now)}, None
 
 
 def _forecast_demand(tenant, ref: _RefData, buckets, now) -> dict:
@@ -635,7 +644,7 @@ def _forecast_demand(tenant, ref: _RefData, buckets, now) -> dict:
         qty = c['planned']
         if not qty:
             continue
-        due = max(add_months(month, 1) - timedelta(days=1), now.date())
+        due = max(add_months(month, 1) - timedelta(days=1), _plant_date(buckets, now))
         row = {'part_type': names.get(pt_id, ''), 'month': f"{month:%Y-%m}", 'quantity': qty,
                'band': 'forecast'}
         entry, why = _place_demand(ref, buckets, now, pt_id, qty, due, routes)
@@ -688,7 +697,7 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         WorkOrder.objects.filter(archived=False, tenant=tenant, released_at__isnull=False)
         .values_list('id', flat=True))
 
-    today = start.date()
+    today = _plant_date(buckets, start)
     for wo in sched_data.get_active_workorders(tenant, within_horizon=False):
         counts = _route_counts(wo)
         labor_h, pool_h, wc_h = _route_hours(ref, counts)
