@@ -94,6 +94,12 @@ The choice is made per substep, not per step, so one step can mix both. A
 plating operation might scan each part in (per part), run the bath once (per
 batch), then do a final visual on each part (per part).
 
+A step with per-batch substeps runs its parts as **loads**: loaded, then
+**sealed** while the machine runs, then **completed** — and the parts move on
+only at completion. Which batch substep seals the load is set with **Seals the
+load** (see [Authoring](authoring.md#where-the-load-seals) and [Running a
+load](running.md#batch-steps-running-a-load)).
+
 !!! note "Why batch captures aren't a loophole"
     A batch cycle either succeeded for the lot or it didn't. Per-part failures
     are caught by the per-part substeps that run before and after it.

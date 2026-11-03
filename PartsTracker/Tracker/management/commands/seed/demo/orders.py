@@ -913,38 +913,53 @@ class DemoOrdersSeeder(BaseSeeder):
         self.log("Backfilling batch cycle readings (Wash loads)...")
 
         wash = build_steps(self.tenant).get('Wash')
-        substep = Substep.objects.filter(
-            tenant=self.tenant, step=wash,
-            title='Run ultrasonic wash cycle', is_inspection_point=True,
-        ).first()
+        # The wash's batch substeps in their order: the seal point ("Start the wash
+        # cycle" — loaded, cycle running) then the completion checks ("Finish the
+        # wash cycle" — bath temperature, cycle complete, release). Each load replays
+        # both, as an operator would have.
+        substeps = list(Substep.objects.filter(
+            tenant=self.tenant, step=wash, scope='batch', archived=False,
+        ).order_by('order'))
         md = MeasurementDefinition.objects.filter(
             tenant=self.tenant, label='Bath Temperature', step=wash,
         ).first()
-        if substep is None or md is None:
+        if not any(s.is_inspection_point for s in substeps) or md is None:
             self.log("  Wash inspection substep / Bath Temperature def missing; "
                      "skipping batch captures", warning=True)
             return {'batch_captures': 0}
 
         operator = (users.get('operators') or users.get('employees') or users.get('managers') or [None])[0]
 
-        # Collect the substep's schema nodes once (the wash cycle also carries a
-        # required "Cycle complete" attestation alongside the bath-temp reading);
-        # submit_substep validates captures against these node_ids, so every
-        # required node must be answered.
-        schema_nodes = []
+        # Each substep's schema nodes; submit_substep validates captures against
+        # these node_ids, so every required node must be answered.
+        def _schema(substep):
+            nodes = []
 
-        def _collect(node):
-            if isinstance(node, dict):
-                attrs = node.get('attrs') or {}
-                if node.get('type') and attrs.get('node_id'):
-                    schema_nodes.append((node['type'], attrs))
-                for v in node.values():
-                    _collect(v)
-            elif isinstance(node, list):
-                for v in node:
-                    _collect(v)
+            def _collect(node):
+                if isinstance(node, dict):
+                    attrs = node.get('attrs') or {}
+                    if node.get('type') and attrs.get('node_id'):
+                        nodes.append((node['type'], attrs))
+                    for v in node.values():
+                        _collect(v)
+                elif isinstance(node, list):
+                    for v in node:
+                        _collect(v)
 
-        _collect(substep.body_blocks)
+            _collect(substep.body_blocks)
+            return nodes
+
+        # Both are replayed — the step runs its substeps in order, so the completion
+        # checks need the seal point recorded first. But confirming the seal point
+        # runs a real seal, which refuses a historical load whose parts have long
+        # since shipped; its seal time is seeded on the load already. So for the
+        # replay only, the seal point is recorded as a plain batch capture (its flag
+        # lifted) and the flag is put back after.
+        schemas = [(s, _schema(s)) for s in substeps]
+        seal_ids = [s.id for s in substeps if s.seals_load]
+        Substep.objects.filter(id__in=seal_ids).update(seals_load=False)
+        for s in substeps:  # submit_substep reads the flag off the instance
+            s.seals_load = False
 
         # Ordered fully: every work order's first load starts at the same backdated
         # time, so `started_at` alone left the tie — and with it which load ran hot —
@@ -968,57 +983,69 @@ class DemoOrdersSeeder(BaseSeeder):
             # Mostly in-spec (58–62 within 55–65); one load runs hot.
             hot = be is hot_load
             temp = 71.0 if hot else 58.0 + (i % 5)
-            caps = []
-            for node_type, attrs in schema_nodes:
-                if node_type == 'measurementInput':
-                    caps.append({
-                        "node_id": attrs['node_id'], "kind": "measurement",
-                        "measurement_definition_id": attrs.get('measurement_definition_id') or str(md.id),
-                        "value_numeric": temp,
-                    })
-                elif node_type == 'attestationCheckpoint':
-                    if attrs.get('kind') == 'signature':
-                        # A signature block wants a signature, not a tick. Seeded
-                        # history has no password behind it (preverified below), so
-                        # it records as an unverified signature rather than
-                        # pretending someone re-authenticated for it.
+            # The completion checks are signed when the run is done.
+            signed_at = (be.completed_at or be.sealed_at or be.started_at or timezone.now()).isoformat()
+
+            def _caps(nodes):
+                caps = []
+                for node_type, attrs in nodes:
+                    if node_type == 'measurementInput':
                         caps.append({
-                            "node_id": attrs['node_id'], "kind": "attestation",
-                            "signature": {
-                                "user_id": operator.pk,
-                                "username": operator.get_username(),
-                                "signed_at": (be.sealed_at or be.started_at or timezone.now()).isoformat(),
-                            },
-                            "meaning": attrs.get('label') or 'Signed',
+                            "node_id": attrs['node_id'], "kind": "measurement",
+                            "measurement_definition_id": attrs.get('measurement_definition_id') or str(md.id),
+                            "value_numeric": temp,
                         })
-                    else:
-                        caps.append({
-                            "node_id": attrs['node_id'], "kind": "attestation",
-                            "confirm": True, "meaning": attrs.get('label') or 'Confirmed',
-                        })
+                    elif node_type == 'attestationCheckpoint':
+                        if attrs.get('kind') == 'signature':
+                            # A signature block wants a signature, not a tick. Seeded
+                            # history has no password behind it (preverified below), so
+                            # it records as an unverified signature rather than
+                            # pretending someone re-authenticated for it.
+                            caps.append({
+                                "node_id": attrs['node_id'], "kind": "attestation",
+                                "signature": {
+                                    "user_id": operator.pk,
+                                    "username": operator.get_username(),
+                                    "signed_at": signed_at,
+                                },
+                                "meaning": attrs.get('label') or 'Signed',
+                            })
+                        else:
+                            caps.append({
+                                "node_id": attrs['node_id'], "kind": "attestation",
+                                "confirm": True, "meaning": attrs.get('label') or 'Confirmed',
+                            })
+                return caps
+
             # preverified: the seed replays history; nobody can re-enter a password
             # for it, so a verified-signature substep records its method as NONE.
-            # The load's captures belong to its open phase, so the replay reopens it
-            # for the capture and puts its seal and completion back after.
+            # The load's captures belong to its open phase, so the replay reopens it,
+            # captures the seal point and the completion checks in order, and puts its
+            # real seal and completion times back after.
             phases = {'sealed_at': be.sealed_at, 'completed_at': be.completed_at,
                       'completed_by': be.completed_by}
             BatchExecution.objects.filter(pk=be.pk).update(sealed_at=None, completed_at=None)
             be.sealed_at = be.completed_at = None
-            submit_substep(
-                substep=substep, batch_execution=be, user=operator, captures=caps,
-                preverified=True,
-            )
+            for substep, nodes in schemas:
+                submit_substep(
+                    substep=substep, batch_execution=be, user=operator, captures=_caps(nodes),
+                    preverified=True,
+                )
+                be.refresh_from_db()
             BatchExecution.objects.filter(pk=be.pk).update(**phases)
             be.refresh_from_db()
-            # Backdate the reading + report to the load's date (submit_substep
+            # Backdate the reading + report to when the run finished (submit_substep
             # stamps 'now'); .update() bypasses auto_now.
-            when = be.sealed_at or be.started_at
+            when = be.completed_at or be.sealed_at or be.started_at
             if when:
                 StepExecutionMeasurement.objects.filter(batch_execution=be).update(recorded_at=when)
                 QualityReports.objects.filter(batch_execution=be).update(created_at=when, updated_at=when)
             count += 1
             if hot and when:
                 self._close_hot_load(be, users, when)
+
+        # The seal point is the seal point again for every live load from here on.
+        Substep.objects.filter(id__in=seal_ids).update(seals_load=True)
 
         self.log(f"  Backfilled {count} batch cycle readings"
                  f"{' (incl. 1 FAIL)' if len(batches) > 1 else ''}")

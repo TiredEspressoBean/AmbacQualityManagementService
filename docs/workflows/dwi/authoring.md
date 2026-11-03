@@ -106,6 +106,30 @@ Set per substep, with the **Batch (once per lot)** switch:
 
 A single step can mix both.
 
+#### Where the load seals
+
+A batch step runs as a load in three phases — loading, running, completing (see
+[Batch steps: running a load](running.md#batch-steps-running-a-load)). On a batch
+substep, the **Seals the load** switch marks the point where loading ends and the
+machine runs: *"Confirming this substep seals the load: it closes and the machine
+runs, and the operator can leave it. Batch substeps before it (and this one) are
+done while loading; those after it are done when the load is completed, and the
+parts move on then."*
+
+- Put the checks that happen **before** the run — the basket is loaded, the
+  hopper is filled, the cycle is started — up to and including the sealing
+  substep.
+- Put the checks that happen **after** the run — the bath temperature at the
+  end, the cycle complete, the release sign-off — after it.
+- **One per step**: turning it on moves it from any other substep. With none,
+  the operator seals with **Seal load** after the last batch substep, and the
+  completion phase has no checks of its own.
+- The switch shows only while **Batch (once per lot)** is on.
+
+The demo Wash does it this way: *Start the wash cycle* (seals the load) is a
+tick that the cycle is running; *Finish the wash cycle* carries the bath
+temperature, **Cycle complete** and the **Cycle release** signature.
+
 ### Sampling
 
 A per-part substep (**Batch (once per lot)** off) has a **Sampling** select:

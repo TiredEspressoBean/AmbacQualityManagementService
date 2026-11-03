@@ -52,7 +52,8 @@ which one the scheduler is using:
 - *Using authored*, *Using measured*, *Using the step's expected duration*, or
   *Not set*
 - the measurement — *measured 18.73 min per piece · 16 runs*, *measured 3.05 min ·
-  16 runs* for setup, or *measured 34.29 min per load · 14 loads* for a batch step
+  16 runs* for setup, or *measured 12.86 min per load · 14 loads · loading 6.43 min
+  per load* for a batch step
 - *differs by more than 25%* when the authored time is that far from the
   measurement
 
@@ -77,8 +78,11 @@ part — against how many pieces it covered.
   plain average per piece, marked *(average)*, and setup reads *not separated
   from per-piece time* — hover it for why.
 - **A batch step** (one with work captured once per load — a wash, an oven) is
-  measured **per load**: from loading to the load's release, sealed loads only.
-  Its setup reads *a batch step is measured per load*.
+  measured **per load**: the run, from the load being sealed to it being
+  completed, over completed loads only. Beside it, *loading … min per load* is the
+  attended time from starting the load to sealing it. Its setup reads *a batch
+  step is measured per load*. See [Batch steps: running a
+  load](../dwi/running.md#batch-steps-running-a-load).
 - A measurement needs at least **5 runs** (or **5 loads**); until then it reads
   *not enough runs yet* or *not enough loads yet*, with the count so far.
 - Counted the way [Operator Hours](overview.md#where-direct-time-comes-from)

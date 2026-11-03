@@ -66,6 +66,49 @@ handover is recorded alongside the competence check. Nothing is changed on the
 record unless the authorization succeeds. A supervisor can also move the step
 to you directly — see [Picking work back up](#picking-work-back-up).
 
+## Batch steps: running a load
+
+Some steps act on a whole load at once — a wash basket, an oven, a bar-fed lathe
+running out a batch. A step like that shows a **Batch step** panel above its
+instructions, counting *N loading · N running · N completed*:
+
+*"Parts advance by load. Load the units going through this op together and do
+the loading checks, then seal: the machine runs and you can leave it. Come back
+to finish the load's checks and complete it. Each completed load moves on
+independently."*
+
+A load has three phases:
+
+1. **Loading.** **Start a load — select its units**: tick the units going in and
+   **Start load**. A held unit is greyed out and can't be loaded. Then do the
+   **Loading checks — captured once for the whole load** and **Confirm for
+   batch**.
+2. **Running.** The load seals at the point the instruction says — the panel
+   tells you which: *Confirming “Start the wash cycle” seals the load.* —
+   and confirming it reads *Captured "Start the wash cycle": the load is sealed
+   and running.* Where no substep is marked, **Seal load** after the last
+   loading check does it: *Load sealed: the machine runs.* A sealed load can't
+   take more units or change its loading checks. You can leave it; it stays in
+   your open work as *Load · N parts · Running · sealed … ago*.
+3. **Completing.** When the run is done, come back to the load (**Resume**, or
+   **Continue work** on the work order), do the **Completion checks — once the
+   run is done, before Complete load**, **Confirm for batch**, then **Complete
+   load**: *Load complete: its parts move on.*
+
+**The parts move on only when the load is completed** — never at seal, so
+nothing reaches the next step mid-run. Asking for it early is refused: *"The load
+isn't complete yet"*, naming the check still missing.
+
+Each check is recorded once, for the load. A confirmed check shows **Captured**
+with its value, and what you enter is kept as a draft in each phase the same way
+as part-by-part work.
+
+!!! warning "A failed completion check holds the whole load"
+    A completion check out of limits — a bath that ran hot — fails the cycle,
+    and every unit in the load that is still in production is quarantined
+    together, with one disposition opened for the batch. See [A whole load
+    quarantined at once](../quality/quarantine.md#a-whole-load-quarantined-at-once).
+
 ## Picking work back up
 
 A step you started and haven't finished stays yours, with its entries saved,
@@ -86,17 +129,26 @@ job part-way: go to its traveller and carry on.
 ### Supervisors: taking over and handing off
 
 A **Shift Lead**, **Production Manager**, **QA Manager** or **QA Inspector**
-(and Tenant Admin) holds `reassign_stepexecution`. In the same list they can
-switch from **Mine** to **Everyone's**: each row then shows who holds it, and an
-amber **Off the clock** badge when that person isn't clocked in. **Off the clock
-only** narrows the list to those.
+(and Tenant Admin) holds `reassign_stepexecution`. Their home page has a **Work
+in progress** card — *"Steps and loads open across the plant. Take one over, or
+hand it to someone."* — with **Work in progress (N)**, which opens the list for
+the whole plant, and an amber **Off the clock (N)**, which opens it narrowed to
+work whose holder isn't clocked in.
+
+In the list they can switch between **Mine** and **Everyone's**: each row on
+Everyone's shows who holds it, and an amber **Off the clock** badge when that
+person isn't clocked in. **Off the clock only** narrows the list to those. A
+work order's **Continue work** shows for a supervisor whenever anyone has work
+open on it, and opens on Everyone's when none of it is theirs.
 
 Under someone else's step:
 
 - **Take over** — *Take over this step*: give a reason (**Why**), and it is
   yours, with its progress.
 - **Hand off…** — *Hand off this step*: pick who it goes to (**Hand to**) and
-  say why. It then appears in their own list.
+  say why. It then appears in their own list. **Hand to** lists staff who can
+  work steps, those trained for it first — *"Dave Wilson — trained · at this
+  station"*, *"… not trained for this step"*.
 
 No second person signs: the supervisor is the one signed in, and the record
 keeps who it moved from and to, who moved it, why, and when. Loads aren't moved

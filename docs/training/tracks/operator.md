@@ -152,10 +152,16 @@ body. Dave loaded `WO-OPS-02`'s four bodies and was moved to the flow bench.
    Dave's: *Assigned to someone else — currently assigned to Dave Wilson*.
 2. Taking over another operator's work needs a supervisor. Casey signs in on your
    screen with their own email and password, and gives the reason.
-3. In the wash cycle, record the **Bath Temperature** (60 °C ± 5), tick **Cycle
-   complete**, and sign the **Cycle release** with your signature and password.
-4. **Confirm for batch**, then **Seal batch**. Sealing moves the whole load on: all
-   four bodies go to Body Inspection.
+3. The **Batch step** panel shows Dave's load, *Loading*. Under **Loading checks**,
+   *Start the wash cycle*: tick **Cycle started** and **Confirm for batch**. That
+   seals the load — *the load is sealed and running* — and the washer runs. You
+   could leave it now; it stays in your open work.
+4. When the cycle is done, under **Completion checks**, *Finish the wash cycle*:
+   record the **Bath Temperature** (60 °C ± 5), tick **Cycle complete**, sign the
+   **Cycle release** with your signature and password, and **Confirm for batch**.
+5. **Complete load**: *Load complete: its parts move on.* All four bodies go to
+   Body Inspection together. Sealing alone didn't move them — only completing the
+   load does.
 
 ---
 
@@ -291,7 +297,7 @@ Your trainer regenerates the data, logs you in as Mike, and says only: *"Start y
 shift."* Then they watch without helping:
 
 - clock in, and acknowledge what your lead left
-- take over Dave's wash load on `WO-OPS-02` and seal it
+- take over Dave's wash load on `WO-OPS-02`, seal it, and complete it
 - assemble `WO-OPS-03`'s two injectors
 - machine `INJ-OPS-001`
 
@@ -345,13 +351,14 @@ needs work the customer hasn't agreed to yet.
 1. Scan `CORE-240210-0007` and **Start**. Cleaning is done by the load: **Start a
    load** lists the units to load. 0009 is greyed out: a held unit can't be loaded.
    Tick 0007 and **Start load**.
-2. Record the wash cycle once for the load: **Bath Temperature** (60 °C ± 5), tick
-   **Cycle complete**, and sign the **Cycle release**. **Confirm for batch**, then
-   **Seal batch**.
+2. Seal it: under *Start the cleaning cycle*, tick **Cycle started** and **Confirm for
+   batch**. Then finish it: under *Finish the cleaning cycle*, record the **Bath
+   Temperature** (60 °C ± 5), tick **Cycle complete**, sign the **Cycle release**,
+   **Confirm for batch**, and **Complete load**.
 3. Scan 0007 into the load and **Complete step**.
 
-You're told *Part didn't move: Done at Cleaning, the lot waits for CORE-240212-0009
-(on hold). Split it from the lot to let the rest move.* The units at a step move on
+You're told *Part didn't move — see why: Done at Cleaning — the lot waits for
+CORE-240212-0009 (on hold). Split it from the lot to let the rest move.* The units at a step move on
 together, and a held unit still counts. 0007 is done; it is waiting, not stuck.
 
 4. **Go to your lead.** Splitting a unit from its lot is their decision, and it is

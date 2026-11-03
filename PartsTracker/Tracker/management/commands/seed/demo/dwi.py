@@ -314,6 +314,9 @@ class DemoDwiSeeder(BaseSeeder):
                     # BATCH-scope substeps run once per load (BatchExecution);
                     # default SAMPLED runs per part.
                     "scope": ss.get("scope", SubstepScope.SAMPLED),
+                    # A batch step's seal point: completing it closes the load and
+                    # the machine runs; batch substeps after it are the completion.
+                    "seals_load": ss.get("seals_load", False),
                 },
             )
             created += 1
@@ -426,18 +429,31 @@ class DemoDwiSeeder(BaseSeeder):
                     ),
                 },
                 {
-                    "title": "Run ultrasonic wash cycle",
+                    "title": "Start the cleaning cycle",
                     "order": 1,
                     # BATCH scope: one cycle cleans the whole basket, so the
                     # capture binds to the load's BatchExecution, not per part.
+                    # The seal point: confirming it closes the load and the cleaner
+                    # runs; the operator can leave it.
                     "scope": SubstepScope.BATCH,
-                    # Inspection point: the bath-temperature reading below is a
-                    # cycle-level QA measurement, so this substep promotes to a
-                    # batch-scoped QualityReport (PASS/FAIL on the whole load).
-                    "is_inspection_point": True,
+                    "seals_load": True,
                     "body": _doc(
                         _heading("Ultrasonic clean - whole load"),
                         _callout("note", "One cycle cleans the entire basket; the result applies to every part in the load."),
+                        _attest_confirm("Cleaning", "cycle-start", "Cycle started", "Confirm the basket is loaded and the cleaning cycle is running."),
+                    ),
+                },
+                {
+                    "title": "Finish the cleaning cycle",
+                    "order": 2,
+                    # Completion checks, done when the run is over. Inspection
+                    # point: the bath-temperature reading is a cycle-level QA
+                    # measurement, so this substep promotes to a batch-scoped
+                    # QualityReport (PASS/FAIL on the whole load).
+                    "scope": SubstepScope.BATCH,
+                    "is_inspection_point": True,
+                    "body": _doc(
+                        _para("When the cycle ends, read the bath temperature and inspect the basket before releasing the load."),
                         # Cycle-level reading: bath temp is measured once for the
                         # load. Binds to the BatchExecution (StepExecutionMeasurement
                         # + a batch QualityReport), not to any one part.
@@ -692,15 +708,29 @@ class DemoDwiSeeder(BaseSeeder):
                     ),
                 },
                 {
-                    "title": "Run ultrasonic wash cycle",
+                    "title": "Start the wash cycle",
                     "order": 1,
                     # BATCH scope: one cycle washes the whole basket, so the capture
-                    # binds to the load's BatchExecution, not per part.
+                    # binds to the load's BatchExecution, not per part. The seal
+                    # point: confirming it closes the load and the washer runs; the
+                    # operator can leave it.
                     "scope": SubstepScope.BATCH,
-                    "is_inspection_point": True,
+                    "seals_load": True,
                     "body": _doc(
                         _heading("Ultrasonic wash - whole load"),
                         _callout("note", "One cycle washes the entire basket; the result applies to every body in the load."),
+                        _attest_confirm(b("Wash"), "cycle-start", "Cycle started", "Confirm the basket is loaded and the wash cycle is running."),
+                    ),
+                },
+                {
+                    "title": "Finish the wash cycle",
+                    "order": 2,
+                    # Completion checks, done when the run is over: a hot bath
+                    # FAILs here and contains the load.
+                    "scope": SubstepScope.BATCH,
+                    "is_inspection_point": True,
+                    "body": _doc(
+                        _para("When the cycle ends, read the bath temperature and inspect the basket before releasing the load."),
                         *maybe_measure("Wash", "bath-temp", "Bath Temperature"),
                         _attest_confirm(b("Wash"), "cycle-done", "Cycle complete", "Confirm the wash and rinse cycle finished and the basket was inspected."),
                         _attest_signature(b("Wash"), "cycle-release", "Cycle release"),
