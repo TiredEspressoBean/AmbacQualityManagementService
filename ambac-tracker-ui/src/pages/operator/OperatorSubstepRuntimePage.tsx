@@ -245,6 +245,11 @@ export function OperatorSubstepRuntimePage() {
             : null,
         ready: Boolean(search.execution) && hydratedFor === search.execution,
         onRefused: (detail) => toast.error("Your entries aren't being saved", { description: detail }),
+        onSignedOut: () => toast.error("Your last entries weren't saved", {
+            description: "You were signed out before they reached the server. " +
+                "Sign in and re-enter them on the step.",
+            duration: Infinity,
+        }),
         onFailed: () => {
             if (draftWarned.current) return;
             draftWarned.current = true;

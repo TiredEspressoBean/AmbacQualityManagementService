@@ -66,8 +66,12 @@ async function postDraft(d: DraftPayload, keepalive: boolean): Promise<SaveResul
     }
 }
 
-// Every mounted autosave's flush, so logout can wait for them.
-const flushers = new Set<() => Promise<void>>();
+// Every mounted autosave's flush, so logout can wait for them. Kept on globalThis, not
+// in module scope: a dev-server hot update re-runs this module, and an importer still
+// holding the old copy would otherwise flush an empty set while the runtime registered
+// in the new one — logout ran before the save (walk 2026-11-03).
+const g = globalThis as { __uqmesDraftFlushers?: Set<() => Promise<void>> };
+const flushers = (g.__uqmesDraftFlushers ??= new Set<() => Promise<void>>());
 
 /** Send every pending draft now. Logout awaits this before ending the session. */
 export async function flushDrafts(): Promise<void> {
@@ -84,19 +88,24 @@ export function useDraftAutosave({
     current,
     ready,
     onRefused,
+    onSignedOut,
     onFailed,
 }: {
     current: DraftPayload | null;
     ready: boolean;
+    /** 403: the step is now someone else's. Autosave stops. */
     onRefused: (detail: string) => void;
+    /** 401: the session ended before the save reached the server. */
+    onSignedOut: () => void;
+    /** Anything else (offline, a server error): it will be tried again. */
     onFailed: () => void;
 }) {
     const saved = useRef(new Map<string, string>());
     const pending = useRef<DraftPayload | null>(null);
     const timer = useRef<number | undefined>(undefined);
     const stopped = useRef(false);
-    const callbacks = useRef({ onRefused, onFailed });
-    callbacks.current = { onRefused, onFailed };
+    const callbacks = useRef({ onRefused, onSignedOut, onFailed });
+    callbacks.current = { onRefused, onSignedOut, onFailed };
 
     const key = (d: { executionId: string; substepId: string }) => `${d.executionId}:${d.substepId}`;
 
@@ -113,7 +122,13 @@ export function useDraftAutosave({
         } else if (status === 403) {
             stopped.current = true;
             callbacks.current.onRefused(detail ?? "This step is now someone else's.");
+        } else if (status === 401) {
+            stopped.current = true;
+            callbacks.current.onSignedOut();
         } else {
+            // Back in the queue (unless newer entries took its place), so the next
+            // change or exit tries again rather than the entry quietly dropping.
+            if (!pending.current) pending.current = d;
             callbacks.current.onFailed();
         }
     }, []);
