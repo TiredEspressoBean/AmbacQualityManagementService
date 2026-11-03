@@ -121,7 +121,14 @@ export const DATA_MANAGEMENT: DMGroup[] = [
     {
         title: "Orders & records",
         tables: [
-            { key: "orders", name: "Orders", list: "/editor/orders", add: "/editor/orders/new", endpoint: "Orders", model: "orders" },
+            {
+                key: "orders", name: "Orders", list: "/editor/orders", add: "/editor/orders/new", endpoint: "Orders", model: "orders",
+                children: [
+                    // What each order asks for. Imported and exported here (order + line
+                    // number); typed one by one on the order itself.
+                    { key: "order-lines", name: "Order Lines", endpoint: "OrderLines", model: "orderline", editedOn: "the order" },
+                ],
+            },
             { key: "work-orders", name: "Work Orders", list: "/editor/work-orders", add: "/editor/work-orders/new", endpoint: "WorkOrders", model: "workorder" },
             { key: "parts", name: "Parts", list: "/editor/parts", add: "/editor/parts/new", endpoint: "Parts", model: "parts" },
             { key: "cores", name: "Cores", list: "/reman/cores", add: "/reman/cores/receive", endpoint: "Cores", model: "core" },

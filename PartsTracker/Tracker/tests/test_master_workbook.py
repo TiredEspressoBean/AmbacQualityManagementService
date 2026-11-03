@@ -251,6 +251,35 @@ class MasterWorkbookTests(APITestCase):
         self.assertEqual(body["totals"]["updated"], 0, body)
         self.assertFalse([r for s in body["sheets"] for r in s["rows"]], body)
 
+    def test_order_lines_load_from_their_sheet_and_round_trip(self):
+        """Orders, then their lines (matched on order + line number), then the filled
+        workbook uploads back with nothing created or changed."""
+        from Tracker.models import OrderLine
+        wb = self._workbook()
+        # An order's number is generated; its lines name it by name on the sheet.
+        self._put(wb, "Orders", {"name": "ORD-77", "order_status": "PENDING"})
+        heads = [str(c.value).rstrip("*") for c in wb["Order Lines"][1]]
+        self.assertTrue({"order", "line_number", "part_type", "quantity", "due_date",
+                         "fulfilment"} <= set(heads), heads)
+        self._put(wb, "Order Lines",
+                  {"order": "ORD-77", "line_number": "1", "part_type": "SEAL-1", "quantity": "8",
+                   "due_date": "2027-03-01", "fulfilment": "New build"},
+                  {"order": "ORD-77", "line_number": "2", "part_type": "SEAL-1", "quantity": "2",
+                   "due_date": "2027-04-01", "fulfilment": "Exchange"})
+        body = self._run(wb, dry_run=False).json()
+        self.assertTrue(body["loaded"], body)
+        self.assertEqual(
+            sorted(OrderLine.objects.filter(order__name="ORD-77")
+                   .values_list("line_number", "quantity", "fulfilment")),
+            [(1, 8, "NEW_BUILD"), (2, 2, "EXCHANGE")])
+        filled = load_workbook(io.BytesIO(
+            self.client.get("/api/MasterWorkbook/template/?filled=true").content))
+        self.assertGreater(filled["Order Lines"].max_row, 1, "the filled sheet carries the lines")
+        again = self._run(filled, dry_run=False).json()
+        self.assertTrue(again["loaded"], again)
+        lines = self._sheet(again, "Order Lines")
+        self.assertEqual((lines["created"], lines["updated"], lines["errors"]), (0, 0, 0), lines)
+
     def test_loaded_users_are_invited_together_at_go_live(self):
         from Tracker.models import UserInvitation
         from Tracker.services.core.tenant_membership import suspend_membership

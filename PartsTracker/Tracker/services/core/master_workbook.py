@@ -91,7 +91,12 @@ SHEETS: tuple[Sheet, ...] = (
     Sheet("Calibration Records", "Each gauge's most recent calibration.",
           _VS + "calibration.CalibrationRecordViewSet"),
     Sheet("Orders", "Open customer orders.", _VS + "mes_lite.OrdersViewSet"),
-    Sheet("Work Orders", "Open work orders (their process must already exist).",
+    Sheet("Order Lines", "What each order asks for: part type, quantity, due date and "
+          "fulfilment (New build, Repair & return or Exchange), one row per line, matched "
+          "on order + line number. A line left off is not cancelled.",
+          _VS + "mes_lite.OrderLineViewSet"),
+    Sheet("Work Orders", "Open work orders (their process must already exist). Name the "
+          "order line a job is for with Related Order + Order Line Number.",
           _VS + "mes_lite.WorkOrderViewSet"),
     Sheet("Parts", "Parts in work, with the step each is at now.", _VS + "mes_lite.PartsViewSet"),
     Sheet("Cores", "Reman cores in the building today, each with its customer. They load "

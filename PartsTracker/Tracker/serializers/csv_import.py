@@ -746,8 +746,11 @@ class BaseCSVImportSerializer(serializers.Serializer):
         fks = {n.lower(): n for n in (getattr(self.Meta, 'fk_fields', {}) or {})}
         fks.update({n.lower(): n for n in (getattr(self.Meta, 'm2m_fields', {}) or {})})
         # Plus FKs the importer resolves itself (a part's step): exported by name too.
+        # An import-only column needn't be a field at all (a work order's
+        # `order_line_number`, read with its Related Order), so only real FKs count.
+        concrete = {f.name: f for f in model._meta.get_fields() if getattr(f, 'concrete', False)}
         fks.update({n.lower(): n for n in (getattr(self.Meta, 'import_only_fields', ()) or ())
-                    if isinstance(model._meta.get_field(n), models.ForeignKey)})
+                    if isinstance(concrete.get(n), models.ForeignKey)})
         names |= set(fks.values())
         by_lower = {n.lower(): n for n in names}
         out = {}
@@ -915,6 +918,36 @@ class PriorityReasonImport(BaseCSVImportSerializer):
         return result
 
 
+class WorkOrderImport(PriorityReasonImport):
+    """The work-order import, plus `order_line_number`: with the row's Related Order it
+    names the order line the job is for, so the job pegs to it and the line's planned
+    quantity is right after a migration (2026-11-03). An order line has no name of its
+    own — a line is its order plus its number, which is what a planner has."""
+
+    def transform_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        raw = data.pop('order_line_number', None)
+        result = super().transform_data(data)
+        if raw in (None, ''):
+            return result
+        from Tracker.models import OrderLine
+        order = result.get('related_order')
+        if order is None:
+            raise serializers.ValidationError({'order_line_number': (
+                "An order line number needs the row's Related Order — a line is its "
+                "order plus its number.")})
+        try:
+            number = int(float(str(raw).strip()))
+        except ValueError:
+            raise serializers.ValidationError({'order_line_number': f"'{raw}' isn't a line number."})
+        line = OrderLine.objects.filter(  # tenant-safe: scoped by the order FK
+            order=order, line_number=number, archived=False).first()
+        if line is None:
+            raise serializers.ValidationError({'order_line_number': (
+                f"Order {order.order_number or order.name} has no line {number}.")})
+        result['order_line'] = line
+        return result
+
+
 # ===== Model-specific CSV Import Serializers =====
 
 
@@ -1068,6 +1101,67 @@ class OrdersCSVImportSerializer(BaseCSVImportSerializer):
         instance = super().update_instance(instance, data)
         note_completion_change(instance, previous)
         return instance
+
+
+class OrderLineCSVImportSerializer(BaseCSVImportSerializer):
+    """CSV import for order lines — what each open order asks for, so planning can start
+    from the ERP's order book instead of every line being typed (2026-11-03).
+
+    Matched on (order, line number), the way expected deliveries match on PO + line:
+    re-importing updates, and a line left off the sheet is left alone — nothing is
+    cancelled by being omitted (cancel it with Status = CANCELLED). An RFI order's
+    lines import too and stay tentative.
+    """
+
+    # What a person types for fulfilment, and the codes an export writes.
+    FULFILMENT_WORDS = {
+        'new build': 'NEW_BUILD', 'new': 'NEW_BUILD', 'build': 'NEW_BUILD',
+        'repair & return': 'REPAIR_RETURN', 'repair and return': 'REPAIR_RETURN',
+        'repair': 'REPAIR_RETURN', 'exchange': 'EXCHANGE',
+    }
+
+    class Meta:
+        from Tracker.models import Orders, OrderLine, PartTypes
+        model = OrderLine
+        lookup_fields = ['id', ('order', 'line_number')]
+        fk_fields = {
+            'order': (Orders, ['order_number', 'name', 'id']),
+            'part_type': (PartTypes, ['ERP_id', 'name', 'id']),
+        }
+        required_fields = ['order', 'line_number', 'part_type', 'quantity']
+        import_column_help = {
+            'order': "The order's number (or name).",
+            'line_number': "The line's number on the order. With the order, it is how a "
+                           "re-import finds the line to update.",
+            'part_type': "The part type's ERP id (or exact name).",
+            'fulfilment': "New build, Repair & return, or Exchange. Blank = New build. "
+                          "Repair & return and Exchange lines don't use up the new-build "
+                          "forecast.",
+            'status': "OPEN or CANCELLED. A line left off the sheet is not cancelled.",
+        }
+
+    def transform_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        result = super().transform_data(data)
+        from Tracker.models import OrderLineStatus
+        raw = result.get('fulfilment')
+        if raw not in (None, ''):
+            text = str(raw).strip()
+            code = text.upper().replace(' ', '_').replace('&', 'AND')
+            valid = {'NEW_BUILD', 'REPAIR_RETURN', 'EXCHANGE'}
+            mapped = (text.upper() if text.upper() in valid
+                      else self.FULFILMENT_WORDS.get(text.lower())
+                      or ('REPAIR_RETURN' if code in ('REPAIR_AND_RETURN',) else None))
+            if mapped is None:
+                raise serializers.ValidationError({'fulfilment': (
+                    f"'{text}' isn't a fulfilment — use New build, Repair & return or Exchange.")})
+            result['fulfilment'] = mapped
+        if result.get('status') not in (None, ''):
+            status = str(result['status']).strip().upper()
+            if status not in {s.value for s in OrderLineStatus}:
+                raise serializers.ValidationError({'status': (
+                    f"'{result['status']}' isn't a line status — use OPEN or CANCELLED.")})
+            result['status'] = status
+        return result
 
 
 class WorkOrderCSVImportSerializer(BaseCSVImportSerializer):

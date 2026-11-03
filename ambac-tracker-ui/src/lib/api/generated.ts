@@ -45555,7 +45555,10 @@ const endpoints3 = makeApi([
     method: "get",
     path: "/api/OrderLines/",
     alias: "api_OrderLines_list",
-    description: `Demand lines on an order, and the action that turns one into work.`,
+    description: `Demand lines on an order, and the action that turns one into work.
+
+Importable (Data Management, and the master workbook&#x27;s Order Lines sheet), matched
+on order + line number — see OrderLineCSVImportSerializer.`,
     requestFormat: "json",
     parameters: [
       {
@@ -45610,7 +45613,10 @@ const endpoints3 = makeApi([
     method: "post",
     path: "/api/OrderLines/",
     alias: "api_OrderLines_create",
-    description: `Demand lines on an order, and the action that turns one into work.`,
+    description: `Demand lines on an order, and the action that turns one into work.
+
+Importable (Data Management, and the master workbook&#x27;s Order Lines sheet), matched
+on order + line number — see OrderLineCSVImportSerializer.`,
     requestFormat: "json",
     parameters: [
       {
@@ -45625,7 +45631,10 @@ const endpoints3 = makeApi([
     method: "get",
     path: "/api/OrderLines/:id/",
     alias: "api_OrderLines_retrieve",
-    description: `Demand lines on an order, and the action that turns one into work.`,
+    description: `Demand lines on an order, and the action that turns one into work.
+
+Importable (Data Management, and the master workbook&#x27;s Order Lines sheet), matched
+on order + line number — see OrderLineCSVImportSerializer.`,
     requestFormat: "json",
     parameters: [
       {
@@ -45640,7 +45649,10 @@ const endpoints3 = makeApi([
     method: "put",
     path: "/api/OrderLines/:id/",
     alias: "api_OrderLines_update",
-    description: `Demand lines on an order, and the action that turns one into work.`,
+    description: `Demand lines on an order, and the action that turns one into work.
+
+Importable (Data Management, and the master workbook&#x27;s Order Lines sheet), matched
+on order + line number — see OrderLineCSVImportSerializer.`,
     requestFormat: "json",
     parameters: [
       {
@@ -45660,7 +45672,10 @@ const endpoints3 = makeApi([
     method: "patch",
     path: "/api/OrderLines/:id/",
     alias: "api_OrderLines_partial_update",
-    description: `Demand lines on an order, and the action that turns one into work.`,
+    description: `Demand lines on an order, and the action that turns one into work.
+
+Importable (Data Management, and the master workbook&#x27;s Order Lines sheet), matched
+on order + line number — see OrderLineCSVImportSerializer.`,
     requestFormat: "json",
     parameters: [
       {
@@ -45680,7 +45695,10 @@ const endpoints3 = makeApi([
     method: "delete",
     path: "/api/OrderLines/:id/",
     alias: "api_OrderLines_destroy",
-    description: `Demand lines on an order, and the action that turns one into work.`,
+    description: `Demand lines on an order, and the action that turns one into work.
+
+Importable (Data Management, and the master workbook&#x27;s Order Lines sheet), matched
+on order + line number — see OrderLineCSVImportSerializer.`,
     requestFormat: "json",
     parameters: [
       {
@@ -45750,6 +45768,78 @@ correct-looking job that builds the wrong thing.`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/OrderLines/import-preview/",
+    alias: "api_OrderLines_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/OrderLines/import-status/:task_id/",
+    alias: "api_OrderLines_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/OrderLines/import-template/:template_format/",
+    alias: "api_OrderLines_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/OrderLines/import/",
+    alias: "api_OrderLines_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_BOMLines_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -50974,7 +51064,10 @@ Usage:
       },
     ],
     response: QualityReports,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "delete",
     path: "/api/QualityReports/:id/",
@@ -51071,10 +51164,7 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/QuarantineDispositions/",
@@ -55999,7 +56089,10 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         schema: z.object({ detail: z.string() }),
       },
     ],
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutions/duration_stats/",
@@ -56147,10 +56240,7 @@ strip (services/mes/operator_day.py).`,
       },
     ],
     response: PaginatedStepExecutionListList,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutions/part_step_history/",
@@ -61606,7 +61696,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: TrainingType,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "put",
     path: "/api/TrainingTypes/:id/",
@@ -61691,10 +61784,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.array(VersionSummary),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingTypes/export/:export_format/",

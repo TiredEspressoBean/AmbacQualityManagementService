@@ -7364,10 +7364,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Demand lines on an order, and the action that turns one into work. */
+        /**
+         * @description Demand lines on an order, and the action that turns one into work.
+         *
+         *     Importable (Data Management, and the master workbook's Order Lines sheet), matched
+         *     on order + line number — see OrderLineCSVImportSerializer.
+         */
         get: operations["api_OrderLines_list"];
         put?: never;
-        /** @description Demand lines on an order, and the action that turns one into work. */
+        /**
+         * @description Demand lines on an order, and the action that turns one into work.
+         *
+         *     Importable (Data Management, and the master workbook's Order Lines sheet), matched
+         *     on order + line number — see OrderLineCSVImportSerializer.
+         */
         post: operations["api_OrderLines_create"];
         delete?: never;
         options?: never;
@@ -7382,16 +7392,36 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Demand lines on an order, and the action that turns one into work. */
+        /**
+         * @description Demand lines on an order, and the action that turns one into work.
+         *
+         *     Importable (Data Management, and the master workbook's Order Lines sheet), matched
+         *     on order + line number — see OrderLineCSVImportSerializer.
+         */
         get: operations["api_OrderLines_retrieve"];
-        /** @description Demand lines on an order, and the action that turns one into work. */
+        /**
+         * @description Demand lines on an order, and the action that turns one into work.
+         *
+         *     Importable (Data Management, and the master workbook's Order Lines sheet), matched
+         *     on order + line number — see OrderLineCSVImportSerializer.
+         */
         put: operations["api_OrderLines_update"];
         post?: never;
-        /** @description Demand lines on an order, and the action that turns one into work. */
+        /**
+         * @description Demand lines on an order, and the action that turns one into work.
+         *
+         *     Importable (Data Management, and the master workbook's Order Lines sheet), matched
+         *     on order + line number — see OrderLineCSVImportSerializer.
+         */
         delete: operations["api_OrderLines_destroy"];
         options?: never;
         head?: never;
-        /** @description Demand lines on an order, and the action that turns one into work. */
+        /**
+         * @description Demand lines on an order, and the action that turns one into work.
+         *
+         *     Importable (Data Management, and the master workbook's Order Lines sheet), matched
+         *     on order + line number — see OrderLineCSVImportSerializer.
+         */
         patch: operations["api_OrderLines_partial_update"];
         trace?: never;
     };
@@ -7427,6 +7457,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_OrderLines_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OrderLines/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_OrderLines_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OrderLines/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_OrderLines_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OrderLines/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_OrderLines_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OrderLines/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_OrderLines_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -55215,6 +55313,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_OrderLines_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_OrderLines_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_OrderLines_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_OrderLines_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };

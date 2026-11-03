@@ -53,7 +53,10 @@ from Tracker.services.mes import outside_process
 from Tracker.services.mes.lifecycle import override_summary
 from Tracker.serializers.dms import DocumentsSerializer
 from .core import ListMetadataMixin, VersionedLikeTheAPIImport, with_int_pk_schema
-from Tracker.serializers.csv_import import PriorityReasonImport, create_import_serializer_for_model
+from Tracker.serializers.csv_import import (
+    OrderLineCSVImportSerializer, PriorityReasonImport, WorkOrderImport,
+    create_import_serializer_for_model,
+)
 from .base import TenantScopedMixin
 from .mixins import CSVImportMixin, DataExportMixin, SecondPersonMixin, VersionHistoryMixin
 
@@ -1643,11 +1646,15 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         })
 
 
-class OrderLineViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
-    """Demand lines on an order, and the action that turns one into work."""
+class OrderLineViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
+    """Demand lines on an order, and the action that turns one into work.
+
+    Importable (Data Management, and the master workbook's Order Lines sheet), matched
+    on order + line number — see OrderLineCSVImportSerializer."""
 
     queryset = OrderLine.unscoped.select_related('order', 'part_type')
     serializer_class = OrderLineSerializer
+    csv_import_serializer = OrderLineCSVImportSerializer
     pagination_class = LimitOffsetPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = {'order': ['exact'], 'status': ['exact'],
@@ -2084,8 +2091,14 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         "wo number": "ERP_id",
     }
     # The generated importer (the registry's WorkOrderCSVImportSerializer is keyed
-    # "workorders" and never matched), plus the priority reason.
-    csv_import_serializer = create_import_serializer_for_model(WorkOrder, base=PriorityReasonImport)
+    # "workorders" and never matched), plus the priority reason and the order line a job
+    # is for, named by its number on the row's Related Order.
+    csv_import_serializer = create_import_serializer_for_model(
+        WorkOrder, base=WorkOrderImport,
+        meta={'import_only_fields': ['order_line_number'],
+              'import_column_help': {'order_line_number': (
+                  "The line on the Related Order this job is for (its line number). "
+                  "Pegs the job to the line, so the line shows as planned.")}})
 
     def get_csv_template_generator(self):
         """The model's columns plus `priority_reason`, beside `priority`: an import
@@ -2100,6 +2113,12 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         names = [f.name for f in generator.fields]
         at = names.index("priority") + 1 if "priority" in names else len(names)
         generator.fields = generator.fields[:at] + [reason] + generator.fields[at:]
+        line = TemplateField(
+            "order_line_number",
+            description="The line on the Related Order this job is for (its line number).")
+        names = [f.name for f in generator.fields]
+        at = names.index("related_order") + 1 if "related_order" in names else len(names)
+        generator.fields = generator.fields[:at] + [line] + generator.fields[at:]
         return generator
 
     def get_queryset(self):
