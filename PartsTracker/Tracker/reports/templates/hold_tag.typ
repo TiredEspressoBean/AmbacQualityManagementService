@@ -12,6 +12,8 @@
 
 #let tone = if data.heading == "REJECTED" { bad } else if data.heading == "QUARANTINE" { bad } else { warn }
 #let tint = if data.heading == "HOLD" { warn-tint } else { bad-tint }
+// A rejected item is never released: it goes back to its supplier or is scrapped.
+#let instruction = if data.heading == "REJECTED" { "DO NOT USE — TO BE RETURNED OR SCRAPPED" } else { "DO NOT USE UNTIL RELEASED" }
 
 #show: doc-frame.with(
   doc-type: "Hold Tag",
@@ -32,9 +34,7 @@
   #align(center)[
     #text(size: 44pt, weight: "bold", fill: tone, font: sans-font, tracking: 2pt)[#data.heading]
     #v(2pt)
-    #text(size: 14pt, weight: "semibold", fill: tone, font: sans-font)[
-      DO NOT USE UNTIL RELEASED
-    ]
+    #text(size: 14pt, weight: "semibold", fill: tone, font: sans-font)[#instruction]
   ]
 ]
 
@@ -81,6 +81,14 @@
 
 #v(16pt)
 
-#signature-block((
-  (role: "Released by", caption: "Name · Date · Disposition / reason released"),
-), heading: "Release")
+// Held and quarantined items end in a release; a rejected one ends when it leaves —
+// back to the supplier or to scrap — so its box records that instead.
+#if data.heading == "REJECTED" {
+  signature-block((
+    (role: "Returned / scrapped by", caption: "Name · Date · RTV or scrap reference"),
+  ), heading: "Closure")
+} else {
+  signature-block((
+    (role: "Released by", caption: "Name · Date · Disposition / reason released"),
+  ), heading: "Release")
+}
