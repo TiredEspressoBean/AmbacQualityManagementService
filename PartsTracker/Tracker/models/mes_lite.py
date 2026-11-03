@@ -2856,21 +2856,39 @@ class OrderLine(SecureModel):
         Also covered: a unit received FOR the order (`Parts.order`) of this line's type
         that is already being worked on some other work order — a repair-and-return core
         torn down and rebuilt on its teardown WO. Planning the line again would build a
-        second unit for one the customer sent.
+        second unit for one the customer sent. Those units belong to the order, not to a
+        line, so they are dealt out ONCE across the order's live lines of this part type,
+        in line order, each taking what its work orders leave uncovered — counted against
+        every line, a mixed order read as covered twice over (the Ship lane deals the same
+        way, so the two agree).
         """
         from django.db.models import Sum
-        # tenant-safe: reverse FK from an in-tenant OrderLine row.
-        agg = self.work_orders.exclude(
-            workorder_status=WorkOrderStatus.CANCELLED
-        ).aggregate(q=Sum('quantity'), back=Sum('short_close_returned_quantity'))
-        pegged = max(0, (agg['q'] or 0) - (agg['back'] or 0))
+
+        def _pegged(line) -> int:
+            # tenant-safe: reverse FK from an in-tenant OrderLine row.
+            agg = line.work_orders.exclude(
+                workorder_status=WorkOrderStatus.CANCELLED
+            ).aggregate(q=Sum('quantity'), back=Sum('short_close_returned_quantity'))
+            return max(0, (agg['q'] or 0) - (agg['back'] or 0))
+
+        pegged = _pegged(self)
         # tenant-safe: reverse FK from an in-tenant Orders row.
-        in_work_elsewhere = (self.order.parts
-                             .filter(archived=False, part_type_id=self.part_type_id,
-                                     work_order__isnull=False)
-                             .exclude(work_order__related_order_id=self.order_id)
-                             .exclude(part_status__in=['SCRAPPED', 'CANCELLED']).count())
-        return pegged + in_work_elsewhere
+        pool = (self.order.parts
+                .filter(archived=False, part_type_id=self.part_type_id,
+                        work_order__isnull=False)
+                .exclude(work_order__related_order_id=self.order_id)
+                .exclude(part_status__in=['SCRAPPED', 'CANCELLED']).count())
+        if not pool:
+            return pegged
+        # tenant-safe: reverse FK from an in-tenant Orders row.
+        for line in (self.order.lines.filter(archived=False, part_type_id=self.part_type_id)
+                     .exclude(status=OrderLineStatus.CANCELLED).order_by('line_number')):
+            mine = pegged if line.pk == self.pk else _pegged(line)
+            take = min(pool, max(0, line.quantity - mine))
+            if line.pk == self.pk:
+                return pegged + take
+            pool -= take
+        return pegged
 
     @property
     def remaining_quantity(self) -> int:

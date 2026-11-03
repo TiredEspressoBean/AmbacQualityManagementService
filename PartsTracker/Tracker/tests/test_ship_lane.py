@@ -105,6 +105,17 @@ class ShipLaneTests(TenantContextMixin, TestCase):
         row = ship_lane(self.tenant)[0]
         self.assertEqual((row["to_ship"], row["ready"], row["note"]), (2, 1, "1 ready to ship"))
 
+    def test_a_unit_worked_elsewhere_covers_one_line_not_every_line(self):
+        """planned_quantity deals the order's units out once across its lines of the part
+        type — counted against every line, a two-line order read covered twice."""
+        line1 = self._line(1, self.today + timedelta(days=5), name="TWO")
+        line2 = OrderLine.objects.create(tenant=self.tenant, order=line1.order, line_number=2,
+                                         part_type=self.pt, quantity=1,
+                                         due_date=self.today + timedelta(days=9))
+        self._unit_worked_elsewhere(line1, "IN_PROGRESS")
+        self.assertEqual((line1.planned_quantity, line2.planned_quantity), (1, 0))
+        self.assertEqual((line1.remaining_quantity, line2.remaining_quantity), (0, 1))
+
     def test_an_untouched_line_is_not_started_and_wholly_unplanned(self):
         self._line(4, self.today + timedelta(days=20), name="NEW")
         row = ship_lane(self.tenant)[0]
