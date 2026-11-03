@@ -188,10 +188,16 @@ There is no multi-select bulk disposition — you cannot tick several quarantine
 parts and decide them together. Each disposition is decided on its own record.
 
 What does happen in bulk is **containment**, and the system starts it, not you: if
-a shared batch cycle fails — one ultrasonic wash, one heat-treat load — every part
-that rode through it is quarantined together and a single disposition is opened
-for the batch. That is one decision covering the load because they genuinely share
-one event, not a convenience for grouping unrelated parts.
+a shared batch cycle fails — one ultrasonic wash, one heat-treat load — the parts
+from that load **still in production** (in progress, awaiting QA, ready for their
+next step, or at an outside process) are quarantined together, and a single
+disposition is opened for the batch. That is one decision covering the load
+because they genuinely share one event, not a convenience for grouping unrelated
+parts.
+
+Parts from the load that have already moved on — completed, shipped, scrapped —
+aren't held, but the disposition counts them so they can be followed up: *Batch
+cycle failed at Wash - 6 parts in the load (0 held, 6 already past this step).*
 
 See [Running Work Instructions](../dwi/running.md#per-part-work-and-shared-cycles)
 for how shared cycles differ from per-part work.

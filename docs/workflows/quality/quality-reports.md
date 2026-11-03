@@ -131,7 +131,8 @@ action is recorded on it. See [Dispositions](dispositions.md).
 
     *(Quarantine needs the report to name a part. Receiving-inspection and
     batch-cycle failures take their own routes — a lot reject opens a populated
-    disposition itself, and a failed batch cycle contains the whole load.)*
+    disposition itself, and a failed batch cycle [contains the load](quarantine.md#a-whole-load-quarantined-at-once)
+    — the parts of it still in production.)*
 
 ## Disposition
 
