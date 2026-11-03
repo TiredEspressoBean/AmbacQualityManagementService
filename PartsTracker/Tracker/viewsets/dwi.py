@@ -724,6 +724,11 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     # not as creating a batch — POST would otherwise demand add_batchexecution.
     crud_exempt_actions = {'save_draft'}
     action_permissions = {'save_draft': ['add_substepcompletion']}
+    # A load's parts are set when it starts and changed only through the lifecycle
+    # service (Add parts / remove-part), which checks and records each change. A plain
+    # PATCH/PUT rewrote membership at any phase with no checks (user decision
+    # 2026-11-03: closed). No DELETE either: nobody holds delete_batchexecution.
+    http_method_names = ['get', 'post', 'head', 'options']
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['work_order', 'step', 'sealed_at']
     ordering_fields = ['started_at', 'sealed_at']
@@ -886,32 +891,69 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     @extend_schema(
         request=inline_serializer(name='RemoveBatchPartRequest', fields={
-            'part': drf_serializers.UUIDField(), 'reason': drf_serializers.CharField()}),
+            'part': drf_serializers.UUIDField(),
+            'reason': drf_serializers.CharField(
+                required=False, allow_blank=True,
+                help_text="Needed only once the part's step is completed.")}),
         responses={200: inline_serializer(name='RemoveBatchPartResponse', fields={
             'batch_id': drf_serializers.UUIDField(), 'part': drf_serializers.UUIDField(),
             'outcome': drf_serializers.ChoiceField(
                 choices=['REMOVED', 'ROLLBACK_PENDING'],
                 help_text="ROLLBACK_PENDING: the part had moved on, and stepping it back was "
                           "sent for approval — take it out again once that's done.")})},
-        description="Take the wrong part out of a sealed batch, with a reason. It goes back "
-                    "to the batch's step and its batch-done work no longer counts for it. "
-                    "No unseal.",
+        description="Take a part out of a load. Until the step is completed it simply comes "
+                    "out (no reason needed) and waits at the step for a load of its own. From "
+                    "a completed load it needs a reason, and is rolled back to the step if it "
+                    "moved on (an approval past the undo window).",
     )
     @action(detail=True, methods=['post'], url_path='remove-part')
     def remove_part(self, request, pk=None):
         from django.core.exceptions import ValidationError
         from Tracker.models import Parts
-        from Tracker.services.dwi.batch_lifecycle import remove_part_from_sealed_batch
+        from Tracker.services.dwi.batch_lifecycle import remove_part_from_batch
         batch = self.get_object()
         part = Parts.objects.filter(pk=request.data.get('part')).first()  # tenant-safe: .objects auto-scopes
         if part is None:
             return Response({'detail': 'Part not found.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            outcome = remove_part_from_sealed_batch(batch=batch, part=part, user=request.user,
-                                                    reason=request.data.get('reason', ''))
+            outcome = remove_part_from_batch(batch=batch, part=part, user=request.user,
+                                             reason=request.data.get('reason', ''))
         except ValidationError as exc:
             return Response({'detail': '; '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'batch_id': str(batch.id), 'part': str(part.id), 'outcome': outcome})
+
+    @extend_schema(
+        request=inline_serializer(name='AddBatchPartsRequest', fields={
+            'parts': drf_serializers.ListField(child=drf_serializers.UUIDField()),
+            'reason': drf_serializers.CharField(required=False, allow_blank=True)}),
+        responses={
+            200: inline_serializer(name='AddBatchPartsResponse', fields={
+                'batch_id': drf_serializers.UUIDField(),
+                'added': drf_serializers.ListField(child=drf_serializers.CharField())}),
+            400: inline_serializer(name='AddBatchPartsError', fields={
+                'detail': drf_serializers.CharField()}),
+        },
+        description="Put forgotten pieces into a load until the step is completed (loading or "
+                    "running). Same checks as starting a load. They ride the load: its "
+                    "captures cover them, their visits follow the load's holder, and a load "
+                    "already contained by a failed cycle holds them too.",
+    )
+    @action(detail=True, methods=['post'], url_path='add-parts')
+    def add_parts(self, request, pk=None):
+        from django.core.exceptions import ValidationError
+        from Tracker.models import Parts
+        from Tracker.services.dwi.batch_lifecycle import add_parts_to_batch
+        batch = self.get_object()
+        ids = request.data.get('parts') or []
+        parts = list(Parts.objects.filter(pk__in=ids))  # tenant-safe: .objects auto-scopes
+        if len(parts) != len(set(ids)):
+            return Response({'detail': 'A part was not found.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            added = add_parts_to_batch(batch=batch, parts=parts, user=request.user,
+                                       reason=request.data.get('reason', ''))
+        except ValidationError as exc:
+            return Response({'detail': '; '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'batch_id': str(batch.id), 'added': [p.ERP_id for p in added]})
 
 
 class SamplingDecisionViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):

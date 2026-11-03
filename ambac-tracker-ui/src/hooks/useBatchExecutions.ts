@@ -120,3 +120,32 @@ export function useCompleteBatchExecution() {
         },
     });
 }
+
+/** Put forgotten pieces into a load, until the parts' step is completed. No reason. */
+export function useAddBatchParts() {
+    const qc = useQueryClient();
+    return useMutation<unknown, unknown, { id: string; parts: string[] }>({
+        mutationFn: ({ id, parts }) =>
+            api.api_BatchExecutions_add_parts_create({ parts }, {
+                params: { id },
+                headers: csrfHeaders(),
+            }),
+        onSuccess: () => invalidateBatches(qc),
+        // The panel says why an add was refused.
+        meta: { suppressGlobalError: true, successMessage: "Added to the load" },
+    });
+}
+
+/** Take a piece out of a load. While its step is still being worked it just comes out. */
+export function useRemoveBatchPart() {
+    const qc = useQueryClient();
+    return useMutation<unknown, unknown, { id: string; part: string }>({
+        mutationFn: ({ id, part }) =>
+            api.api_BatchExecutions_remove_part_create({ part, reason: "" }, {
+                params: { id },
+                headers: csrfHeaders(),
+            }),
+        onSuccess: () => invalidateBatches(qc),
+        meta: { suppressGlobalError: true, successMessage: "Taken out of the load" },
+    });
+}

@@ -817,6 +817,61 @@ export type BOMRequest = {
   description?: string | undefined;
   archived?: boolean | undefined;
 };
+export type BatchExecution = {
+  id: string;
+  /**
+   * The WorkOrder whose parts make up this batch.
+   */
+  work_order: string;
+  /**
+   * The Step the batch is running through.
+   */
+  step: string;
+  parts?: /**
+   * Parts that are members of this batch.
+   */
+  Array<string> | undefined;
+  /**
+   * Operator who started the batch.
+   */
+  started_by: number;
+  /**
+   * When the operator started the batch.
+   */
+  started_at: string;
+  /**
+   * When the load was sealed — loaded, its load-phase substeps done, and the machine running. Membership is locked from here; the parts don't advance until the load is completed.
+   */
+  sealed_at: string | null;
+  /**
+   * When the load was completed — the run finished and the substeps after the seal point done. Its parts advance from here.
+   */
+  completed_at: string | null;
+  /**
+   * Who completed the load.
+   */
+  completed_by: number | null;
+  notes?: /**
+   * Operator notes captured at batch start / during the run.
+   */
+  string | undefined;
+  membership_changes: Array<BatchMembershipChange>;
+};
+export type BatchMembershipChange = {
+  serial: string;
+  change: ChangeEnum;
+  by: string;
+  at: string;
+  reason: string;
+};
+export type ChangeEnum =
+  /**
+   * * `added` - added
+   * `removed` - removed
+   *
+   * @enum added, removed
+   */
+  "added" | "removed";
 export type BulkExpectedReceiptRequest = {
   receipts: Array<ExpectedReceiptRequest>;
 };
@@ -6091,45 +6146,6 @@ export type PaginatedBatchExecutionList = {
     (string | null)
     | undefined;
   results: Array<BatchExecution>;
-};
-export type BatchExecution = {
-  id: string;
-  /**
-   * The WorkOrder whose parts make up this batch.
-   */
-  work_order: string;
-  /**
-   * The Step the batch is running through.
-   */
-  step: string;
-  parts?: /**
-   * Parts that are members of this batch.
-   */
-  Array<string> | undefined;
-  /**
-   * Operator who started the batch.
-   */
-  started_by: number;
-  /**
-   * When the operator started the batch.
-   */
-  started_at: string;
-  /**
-   * When the load was sealed — loaded, its load-phase substeps done, and the machine running. Membership is locked from here; the parts don't advance until the load is completed.
-   */
-  sealed_at: string | null;
-  /**
-   * When the load was completed — the run finished and the substeps after the seal point done. Its parts advance from here.
-   */
-  completed_at: string | null;
-  /**
-   * Who completed the load.
-   */
-  completed_by: number | null;
-  notes?: /**
-   * Operator notes captured at batch start / during the run.
-   */
-  string | undefined;
 };
 export type PaginatedCAPAList = {
   /**
@@ -19707,6 +19723,14 @@ const PatchedBOMRequest = z
 const CreateBOMRevisionInputRequest = z.object({
   change_description: z.string().min(1),
 });
+const ChangeEnum = z.enum(["added", "removed"]);
+const BatchMembershipChange = z.object({
+  serial: z.string(),
+  change: ChangeEnum,
+  by: z.string(),
+  at: z.string().datetime({ offset: true }),
+  reason: z.string(),
+});
 const BatchExecution = z.object({
   id: z.string().uuid(),
   work_order: z.string().uuid(),
@@ -19718,6 +19742,7 @@ const BatchExecution = z.object({
   completed_at: z.string().datetime({ offset: true }).nullable(),
   completed_by: z.number().int().nullable(),
   notes: z.string().optional(),
+  membership_changes: z.array(BatchMembershipChange),
 });
 const PaginatedBatchExecutionList = z.object({
   count: z.number().int(),
@@ -19731,14 +19756,15 @@ const BatchExecutionRequest = z.object({
   parts: z.array(z.string().uuid()).optional(),
   notes: z.string().optional(),
 });
-const PatchedBatchExecutionRequest = z
-  .object({
-    work_order: z.string().uuid(),
-    step: z.string().uuid(),
-    parts: z.array(z.string().uuid()),
-    notes: z.string(),
-  })
-  .partial();
+const AddBatchPartsRequestRequest = z.object({
+  parts: z.array(z.string().uuid()),
+  reason: z.string().optional(),
+});
+const AddBatchPartsResponse = z.object({
+  batch_id: z.string().uuid(),
+  added: z.array(z.string()),
+});
+const AddBatchPartsError = z.object({ detail: z.string() });
 const BatchCompleteResponse = z.object({
   batch_id: z.string(),
   completed_at: z.string(),
@@ -19749,7 +19775,7 @@ const BatchCompleteError = z.object({
 });
 const RemoveBatchPartRequestRequest = z.object({
   part: z.string().uuid(),
-  reason: z.string().min(1),
+  reason: z.string().optional(),
 });
 const RemoveBatchPartResponseOutcomeEnum = z.enum([
   "REMOVED",
@@ -30296,10 +30322,14 @@ export const schemas = {
   BOM,
   PatchedBOMRequest,
   CreateBOMRevisionInputRequest,
+  ChangeEnum,
+  BatchMembershipChange,
   BatchExecution,
   PaginatedBatchExecutionList,
   BatchExecutionRequest,
-  PatchedBatchExecutionRequest,
+  AddBatchPartsRequestRequest,
+  AddBatchPartsResponse,
+  AddBatchPartsError,
   BatchCompleteResponse,
   BatchCompleteError,
   RemoveBatchPartRequestRequest,
@@ -32824,20 +32854,16 @@ for advancement.`,
     response: BatchExecution,
   },
   {
-    method: "put",
-    path: "/api/BatchExecutions/:id/",
-    alias: "api_BatchExecutions_update",
-    description: `BatchExecution rows + seal lifecycle action.
-
-GET endpoints expose membership / status; the only state-changing
-action in this iteration is &#x60;POST {id}/seal/&#x60; which closes the batch
-for advancement.`,
+    method: "post",
+    path: "/api/BatchExecutions/:id/add-parts/",
+    alias: "api_BatchExecutions_add_parts_create",
+    description: `Put forgotten pieces into a load until the step is completed (loading or running). Same checks as starting a load. They ride the load: its captures cover them, their visits follow the load&#x27;s holder, and a load already contained by a failed cycle holds them too.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: BatchExecutionRequest,
+        schema: AddBatchPartsRequestRequest,
       },
       {
         name: "id",
@@ -32845,50 +32871,13 @@ for advancement.`,
         schema: z.string().uuid(),
       },
     ],
-    response: BatchExecution,
-  },
-  {
-    method: "patch",
-    path: "/api/BatchExecutions/:id/",
-    alias: "api_BatchExecutions_partial_update",
-    description: `BatchExecution rows + seal lifecycle action.
-
-GET endpoints expose membership / status; the only state-changing
-action in this iteration is &#x60;POST {id}/seal/&#x60; which closes the batch
-for advancement.`,
-    requestFormat: "json",
-    parameters: [
+    response: AddBatchPartsResponse,
+    errors: [
       {
-        name: "body",
-        type: "Body",
-        schema: PatchedBatchExecutionRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
+        status: 400,
+        schema: z.object({ detail: z.string() }),
       },
     ],
-    response: BatchExecution,
-  },
-  {
-    method: "delete",
-    path: "/api/BatchExecutions/:id/",
-    alias: "api_BatchExecutions_destroy",
-    description: `BatchExecution rows + seal lifecycle action.
-
-GET endpoints expose membership / status; the only state-changing
-action in this iteration is &#x60;POST {id}/seal/&#x60; which closes the batch
-for advancement.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.void(),
   },
   {
     method: "get",
@@ -32934,7 +32923,7 @@ the load isn&#x27;t sealed or a required completion-phase substep isn&#x27;t don
     method: "post",
     path: "/api/BatchExecutions/:id/remove-part/",
     alias: "api_BatchExecutions_remove_part_create",
-    description: `Take the wrong part out of a sealed batch, with a reason. It goes back to the batch&#x27;s step and its batch-done work no longer counts for it. No unseal.`,
+    description: `Take a part out of a load. Until the step is completed it simply comes out (no reason needed) and waits at the step for a load of its own. From a completed load it needs a reason, and is rolled back to the step if it moved on (an approval past the undo window).`,
     requestFormat: "json",
     parameters: [
       {
@@ -36381,10 +36370,7 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/CustomerShipments/:id/",
@@ -36425,7 +36411,10 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/CustomerShipments/delivery-performance/",
@@ -41523,10 +41512,7 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: TestConnectionResult,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "post",
     path: "/api/integrations/:id/trigger_sync/",
@@ -41564,7 +41550,10 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: z.array(IntegrationCatalogItem),
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/JobRoles/",
@@ -45789,10 +45778,7 @@ field metadata).`,
       },
     ],
     response: TenantSchedule,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/notifications/schedules/tenant/:id/",
@@ -45825,7 +45811,10 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: OrderDetail,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/OrderBook/book/",
@@ -51223,10 +51212,7 @@ Usage:
       },
     ],
     response: QualityReports,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/QualityReports/:id/",
@@ -51309,7 +51295,10 @@ Usage:
       },
     ],
     response: QualityReports,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "patch",
     path: "/api/QualityReports/:id/",
@@ -56293,10 +56282,7 @@ Used by the workflow engine for tracking part progression through steps.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepExecutions/:id/claim/",
@@ -56352,7 +56338,10 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       },
     ],
     response: FlagOverrideResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutions/:id/hand-off-candidates/",
@@ -62062,10 +62051,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.unknown(),
       },
     ],
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingRequirements/import-status/:task_id/",
@@ -62095,7 +62081,10 @@ const endpoints6 = makeApi([
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/TrainingRequirements/import/",

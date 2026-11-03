@@ -698,33 +698,29 @@ export interface paths {
          *     for advancement.
          */
         get: operations["api_BatchExecutions_retrieve"];
-        /**
-         * @description BatchExecution rows + seal lifecycle action.
-         *
-         *     GET endpoints expose membership / status; the only state-changing
-         *     action in this iteration is `POST {id}/seal/` which closes the batch
-         *     for advancement.
-         */
-        put: operations["api_BatchExecutions_update"];
+        put?: never;
         post?: never;
-        /**
-         * @description BatchExecution rows + seal lifecycle action.
-         *
-         *     GET endpoints expose membership / status; the only state-changing
-         *     action in this iteration is `POST {id}/seal/` which closes the batch
-         *     for advancement.
-         */
-        delete: operations["api_BatchExecutions_destroy"];
+        delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description BatchExecution rows + seal lifecycle action.
-         *
-         *     GET endpoints expose membership / status; the only state-changing
-         *     action in this iteration is `POST {id}/seal/` which closes the batch
-         *     for advancement.
-         */
-        patch: operations["api_BatchExecutions_partial_update"];
+        patch?: never;
+        trace?: never;
+    };
+    "/api/BatchExecutions/{id}/add-parts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Put forgotten pieces into a load until the step is completed (loading or running). Same checks as starting a load. They ride the load: its captures cover them, their visits follow the load's holder, and a load already contained by a failed cycle holds them too. */
+        post: operations["api_BatchExecutions_add_parts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/BatchExecutions/{id}/capture-state/": {
@@ -776,7 +772,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Take the wrong part out of a sealed batch, with a reason. It goes back to the batch's step and its batch-done work no longer counts for it. No unseal. */
+        /** @description Take a part out of a load. Until the step is completed it simply comes out (no reason needed) and waits at the step for a load of its own. From a completed load it needs a reason, and is rolled back to the step if it moved on (an approval past the undo window). */
         post: operations["api_BatchExecutions_remove_part_create"];
         delete?: never;
         options?: never;
@@ -21472,6 +21468,18 @@ export interface components {
             part_id: string;
             part_erp_id: string;
         };
+        AddBatchPartsError: {
+            detail: string;
+        };
+        AddBatchPartsRequestRequest: {
+            parts: string[];
+            reason?: string;
+        };
+        AddBatchPartsResponse: {
+            /** Format: uuid */
+            batch_id: string;
+            added: string[];
+        };
         AddNoteInputRequest: {
             message: string;
             /** @default VISIBLE */
@@ -22243,11 +22251,9 @@ export interface components {
          */
         BatchCycleQualityStatusEnum: "PASS" | "FAIL";
         /**
-         * @description Minimal BatchExecution shape for the lifecycle viewset.
-         *
-         *     The viewset only exposes list/retrieve + the seal action in this
-         *     iteration; write semantics live on the seal service, not on the
-         *     serializer.
+         * @description BatchExecution shape for the lifecycle viewset: create (parts named at the
+         *     start), list/retrieve, and the lifecycle actions. No update: a load's parts change
+         *     only through the service (Add parts / remove-part).
          */
         BatchExecution: {
             /** Format: uuid */
@@ -22285,13 +22291,12 @@ export interface components {
             readonly completed_by: number | null;
             /** @description Operator notes captured at batch start / during the run. */
             notes?: string;
+            readonly membership_changes: components["schemas"]["BatchMembershipChange"][];
         };
         /**
-         * @description Minimal BatchExecution shape for the lifecycle viewset.
-         *
-         *     The viewset only exposes list/retrieve + the seal action in this
-         *     iteration; write semantics live on the seal service, not on the
-         *     serializer.
+         * @description BatchExecution shape for the lifecycle viewset: create (parts named at the
+         *     start), list/retrieve, and the lifecycle actions. No update: a load's parts change
+         *     only through the service (Add parts / remove-part).
          */
         BatchExecutionRequest: {
             /**
@@ -22308,6 +22313,14 @@ export interface components {
             parts?: string[];
             /** @description Operator notes captured at batch start / during the run. */
             notes?: string;
+        };
+        BatchMembershipChange: {
+            serial: string;
+            change: components["schemas"]["ChangeEnum"];
+            by: string;
+            /** Format: date-time */
+            at: string;
+            reason: string;
         };
         /**
          * @description Planner batch control: merge selected tasks into one lot (`merge=true`) or break
@@ -22983,6 +22996,12 @@ export interface components {
          * @enum {string}
          */
         ChangeControlPriorityEnum: "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
+        /**
+         * @description * `added` - added
+         *     * `removed` - removed
+         * @enum {string}
+         */
+        ChangeEnum: "added" | "removed";
         /**
          * @description * `XBAR_R` - X̄-R
          *     * `XBAR_S` - X̄-S
@@ -30716,29 +30735,6 @@ export interface components {
             description?: string;
             archived?: boolean;
         };
-        /**
-         * @description Minimal BatchExecution shape for the lifecycle viewset.
-         *
-         *     The viewset only exposes list/retrieve + the seal action in this
-         *     iteration; write semantics live on the seal service, not on the
-         *     serializer.
-         */
-        PatchedBatchExecutionRequest: {
-            /**
-             * Format: uuid
-             * @description The WorkOrder whose parts make up this batch.
-             */
-            work_order?: string;
-            /**
-             * Format: uuid
-             * @description The Step the batch is running through.
-             */
-            step?: string;
-            /** @description Parts that are members of this batch. */
-            parts?: string[];
-            /** @description Operator notes captured at batch start / during the run. */
-            notes?: string;
-        };
         /** @description CAPA main serializer */
         PatchedCAPARequest: {
             capa_type?: components["schemas"]["CapaTypeEnum"];
@@ -35485,7 +35481,8 @@ export interface components {
         RemoveBatchPartRequestRequest: {
             /** Format: uuid */
             part: string;
-            reason: string;
+            /** @description Needed only once the part's step is completed. */
+            reason?: string;
         };
         RemoveBatchPartResponse: {
             /** Format: uuid */
@@ -43160,7 +43157,7 @@ export interface operations {
             };
         };
     };
-    api_BatchExecutions_update: {
+    api_BatchExecutions_add_parts_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -43172,9 +43169,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BatchExecutionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["BatchExecutionRequest"];
-                "multipart/form-data": components["schemas"]["BatchExecutionRequest"];
+                "application/json": components["schemas"]["AddBatchPartsRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AddBatchPartsRequestRequest"];
+                "multipart/form-data": components["schemas"]["AddBatchPartsRequestRequest"];
             };
         };
         responses: {
@@ -43183,56 +43180,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BatchExecution"];
+                    "application/json": components["schemas"]["AddBatchPartsResponse"];
                 };
             };
-        };
-    };
-    api_BatchExecutions_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this batch execution. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_BatchExecutions_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this batch execution. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedBatchExecutionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedBatchExecutionRequest"];
-                "multipart/form-data": components["schemas"]["PatchedBatchExecutionRequest"];
-            };
-        };
-        responses: {
-            200: {
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BatchExecution"];
+                    "application/json": components["schemas"]["AddBatchPartsError"];
                 };
             };
         };

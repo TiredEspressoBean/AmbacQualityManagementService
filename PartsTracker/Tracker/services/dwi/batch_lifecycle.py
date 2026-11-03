@@ -260,6 +260,137 @@ def complete_batch(*, batch: "BatchExecution", user: "User") -> CompleteResult:
     return CompleteResult(batch_id=str(batch.id), completed_at=batch.completed_at.isoformat())
 
 
+# What a membership change records when no reason is given: while a part's step is still
+# being worked the load is too, and the record that matters is the one confirmed when
+# the step completes (user decision 2026-11-03).
+OPEN_LOAD_CORRECTION = "Corrected while the load was open"
+
+
+def _record_membership(batch, user, *, added=None, removed=None, reason=""):
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import BatchExecution, RecordEdit
+    RecordEdit.objects.create(
+        tenant=batch.tenant, content_type=ContentType.objects.get_for_model(BatchExecution),
+        object_id=batch.id, field_name="parts",
+        old_value=removed.ERP_id if removed else "", new_value=added.ERP_id if added else "",
+        reason=(reason or "").strip() or OPEN_LOAD_CORRECTION, edited_by=user)
+
+
+def add_parts_to_batch(*, batch: "BatchExecution", parts, user: "User", reason: str = "") -> list:
+    """Put forgotten pieces into a load that isn't completed yet — loading or running
+    (user decision 2026-11-03: until Complete load the operator corrects membership
+    freely; no reason needed). The same checks as starting a load: at the load's step,
+    on its work order, not held, not in another open load. An added part rides the load:
+    its captures cover it (the advancement gate reads them through membership), its
+    visit at the step follows the load's holder, and if the load's FAIL containment has
+    already fired it is quarantined with the load.
+
+    Returns the parts added. Raises ValidationError naming why not.
+    """
+    from Tracker.models import BatchExecution, PartsStatus, QuarantineDisposition, StepExecution
+    from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
+
+    with transaction.atomic():
+        batch = BatchExecution.objects.select_for_update().get(pk=batch.id)
+        if batch.completed_at is not None:
+            raise ValidationError("This load is complete; its parts are final.")
+        current = set(batch.parts.values_list('id', flat=True))
+        new = [p for p in parts if p.id not in current]
+        if not new:
+            raise ValidationError("Those parts are already in this load.")
+        problems = []
+        for p in new:
+            if p.step_id != batch.step_id:
+                problems.append(f"{p.ERP_id} isn't at {batch.step.name}.")
+            elif p.work_order_id != batch.work_order_id:
+                problems.append(f"{p.ERP_id} is on another work order.")
+            elif p.part_status in ("QUARANTINED", "ON_HOLD") or p.part_status in TERMINAL_PART_STATUSES:
+                problems.append(f"{p.ERP_id} is held or finished and can't go into a load.")
+        if problems:
+            raise ValidationError(problems)
+        if BatchExecution.objects.filter(archived=False, step=batch.step, completed_at__isnull=True,
+                                         parts__in=new).exclude(pk=batch.pk).exists():
+            raise ValidationError("A selected part is already in another open load at this step.")
+
+        batch.parts.add(*new)
+        for p in new:
+            _record_membership(batch, user, added=p, reason=reason)
+
+        # Its visit follows the load's holder: the one holding most of the others.
+        held = list(StepExecution.objects  # tenant-safe: FK-correlated to a scoped load's parts
+                    .filter(step_id=batch.step_id, part_id__in=current, exited_at__isnull=True,
+                            archived=False, assigned_to__isnull=False))
+        if held:
+            from collections import Counter
+            top = Counter(v.assigned_to_id for v in held).most_common(1)[0][0]
+            model_visit = next(v for v in held if v.assigned_to_id == top)
+            for v in (StepExecution.objects  # tenant-safe: FK-correlated to the added scoped parts
+                      .filter(step_id=batch.step_id, part__in=new, exited_at__isnull=True,
+                              archived=False).exclude(assigned_to_id=top)):
+                snap = {k: val for k, val in (model_visit.training_authorization or {}).items()
+                        if k != 'previous'}
+                snap['carried_with'] = str(model_visit.id)
+                if v.training_authorization:
+                    snap['previous'] = v.training_authorization
+                v.assigned_to_id = top
+                v.training_authorization = snap or None
+                v.save(update_fields=['assigned_to', 'training_authorization', 'updated_at'])
+
+        # A load already contained by its failed cycle holds the newcomer too.
+        if QuarantineDisposition.objects.filter(archived=False, batch_execution=batch,
+                                                current_state__in=["OPEN", "IN_PROGRESS"]).exists():
+            from Tracker.services.qms.batch_disposition import _QUARANTINABLE
+            for p in new:
+                if p.part_status in _QUARANTINABLE:
+                    p.part_status = PartsStatus.QUARANTINED
+                    p.save(update_fields=["part_status"])
+    return new
+
+
+def remove_part_from_batch(*, batch: "BatchExecution", part, user: "User", reason: str = "") -> str:
+    """Take a piece out of a load. While the part's own visit at the step is still open
+    — its step not yet completed, whatever the load's phase — it simply comes out (no
+    reason needed — user decision 2026-11-03); it then has no load at the step and
+    waits there until it's in one. Once that visit is completed (the load completed and
+    the part moved on), it goes through remove_part_from_sealed_batch: a reason, and
+    the part rolled back to the step.
+
+    Returns REMOVED or ROLLBACK_PENDING. Raises ValidationError naming why not.
+    """
+    from Tracker.models import BatchExecution, StepExecution
+    visit_open = StepExecution.objects.filter(  # tenant-safe: FK-correlated to a scoped part
+        part=part, step_id=batch.step_id, exited_at__isnull=True, archived=False).exists()
+    if not visit_open:
+        return remove_part_from_sealed_batch(batch=batch, part=part, user=user, reason=reason)
+    with transaction.atomic():
+        batch = BatchExecution.objects.select_for_update().get(pk=batch.id)
+        if not batch.parts.filter(pk=part.pk).exists():
+            raise ValidationError(f"{part.ERP_id} isn't in this load.")
+        if batch.parts.count() == 1:
+            raise ValidationError("It's the load's only part — a load needs at least one.")
+        batch.parts.remove(part)
+        _record_membership(batch, user, removed=part, reason=reason)
+    return REMOVED
+
+
+def membership_changes(batch) -> list[dict]:
+    """The load's membership changes, oldest first: who added or removed which part,
+    when, and why — for the load row and the traveller."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import BatchExecution, RecordEdit
+    rows = (RecordEdit.objects  # tenant-safe: keyed to a scoped batch's id
+            .filter(content_type=ContentType.objects.get_for_model(BatchExecution),
+                    object_id=batch.id, field_name="parts")
+            .select_related("edited_by").order_by("edited_at"))
+    return [{
+        "serial": r.new_value or r.old_value,
+        "change": "added" if r.new_value else "removed",
+        "by": (r.edited_by.get_full_name() or r.edited_by.get_username()) if r.edited_by else "",
+        "at": r.edited_at,
+        "reason": "" if r.reason == OPEN_LOAD_CORRECTION else r.reason,
+    } for r in rows]
+
+
 REMOVED = "REMOVED"
 ROLLBACK_PENDING = "ROLLBACK_PENDING"
 

@@ -2383,14 +2383,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/BatchExecution'
           description: ''
-    put:
-      operationId: api_BatchExecutions_update
-      description: |-
-        BatchExecution rows + seal lifecycle action.
-
-        GET endpoints expose membership / status; the only state-changing
-        action in this iteration is `POST {id}/seal/` which closes the batch
-        for advancement.
+  /api/BatchExecutions/{id}/add-parts/:
+    post:
+      operationId: api_BatchExecutions_add_parts_create
+      description: 'Put forgotten pieces into a load until the step is completed (loading
+        or running). Same checks as starting a load. They ride the load: its captures
+        cover them, their visits follow the load''s holder, and a load already contained
+        by a failed cycle holds them too.'
       parameters:
       - in: path
         name: id
@@ -2405,13 +2404,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BatchExecutionRequest'
+              $ref: '#/components/schemas/AddBatchPartsRequestRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/BatchExecutionRequest'
+              $ref: '#/components/schemas/AddBatchPartsRequestRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/BatchExecutionRequest'
+              $ref: '#/components/schemas/AddBatchPartsRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -2421,71 +2420,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BatchExecution'
+                $ref: '#/components/schemas/AddBatchPartsResponse'
           description: ''
-    patch:
-      operationId: api_BatchExecutions_partial_update
-      description: |-
-        BatchExecution rows + seal lifecycle action.
-
-        GET endpoints expose membership / status; the only state-changing
-        action in this iteration is `POST {id}/seal/` which closes the batch
-        for advancement.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this batch execution.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedBatchExecutionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedBatchExecutionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedBatchExecutionRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
+        '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BatchExecution'
+                $ref: '#/components/schemas/AddBatchPartsError'
           description: ''
-    delete:
-      operationId: api_BatchExecutions_destroy
-      description: |-
-        BatchExecution rows + seal lifecycle action.
-
-        GET endpoints expose membership / status; the only state-changing
-        action in this iteration is `POST {id}/seal/` which closes the batch
-        for advancement.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this batch execution.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/BatchExecutions/{id}/capture-state/:
     get:
       operationId: api_BatchExecutions_capture_state_retrieve
@@ -2551,9 +2493,10 @@ paths:
   /api/BatchExecutions/{id}/remove-part/:
     post:
       operationId: api_BatchExecutions_remove_part_create
-      description: Take the wrong part out of a sealed batch, with a reason. It goes
-        back to the batch's step and its batch-done work no longer counts for it.
-        No unseal.
+      description: Take a part out of a load. Until the step is completed it simply
+        comes out (no reason needed) and waits at the step for a load of its own.
+        From a completed load it needs a reason, and is rolled back to the step if
+        it moved on (an approval past the undo window).
       parameters:
       - in: path
         name: id
@@ -50669,6 +50612,38 @@ components:
       - component
       - part_erp_id
       - part_id
+    AddBatchPartsError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    AddBatchPartsRequestRequest:
+      type: object
+      properties:
+        parts:
+          type: array
+          items:
+            type: string
+            format: uuid
+        reason:
+          type: string
+      required:
+      - parts
+    AddBatchPartsResponse:
+      type: object
+      properties:
+        batch_id:
+          type: string
+          format: uuid
+        added:
+          type: array
+          items:
+            type: string
+      required:
+      - added
+      - batch_id
     AddNoteInputRequest:
       type: object
       properties:
@@ -52351,11 +52326,9 @@ components:
     BatchExecution:
       type: object
       description: |-
-        Minimal BatchExecution shape for the lifecycle viewset.
-
-        The viewset only exposes list/retrieve + the seal action in this
-        iteration; write semantics live on the seal service, not on the
-        serializer.
+        BatchExecution shape for the lifecycle viewset: create (parts named at the
+        start), list/retrieve, and the lifecycle actions. No update: a load's parts change
+        only through the service (Add parts / remove-part).
       properties:
         id:
           type: string
@@ -52407,10 +52380,16 @@ components:
         notes:
           type: string
           description: Operator notes captured at batch start / during the run.
+        membership_changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchMembershipChange'
+          readOnly: true
       required:
       - completed_at
       - completed_by
       - id
+      - membership_changes
       - sealed_at
       - started_at
       - started_by
@@ -52419,11 +52398,9 @@ components:
     BatchExecutionRequest:
       type: object
       description: |-
-        Minimal BatchExecution shape for the lifecycle viewset.
-
-        The viewset only exposes list/retrieve + the seal action in this
-        iteration; write semantics live on the seal service, not on the
-        serializer.
+        BatchExecution shape for the lifecycle viewset: create (parts named at the
+        start), list/retrieve, and the lifecycle actions. No update: a load's parts change
+        only through the service (Add parts / remove-part).
       properties:
         work_order:
           type: string
@@ -52445,6 +52422,26 @@ components:
       required:
       - step
       - work_order
+    BatchMembershipChange:
+      type: object
+      properties:
+        serial:
+          type: string
+        change:
+          $ref: '#/components/schemas/ChangeEnum'
+        by:
+          type: string
+        at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+      required:
+      - at
+      - by
+      - change
+      - reason
+      - serial
     BatchMembershipRequestRequest:
       type: object
       description: |-
@@ -53935,6 +53932,14 @@ components:
         * `NORMAL` - Normal
         * `HIGH` - High
         * `CRITICAL` - Critical
+    ChangeEnum:
+      enum:
+      - added
+      - removed
+      type: string
+      description: |-
+        * `added` - added
+        * `removed` - removed
     ChartTypeEnum:
       enum:
       - XBAR_R
@@ -69529,32 +69534,6 @@ components:
           type: string
         archived:
           type: boolean
-    PatchedBatchExecutionRequest:
-      type: object
-      description: |-
-        Minimal BatchExecution shape for the lifecycle viewset.
-
-        The viewset only exposes list/retrieve + the seal action in this
-        iteration; write semantics live on the seal service, not on the
-        serializer.
-      properties:
-        work_order:
-          type: string
-          format: uuid
-          description: The WorkOrder whose parts make up this batch.
-        step:
-          type: string
-          format: uuid
-          description: The Step the batch is running through.
-        parts:
-          type: array
-          items:
-            type: string
-            format: uuid
-          description: Parts that are members of this batch.
-        notes:
-          type: string
-          description: Operator notes captured at batch start / during the run.
     PatchedCAPARequest:
       type: object
       description: CAPA main serializer
@@ -78380,10 +78359,9 @@ components:
           format: uuid
         reason:
           type: string
-          minLength: 1
+          description: Needed only once the part's step is completed.
       required:
       - part
-      - reason
     RemoveBatchPartResponse:
       type: object
       properties:

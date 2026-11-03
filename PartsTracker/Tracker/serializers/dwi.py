@@ -447,12 +447,24 @@ class SamplingDecisionSerializer(serializers.ModelSerializer):
 # BatchExecution — read/list serializer for the seal lifecycle viewset
 # =============================================================================
 
-class BatchExecutionSerializer(SecureModelMixin):
-    """Minimal BatchExecution shape for the lifecycle viewset.
+class BatchMembershipChangeSerializer(serializers.Serializer):
+    serial = serializers.CharField()
+    change = serializers.ChoiceField(choices=['added', 'removed'])
+    by = serializers.CharField(allow_blank=True)
+    at = serializers.DateTimeField()
+    reason = serializers.CharField(allow_blank=True)
 
-    The viewset only exposes list/retrieve + the seal action in this
-    iteration; write semantics live on the seal service, not on the
-    serializer."""
+
+class BatchExecutionSerializer(SecureModelMixin):
+    """BatchExecution shape for the lifecycle viewset: create (parts named at the
+    start), list/retrieve, and the lifecycle actions. No update: a load's parts change
+    only through the service (Add parts / remove-part)."""
+    membership_changes = serializers.SerializerMethodField()
+
+    @extend_schema_field(BatchMembershipChangeSerializer(many=True))
+    def get_membership_changes(self, obj):
+        from Tracker.services.dwi.batch_lifecycle import membership_changes
+        return BatchMembershipChangeSerializer(membership_changes(obj), many=True).data
 
     class Meta:
         from Tracker.models import BatchExecution
@@ -460,6 +472,7 @@ class BatchExecutionSerializer(SecureModelMixin):
         fields = [
             'id', 'work_order', 'step', 'parts', 'started_by',
             'started_at', 'sealed_at', 'completed_at', 'completed_by', 'notes',
+            'membership_changes',
         ]
         # started_by is stamped from request.user in the viewset, not sent by
         # the client; sealed/completed timestamps are lifecycle-service-owned.

@@ -170,6 +170,60 @@ class BatchCaptureWritePathTests(TenantContextMixin, VectorTestCase):
         self.batch.refresh_from_db()
         self.assertIsNotNone(self.batch.completed_at)
 
+    def test_membership_is_corrected_freely_until_the_parts_step_completes(self):
+        """User decision 2026-11-03: a forgotten piece goes in, a wrong one comes out, no
+        reason needed, while the parts' step is still being worked; recorded."""
+        from django.utils import timezone
+        from Tracker.models import QuarantineDisposition, StepExecution
+        from Tracker.services.dwi.batch_lifecycle import (
+            add_parts_to_batch, membership_changes, remove_part_from_batch,
+        )
+        forgotten = Parts.objects.create(tenant=self.tenant, ERP_id="P-BC-9", part_type=self.part_type,
+                                         work_order=self.wo, step=self.step)
+        elsewhere = Parts.objects.create(tenant=self.tenant, ERP_id="P-BC-X", part_type=self.part_type,
+                                         work_order=self.wo, step=Steps.objects.create(
+                                             tenant=self.tenant, part_type=self.part_type, name="Other", step_type="TASK"))
+        self.batch.sealed_at = timezone.now()
+        self.batch.save(update_fields=["sealed_at"])
+        add_parts_to_batch(batch=self.batch, parts=[forgotten], user=self.user)  # running: still open
+        self.assertIn(forgotten, self.batch.parts.all())
+        with self.assertRaisesMessage(ValidationError, "isn't at"):
+            add_parts_to_batch(batch=self.batch, parts=[elsewhere], user=self.user)
+
+        for p in self.parts:
+            StepExecution.objects.create(tenant=self.tenant, part=p, step=self.step, status="IN_PROGRESS")
+        self.assertEqual(remove_part_from_batch(batch=self.batch, part=self.parts[1], user=self.user), "REMOVED")
+        self.assertEqual([(c["serial"], c["change"]) for c in membership_changes(self.batch)],
+                         [("P-BC-9", "added"), ("P-BC-1", "removed")])
+
+        # A load contained by a failed cycle holds a newcomer too.
+        QuarantineDisposition.objects.create(tenant=self.tenant, batch_execution=self.batch,
+                                             step=self.step, current_state="OPEN")
+        late = Parts.objects.create(tenant=self.tenant, ERP_id="P-BC-8", part_type=self.part_type,
+                                    work_order=self.wo, step=self.step, part_status="IN_PROGRESS")
+        add_parts_to_batch(batch=self.batch, parts=[late], user=self.user)
+        late.refresh_from_db()
+        self.assertEqual(late.part_status, "QUARANTINED")
+
+        # A completed load takes no new parts.
+        self.batch.completed_at = timezone.now()
+        self.batch.save(update_fields=["completed_at"])
+        another = Parts.objects.create(tenant=self.tenant, ERP_id="P-BC-7", part_type=self.part_type,
+                                       work_order=self.wo, step=self.step)
+        with self.assertRaisesMessage(ValidationError, "complete"):
+            add_parts_to_batch(batch=self.batch, parts=[another], user=self.user)
+
+    def test_a_loads_parts_cant_be_rewritten_by_patch(self):
+        from rest_framework.test import APIClient
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
+        c = APIClient()
+        c.force_authenticate(user=self.user)
+        c.credentials(HTTP_X_TENANT_ID=str(self.tenant.id))
+        r = c.patch(f"/api/BatchExecutions/{self.batch.id}/", {"parts": []}, format="json")
+        self.assertEqual(r.status_code, 405, r.content)
+        self.assertEqual(self.batch.parts.count(), 2)
+
     def test_seal_fails_without_batch_completion(self):
         with self.assertRaises(ValidationError):
             seal_batch(batch=self.batch, user=self.user)

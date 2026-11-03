@@ -26,8 +26,10 @@ import { toast } from "sonner";
 import {
     invalidateBatches,
     useBatchesForWoStep,
+    useAddBatchParts,
     useCompleteBatchExecution,
     useCreateBatchExecution,
+    useRemoveBatchPart,
     useSealBatchExecution,
 } from "@/hooks/useBatchExecutions";
 import { useSubsteps, useSubmitSubstep, type Substep } from "@/hooks/useSubsteps";
@@ -95,6 +97,7 @@ export function BatchPanel({
         completedBatches.flatMap((b) => (b.parts ?? []).map((p) => String(p))),
     );
     const availableParts = cohortParts.filter((p) => !openBatchedIds.has(p.id));
+    const labelById = new Map(cohortParts.map((p) => [p.id, p.label]));
     // "Fresh" = in no batch at all. Coverage + select-all key off these so a
     // part sitting in a sealed load isn't counted/treated-batched.
     const freshParts = availableParts.filter((p) => !sealedBatchedIds.has(p.id) && !p.held);
@@ -261,6 +264,8 @@ export function BatchPanel({
                                         </Button>
                                     )}
                                 </div>
+                                <LoadMembers batch={b} labels={labelById}
+                                    candidates={availableParts.filter((p) => !p.held)} onChange={onChange} />
                                 <BatchCaptureSection
                                     batchId={b.id}
                                     stepId={stepId}
@@ -296,6 +301,8 @@ export function BatchPanel({
                                         Complete load
                                     </Button>
                                 </div>
+                                <LoadMembers batch={b} labels={labelById}
+                                    candidates={availableParts.filter((p) => !p.held)} onChange={onChange} />
                                 <BatchCaptureSection
                                     batchId={b.id}
                                     stepId={stepId}
@@ -404,6 +411,101 @@ export function BatchPanel({
                     </Button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+type LoadRow = {
+    id: string;
+    parts?: (string | number)[];
+    membership_changes?: { serial: string; change: string; by: string; at: string; reason: string }[];
+};
+
+/**
+ * A load's parts, correctable until the step is completed (user decision 2026-11-03):
+ * take a wrong piece out (×), put a forgotten one in (Add parts), no reason needed —
+ * each change is recorded, and listed under the parts. A part whose step is already
+ * completed comes out through the traveller's "Take this part out", with a reason.
+ */
+function LoadMembers({ batch, labels, candidates, onChange }: {
+    batch: LoadRow;
+    labels: Map<string, string>;
+    candidates: CohortPart[];
+    onChange?: () => void;
+}) {
+    const add = useAddBatchParts();
+    const remove = useRemoveBatchPart();
+    const [adding, setAdding] = useState(false);
+    const [picked, setPicked] = useState<Set<string>>(new Set());
+    const members = (batch.parts ?? []).map(String);
+    const say = (err: unknown) => toast.error("The load's parts didn't change", {
+        description: (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Try again.",
+    });
+    const changes = batch.membership_changes ?? [];
+
+    return (
+        <div className="space-y-1.5 border-t px-3 py-2">
+            <div className="flex flex-wrap items-center gap-1">
+                {members.map((id) => (
+                    <span key={id} className="inline-flex items-center gap-1 rounded border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px]">
+                        {labels.get(id) ?? id.slice(0, 8)}
+                        {members.length > 1 && (
+                            <button type="button" className="text-muted-foreground hover:text-destructive"
+                                aria-label={`Take ${labels.get(id) ?? "this part"} out of the load`}
+                                title="Take it out of the load — it wasn't put in"
+                                disabled={remove.isPending}
+                                onClick={() => remove.mutate({ id: batch.id, part: id },
+                                    { onSuccess: () => onChange?.(), onError: say })}>
+                                ×
+                            </button>
+                        )}
+                    </span>
+                ))}
+                {candidates.length > 0 && (
+                    <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+                        onClick={() => { setAdding((v) => !v); setPicked(new Set()); }}>
+                        {adding ? "Cancel" : "Add parts"}
+                    </Button>
+                )}
+            </div>
+            {adding && (
+                <div className="space-y-1 rounded border border-dashed p-2">
+                    <p className="text-[11px] text-muted-foreground">
+                        In the basket but not on the load? Tick them. They ride this load's cycle.
+                    </p>
+                    <div className="max-h-32 space-y-0.5 overflow-auto">
+                        {candidates.map((p) => (
+                            <label key={p.id} className="flex cursor-pointer items-center gap-2 text-xs">
+                                <input type="checkbox" className="h-3.5 w-3.5" checked={picked.has(p.id)}
+                                    onChange={() => setPicked((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(p.id)) next.delete(p.id); else next.add(p.id);
+                                        return next;
+                                    })} />
+                                <span className="font-mono">{p.label}</span>
+                            </label>
+                        ))}
+                    </div>
+                    <Button type="button" size="sm" disabled={!picked.size || add.isPending}
+                        onClick={() => add.mutate({ id: batch.id, parts: [...picked] }, {
+                            onSuccess: () => { setAdding(false); setPicked(new Set()); onChange?.(); },
+                            onError: say,
+                        })}>
+                        Add {picked.size || ""} to the load
+                    </Button>
+                </div>
+            )}
+            {changes.length > 0 && (
+                <ul className="space-y-0.5 text-[11px] text-muted-foreground">
+                    {changes.map((c, i) => (
+                        <li key={i}>
+                            {c.serial} {c.change === "added" ? "added" : "taken out"} by {c.by || "someone"}
+                            {" · "}{new Date(c.at).toLocaleString()}
+                            {c.reason ? ` — ${c.reason}` : ""}
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 }
