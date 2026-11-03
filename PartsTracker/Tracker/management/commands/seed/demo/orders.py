@@ -835,9 +835,12 @@ class DemoOrdersSeeder(BaseSeeder):
             self.log("  No user available for started_by; skipping batch executions", warning=True)
             return {'batch_executions': 0}
 
+        # Ordered: unordered, Postgres returned the parts in whatever order it liked, so
+        # which units shared a basket — and so which ones a failed cycle contained —
+        # changed from run to run (the demo-seed test's 5 != 6 flake, 2026-11-03).
         parts = Parts.objects.filter(
             tenant=self.tenant, ERP_id__startswith='INJ-'
-        ).select_related('work_order', 'step')
+        ).select_related('work_order', 'step').order_by('work_order__ERP_id', 'ERP_id')
 
         past = defaultdict(list)  # parts that already cleaned -> sealed loads
         at = defaultdict(list)    # parts still at Cleaning -> one open load
@@ -939,16 +942,27 @@ class DemoOrdersSeeder(BaseSeeder):
 
         _collect(substep.body_blocks)
 
+        # Ordered fully: every work order's first load starts at the same backdated
+        # time, so `started_at` alone left the tie — and with it which load ran hot —
+        # to the database.
         batches = list(BatchExecution.objects.filter(
             tenant=self.tenant, step=wash, sealed_at__isnull=False,
-        ).order_by('started_at'))
+        ).select_related('work_order').order_by('started_at', 'work_order__ERP_id', 'id'))
+
+        # One load runs hot (71 > USL) → a FAIL cycle, and a failed cycle CONTAINS its
+        # load: every member still in production is quarantined (batch_disposition). So
+        # the hot load is one whose units have all moved past containment (shipped or
+        # completed): the FAIL verdict has demo data without quarantining units other
+        # exhibits rely on — a live unit in it left a Ship-step injector quarantined.
+        from Tracker.services.qms.batch_disposition import _QUARANTINABLE
+        contained_none = [be for be in batches
+                          if not be.parts.filter(part_status__in=_QUARANTINABLE).exists()]
+        hot_load = (contained_none or batches)[-1] if len(batches) > 1 else None
 
         count = 0
         for i, be in enumerate(batches):
-            # Mostly in-spec (58–62 within 55–65); the last sealed load runs hot
-            # (71 > USL) → a FAIL cycle, which records the verdict but quarantines
-            # no individual part (the batch spans the whole load).
-            hot = (i == len(batches) - 1 and len(batches) > 1)
+            # Mostly in-spec (58–62 within 55–65); one load runs hot.
+            hot = be is hot_load
             temp = 71.0 if hot else 58.0 + (i % 5)
             caps = []
             for node_type, attrs in schema_nodes:

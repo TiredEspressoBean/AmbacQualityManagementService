@@ -42,8 +42,14 @@ class DemoSeedFlowsTests(TestCase):
 
     def test_the_shipping_queue_has_work_and_history(self):
         with tenant_context(self.tenant.id):
-            queue = {g["order_number"]: len(g["parts"]) for g in ready_to_ship(self.tenant)}
-            self.assertEqual(queue.get("ORD-2024-0042"), 6)
+            groups = ready_to_ship(self.tenant)
+            queue = {g["order_number"]: len(g["parts"]) for g in groups}
+            ready = {p["erp_id"] for g in groups for p in g["parts"]}
+            # Name the unit that dropped out, not just the count (it has flaked 5 != 6).
+            at_ship = Parts.objects.filter(ERP_id__startswith="INJ-0042-", step__name="Ship")
+            missing = [(p.ERP_id, p.part_status, p.step.name) for p in at_ship.select_related("step")
+                       if p.ERP_id not in ready and p.part_status != "SHIPPED"]
+            self.assertEqual(queue.get("ORD-2024-0042"), 6, f"not ready: {missing}")
             great_lakes = Parts.objects.filter(ERP_id__startswith="INJ-0038-")
             self.assertEqual(great_lakes.filter(part_status="SHIPPED", customer_shipment__isnull=False).count(), 11)
             # 0038-010 was scrapped at inspection; a scrapped unit never went out.
