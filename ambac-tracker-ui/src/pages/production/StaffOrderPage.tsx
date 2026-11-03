@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api/generated";
 import { parseDateOnly } from "@/lib/date-only";
 import { OrderLinesPanel } from "@/components/orders/OrderLinesPanel";
+import { FULFILMENT_LABEL, type Fulfilment } from "@/hooks/useOrderLines";
 import { BlockerChips, ProgressBar, ProjectionText } from "@/components/orders/OrderBookBits";
 import { useOrderBookDetail } from "@/hooks/useOrderBook";
 import { useOrderDetails } from "@/hooks/useOrderDetails";
@@ -99,6 +100,11 @@ export function StaffOrderPage() {
                                     <tr key={ln.line_id} className="border-t">
                                         <td className="py-1.5">L{ln.line_number}</td>
                                         <td className="py-1.5">{ln.quantity} × {ln.part_type_name}
+                                            {ln.fulfilment && ln.fulfilment !== "NEW_BUILD" && (
+                                                <Badge variant="secondary" className="ml-2">
+                                                    {FULFILMENT_LABEL[ln.fulfilment as Fulfilment] ?? ln.fulfilment}
+                                                </Badge>
+                                            )}
                                             {ln.remaining > 0 && (
                                                 <Badge variant="outline" className="ml-2 border-amber-500/60 text-amber-700 dark:text-amber-400">
                                                     {ln.remaining} unplanned

@@ -98,3 +98,25 @@ def short_closed_shortfall(line) -> int:
         built = Parts.objects.filter(work_order=wo, part_status__in=PROGRESS_DONE_STATUSES).count()
         short += max(0, (wo.quantity or 0) - built - wo.short_close_returned_quantity)
     return short
+
+
+def fulfilment_warning(line) -> str | None:
+    """Where the customer's cores received for this line's order and part type disagree
+    with the line's fulfilment, say so — or None. A consistency check, not the rule: the
+    line's own setting decides whether it uses up new-build forecast (2026-11-03)."""
+    from Tracker.models import Core
+    modes = set(Core.objects.filter(  # tenant-safe: rows keyed to one in-tenant order
+        part__order_id=line.order_id, part__part_type_id=line.part_type_id,
+        part__archived=False).values_list('fulfilment_mode', flat=True))
+    modes.discard(None)
+    if not modes:
+        return None
+    label = dict(type(line)._meta.get_field('fulfilment').choices)
+    if line.fulfilment == 'NEW_BUILD':
+        return ("Cores for this order have been received ("
+                + ", ".join(sorted(label.get(m, m).split(' —')[0] for m in modes))
+                + "), but this line is a new build. If it's remanufacture, change its fulfilment.")
+    if line.fulfilment not in modes:
+        return (f"This line is {label[line.fulfilment].split(' —')[0]}, but the cores "
+                "received for it are " + ", ".join(sorted(label.get(m, m).split(' —')[0] for m in modes)) + ".")
+    return None

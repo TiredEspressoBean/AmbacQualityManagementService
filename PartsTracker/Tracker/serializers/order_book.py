@@ -61,6 +61,8 @@ class OrderLineViewSerializer(serializers.Serializer):
     due_date = serializers.DateField(allow_null=True)
     status = serializers.CharField()
     progress = OrderProgressSerializer()
+    # How the customer is served: NEW_BUILD / REPAIR_RETURN / EXCHANGE.
+    fulfilment = serializers.CharField()
 
 
 class OrderWorkOrderViewSerializer(serializers.Serializer):

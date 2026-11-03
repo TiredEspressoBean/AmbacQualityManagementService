@@ -25297,6 +25297,13 @@ export interface components {
             was_pinned: boolean;
         };
         /**
+         * @description * `NEW_BUILD` - New build
+         *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+         *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+         * @enum {string}
+         */
+        FulfilmentEnum: "NEW_BUILD" | "EXCHANGE" | "REPAIR_RETURN";
+        /**
          * @description * `EXCHANGE` - Exchange — customer gets a unit from stock
          *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
          * @enum {string}
@@ -27540,6 +27547,15 @@ export interface components {
             readonly short_closed_shortfall: number;
             /** Format: date */
             due_date?: string | null;
+            /**
+             * @description New build, or remanufacture of the customer's unit (repair & return / exchange). Reman lines don't use up the new-build forecast.
+             *
+             *     * `NEW_BUILD` - New build
+             *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+             *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+             */
+            fulfilment?: components["schemas"]["FulfilmentEnum"];
+            readonly fulfilment_warning: string | null;
             status?: components["schemas"]["OrderLineStatusEnum"];
             notes?: string;
             /** Format: date-time */
@@ -27567,6 +27583,14 @@ export interface components {
             quantity: number;
             /** Format: date */
             due_date?: string | null;
+            /**
+             * @description New build, or remanufacture of the customer's unit (repair & return / exchange). Reman lines don't use up the new-build forecast.
+             *
+             *     * `NEW_BUILD` - New build
+             *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+             *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+             */
+            fulfilment?: components["schemas"]["FulfilmentEnum"];
             status?: components["schemas"]["OrderLineStatusEnum"];
             notes?: string;
             archived?: boolean;
@@ -27607,6 +27631,7 @@ export interface components {
             due_date: string | null;
             status: string;
             progress: components["schemas"]["OrderProgress"];
+            fulfilment: string;
         };
         OrderProgress: {
             ordered: number;
@@ -31333,6 +31358,14 @@ export interface components {
             quantity?: number;
             /** Format: date */
             due_date?: string | null;
+            /**
+             * @description New build, or remanufacture of the customer's unit (repair & return / exchange). Reman lines don't use up the new-build forecast.
+             *
+             *     * `NEW_BUILD` - New build
+             *     * `EXCHANGE` - Exchange — customer gets a unit from stock
+             *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+             */
+            fulfilment?: components["schemas"]["FulfilmentEnum"];
             status?: components["schemas"]["OrderLineStatusEnum"];
             notes?: string;
             archived?: boolean;
@@ -36352,6 +36385,7 @@ export interface components {
             month: string | null;
             overdue: boolean;
             tentative: boolean;
+            fulfilment: string;
             quantity: number;
             shipped: number;
             to_ship: number;

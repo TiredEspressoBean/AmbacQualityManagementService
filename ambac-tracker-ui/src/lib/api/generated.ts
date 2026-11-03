@@ -5477,6 +5477,7 @@ export type OrderLineView = {
   due_date: string | null;
   status: string;
   progress: OrderProgress;
+  fulfilment: string;
 };
 export type OrderWorkOrderView = {
   work_order_id: string;
@@ -5520,12 +5521,30 @@ export type OrderLine = {
   remaining_quantity: number;
   short_closed_shortfall: number;
   due_date?: (string | null) | undefined;
+  fulfilment?: /**
+     * New build, or remanufacture of the customer's unit (repair & return / exchange). Reman lines don't use up the new-build forecast.
+    
+    * `NEW_BUILD` - New build
+    * `EXCHANGE` - Exchange — customer gets a unit from stock
+    * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+     */
+  FulfilmentEnum | undefined;
+  fulfilment_warning: string | null;
   status?: OrderLineStatusEnum | undefined;
   notes?: string | undefined;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
 };
+export type FulfilmentEnum =
+  /**
+   * * `NEW_BUILD` - New build
+   * `EXCHANGE` - Exchange — customer gets a unit from stock
+   * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+   *
+   * @enum NEW_BUILD, EXCHANGE, REPAIR_RETURN
+   */
+  "NEW_BUILD" | "EXCHANGE" | "REPAIR_RETURN";
 export type OrderLineStatusEnum =
   /**
    * * `OPEN` - Open
@@ -5550,6 +5569,14 @@ export type OrderLineRequest = {
    */
   quantity: number;
   due_date?: (string | null) | undefined;
+  fulfilment?: /**
+     * New build, or remanufacture of the customer's unit (repair & return / exchange). Reman lines don't use up the new-build forecast.
+    
+    * `NEW_BUILD` - New build
+    * `EXCHANGE` - Exchange — customer gets a unit from stock
+    * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+     */
+  FulfilmentEnum | undefined;
   status?: OrderLineStatusEnum | undefined;
   notes?: string | undefined;
   archived?: boolean | undefined;
@@ -13908,6 +13935,14 @@ export type PatchedOrderLineRequest = Partial<{
    */
   quantity: number;
   due_date: string | null;
+  /**
+     * New build, or remanufacture of the customer's unit (repair & return / exchange). Reman lines don't use up the new-build forecast.
+    
+    * `NEW_BUILD` - New build
+    * `EXCHANGE` - Exchange — customer gets a unit from stock
+    * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+     */
+  fulfilment: FulfilmentEnum;
   status: OrderLineStatusEnum;
   notes: string;
   archived: boolean;
@@ -17319,6 +17354,7 @@ export type ShipRequirement = {
   month: string | null;
   overdue: boolean;
   tentative: boolean;
+  fulfilment: string;
   quantity: number;
   shipped: number;
   to_ship: number;
@@ -22974,6 +23010,7 @@ const OrderLineView = z.object({
   due_date: z.string().nullable(),
   status: z.string(),
   progress: OrderProgress,
+  fulfilment: z.string(),
 });
 const OrderWorkOrderView = z.object({
   work_order_id: z.string(),
@@ -23013,6 +23050,7 @@ const OrderBook = z.object({
   rows: z.array(OrderBookRow),
   on_time: OnTimeDelivery,
 });
+const FulfilmentEnum = z.enum(["NEW_BUILD", "EXCHANGE", "REPAIR_RETURN"]);
 const OrderLineStatusEnum = z.enum(["OPEN", "CANCELLED"]);
 const OrderLine = z.object({
   id: z.string().uuid(),
@@ -23025,6 +23063,8 @@ const OrderLine = z.object({
   remaining_quantity: z.number().int(),
   short_closed_shortfall: z.number().int(),
   due_date: z.string().nullish(),
+  fulfilment: FulfilmentEnum.optional(),
+  fulfilment_warning: z.string().nullable(),
   status: OrderLineStatusEnum.optional(),
   notes: z.string().optional(),
   created_at: z.string().datetime({ offset: true }),
@@ -23043,6 +23083,7 @@ const OrderLineRequest = z.object({
   part_type: z.string().uuid(),
   quantity: z.number().int().gte(0).lte(2147483647),
   due_date: z.string().nullish(),
+  fulfilment: FulfilmentEnum.optional(),
   status: OrderLineStatusEnum.optional(),
   notes: z.string().optional(),
   archived: z.boolean().optional(),
@@ -23054,6 +23095,7 @@ const PatchedOrderLineRequest = z
     part_type: z.string().uuid(),
     quantity: z.number().int().gte(0).lte(2147483647),
     due_date: z.string().nullable(),
+    fulfilment: FulfilmentEnum,
     status: OrderLineStatusEnum,
     notes: z.string(),
     archived: z.boolean(),
@@ -25525,6 +25567,7 @@ const ShipRequirement = z.object({
   month: z.string().nullable(),
   overdue: z.boolean(),
   tentative: z.boolean(),
+  fulfilment: z.string(),
   quantity: z.number().int(),
   shipped: z.number().int(),
   to_ship: z.number().int(),
@@ -30421,6 +30464,7 @@ export const schemas = {
   OrderDetail,
   OnTimeDelivery,
   OrderBook,
+  FulfilmentEnum,
   OrderLineStatusEnum,
   OrderLine,
   PaginatedOrderLineList,

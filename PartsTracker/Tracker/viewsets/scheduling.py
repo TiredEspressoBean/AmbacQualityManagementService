@@ -674,6 +674,8 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "month": serializers.CharField(allow_null=True),
                 "overdue": serializers.BooleanField(),
                 "tentative": serializers.BooleanField(),
+                # NEW_BUILD / REPAIR_RETURN / EXCHANGE — the line's fulfilment.
+                "fulfilment": serializers.CharField(),
                 "quantity": serializers.IntegerField(),
                 "shipped": serializers.IntegerField(),
                 "to_ship": serializers.IntegerField(),

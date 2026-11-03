@@ -10,7 +10,7 @@
  *  to yet, which is exactly the work that is invisible on the schedule.
  */
 import { useState } from "react";
-import { Loader2, PackagePlus, Plus, X } from "lucide-react";
+import { AlertTriangle, Loader2, PackagePlus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,26 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  useCancelOrderLine, useCreateOrderLine, useOrderLines, usePlanOrderLine,
-  type OrderLine,
+  FULFILMENT_LABEL, useCancelOrderLine, useCreateOrderLine, useOrderLines, usePlanOrderLine,
+  useSetOrderLineFulfilment, type Fulfilment, type OrderLine,
 } from "@/hooks/useOrderLines";
+
+/** How the customer is served. Reman lines (repair & return, exchange) never use up the
+ *  new-build forecast, so the choice is made when the line is entered. */
+function FulfilmentSelect({ value, onChange, disabled }: {
+  value: Fulfilment; onChange: (v: Fulfilment) => void; disabled?: boolean;
+}) {
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as Fulfilment)} disabled={disabled}>
+      <SelectTrigger className="h-7 w-36 text-xs" aria-label="Fulfilment"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        {(Object.keys(FULFILMENT_LABEL) as Fulfilment[]).map((k) => (
+          <SelectItem key={k} value={k}>{FULFILMENT_LABEL[k]}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 
@@ -42,6 +59,7 @@ function AddLineForm({ orderId, nextLineNumber, onDone }: {
   const [partType, setPartType] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [dueDate, setDueDate] = useState("");
+  const [fulfilment, setFulfilment] = useState<Fulfilment>("NEW_BUILD");
 
   const submit = () => {
     const qty = Number(quantity);
@@ -49,9 +67,9 @@ function AddLineForm({ orderId, nextLineNumber, onDone }: {
     create.mutate(
       {
         line_number: nextLineNumber, part_type: partType, quantity: qty,
-        due_date: dueDate || null,
+        due_date: dueDate || null, fulfilment,
       },
-      { onSuccess: () => { setPartType(""); setQuantity("1"); setDueDate(""); onDone(); } },
+      { onSuccess: () => { setPartType(""); setQuantity("1"); setDueDate(""); setFulfilment("NEW_BUILD"); onDone(); } },
     );
   };
 
@@ -69,6 +87,7 @@ function AddLineForm({ orderId, nextLineNumber, onDone }: {
             ))}
           </SelectContent>
         </Select>
+        <div className="mt-1"><FulfilmentSelect value={fulfilment} onChange={setFulfilment} /></div>
       </td>
       <td className="px-3 py-2">
         <Input className="h-8 w-20 text-right" type="number" min={1}
@@ -97,10 +116,11 @@ function AddLineForm({ orderId, nextLineNumber, onDone }: {
   );
 }
 
-function LineRow({ line, orderId, canPlan, readOnly }: {
-  line: OrderLine; orderId: string; canPlan: boolean; readOnly: boolean;
+function LineRow({ line, orderId, canPlan, canEdit, readOnly }: {
+  line: OrderLine; orderId: string; canPlan: boolean; canEdit: boolean; readOnly: boolean;
 }) {
   const plan = usePlanOrderLine(orderId);
+  const setFulfilment = useSetOrderLineFulfilment(orderId);
   const cancel = useCancelOrderLine(orderId);
   const [planning, setPlanning] = useState(false);
   const remaining = line.remaining_quantity;
@@ -117,6 +137,23 @@ function LineRow({ line, orderId, canPlan, readOnly }: {
         </span>
         {cancelled && (
           <Badge variant="outline" className="ml-2 text-[10px]">Cancelled</Badge>
+        )}
+        {!readOnly && (
+          <div className="mt-1 flex items-center gap-1.5">
+            {canEdit && !cancelled ? (
+              <FulfilmentSelect value={line.fulfilment} disabled={setFulfilment.isPending}
+                onChange={(f) => setFulfilment.mutate({ id: line.id, fulfilment: f })} />
+            ) : (
+              <span className="text-xs text-muted-foreground">{FULFILMENT_LABEL[line.fulfilment]}</span>
+            )}
+            {/* Received cores disagree with the line: worth a look, not a block. */}
+            {line.fulfilment_warning && (
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400"
+                             aria-label={line.fulfilment_warning}>
+                <title>{line.fulfilment_warning}</title>
+              </AlertTriangle>
+            )}
+          </div>
         )}
       </td>
       <td className="px-3 py-2 text-right tabular-nums">{line.quantity}</td>
@@ -261,7 +298,7 @@ export function OrderLinesPanel({ orderId, readOnly = false }: {
               <tbody>
                 {lines.map((l) => (
                   <LineRow key={l.id} line={l} orderId={orderId} canPlan={canPlan}
-                           readOnly={readOnly} />
+                           canEdit={!readOnly && has("change_orderline")} readOnly={readOnly} />
                 ))}
                 {adding && (
                   <AddLineForm orderId={orderId} nextLineNumber={nextLineNumber}

@@ -26,8 +26,18 @@ export type OrderLine = {
   /** Units planned on this line's short-closed work orders that were never built. */
   short_closed_shortfall: number;
   due_date: string | null;
+  /** How the customer is served: a new build, or remanufacture of their unit. Reman
+   *  lines never use up the new-build forecast. */
+  fulfilment: Fulfilment;
+  /** Received cores disagree with `fulfilment` — a consistency check, not the rule. */
+  fulfilment_warning: string | null;
   status: "OPEN" | "CANCELLED";
   notes: string;
+};
+
+export type Fulfilment = "NEW_BUILD" | "REPAIR_RETURN" | "EXCHANGE";
+export const FULFILMENT_LABEL: Record<Fulfilment, string> = {
+  NEW_BUILD: "New build", REPAIR_RETURN: "Repair & return", EXCHANGE: "Exchange",
 };
 
 export const orderLinesOptions = (orderId: string) =>
@@ -53,7 +63,7 @@ export function useCreateOrderLine(orderId: string) {
   return useMutation({
     mutationFn: (v: {
       line_number: number; part_type: string; quantity: number;
-      due_date?: string | null; notes?: string;
+      due_date?: string | null; notes?: string; fulfilment?: Fulfilment;
     }) => api.api_OrderLines_create({ order: orderId, ...v } as never),
     onSuccess: () => {
       qc.invalidateQueries(matchKey(["order-lines", orderId]));
@@ -67,6 +77,21 @@ export function useCreateOrderLine(orderId: string) {
       const first = d && Object.entries(d)[0];
       toast.error(first ? `${first[0]}: ${String(first[1])}` : "Couldn't add the line");
     },
+  });
+}
+
+/** Change how a line is fulfilled (new build vs remanufacture). */
+export function useSetOrderLineFulfilment(orderId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, fulfilment }: { id: string; fulfilment: Fulfilment }) =>
+      api.api_OrderLines_partial_update({ fulfilment } as never, { params: { id } } as never),
+    onSuccess: () => {
+      qc.invalidateQueries(matchKey(["order-lines", orderId]));
+      qc.invalidateQueries(matchKey(["order-book"]));
+      qc.invalidateQueries(matchKey(["planning"]));
+    },
+    onError: (e: unknown) => toast.error(apiErrorMessage(e) ?? "Couldn't change the line"),
   });
 }
 

@@ -549,6 +549,8 @@ def ship_lane(tenant) -> list:
             'month': f"{ln.due_date:%Y-%m}" if ln.due_date else None,
             'overdue': bool(ln.due_date and ln.due_date < today),
             'tentative': order.order_status == 'RFI',
+            # New build, or remanufacture of the customer's unit.
+            'fulfilment': ln.fulfilment,
             'quantity': ln.quantity,
             'shipped': ln.shipped,
             'to_ship': to_ship,

@@ -26,7 +26,10 @@ from django.utils import timezone
 from PartsTrackerApp import settings
 from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
 
-from .core import SecureModel, User, Companies, ClassificationLevel, ExternalAPIOrderIdentifier
+from .core import (
+    FULFILMENT_MODE_CHOICES, SecureModel, User, Companies, ClassificationLevel,
+    ExternalAPIOrderIdentifier,
+)
 from .qms import VoidableModel
 
 # Import Standard tier models for backward compatibility within this module
@@ -2820,6 +2823,17 @@ class OrderLine(SecureModel):
     # dates, and the header's `estimated_completion` cannot express that.
     due_date = models.DateField(null=True, blank=True)
 
+    # How the customer is served on this line (2026-11-03). A new build, or remanufacture
+    # of the customer's own unit — repair & return, or an exchange from stock against
+    # their core — with the same modes a core carries. Set when the line is entered, so
+    # a reman line never uses up the NEW-BUILD forecast, from entry rather than from the
+    # day its cores arrive (an exchange's core may arrive after the due date).
+    fulfilment = models.CharField(
+        max_length=20, default='NEW_BUILD',
+        choices=[('NEW_BUILD', 'New build'), *FULFILMENT_MODE_CHOICES],
+        help_text="New build, or remanufacture of the customer's unit (repair & return / "
+                  "exchange). Reman lines don't use up the new-build forecast.")
+
     status = models.CharField(
         max_length=20, choices=OrderLineStatus.choices,
         default=OrderLineStatus.OPEN)
@@ -2889,6 +2903,10 @@ class OrderLine(SecureModel):
                 return pegged + take
             pool -= take
         return pegged
+
+    @property
+    def is_reman(self) -> bool:
+        return self.fulfilment != 'NEW_BUILD'
 
     @property
     def remaining_quantity(self) -> int:

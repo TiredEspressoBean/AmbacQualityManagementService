@@ -58748,6 +58748,16 @@ components:
       - reason_code
       - step
       - was_pinned
+    FulfilmentEnum:
+      enum:
+      - NEW_BUILD
+      - EXCHANGE
+      - REPAIR_RETURN
+      type: string
+      description: |-
+        * `NEW_BUILD` - New build
+        * `EXCHANGE` - Exchange — customer gets a unit from stock
+        * `REPAIR_RETURN` - Repair & return — this unit goes back to them
     FulfilmentModeEnum:
       enum:
       - EXCHANGE
@@ -63656,6 +63666,19 @@ components:
           type: string
           format: date
           nullable: true
+        fulfilment:
+          allOf:
+          - $ref: '#/components/schemas/FulfilmentEnum'
+          description: |-
+            New build, or remanufacture of the customer's unit (repair & return / exchange). Reman lines don't use up the new-build forecast.
+
+            * `NEW_BUILD` - New build
+            * `EXCHANGE` - Exchange — customer gets a unit from stock
+            * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+        fulfilment_warning:
+          type: string
+          nullable: true
+          readOnly: true
         status:
           $ref: '#/components/schemas/OrderLineStatusEnum'
         notes:
@@ -63672,6 +63695,7 @@ components:
           type: boolean
       required:
       - created_at
+      - fulfilment_warning
       - id
       - line_number
       - order
@@ -63713,6 +63737,15 @@ components:
           type: string
           format: date
           nullable: true
+        fulfilment:
+          allOf:
+          - $ref: '#/components/schemas/FulfilmentEnum'
+          description: |-
+            New build, or remanufacture of the customer's unit (repair & return / exchange). Reman lines don't use up the new-build forecast.
+
+            * `NEW_BUILD` - New build
+            * `EXCHANGE` - Exchange — customer gets a unit from stock
+            * `REPAIR_RETURN` - Repair & return — this unit goes back to them
         status:
           $ref: '#/components/schemas/OrderLineStatusEnum'
         notes:
@@ -63798,8 +63831,11 @@ components:
           type: string
         progress:
           $ref: '#/components/schemas/OrderProgress'
+        fulfilment:
+          type: string
       required:
       - due_date
+      - fulfilment
       - line_id
       - line_number
       - part_type_id
@@ -70381,6 +70417,15 @@ components:
           type: string
           format: date
           nullable: true
+        fulfilment:
+          allOf:
+          - $ref: '#/components/schemas/FulfilmentEnum'
+          description: |-
+            New build, or remanufacture of the customer's unit (repair & return / exchange). Reman lines don't use up the new-build forecast.
+
+            * `NEW_BUILD` - New build
+            * `EXCHANGE` - Exchange — customer gets a unit from stock
+            * `REPAIR_RETURN` - Repair & return — this unit goes back to them
         status:
           $ref: '#/components/schemas/OrderLineStatusEnum'
         notes:
@@ -80023,6 +80068,8 @@ components:
           type: boolean
         tentative:
           type: boolean
+        fulfilment:
+          type: string
         quantity:
           type: integer
         shipped:
@@ -80040,6 +80087,7 @@ components:
       required:
       - customer
       - due_date
+      - fulfilment
       - line_number
       - month
       - note

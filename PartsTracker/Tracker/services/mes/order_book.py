@@ -96,6 +96,8 @@ class LineView:
     due_date: date | None
     status: str
     progress: Progress
+    # NEW_BUILD / REPAIR_RETURN / EXCHANGE.
+    fulfilment: str = 'NEW_BUILD'
 
 
 @dataclass(frozen=True)
@@ -393,7 +395,8 @@ def order_detail(order, user) -> OrderDetail:
             line_id=str(ln.id), line_number=ln.line_number, part_type_id=str(ln.part_type_id),
             part_type_name=ln.part_type.name, quantity=ln.quantity, remaining=ln.remaining_quantity,
             due_date=ln.due_date, status=ln.status,
-            progress=_progress(ln.quantity, ln.planned_quantity, parts)))
+            progress=_progress(ln.quantity, ln.planned_quantity, parts),
+            fulfilment=ln.fulfilment))
 
     wo_views = []
     for w in sorted(wos, key=lambda w: w.ERP_id):

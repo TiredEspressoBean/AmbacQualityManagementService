@@ -172,20 +172,39 @@ class ForecastConsumptionTests(_ForecastFixture, TestCase):
                                  process=self.process, expected_completion=self._mid(self.month))
         self.assertEqual(self._cell()['firm'], 25)
 
-    def test_a_reman_line_claims_no_new_build_forecast(self):
-        """A line whose units come in as the customer's cores is remanufacture, not a
-        new build — it doesn't use up the new-build forecast."""
+    def test_a_reman_line_claims_no_new_build_forecast_from_entry(self):
+        """The line's fulfilment decides, when it is entered — not the day its cores
+        arrive (an exchange's core may come after the due date)."""
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
+        for n, mode in ((1, "REPAIR_RETURN"), (2, "EXCHANGE")):
+            line = self._line(20, self._mid(self.month), n=n)
+            OrderLine.objects.filter(pk=line.pk).update(fulfilment=mode)
+        self._line(10, self._mid(self.month), n=3)            # a new build: claims
+        self.assertEqual((self._cell()["firm"], self._cell()["unclaimed"]), (10, 40))
+
+    def test_reman_work_on_no_line_claims_nothing(self):
+        fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
+        reman = Processes.objects.create(tenant=self.tenant, name="Reman", part_type=self.pt,
+                                         status=ProcessStatus.APPROVED, is_remanufactured=True)
+        WorkOrder.objects.create(tenant=self.tenant, ERP_id="WO-RM", quantity=5, process=reman,
+                                 expected_completion=self._mid(self.month))
+        self.assertEqual(self._cell()["unclaimed"], 50)
+
+    def test_received_cores_on_a_new_build_line_raise_a_warning_not_the_rule(self):
         from Tracker.models import Companies
+        from Tracker.services.mes.order_line import fulfilment_warning
         from Tracker.services.reman.core_part import create_core
         fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)
-        line = self._line(20, self._mid(self.month), n=1)
-        self._line(10, self._mid(self.month), n=2)            # a new build: claims
+        line = self._line(20, self._mid(self.month))
         create_core(tenant=self.tenant, core_number="C-1", core_type=self.pt, order=line.order,
                     fulfilment_mode="REPAIR_RETURN", status="RECEIVED",
                     customer=Companies.objects.create(tenant=self.tenant, name="Fleet"),
                     received_date=timezone.localdate(), received_by=self.user)
-        self.assertEqual(self._cell()["firm"], 10)
-        self.assertEqual(self._cell()["unclaimed"], 40)
+        self.assertEqual(self._cell()["firm"], 20, "still claims: the line says new build")
+        self.assertIn("Repair & return", fulfilment_warning(line))
+        OrderLine.objects.filter(pk=line.pk).update(fulfilment="REPAIR_RETURN")
+        line.refresh_from_db()
+        self.assertIsNone(fulfilment_warning(line))
 
     def test_cancelled_orders_and_teardowns_claim_nothing(self):
         fc.set_forecast(tenant=self.tenant, part_type=self.pt, month=self.month, quantity=50)

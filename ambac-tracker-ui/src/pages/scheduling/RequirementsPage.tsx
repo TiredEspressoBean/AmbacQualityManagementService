@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ExpectFromShortagesDialog } from "@/components/receiving/ExpectFromShortagesDialog";
 import { usePlanTeardown } from "@/hooks/usePlanTeardown";
 import { useRequirements, type RecoverRow, type ShipRow } from "@/hooks/useScheduling";
+import { FULFILMENT_LABEL, type Fulfilment } from "@/hooks/useOrderLines";
 import { useState } from "react";
 import { toast } from "sonner";
 import { downloadCsv } from "@/lib/csv";
@@ -179,7 +180,8 @@ export function RequirementsPage() {
         ...tooling.map((r) => ["Tooling", r.fixture, "", r.kind, "", "", "", "", r.order_by ?? "", ""]),
         // Need by = the line's due date; the customer rides in Notes, not Supplier.
         ...ship.map((r) => ["Ship", r.part_type, r.part_type_erp_id,
-          `${r.order} line ${r.line_number}${r.tentative ? " (RFI, tentative)" : ""}`,
+          `${r.order} line ${r.line_number}${r.tentative ? " (RFI, tentative)" : ""}`
+            + (r.fulfilment !== "NEW_BUILD" ? ` (${FULFILMENT_LABEL[r.fulfilment as Fulfilment] ?? r.fulfilment})` : ""),
           r.to_ship, "", "", r.due_date ?? "", "",
           [r.customer ?? "", `${r.planned} planned, ${r.unplanned} not yet planned`,
            r.shipped ? `${r.shipped} shipped` : "", r.note, r.overdue ? "overdue" : ""]
@@ -533,6 +535,11 @@ function ShipLine({ r, groupHeader }: { r: ShipRow; groupHeader: string | null }
           <span className="ml-1 text-xs text-muted-foreground">line {r.line_number}</span>
           {r.tentative && (
             <Badge variant="outline" className="ml-2 border-sky-500/60 text-sky-700 dark:text-sky-300">RFI · tentative</Badge>
+          )}
+          {r.fulfilment !== "NEW_BUILD" && (
+            <Badge variant="secondary" className="ml-2">
+              {FULFILMENT_LABEL[r.fulfilment as Fulfilment] ?? r.fulfilment}
+            </Badge>
           )}
           {r.customer && <div className="text-xs text-muted-foreground">{r.customer}</div>}
         </td>

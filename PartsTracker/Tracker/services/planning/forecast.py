@@ -145,29 +145,25 @@ def claims_by_month(tenant, first: date, last: date) -> dict:
       already, so counting it too would claim the month twice. Teardown work is a core
       coming back, not a new build, so it claims nothing.
 
-    A REMAN line claims nothing either (2026-11-02): one whose units come in as the
-    customer's cores — repair-and-return or exchange — recognised by cores received for
-    that order of the line's part type. The forecast is of new builds only.
+    A REMAN line claims nothing either: one whose fulfilment is Repair & return or
+    Exchange (OrderLine.fulfilment, set when the line is entered — 2026-11-03), so it
+    never uses up new-build forecast, from entry. Nor does remanufacture work on no line
+    (`is_remanufactured` processes). The forecast is of new builds only.
     """
-    from Tracker.models import OrderLine, Parts, WorkOrder
+    from Tracker.models import OrderLine, WorkOrder
     first, end = month_start(first), add_months(month_start(last), 1)
     out: dict = defaultdict(lambda: {'firm': 0, 'tentative': 0})
-    lines = list(OrderLine.objects  # tenant-safe: explicit tenant filter
-                 .filter(tenant=tenant, archived=False, order__archived=False,
-                         due_date__gte=first, due_date__lt=end)
-                 .exclude(status='CANCELLED').exclude(order__order_status='CANCELLED')
-                 .values('order_id', 'part_type_id', 'due_date', 'quantity', 'order__order_status'))
-    reman = set(Parts.objects.filter(  # tenant-safe: explicit tenant filter
-        tenant=tenant, archived=False, core_role__isnull=False,
-        order_id__in={r['order_id'] for r in lines}).values_list('order_id', 'part_type_id'))
-    for r in lines:
-        if (r['order_id'], r['part_type_id']) in reman:
-            continue
+    for r in (OrderLine.objects  # tenant-safe: explicit tenant filter
+              .filter(tenant=tenant, archived=False, order__archived=False,
+                      fulfilment='NEW_BUILD', due_date__gte=first, due_date__lt=end)
+              .exclude(status='CANCELLED').exclude(order__order_status='CANCELLED')
+              .values('part_type_id', 'due_date', 'quantity', 'order__order_status')):
         band = 'tentative' if r['order__order_status'] == 'RFI' else 'firm'
         out[(r['part_type_id'], month_start(r['due_date']))][band] += r['quantity']
     for r in (WorkOrder.objects  # tenant-safe: explicit tenant filter
               .filter(tenant=tenant, archived=False, order_line__isnull=True,
                       process__isnull=False, process__is_disassembly=False,
+                      process__is_remanufactured=False,
                       expected_completion__gte=first, expected_completion__lt=end)
               .exclude(workorder_status='CANCELLED')
               .values('process__part_type_id', 'expected_completion', 'quantity')):

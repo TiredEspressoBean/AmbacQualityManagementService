@@ -224,16 +224,26 @@ class OrderLineSerializer(SecureModelMixin):
     planned_quantity = serializers.SerializerMethodField()
     remaining_quantity = serializers.SerializerMethodField()
     short_closed_shortfall = serializers.SerializerMethodField()
+    fulfilment_warning = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderLine
         fields = (
             'id', 'order', 'line_number', 'part_type', 'part_type_name',
             'quantity', 'planned_quantity', 'remaining_quantity', 'short_closed_shortfall',
-            'due_date', 'status', 'notes', 'created_at', 'updated_at', 'archived',
+            'due_date', 'fulfilment', 'fulfilment_warning',
+            'status', 'notes', 'created_at', 'updated_at', 'archived',
         )
         read_only_fields = ('created_at', 'updated_at', 'part_type_name',
-                            'planned_quantity', 'remaining_quantity', 'short_closed_shortfall')
+                            'planned_quantity', 'remaining_quantity', 'short_closed_shortfall',
+                            'fulfilment_warning')
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_fulfilment_warning(self, obj):
+        """Received cores disagreeing with the line's fulfilment. A consistency check only —
+        the line's own setting is the rule (2026-11-03)."""
+        from Tracker.services.mes.order_line import fulfilment_warning
+        return fulfilment_warning(obj)
 
     @extend_schema_field(serializers.IntegerField())
     def get_short_closed_shortfall(self, obj):

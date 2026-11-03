@@ -311,12 +311,7 @@ export function useUpdateOptimizationConfig() {
       qc.invalidateQueries(optimizationConfigOptions());
       toast.success("Solver settings saved");
     },
-    // One toast that says which value is wrong ("Demand time fence days: at most 365"),
-    // not this plus the global "Operation failed".
-    meta: { suppressGlobalError: true },
-    onError: (e: unknown) => toast.error("Couldn't save solver settings", {
-      description: apiErrorMessage(e),
-    }),
+    onError: () => toast.error("Couldn't save solver settings"),
   });
 }
 
@@ -477,6 +472,8 @@ export type ShipRow = {
   order_line_id: string; order_id: string; order: string; customer: string | null;
   line_number: number; part_type: string; part_type_erp_id: string;
   due_date: string | null; month: string | null; overdue: boolean; tentative: boolean;
+  /** NEW_BUILD / REPAIR_RETURN / EXCHANGE — how the line is fulfilled. */
+  fulfilment: string;
   quantity: number; shipped: number; to_ship: number; planned: number; unplanned: number;
   ready: number; note: string;
 };
