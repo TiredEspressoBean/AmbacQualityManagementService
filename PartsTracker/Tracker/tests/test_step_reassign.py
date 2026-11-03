@@ -82,6 +82,22 @@ class StepReassignTests(TenantContextMixin, VectorTestCase):
         self.ex.refresh_from_db()
         self.assertEqual(self.ex.training_authorization["override"]["authorized_by"], self.lead.id)
 
+    def test_without_the_override_only_a_trained_operator_can_be_handed_it(self):
+        """A QA inspector holds the hand-off but not the training override."""
+        inspector = get_user_model().objects.create_user(
+            username="insp", email="insp@r.test", password="x", tenant=self.tenant)
+        self._grant(inspector, "reassign_stepexecution")
+        tt = TrainingType.objects.create(tenant=self.tenant, name="Lapping")
+        TrainingRequirement.objects.create(tenant=self.tenant, training_type=tt, step=self.step)
+        with self.assertRaises(NotQualified):
+            reassign_execution(self.ex, by=inspector, to=self.op2, reason="cover")
+
+    def test_both_qa_roles_and_the_supervisors_hold_it(self):
+        from Tracker.presets import GROUP_PRESETS
+        holders = {k for k, g in GROUP_PRESETS.items() if "reassign_stepexecution" in g["permissions"]}
+        self.assertTrue({"qa_manager", "qa_inspector", "shift_lead", "production_manager"} <= holders)
+        self.assertNotIn("operator", holders)
+
     def test_the_endpoint_is_the_supervisors_and_everyone_is_too(self):
         def client(user):
             c = APIClient()

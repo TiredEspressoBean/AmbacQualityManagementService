@@ -448,7 +448,8 @@ TRAINING_GATE_OVERRIDE_PERMISSIONS = [
 # loads, take a step over, or hand it to a named operator — with a reason, and no
 # second-person sign-in, since the supervisor is the one signed in. The training gate
 # still applies to whoever ends up holding the step (services/mes/lifecycle.reassign).
-# Same tier as the gate override: the leads, the production manager, the QA manager.
+# The gate-override tier (the leads, the production manager, the QA manager) plus the
+# QA inspector, who holds this but not the override.
 SUPERVISE_STEP_WORK_PERMISSIONS = [
     'reassign_stepexecution',
 ]
@@ -848,6 +849,10 @@ GROUP_PRESETS = {
             # Void an erroneous substep completion
             *VOID_COMPLETION_PERMISSIONS,
             *SUBMITTED_ANNOTATION_DELETE_PERMISSIONS,
+            # Take over / hand off work in progress (user decision 2026-11-03: both QA
+            # roles). Without the training override, an inspector can only hand a
+            # step to someone already trained for it.
+            *SUPERVISE_STEP_WORK_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
             # Formally raise a CAPA
