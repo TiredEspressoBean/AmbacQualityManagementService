@@ -31,7 +31,11 @@ type Props = { open: boolean; onOpenChange: (o: boolean) => void };
 
 // Editable fields, grouped. Numeric fields are coerced to Number on save; decimal
 // (money/percent) fields are sent as strings (DRF DecimalField accepts strings).
-type FieldSpec = { key: string; label: string; hint?: string; kind: "int" | "float" | "decimal" };
+/** `min`/`max` mirror the server's bounds, so the input says so before Save does. */
+type FieldSpec = {
+  key: string; label: string; hint?: string; kind: "int" | "float" | "decimal";
+  min?: number; max?: number;
+};
 
 const SOLVER: FieldSpec[] = [
   { key: "solver_time_limit_seconds", label: "Solve time limit (seconds)", kind: "int",
@@ -46,9 +50,9 @@ const FENCES: FieldSpec[] = [
     hint: "Near-term window whose tasks the solver keeps fixed." },
   { key: "slushy_zone_days", label: "Slushy zone (days)", kind: "int",
     hint: "Window after frozen where moves are discouraged." },
-  { key: "demand_time_fence_days", label: "Demand time fence (days)", kind: "int",
+  { key: "demand_time_fence_days", label: "Demand time fence (days)", kind: "int", min: 0, max: 365,
     hint: "Days from today in which forecast isn't planned — only orders count. A month straddling the fence plans only its days past it. 0 = off." },
-  { key: "forecast_consumption_window_months", label: "Forecast consumption window (months)", kind: "int",
+  { key: "forecast_consumption_window_months", label: "Forecast consumption window (months)", kind: "int", min: 0, max: 12,
     hint: "How far either side of its due month an order uses up forecast: earlier months first, then later. 0 = its due month only." },
 ];
 const FLOW: FieldSpec[] = [
@@ -117,6 +121,8 @@ export function SchedulingSettingsDialog({ open, onOpenChange }: Props) {
         type={f.kind === "decimal" ? "text" : "number"}
         inputMode="decimal"
         step={f.kind === "float" ? "0.01" : f.kind === "int" ? "1" : "any"}
+        min={f.min}
+        max={f.max}
         value={(form[f.key] as string | number | undefined) ?? ""}
         onChange={(e) => set(f.key, e.target.value)}
         title={f.hint}

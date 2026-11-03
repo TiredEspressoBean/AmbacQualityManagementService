@@ -311,7 +311,12 @@ export function useUpdateOptimizationConfig() {
       qc.invalidateQueries(optimizationConfigOptions());
       toast.success("Solver settings saved");
     },
-    onError: () => toast.error("Couldn't save solver settings"),
+    // One toast that says which value is wrong ("Demand time fence days: at most 365"),
+    // not this plus the global "Operation failed".
+    meta: { suppressGlobalError: true },
+    onError: (e: unknown) => toast.error("Couldn't save solver settings", {
+      description: apiErrorMessage(e),
+    }),
   });
 }
 

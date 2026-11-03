@@ -25,7 +25,69 @@ export type ApiErrorDescription = {
  * axios import). Returns null for anything else — callers fall back to
  * `error.message`.
  */
+/** A value the client refused to SEND: zodios checks a request's body, query and path
+ *  against the generated schema before it goes out ("Zodios: Invalid Body parameter
+ *  'body'"), so nothing reaches the server and there is no DRF message to read. The
+ *  response-side failure ("Invalid response from endpoint …") is a different thing — a
+ *  contract bug, not a user's input — and is left to `describeApiError`. */
+function isRequestValidationError(error: unknown): error is ZodiosError & { cause: ZodError } {
+    return error instanceof ZodiosError && error.cause instanceof ZodError
+        && /^Zodios: Invalid (Body|Query|Path|Header) parameter/.test(error.message);
+}
+
+/** "demand_time_fence_days" → "Demand time fence days". */
+const fieldLabel = (path: (string | number)[]) => {
+    const name = path.filter((p) => typeof p === "string").join(" ").replace(/_/g, " ").trim();
+    return name ? name.charAt(0).toUpperCase() + name.slice(1) : "";
+};
+
+/** One schema issue as a sentence a user can act on. */
+function issueText(issue: ZodError["issues"][number]): string {
+    const what = (() => {
+        switch (issue.code) {
+            case "too_big": {
+                const n = Number(issue.maximum);
+                if (issue.type === "string") return `at most ${n} characters`;
+                if (issue.type === "array") return `at most ${n} items`;
+                return issue.inclusive ? `at most ${n}` : `less than ${n}`;
+            }
+            case "too_small": {
+                const n = Number(issue.minimum);
+                if (issue.type === "string") return n <= 1 ? "required" : `at least ${n} characters`;
+                if (issue.type === "array") return `at least ${n} items`;
+                return issue.inclusive ? `at least ${n}` : `more than ${n}`;
+            }
+            case "invalid_enum_value":
+                return `must be one of ${issue.options.join(", ")}`;
+            case "invalid_type":
+                return issue.received === "undefined" || issue.received === "null"
+                    ? "required" : `must be a ${issue.expected}`;
+            case "invalid_string":
+                return issue.validation === "email" ? "must be an email address" : "isn't valid";
+            default:
+                return issue.message;
+        }
+    })();
+    const label = fieldLabel(issue.path);
+    return label ? `${label}: ${what}` : what.charAt(0).toUpperCase() + what.slice(1);
+}
+
+/** The fields the client wouldn't send, as sentences — or undefined if `error` isn't one. */
+export function requestValidationMessage(error: unknown): string | undefined {
+    if (!isRequestValidationError(error)) return undefined;
+    return error.cause.issues.map(issueText).join("; ") || undefined;
+}
+
 export function describeApiError(error: unknown): ApiErrorDescription | null {
+    if (isRequestValidationError(error)) {
+        const method = (error.config?.method ?? "get").toUpperCase();
+        const url = error.config?.url ?? "<unknown>";
+        return {
+            summary: `Request not sent: a value fails the schema — ${method} ${url}`,
+            detail: requestValidationMessage(error),
+            isValidation: true,
+        };
+    }
     if (error instanceof ZodiosError && error.cause instanceof ZodError) {
         const method = (error.config?.method ?? "get").toUpperCase();
         const url = error.config?.url ?? "<unknown>";
@@ -112,6 +174,10 @@ export function apiErrorField(body: ApiErrorBody | undefined, field: string): st
  * no message (a network error, a 500 page), so callers fall back to their own wording.
  */
 export function apiErrorMessage(error: unknown): string | undefined {
+    // Refused before it was sent — "Demand time fence days: at most 365", not zodios's
+    // "Invalid Body parameter 'body'".
+    const local = requestValidationMessage(error);
+    if (local) return local;
     const body = apiErrorBody(error);
     if (!body) return undefined;
     const text = (v: unknown): string | undefined => {
