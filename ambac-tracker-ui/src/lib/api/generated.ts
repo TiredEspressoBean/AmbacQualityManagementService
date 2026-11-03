@@ -3684,6 +3684,25 @@ export type ImportSummary = {
   unchanged?: number | undefined;
   errors: number;
 };
+export type InFlight = {
+  items: Array<InFlightItem>;
+  /**
+   * All started visits done and waiting.
+   */
+  waiting: number;
+  /**
+   * …on QA buy-off / FPI, or an approval.
+   */
+  waiting_on_qa: number;
+  /**
+   * …on a disposition (quarantined).
+   */
+  waiting_on_disposition: number;
+  /**
+   * …on a work order hold.
+   */
+  waiting_on_hold: number;
+};
 export type InFlightItem = {
   kind: InFlightItemKindEnum;
   id: string;
@@ -26104,6 +26123,13 @@ const InFlightItem = z.object({
   resume_execution_id: z.string().uuid().nullable(),
   resume_part_id: z.string().uuid().nullable(),
 });
+const InFlight = z.object({
+  items: z.array(InFlightItem),
+  waiting: z.number().int(),
+  waiting_on_qa: z.number().int(),
+  waiting_on_disposition: z.number().int(),
+  waiting_on_hold: z.number().int(),
+});
 const MyLastFinished = z.object({
   execution_id: z.string().uuid(),
   step_name: z.string(),
@@ -30967,6 +30993,7 @@ export const schemas = {
   StepDurationStats,
   InFlightItemKindEnum,
   InFlightItem,
+  InFlight,
   MyLastFinished,
   MyDay,
   PaginatedStepExecutionList,
@@ -56510,20 +56537,10 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
   {
     method: "get",
     path: "/api/StepExecutions/in-flight/",
-    alias: "api_StepExecutions_in_flight_list",
-    description: `Open step visits and unsealed loads, to pick one up again (Operator Home&#x27;s Resume, a work order&#x27;s Continue work), most recently started first, with how far each has got. The current user&#x27;s own, unless a supervisor asks for everyone&#x27;s.`,
+    alias: "api_StepExecutions_in_flight_retrieve",
+    description: `Work started and not finished, to pick it up again (Operator Home&#x27;s Resume, a work order&#x27;s Continue work): started step visits not done on the holder&#x27;s side, and loads not yet completed, most recently started first — plus how many started visits are done and waiting on someone else. The current user&#x27;s own, unless a supervisor asks for everyone&#x27;s.`,
     requestFormat: "json",
     parameters: [
-      {
-        name: "assigned_to",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "assigned_to__isnull",
-        type: "Query",
-        schema: z.boolean().optional(),
-      },
       {
         name: "everyone",
         type: "Query",
@@ -56535,104 +56552,12 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         schema: z.boolean().optional(),
       },
       {
-        name: "ordering",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "part",
-        type: "Query",
-        schema: z.string().uuid().optional(),
-      },
-      {
-        name: "part__isnull",
-        type: "Query",
-        schema: z.boolean().optional(),
-      },
-      {
-        name: "search",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "status",
-        type: "Query",
-        schema: z
-          .enum([
-            "CANCELLED",
-            "CLAIMED",
-            "COMPLETED",
-            "IN_PROGRESS",
-            "PENDING",
-            "ROLLED_BACK",
-            "SKIPPED",
-          ])
-          .optional(),
-      },
-      {
-        name: "status__in",
-        type: "Query",
-        schema: z.array(z.string()).optional(),
-      },
-      {
-        name: "step",
-        type: "Query",
-        schema: z.string().uuid().optional(),
-      },
-      {
-        name: "step__process_memberships__process",
-        type: "Query",
-        schema: z.string().uuid().optional(),
-      },
-      {
-        name: "step__work_center",
-        type: "Query",
-        schema: z.string().uuid().optional(),
-      },
-      {
-        name: "step__work_center__in",
-        type: "Query",
-        schema: z.array(z.string().uuid()).optional(),
-      },
-      {
-        name: "step__work_center__isnull",
-        type: "Query",
-        schema: z.boolean().optional(),
-      },
-      {
-        name: "step__work_center__kind",
-        type: "Query",
-        schema: z
-          .enum(["INSPECTION", "OSP", "PRODUCTION", "RECEIVING"])
-          .optional(),
-      },
-      {
-        name: "step__work_center__kind__in",
-        type: "Query",
-        schema: z.array(z.string()).optional(),
-      },
-      {
-        name: "visit_number",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "visit_number__gte",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "visit_number__lte",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
         name: "work_order",
         type: "Query",
         schema: z.string().uuid().optional(),
       },
     ],
-    response: z.array(InFlightItem),
+    response: InFlight,
   },
   {
     method: "get",

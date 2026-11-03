@@ -40,7 +40,7 @@ from Tracker.serializers.mes_lite import (
     BulkAddPartsSerializer, BulkRemovePartsSerializer,
     StepAdvancementSerializer, BulkStepAdvancementSerializer,
     StepExecutionSerializer, StepExecutionCreateSerializer,
-    InFlightItemSerializer, StepExecutionListSerializer, WIPSummarySerializer,
+    InFlightSerializer, StepExecutionListSerializer, WIPSummarySerializer,
     OutsideProcessShipmentSerializer, ReadyToShipGroupSerializer,
     # Digital Traveler serializers
     WorkOrderStepHistoryResponseSerializer, PartTravelerResponseSerializer,
@@ -3795,25 +3795,26 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
             OpenApiParameter('off_clock', OpenApiTypes.BOOL, required=False,
                              description="Only work whose holder is off the clock."),
         ],
-        responses={200: InFlightItemSerializer(many=True)},
-        description="Open step visits and unsealed loads, to pick one up again (Operator "
-                    "Home's Resume, a work order's Continue work), most recently started "
-                    "first, with how far each has got. The current user's own, unless a "
-                    "supervisor asks for everyone's.",
+        responses={200: InFlightSerializer},
+        description="Work started and not finished, to pick it up again (Operator Home's "
+                    "Resume, a work order's Continue work): started step visits not done on "
+                    "the holder's side, and loads not yet completed, most recently started "
+                    "first — plus how many started visits are done and waiting on someone "
+                    "else. The current user's own, unless a supervisor asks for everyone's.",
     )
     @action(detail=False, methods=['get'], url_path='in-flight', pagination_class=None)
     def in_flight(self, request):
         from rest_framework.exceptions import PermissionDenied
-        from Tracker.serializers.mes_lite import InFlightItemSerializer
+        from Tracker.serializers.mes_lite import InFlightSerializer
         from Tracker.services.mes.in_flight import in_flight
         flag = lambda name: request.query_params.get(name) in ('1', 'true', 'True')  # noqa: E731
         everyone = flag('everyone')
         if everyone and not request.user.has_tenant_perm('reassign_stepexecution', self.tenant):
             raise PermissionDenied("Only a supervisor sees everyone's work in progress.")
-        rows = in_flight(self.tenant, user=request.user, everyone=everyone,
-                         work_order_id=request.query_params.get('work_order') or None,
-                         off_clock=flag('off_clock'))
-        return Response(InFlightItemSerializer(rows, many=True).data)
+        result = in_flight(self.tenant, user=request.user, everyone=everyone,
+                           work_order_id=request.query_params.get('work_order') or None,
+                           off_clock=flag('off_clock'))
+        return Response(InFlightSerializer(result).data)
 
     @extend_schema(
         responses={200: inline_serializer(name='HandOffCandidate', many=True, fields={

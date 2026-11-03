@@ -1,8 +1,11 @@
 /**
- * The work someone has open — part visits and unsealed loads — to pick one up again.
- * One component in two places: Operator Home's Resume (when more than one is open)
- * and a work order's Continue work (narrowed to that order). Picking one opens the
- * runtime with no position, so it continues at the first substep not yet complete.
+ * What someone started and hasn't finished — started step visits not done on their
+ * side, and loads not yet completed — to pick one up again (services/mes/in_flight).
+ * Queued work, work done and waiting on someone else (counted, not listed), and the
+ * Ship step stay out. One component in two places: Operator Home's Resume (when more
+ * than one is unfinished) and a work order's Continue work (narrowed to that order).
+ * Picking one opens the runtime with no position, so it continues at the first
+ * substep not yet complete.
  *
  * A supervisor (`reassign_stepexecution`: the leads, the production manager, the QA
  * manager) can switch to everyone's work, narrow it to work whose holder is off the
@@ -33,6 +36,18 @@ import type { components } from "@/lib/api/generated-types";
 import { getCookie } from "@/lib/utils";
 
 export type InFlightItem = components["schemas"]["InFlightItem"];
+export type InFlightResult = components["schemas"]["InFlight"];
+
+/** "4 more done and waiting on QA · 3 on a disposition" — work done on the holder's
+ *  side that's now someone else's to move, so it isn't lost from view. */
+export function waitingLine(r: InFlightResult, whose: "my" | "everyone" = "my") {
+    const parts = [
+        r.waiting_on_qa ? `${r.waiting_on_qa} on QA or an approval` : "",
+        r.waiting_on_disposition ? `${r.waiting_on_disposition} on a disposition` : "",
+        r.waiting_on_hold ? `${r.waiting_on_hold} on a hold` : "",
+    ].filter(Boolean);
+    return `${r.waiting} ${whose === "my" ? "of yours" : "more"} done and waiting: ${parts.join(" · ")}.`;
+}
 
 type Scope = { workOrderId?: string; everyone?: boolean; offClock?: boolean };
 
@@ -40,13 +55,13 @@ export const inFlightOptions = (workOrderId?: string, scope: Omit<Scope, "workOr
     queryOptions({
         queryKey: ["step-executions", "in-flight", workOrderId ?? null,
             Boolean(scope.everyone), Boolean(scope.offClock)],
-        queryFn: () => api.api_StepExecutions_in_flight_list({
+        queryFn: () => api.api_StepExecutions_in_flight_retrieve({
             queries: {
                 ...(workOrderId ? { work_order: workOrderId } : {}),
                 ...(scope.everyone ? { everyone: true } : {}),
                 ...(scope.offClock ? { off_clock: true } : {}),
             },
-        }) as Promise<InFlightItem[]>,
+        }) as Promise<InFlightResult>,
     });
 
 export type HandOffCandidate = components["schemas"]["HandOffCandidate"];
@@ -107,7 +122,7 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
         enabled: open,
     });
     const openItem = useOpenInFlight();
-    const items = data ?? [];
+    const items = data?.items ?? [];
     const mine = (item: InFlightItem) => item.holder_id === me?.pk;
 
     return (
@@ -116,7 +131,7 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>
-                        {everyone ? "Everyone's" : "Your"} open steps and loads
+                        {everyone ? "Everyone's" : "Your"} unfinished steps and loads
                         {workOrderId ? " on this work order" : ""}, most recently started
                         first. Each opens at its first substep not yet done.
                     </DialogDescription>
@@ -139,7 +154,7 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                 {isLoading ? (
                     <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
                 ) : items.length === 0 ? (
-                    <p className="py-4 text-sm text-muted-foreground">Nothing open.</p>
+                    <p className="py-4 text-sm text-muted-foreground">Nothing left unfinished.</p>
                 ) : (
                     <ul className="max-h-[60vh] space-y-2 overflow-auto">
                         {items.map((item) => (
@@ -201,6 +216,9 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                             </li>
                         ))}
                     </ul>
+                )}
+                {data && data.waiting > 0 && (
+                    <p className="text-xs text-muted-foreground">{waitingLine(data, everyone ? "everyone" : "my")}</p>
                 )}
                 <div className="flex justify-end">
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
@@ -314,8 +332,8 @@ export function ContinueWorkButton({ workOrderId }: { workOrderId: string }) {
     const { data } = useQuery(inFlightOptions(workOrderId));
     const { data: anyone } = useQuery({ ...inFlightOptions(workOrderId, { everyone: true }), enabled: supervisor });
     const [open, setOpen] = useState(false);
-    const count = data?.length ?? 0;
-    if (!count && !(supervisor && anyone?.length)) return null;
+    const count = data?.items.length ?? 0;
+    if (!count && !(supervisor && anyone?.items.length)) return null;
     return (
         <>
             <Button variant="outline" onClick={() => setOpen(true)}>
@@ -335,13 +353,14 @@ export function WorkInProgressCard() {
     const { data } = useQuery({ ...inFlightOptions(undefined, { everyone: true }), enabled: supervisor });
     const [open, setOpen] = useState<null | "all" | "off">(null);
     if (!supervisor) return null;
-    const items = data ?? [];
+    const items = data?.items ?? [];
     const off = items.filter((i) => i.holder_off_clock).length;
     return (
         <div className="rounded-lg border bg-card p-4">
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Work in progress</div>
             <p className="my-2 text-sm text-muted-foreground">
-                Steps and loads open across the plant. Take one over, or hand it to someone.
+                Steps and loads started across the plant and not yet finished. Take one
+                over, or hand it to someone.
             </p>
             <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => setOpen("all")}>

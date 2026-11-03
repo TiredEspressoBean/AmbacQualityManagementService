@@ -28,7 +28,7 @@
  */
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useMemo, useState } from "react";
-import { InFlightPicker, inFlightOptions } from "@/components/operator/InFlightPicker";
+import { InFlightPicker, inFlightOptions, useOpenInFlight, waitingLine } from "@/components/operator/InFlightPicker";
 import { toast } from "sonner";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -225,8 +225,9 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     // Everything I have open — part visits and loads, any station — for Resume's picker.
     const { data: inFlight } = useQuery(inFlightOptions());
     const [pickerOpen, setPickerOpen] = useState(false);
-    const openCount = Math.max(inFlight?.length ?? 0, runs.length);
-    const activeRun = runs.find((r) => r.status === "IN_PROGRESS") ?? runs[0] ?? null;
+    const resumable = inFlight?.items ?? [];
+    const resumeNext = resumable[0] ?? null;
+    const openInFlight = useOpenInFlight();
 
     // LIVE — clock state: my one open time entry (end_time is null).
     const queryClient = useQueryClient();
@@ -588,61 +589,52 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                     )}
                 </Tile>
 
-                {/* RESUME — LIVE: my open StepExecution(s). */}
+                {/* RESUME — LIVE: what I started and haven't finished (services/mes/in_flight):
+                    started visits not done on my side, and my loads not yet completed. Not
+                    queued work, not work waiting on QA, not the Ship step. */}
                 <Tile className="flex flex-col justify-between">
                     <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         <Timer className="h-3.5 w-3.5 text-blue-600" /> In progress
                     </div>
-                    {activeRun ? (
+                    {resumeNext ? (
                         <>
                             <div className="my-2 min-w-0">
-                                <div className="truncate font-medium">{activeRun.step_name}</div>
-                                <div className="truncate font-mono text-xs text-muted-foreground">{activeRun.part_erp_id ?? "—"}</div>
+                                <div className="truncate font-medium">{resumeNext.step_name}</div>
+                                <div className="truncate font-mono text-xs text-muted-foreground">
+                                    {resumeNext.kind === "load"
+                                        ? `Load · ${resumeNext.part_count} part${resumeNext.part_count === 1 ? "" : "s"}`
+                                        : resumeNext.part_erp_id ?? "—"}
+                                </div>
                                 <div className="text-xs text-muted-foreground">
-                                    {activeRun.status === "IN_PROGRESS" ? "Running" : "Assigned"}
-                                    {/* Started is when work began; a run not yet started has only
-                                        arrived, so say how long it has been waiting instead. */}
-                                    {activeRun.started_at
-                                        ? ` · started ${formatDistanceToNow(new Date(activeRun.started_at))} ago`
-                                        : activeRun.entered_at
-                                            ? ` · waiting ${formatDistanceToNow(new Date(activeRun.entered_at))}`
-                                            : ""}
-                                    {openCount > 1 ? ` · +${openCount - 1} more open` : ""}
+                                    {resumeNext.kind === "load"
+                                        ? (resumeNext.sealed_at
+                                            ? `Running · sealed ${formatDistanceToNow(new Date(resumeNext.sealed_at))} ago`
+                                            : `Loading · started ${formatDistanceToNow(new Date(resumeNext.started_at ?? resumeNext.entered_at ?? Date.now()))} ago`)
+                                        : `Running · started ${formatDistanceToNow(new Date(resumeNext.started_at ?? Date.now()))} ago`}
+                                    {resumable.length > 1 ? ` · +${resumable.length - 1} more to finish` : ""}
                                 </div>
                             </div>
                             <Button
                                 className="h-12 w-full"
-                                // Several open (visits or loads, anywhere): pick one. One: straight in.
-                                onClick={() => (inFlight?.length ?? 0) > 1 ? setPickerOpen(true) : navigate({
-                                    to: "/operator/steps/$stepId/substeps",
-                                    params: { stepId: String(activeRun.step) },
-                                    search: {
-                                        // part is nullable on receiving/OSP-return-inspection
-                                        // runs; the runtime resolves those from execution alone.
-                                        part: activeRun.part ? String(activeRun.part) : undefined,
-                                        // A batch step's panel needs the work order.
-                                        workOrder: activeRun.work_order ? String(activeRun.work_order) : undefined,
-                                        execution: String(activeRun.id),
-                                    },
-                                })}
+                                // Several to finish: pick one. One: straight in.
+                                onClick={() => resumable.length > 1 ? setPickerOpen(true) : void openInFlight(resumeNext)}
                             >
                                 Resume
                             </Button>
-                            <InFlightPicker open={pickerOpen} onOpenChange={setPickerOpen} />
                         </>
                     ) : (
                         <>
                             <p className="my-2 text-sm text-muted-foreground">
-                                {inFlight?.length
-                                    // Open work off the production stations (a load, a receiving run).
-                                    ? `${inFlight.length} open elsewhere — a load or another station.`
-                                    : "No open run. Scan a traveler to pick up where you left off."}
+                                Nothing left unfinished. Scan a traveler to start work.
                             </p>
-                            <Button className="h-12 w-full" variant="outline" disabled={!inFlight?.length}
-                                onClick={() => setPickerOpen(true)}>Resume</Button>
-                            <InFlightPicker open={pickerOpen} onOpenChange={setPickerOpen} />
+                            <Button className="h-12 w-full" variant="outline" disabled>Resume</Button>
                         </>
                     )}
+                    {/* Done on my side and waiting on someone else: counted, not resumed. */}
+                    {(inFlight?.waiting ?? 0) > 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">{waitingLine(inFlight!)}</p>
+                    )}
+                    <InFlightPicker open={pickerOpen} onOpenChange={setPickerOpen} />
                 </Tile>
 
                 {/* SCAN — LIVE: real WO/part resolve → WO detail. */}

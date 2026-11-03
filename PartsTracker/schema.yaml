@@ -32260,20 +32260,13 @@ paths:
           description: ''
   /api/StepExecutions/in-flight/:
     get:
-      operationId: api_StepExecutions_in_flight_list
-      description: Open step visits and unsealed loads, to pick one up again (Operator
-        Home's Resume, a work order's Continue work), most recently started first,
-        with how far each has got. The current user's own, unless a supervisor asks
-        for everyone's.
+      operationId: api_StepExecutions_in_flight_retrieve
+      description: 'Work started and not finished, to pick it up again (Operator Home''s
+        Resume, a work order''s Continue work): started step visits not done on the
+        holder''s side, and loads not yet completed, most recently started first —
+        plus how many started visits are done and waiting on someone else. The current
+        user''s own, unless a supervisor asks for everyone''s.'
       parameters:
-      - in: query
-        name: assigned_to
-        schema:
-          type: integer
-      - in: query
-        name: assigned_to__isnull
-        schema:
-          type: boolean
       - in: query
         name: everyone
         schema:
@@ -32285,120 +32278,6 @@ paths:
         schema:
           type: boolean
         description: Only work whose holder is off the clock.
-      - name: ordering
-        required: false
-        in: query
-        description: Which field to use when ordering the results.
-        schema:
-          type: string
-      - in: query
-        name: part
-        schema:
-          type: string
-          format: uuid
-      - in: query
-        name: part__isnull
-        schema:
-          type: boolean
-      - name: search
-        required: false
-        in: query
-        description: A search term.
-        schema:
-          type: string
-      - in: query
-        name: status
-        schema:
-          type: string
-          enum:
-          - CANCELLED
-          - CLAIMED
-          - COMPLETED
-          - IN_PROGRESS
-          - PENDING
-          - ROLLED_BACK
-          - SKIPPED
-        description: |-
-          * `PENDING` - Pending
-          * `CLAIMED` - Claimed
-          * `IN_PROGRESS` - In Progress
-          * `COMPLETED` - Completed
-          * `SKIPPED` - Skipped
-          * `CANCELLED` - Cancelled
-          * `ROLLED_BACK` - Rolled Back
-      - in: query
-        name: status__in
-        schema:
-          type: array
-          items:
-            type: string
-        description: Multiple values may be separated by commas.
-        explode: false
-        style: form
-      - in: query
-        name: step
-        schema:
-          type: string
-          format: uuid
-      - in: query
-        name: step__process_memberships__process
-        schema:
-          type: string
-          format: uuid
-      - in: query
-        name: step__work_center
-        schema:
-          type: string
-          format: uuid
-      - in: query
-        name: step__work_center__in
-        schema:
-          type: array
-          items:
-            type: string
-            format: uuid
-        description: Multiple values may be separated by commas.
-        explode: false
-        style: form
-      - in: query
-        name: step__work_center__isnull
-        schema:
-          type: boolean
-      - in: query
-        name: step__work_center__kind
-        schema:
-          type: string
-          enum:
-          - INSPECTION
-          - OSP
-          - PRODUCTION
-          - RECEIVING
-        description: |-
-          * `PRODUCTION` - Production
-          * `INSPECTION` - Inspection
-          * `RECEIVING` - Receiving
-          * `OSP` - Outside Process
-      - in: query
-        name: step__work_center__kind__in
-        schema:
-          type: array
-          items:
-            type: string
-        description: Multiple values may be separated by commas.
-        explode: false
-        style: form
-      - in: query
-        name: visit_number
-        schema:
-          type: integer
-      - in: query
-        name: visit_number__gte
-        schema:
-          type: integer
-      - in: query
-        name: visit_number__lte
-        schema:
-          type: integer
       - in: query
         name: work_order
         schema:
@@ -32415,9 +32294,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/InFlightItem'
+                $ref: '#/components/schemas/InFlight'
           description: ''
   /api/StepExecutions/metadata/:
     get:
@@ -60206,6 +60083,34 @@ components:
       - errors
       - total
       - updated
+    InFlight:
+      type: object
+      description: |-
+        Resumable work for the picker, and the count of started visits that are done on
+        the holder's side and waiting on someone else (services/mes/in_flight).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InFlightItem'
+        waiting:
+          type: integer
+          description: All started visits done and waiting.
+        waiting_on_qa:
+          type: integer
+          description: …on QA buy-off / FPI, or an approval.
+        waiting_on_disposition:
+          type: integer
+          description: …on a disposition (quarantined).
+        waiting_on_hold:
+          type: integer
+          description: …on a work order hold.
+      required:
+      - items
+      - waiting
+      - waiting_on_disposition
+      - waiting_on_hold
+      - waiting_on_qa
     InFlightItem:
       type: object
       description: |-

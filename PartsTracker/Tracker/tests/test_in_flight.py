@@ -1,6 +1,7 @@
-"""In-flight work (2026-11-03): the open part visits and loads the Resume / Continue
-work picker lists — the operator's own, narrowed to a work order when asked, with how
-far each has got and where a load opens."""
+"""In-flight work (2026-11-03): what the Resume / Continue work picker lists — work
+started and not finished: started visits not done on the holder's side, and loads not
+yet completed. Queued visits, the Ship step, a part worked as its load, and visits done
+and waiting on someone else stay out (the last counted)."""
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -48,13 +49,15 @@ class InFlightTests(TenantContextMixin, VectorTestCase):
             capture_draft={str(self.s2.id): {"n": "1"}})
         SubstepCompletion.objects.create(tenant=self.tenant, substep=self.s1,
                                          step_execution=self.mine, completed_by=self.me)
-        # Someone else's, and an unassigned one waiting (the queue, not in flight).
-        StepExecution.objects.create(tenant=self.tenant, part=self.parts[1], step=self.lap,
-                                     assigned_to=self.other, status="IN_PROGRESS")
+        # Someone else's, started; and an unassigned one waiting (the queue, not in flight).
+        self.theirs = StepExecution.objects.create(
+            tenant=self.tenant, part=self.parts[1], step=self.lap, assigned_to=self.other,
+            status="IN_PROGRESS", started_at=timezone.now())
         StepExecution.objects.create(tenant=self.tenant, part=self.parts[2], step=self.lap)
-        # Mine on another order.
+        # Mine on another order, assigned but never started: queued, not resumable.
         StepExecution.objects.create(tenant=self.tenant, part=p2, step=self.lap,
                                      assigned_to=self.me, status="PENDING")
+        self.p2 = p2
         # My open load at Wash, worked from a part still at the step.
         at_wash = StepExecution.objects.create(tenant=self.tenant, part=self.parts[2], step=self.wash)
         self.at_wash = at_wash
@@ -62,10 +65,11 @@ class InFlightTests(TenantContextMixin, VectorTestCase):
                                                   step=self.wash, started_by=self.me)
         self.load.parts.set([self.parts[2]])
 
-    def test_my_open_visits_and_loads_with_progress(self):
-        items = in_flight(self.tenant, user=self.me)
+    def test_my_unfinished_visits_and_loads_with_progress(self):
+        items = in_flight(self.tenant, user=self.me).items
         self.assertEqual(sorted((i.kind, i.work_order_erp_id) for i in items),
-                         [("load", "WO-F1"), ("part", "WO-F1"), ("part", "WO-F2")])
+                         [("load", "WO-F1"), ("part", "WO-F1")],
+                         "the assigned-but-unstarted WO-F2 visit is queued work")
         mine = next(i for i in items if i.id == self.mine.id)
         self.assertEqual((mine.substeps_done, mine.substeps_total), (2, 3),
                          "a confirmed substep and a drafted one count as done")
@@ -75,15 +79,39 @@ class InFlightTests(TenantContextMixin, VectorTestCase):
 
     def test_a_sealed_load_stays_in_flight_running_until_completed(self):
         BatchExecution.objects.filter(pk=self.load.pk).update(sealed_at=timezone.now())
-        load = next(i for i in in_flight(self.tenant, user=self.me) if i.kind == "load")
+        load = next(i for i in in_flight(self.tenant, user=self.me).items if i.kind == "load")
         self.assertEqual(load.status, "RUNNING")
         BatchExecution.objects.filter(pk=self.load.pk).update(completed_at=timezone.now())
-        self.assertFalse([i for i in in_flight(self.tenant, user=self.me) if i.kind == "load"])
+        self.assertFalse([i for i in in_flight(self.tenant, user=self.me).items if i.kind == "load"])
+
+    def test_done_on_my_side_is_counted_waiting_not_listed(self):
+        from Tracker.models import PartsStatus
+        for sub in (self.s2, self.s3):
+            SubstepCompletion.objects.create(tenant=self.tenant, substep=sub,
+                                             step_execution=self.mine, completed_by=self.me)
+        r = in_flight(self.tenant, user=self.me)
+        self.assertNotIn(self.mine.id, [i.id for i in r.items])
+        self.assertEqual((r.waiting, r.waiting_on_qa), (1, 1))
+        Parts.objects.filter(pk=self.parts[0].pk).update(part_status=PartsStatus.QUARANTINED)
+        self.assertEqual(in_flight(self.tenant, user=self.me).waiting_on_disposition, 1)
+
+    def test_the_ship_step_and_a_part_worked_as_its_load_stay_out(self):
+        ship = Steps.objects.create(tenant=self.tenant, part_type=self.parts[0].part_type,
+                                    name="Ship", step_type="TERMINAL", is_terminal=True)
+        StepExecution.objects.create(tenant=self.tenant, part=self.p2, step=ship,
+                                     assigned_to=self.me, status="IN_PROGRESS",
+                                     started_at=timezone.now())
+        StepExecution.objects.filter(pk=self.at_wash.pk).update(
+            assigned_to=self.me, status="IN_PROGRESS", started_at=timezone.now())
+        items = in_flight(self.tenant, user=self.me).items
+        self.assertEqual(sorted(i.step_name for i in items), ["Lap", "Wash"])
+        self.assertEqual([i.kind for i in items if i.step_name == "Wash"], ["load"])
 
     def test_narrowed_to_a_work_order_and_everyone(self):
-        self.assertEqual(len(in_flight(self.tenant, user=self.me, work_order_id=self.wo2.id)), 1)
-        everyone = in_flight(self.tenant, user=self.me, everyone=True)
-        self.assertEqual(sum(i.kind == "part" for i in everyone), 3, "the unassigned one is the queue")
+        self.assertEqual(len(in_flight(self.tenant, user=self.me, work_order_id=self.wo2.id).items), 0)
+        everyone = in_flight(self.tenant, user=self.me, everyone=True).items
+        self.assertEqual(sum(i.kind == "part" for i in everyone), 2,
+                         "mine and theirs; the unassigned and the unstarted are the queue")
 
     def test_work_whose_holder_is_off_the_clock_is_marked_and_a_break_is_not(self):
         from Tracker.models import TimeEntry
@@ -92,10 +120,10 @@ class InFlightTests(TenantContextMixin, VectorTestCase):
         TimeEntry.objects.create(tenant=self.tenant, user=self.me, entry_type="BREAK", start_time=now)
         TimeEntry.objects.create(tenant=self.tenant, user=self.other, entry_type="SHIFT",
                                  start_time=now, end_time=now)
-        everyone = in_flight(self.tenant, user=self.me, everyone=True)
+        everyone = in_flight(self.tenant, user=self.me, everyone=True).items
         self.assertEqual({i.holder_name: i.holder_off_clock for i in everyone if i.kind == "part"},
                          {"me": False, "other": True})
-        off = in_flight(self.tenant, user=self.me, everyone=True, off_clock=True)
+        off = in_flight(self.tenant, user=self.me, everyone=True, off_clock=True).items
         self.assertEqual([i.holder_id for i in off], [self.other.id])
 
     def test_the_endpoint_lists_mine(self):
@@ -104,4 +132,4 @@ class InFlightTests(TenantContextMixin, VectorTestCase):
         client.credentials(HTTP_X_TENANT_ID=str(self.tenant.id))
         r = client.get("/api/StepExecutions/in-flight/", {"work_order": str(self.wo.id)})
         self.assertEqual(r.status_code, 200, r.content)
-        self.assertEqual(sorted(row["kind"] for row in r.json()), ["load", "part"])
+        self.assertEqual(sorted(row["kind"] for row in r.json()["items"]), ["load", "part"])

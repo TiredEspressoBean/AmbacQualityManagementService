@@ -137,4 +137,4 @@ class StepReassignTests(TenantContextMixin, VectorTestCase):
         r = client(self.lead).post(url, {"to": self.op2.id, "reason": "Op on break all day"}, format="json")
         self.assertEqual(r.status_code, 200, r.content)
         r = client(self.lead).get("/api/StepExecutions/in-flight/", {"everyone": "1"})
-        self.assertEqual([row["holder_id"] for row in r.json()], [self.op2.id])
+        self.assertEqual([row["holder_id"] for row in r.json()["items"]], [self.op2.id])

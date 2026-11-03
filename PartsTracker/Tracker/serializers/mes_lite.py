@@ -1875,6 +1875,16 @@ class InFlightItemSerializer(serializers.Serializer):
     resume_part_id = serializers.UUIDField(allow_null=True)
 
 
+class InFlightSerializer(serializers.Serializer):
+    """Resumable work for the picker, and the count of started visits that are done on
+    the holder's side and waiting on someone else (services/mes/in_flight)."""
+    items = InFlightItemSerializer(many=True)
+    waiting = serializers.IntegerField(help_text="All started visits done and waiting.")
+    waiting_on_qa = serializers.IntegerField(help_text="…on QA buy-off / FPI, or an approval.")
+    waiting_on_disposition = serializers.IntegerField(help_text="…on a disposition (quarantined).")
+    waiting_on_hold = serializers.IntegerField(help_text="…on a work order hold.")
+
+
 class StepExecutionListSerializer(SecureModelMixin):
     """Lightweight serializer for list views - avoids N+1 with select_related."""
     # StepExecution.part is nullable (receiving-inspection / OSP-return-inspection

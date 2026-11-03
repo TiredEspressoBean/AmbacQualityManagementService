@@ -1,10 +1,18 @@
-"""In-flight work — the step visits and loads someone has open, to pick one up again.
+"""In-flight work — what someone started and hasn't finished, to pick it up again.
 
-What the "Resume" picker on Operator Home and "Continue work" on a work order list:
+What the "Resume" picker on Operator Home and "Continue work" on a work order list.
+Only resumable work (user decision 2026-11-03: "resume should only be for incomplete
+steps, not steps that haven't started and not steps that are completed and are
+assigned to someone else"):
 
-  - **part visits**: a StepExecution someone holds (`assigned_to`) that hasn't left the
-    step — waiting (PENDING / CLAIMED) or started (IN_PROGRESS). An unassigned waiting
-    part is the queue, not anyone's work in flight, so it isn't listed.
+  - **part visits**: a StepExecution someone holds (`assigned_to`) that they STARTED
+    (IN_PROGRESS, `started_at` set) and haven't finished on their side. Left out:
+      - not started (assigned, waiting in the queue) — queued work, not resumable;
+      - done on the operator's side — every required per-part substep confirmed —
+        and waiting on someone else (QA buy-off / FPI, a disposition, a hold, an
+        approval). These are COUNTED (`waiting`), not listed, so they aren't lost;
+      - a terminal (Ship) step — Shipping's queue, not unfinished operator work;
+      - a part in an open load at that step — its work is the load's row.
   - **loads**: a BatchExecution not yet completed, held by whoever started it —
     loading (OPEN) or sealed and running (RUNNING): a running load still has its
     completion-phase substeps and its Complete to come.
@@ -31,9 +39,6 @@ from uuid import UUID
 
 from django.db.models import Q
 
-OPEN_STATUSES = ('PENDING', 'CLAIMED', 'IN_PROGRESS')
-
-
 @dataclass(frozen=True)
 class InFlightItem:
     kind: str  # 'part' | 'load'
@@ -59,18 +64,38 @@ class InFlightItem:
     resume_part_id: UUID | None
 
 
+@dataclass(frozen=True)
+class InFlight:
+    """The resumable work, and how much more is done on the holder's side and
+    waiting on someone else — by what it waits on."""
+    items: list[InFlightItem]
+    waiting_on_qa: int  # QA buy-off / FPI, or an approval
+    waiting_on_disposition: int  # the part is quarantined for its disposition
+    waiting_on_hold: int  # the work order is on hold
+
+    @property
+    def waiting(self) -> int:
+        return self.waiting_on_qa + self.waiting_on_disposition + self.waiting_on_hold
+
+
 def _name(user) -> str:
     return (user.get_full_name() or user.get_username()) if user else ''
 
 
 def in_flight(tenant, *, user, everyone=False, work_order_id=None,
-              off_clock=False) -> list[InFlightItem]:
-    """Open part visits and loads, newest activity first."""
-    from Tracker.models import BatchExecution, StepExecution, Substep, SubstepCompletion
+              off_clock=False) -> InFlight:
+    """Resumable part visits and loads, most recently started first, plus the count
+    of started visits that are done on the holder's side and waiting on someone else."""
+    from Tracker.models import (
+        BatchExecution, PartsStatus, StepExecution, Substep, SubstepCompletion, WorkOrderHold,
+    )
 
+    # Started and still at the step; never a terminal (Ship) step.
     execs = (StepExecution.objects
-             .filter(tenant=tenant, archived=False, status__in=OPEN_STATUSES,
-                     exited_at__isnull=True, assigned_to__isnull=False)
+             .filter(tenant=tenant, archived=False, status='IN_PROGRESS',
+                     started_at__isnull=False, exited_at__isnull=True,
+                     assigned_to__isnull=False)
+             .exclude(step__is_terminal=True).exclude(step__step_type='TERMINAL')
              .select_related('step', 'part', 'part__work_order', 'assigned_to'))
     loads = (BatchExecution.objects
              .filter(tenant=tenant, archived=False, completed_at__isnull=True)
@@ -94,12 +119,23 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
         execs = [e for e in execs if e.assigned_to_id not in on_clock]
         loads = [b for b in loads if b.started_by_id not in on_clock]
 
+    # A part in an open load at its step is worked as the load: fold its visit in.
+    in_open_load = set(BatchExecution.parts.through.objects  # tenant-safe: keyed to scoped loads
+                       .filter(batchexecution__tenant=tenant, batchexecution__archived=False,
+                               batchexecution__completed_at__isnull=True,
+                               parts_id__in={e.part_id for e in execs if e.part_id})
+                       .values_list('parts_id', 'batchexecution__step_id'))
+    execs = [e for e in execs if (e.part_id, e.step_id) not in in_open_load]
+
     step_ids = {e.step_id for e in execs} | {b.step_id for b in loads}
     per_part, per_load = defaultdict(set), defaultdict(set)
-    for sid, scope, sub_id in (Substep.objects
-                               .filter(tenant=tenant, archived=False, step_id__in=step_ids)
-                               .values_list('step_id', 'scope', 'id')):
+    required_part = defaultdict(set)
+    for sid, scope, sub_id, optional in (Substep.objects
+                                         .filter(tenant=tenant, archived=False, step_id__in=step_ids)
+                                         .values_list('step_id', 'scope', 'id', 'is_optional')):
         (per_load if scope == 'batch' else per_part)[sid].add(sub_id)
+        if scope != 'batch' and not optional:
+            required_part[sid].add(sub_id)
 
     done_by_exec, done_by_load = defaultdict(set), defaultdict(set)
     for ex_id, b_id, sub_id in (SubstepCompletion.objects
@@ -116,8 +152,28 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
         drafted = {UUID(k) for k in (draft or {}) if _is_uuid(k)}
         return len(subs), len(subs & (done | drafted))
 
-    out: list[InFlightItem] = []
+    # Done on the holder's side: every required per-part substep confirmed (a step
+    # with none has nothing to wait behind). What it then waits on, roughly.
+    held_wos = set(WorkOrderHold.objects
+                   .filter(tenant=tenant, is_voided=False, cleared_at__isnull=True,
+                           work_order_id__in={e.part.work_order_id for e in execs if e.part_id})
+                   .values_list('work_order_id', flat=True))
+    waiting = {'qa': 0, 'disposition': 0, 'hold': 0}
+    resumable = []
     for e in execs:
+        required = required_part[e.step_id]
+        if required and required <= done_by_exec[e.id]:
+            if e.part_id and e.part.part_status == PartsStatus.QUARANTINED:
+                waiting['disposition'] += 1
+            elif e.part_id and e.part.work_order_id in held_wos:
+                waiting['hold'] += 1
+            else:
+                waiting['qa'] += 1
+            continue
+        resumable.append(e)
+
+    out: list[InFlightItem] = []
+    for e in resumable:
         total, done = progress(per_part[e.step_id], done_by_exec[e.id], e.capture_draft)
         wo = e.part.work_order if e.part_id else None
         out.append(InFlightItem(
@@ -162,9 +218,10 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
             resume_execution_id=resume[1], resume_part_id=resume[0],
         ))
 
-    # Most recently started (or, never started, arrived) first.
+    # Most recently started first.
     out.sort(key=lambda i: (i.started_at or i.entered_at or _EPOCH), reverse=True)
-    return out
+    return InFlight(items=out, waiting_on_qa=waiting['qa'],
+                    waiting_on_disposition=waiting['disposition'], waiting_on_hold=waiting['hold'])
 
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=dt_timezone.utc)

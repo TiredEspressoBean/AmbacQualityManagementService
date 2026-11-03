@@ -13358,8 +13358,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Open step visits and unsealed loads, to pick one up again (Operator Home's Resume, a work order's Continue work), most recently started first, with how far each has got. The current user's own, unless a supervisor asks for everyone's. */
-        get: operations["api_StepExecutions_in_flight_list"];
+        /** @description Work started and not finished, to pick it up again (Operator Home's Resume, a work order's Continue work): started step visits not done on the holder's side, and loads not yet completed, most recently started first — plus how many started visits are done and waiting on someone else. The current user's own, unless a supervisor asks for everyone's. */
+        get: operations["api_StepExecutions_in_flight_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -25864,6 +25864,21 @@ export interface components {
             updated: number;
             unchanged?: number;
             errors: number;
+        };
+        /**
+         * @description Resumable work for the picker, and the count of started visits that are done on
+         *     the holder's side and waiting on someone else (services/mes/in_flight).
+         */
+        InFlight: {
+            items: components["schemas"]["InFlightItem"][];
+            /** @description All started visits done and waiting. */
+            waiting: number;
+            /** @description …on QA buy-off / FPI, or an approval. */
+            waiting_on_qa: number;
+            /** @description …on a disposition (quarantined). */
+            waiting_on_disposition: number;
+            /** @description …on a work order hold. */
+            waiting_on_hold: number;
         };
         /**
          * @description One open part visit or load, for the Resume / Continue work picker
@@ -65242,51 +65257,13 @@ export interface operations {
             };
         };
     };
-    api_StepExecutions_in_flight_list: {
+    api_StepExecutions_in_flight_retrieve: {
         parameters: {
             query?: {
-                assigned_to?: number;
-                assigned_to__isnull?: boolean;
                 /** @description Everyone's work, not just mine. Needs reassign_stepexecution (a supervisor). */
                 everyone?: boolean;
                 /** @description Only work whose holder is off the clock. */
                 off_clock?: boolean;
-                /** @description Which field to use when ordering the results. */
-                ordering?: string;
-                part?: string;
-                part__isnull?: boolean;
-                /** @description A search term. */
-                search?: string;
-                /**
-                 * @description * `PENDING` - Pending
-                 *     * `CLAIMED` - Claimed
-                 *     * `IN_PROGRESS` - In Progress
-                 *     * `COMPLETED` - Completed
-                 *     * `SKIPPED` - Skipped
-                 *     * `CANCELLED` - Cancelled
-                 *     * `ROLLED_BACK` - Rolled Back
-                 */
-                status?: "CANCELLED" | "CLAIMED" | "COMPLETED" | "IN_PROGRESS" | "PENDING" | "ROLLED_BACK" | "SKIPPED";
-                /** @description Multiple values may be separated by commas. */
-                status__in?: string[];
-                step?: string;
-                step__process_memberships__process?: string;
-                step__work_center?: string;
-                /** @description Multiple values may be separated by commas. */
-                step__work_center__in?: string[];
-                step__work_center__isnull?: boolean;
-                /**
-                 * @description * `PRODUCTION` - Production
-                 *     * `INSPECTION` - Inspection
-                 *     * `RECEIVING` - Receiving
-                 *     * `OSP` - Outside Process
-                 */
-                step__work_center__kind?: "INSPECTION" | "OSP" | "PRODUCTION" | "RECEIVING";
-                /** @description Multiple values may be separated by commas. */
-                step__work_center__kind__in?: string[];
-                visit_number?: number;
-                visit_number__gte?: number;
-                visit_number__lte?: number;
                 /** @description Only this work order's work. */
                 work_order?: string;
             };
@@ -65301,7 +65278,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InFlightItem"][];
+                    "application/json": components["schemas"]["InFlight"];
                 };
             };
         };
