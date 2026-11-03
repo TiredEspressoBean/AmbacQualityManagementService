@@ -4,6 +4,10 @@ import { z } from "zod"
 import { useRetrieveQuarantineDispositions } from "@/hooks/useRetrieveQuarantineDispositions"
 import { Link } from "@tanstack/react-router"
 import { ExternalLink, Loader2 } from "lucide-react"
+import { ReportButton } from "@/components/reports/ReportButton"
+
+/** Part statuses the hold tag prints for — the adapter refuses any other. */
+const TAGGABLE = ["QUARANTINED", "ON_HOLD", "REWORK_NEEDED", "SCRAPPED"]
 
 type PartType = z.infer<typeof schemas.Parts>
 
@@ -68,6 +72,10 @@ export function QaQuarantineActionsCell({ part }: PartActionsCellProps) {
                         Disposition
                     </Button>
                 </Link>
+            )}
+            {/* The removable tag for the unit itself (ISO 9001 8.7.1). */}
+            {TAGGABLE.includes(String(part.part_status)) && (
+                <ReportButton reportType="hold_tag" label="Hold tag" params={{ part_id: String(part.id) }} />
             )}
         </div>
     )

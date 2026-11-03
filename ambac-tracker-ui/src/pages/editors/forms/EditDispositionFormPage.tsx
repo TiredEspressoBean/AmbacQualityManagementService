@@ -525,6 +525,16 @@ export default function EditDispositionFormPage() {
                                 label="NCR Report"
                                 params={{ id: dispositionId }}
                             />
+                            {/* The removable tag for the held part itself (ISO 9001 8.7.1);
+                                its permanent label carries no status. */}
+                            {ownPart && ["QUARANTINED", "ON_HOLD", "REWORK_NEEDED", "SCRAPPED"]
+                                .includes(String(ownPart.part_status)) && (
+                                <ReportButton
+                                    reportType="hold_tag"
+                                    label="Hold tag"
+                                    params={{ part_id: String(ownPart.id) }}
+                                />
+                            )}
                             {/* The report accepts only use-as-is and repair dispositions. */}
                             {(disposition?.disposition_type === "USE_AS_IS" ||
                               disposition?.disposition_type === "REPAIR") && (

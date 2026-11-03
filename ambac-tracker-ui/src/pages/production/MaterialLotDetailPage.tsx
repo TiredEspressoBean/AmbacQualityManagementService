@@ -119,6 +119,13 @@ export function MaterialLotDetailPage() {
                             <Tag className="mr-1 h-4 w-4" /> Label
                         </Button>
                     )}
+                    {/* The label carries no status; the removable tag does (ISO 9001 8.7.1). */}
+                    {(l.status === "QUARANTINE" || l.status === "REJECTED") && (
+                        <Button size="sm" variant="outline"
+                            onClick={() => void downloadReport("hold_tag", { lot_id: lotId })}>
+                            <Tag className="mr-1 h-4 w-4" /> Hold tag
+                        </Button>
+                    )}
                     {["RECEIVED", "AWAITING_INSPECTION", "ACCEPTED", "IN_USE", "QUARANTINE", "REJECTED"].includes(l.status ?? "") && (
                         <Button size="sm" variant="outline" onClick={() => setMoveOpen(true)}>
                             <MapPin className="mr-1 h-4 w-4" /> Move

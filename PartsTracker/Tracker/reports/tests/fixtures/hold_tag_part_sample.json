@@ -1,0 +1,20 @@
+{
+  "heading": "QUARANTINE",
+  "kind": "Part",
+  "item_name": "Common Rail Injector",
+  "part_number": "CRI-001",
+  "identifier_label": "Serial",
+  "identifier": "INJ-0042-017",
+  "quantity": "1",
+  "location": null,
+  "work_order": "WO-2024-0042-A",
+  "step": "Flow Calibration",
+  "reasons": ["Quarantined", "Disposition: Rework"],
+  "record_number": "DISP-QR-0042-017-FT",
+  "record_note": "Flow rate 131 mL/min, above the 125 mL/min limit.",
+  "report_numbers": ["QR-0042-017-FT"],
+  "placed_by": "Sarah Chen",
+  "placed_at": "2026-11-01 04:40",
+  "tenant_name": "Demo Company",
+  "print_date": "2026-11-03"
+}

@@ -1,0 +1,20 @@
+{
+  "heading": "HOLD",
+  "kind": "Material lot",
+  "item_name": "Seal & O-Ring Kit",
+  "part_number": "SK-220",
+  "identifier_label": "Lot",
+  "identifier": "LOT-2026-0412",
+  "quantity": "250 EA",
+  "location": "Receiving cage B",
+  "work_order": null,
+  "step": null,
+  "reasons": ["Awaiting certificate of conformance", "Unqualified supplier"],
+  "record_number": null,
+  "record_note": "",
+  "report_numbers": [],
+  "placed_by": "Priya Nair",
+  "placed_at": "2026-11-02 09:05",
+  "tenant_name": "Demo Company",
+  "print_date": "2026-11-03"
+}
