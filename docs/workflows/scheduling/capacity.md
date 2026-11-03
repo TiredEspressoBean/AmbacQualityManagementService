@@ -87,14 +87,17 @@ work**:
   neighbouring months' within the [consumption window](forecast.md#orders-use-up-the-forecast).
   Inside the [demand time fence](forecast.md#the-demand-time-fence) — the next
   30 days, by default — no forecast is planned, only orders. The verdict
-  says *Includes &lt;U&gt; units of unclaimed forecast*, linking to the forecast.
+  says *Includes &lt;U&gt; units of unclaimed forecast (~&lt;H&gt; h)*, linking
+  to the forecast: the units actually in the load, past the fence, and the hours
+  they cost.
 
 A heatmap cell carrying either has a thin strip along its bottom edge — **sky
 blue** for tentative (RFI), **violet** for unclaimed forecast — as wide as that
 share of the month's load. Hovering adds *of which &lt;X&gt;h tentative (RFI
 orders), &lt;Y&gt;h unclaimed forecast*. Forecast for a part type with no approved
 routing can't be placed; an amber line says so — *Forecast for &lt;N&gt; part
-type-months can't be placed (no approved routing) — not in the load*.
+type-months (&lt;U&gt; units) can't be placed (no approved routing) — not in the
+load*. Those units aren't counted in the verdict's figure.
 
 !!! warning "Lines that can't be placed aren't in the load"
     A line with **no due date**, or whose part type has **no approved routing**,
