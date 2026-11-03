@@ -45,6 +45,17 @@ export const stepTimingsOptions = (queries?: StepTimingsQueries) =>
 
 export const useStepTimings = (queries?: StepTimingsQueries) => useQuery(stepTimingsOptions(queries));
 
+/** What the step records measure for each aspect, beside what the scheduler uses.
+ *  Keyed under the timings root, so saving a timing refreshes the "in use" source. */
+export type MeasuredStepTiming = S["MeasuredStepTiming"];
+
+export const useMeasuredStepTimings = (step?: string) =>
+    useQuery({
+        queryKey: [STEP_TIMINGS_KEY, "measured", step ?? null] as const,
+        queryFn: () =>
+            api.api_StepTimings_measured_list(step ? { queries: { step } } : undefined) as Promise<MeasuredStepTiming[]>,
+    });
+
 export const stepTimingOptions = (id: string) =>
     queryOptions({
         queryKey: [STEP_TIMINGS_KEY, "detail", id] as const,

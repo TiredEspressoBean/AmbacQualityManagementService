@@ -17,9 +17,14 @@ archived row still holds its key — so adding the same thing again REVIVES the 
 row (`ReviveOnCreateMixin`, Tracker.services.core.soft_delete), over the API and through
 an import alike.
 """
+from uuid import UUID
+
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
@@ -28,7 +33,7 @@ from Tracker.models.scheduling import (
 )
 from Tracker.serializers.csv_import import create_import_serializer_for_model
 from Tracker.serializers.scheduling_setup import (
-    StepEquipmentAffinitySerializer, StepTimingRecordSerializer,
+    MeasuredStepTimingSerializer, StepEquipmentAffinitySerializer, StepTimingRecordSerializer,
     WorkCenterChangeoverSerializer,
 )
 from .base import TenantScopedMixin
@@ -81,6 +86,24 @@ class StepTimingViewSet(ReviveOnCreateMixin, TenantScopedMixin, ListMetadataMixi
     search_fields = ['step__name']
     ordering_fields = ['step__name', 'cycle_time_minutes', 'setup_minutes']
     ordering = ['step__name']
+
+    @extend_schema(
+        parameters=[OpenApiParameter('step', OpenApiTypes.UUID, required=False,
+                                     description="Only this step.")],
+        responses=MeasuredStepTimingSerializer(many=True))
+    @action(detail=False, methods=['get'], url_path='measured', pagination_class=None)
+    def measured(self, request):
+        """What the step records measure for each aspect (setup, per piece, cycle per
+        load), beside what the scheduler uses for it. Never writes: "Use measured" is
+        an ordinary edit of the timing."""
+        from Tracker.services.scheduling.measured import compare_step_timings
+        step = request.query_params.get('step')
+        try:
+            step_ids = [UUID(step)] if step else None
+        except ValueError:
+            return Response({'step': 'Not a step id.'}, status=status.HTTP_400_BAD_REQUEST)
+        rows = compare_step_timings(self.tenant, step_ids)
+        return Response(MeasuredStepTimingSerializer(rows, many=True).data)
 
 
 class StepEquipmentAffinityViewSet(ReviveOnCreateMixin, TenantScopedMixin, ListMetadataMixin,

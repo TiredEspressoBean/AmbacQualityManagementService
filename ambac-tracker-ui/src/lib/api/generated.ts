@@ -4949,6 +4949,42 @@ export type MaterialRequest = {
   is_active?: boolean | undefined;
   archived?: boolean | undefined;
 };
+export type MeasuredStepTiming = {
+  step: string;
+  step_name: string;
+  runs: number;
+  pieces: number;
+  per_piece_minutes: number | null;
+  setup_minutes: number | null;
+  method: MethodEnum;
+  note: string;
+  loads: number;
+  cycle_per_load_minutes: number | null;
+  setup_in_use: TimingSourceEnum;
+  cycle_in_use: TimingSourceEnum;
+  setup_drift: boolean;
+  cycle_drift: boolean;
+  drift_pct: number;
+};
+export type MethodEnum =
+  /**
+   * * `fit` - fit
+   * `average` - average
+   * `none` - none
+   *
+   * @enum fit, average, none
+   */
+  "fit" | "average" | "none";
+export type TimingSourceEnum =
+  /**
+   * * `authored` - authored
+   * `measured` - measured
+   * `expected` - expected
+   * `none` - none
+   *
+   * @enum authored, measured, expected, none
+   */
+  "authored" | "measured" | "expected" | "none";
 export type MeasurementDefinition = {
   id: string;
   /**
@@ -5369,6 +5405,13 @@ export type OptimizationConfig = {
   AutoResolveEnum | undefined;
   auto_resolve_min_interval_minutes?: /**
    * Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule sooner than this many minutes after its last solve, so a burst of changes batches into one re-solve.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  number | undefined;
+  timing_drift_pct?: /**
+   * Step Timings flags an authored setup or cycle time whose measured value differs from it by more than this percentage. 0 = no flag. A flag only points; the authored time is never changed for you.
    *
    * @minimum 0
    * @maximum 2147483647
@@ -13919,6 +13962,13 @@ export type PatchedOptimizationConfigRequest = Partial<{
    * @maximum 2147483647
    */
   auto_resolve_min_interval_minutes: number;
+  /**
+   * Step Timings flags an authored setup or cycle time whose measured value differs from it by more than this percentage. 0 = no flag. A flag only points; the authored time is never changed for you.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  timing_drift_pct: number;
 }>;
 export type PatchedOrderLineRequest = Partial<{
   order: string;
@@ -25429,6 +25479,7 @@ const OptimizationConfig = z.object({
     .gte(0)
     .lte(2147483647)
     .optional(),
+  timing_drift_pct: z.number().int().gte(0).lte(2147483647).optional(),
 });
 const PatchedOptimizationConfigRequest = z
   .object({
@@ -25463,6 +25514,7 @@ const PatchedOptimizationConfigRequest = z
     workload_norm_pct: z.number().int().gte(0).lte(2147483647),
     auto_resolve: AutoResolveEnum,
     auto_resolve_min_interval_minutes: z.number().int().gte(0).lte(2147483647),
+    timing_drift_pct: z.number().int().gte(0).lte(2147483647),
   })
   .partial();
 const ScheduleCrew = z.object({ user_ids: z.array(z.number().int()) });
@@ -26101,6 +26153,25 @@ const PatchedStepTimingRecordRequest = z
     archived: z.boolean(),
   })
   .partial();
+const MethodEnum = z.enum(["fit", "average", "none"]);
+const TimingSourceEnum = z.enum(["authored", "measured", "expected", "none"]);
+const MeasuredStepTiming = z.object({
+  step: z.string().uuid(),
+  step_name: z.string(),
+  runs: z.number().int(),
+  pieces: z.number().int(),
+  per_piece_minutes: z.number().nullable(),
+  setup_minutes: z.number().nullable(),
+  method: MethodEnum,
+  note: z.string(),
+  loads: z.number().int(),
+  cycle_per_load_minutes: z.number().nullable(),
+  setup_in_use: TimingSourceEnum,
+  cycle_in_use: TimingSourceEnum,
+  setup_drift: z.boolean(),
+  cycle_drift: z.boolean(),
+  drift_pct: z.number().int(),
+});
 const StepProcessRef = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -30795,6 +30866,9 @@ export const schemas = {
   PaginatedStepTimingRecordList,
   StepTimingRecordRequest,
   PatchedStepTimingRecordRequest,
+  MethodEnum,
+  TimingSourceEnum,
+  MeasuredStepTiming,
   StepProcessRef,
   Steps,
   PaginatedStepsList,
@@ -57742,6 +57816,38 @@ from. One row per step (the step is the key).`,
   },
   {
     method: "get",
+    path: "/api/StepTimings/measured/",
+    alias: "api_StepTimings_measured_list",
+    description: `What the step records measure for each aspect (setup, per piece, cycle per
+load), beside what the scheduler uses for it. Never writes: &quot;Use measured&quot; is
+an ordinary edit of the timing.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "attention_type",
+        type: "Query",
+        schema: z.enum(["full", "load_unload", "unattended"]).optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: z.array(MeasuredStepTiming),
+  },
+  {
+    method: "get",
     path: "/api/StepTimings/metadata/",
     alias: "api_StepTimings_metadata_retrieve",
     description: `Return searchable/filterable/orderable field information with filter options.`,
@@ -61681,7 +61787,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: TrainingType,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingTypes/:id/",
@@ -61696,10 +61805,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: TrainingType,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "put",
     path: "/api/TrainingTypes/:id/",

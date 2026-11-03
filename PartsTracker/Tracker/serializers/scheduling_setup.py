@@ -31,6 +31,30 @@ class StepTimingRecordSerializer(SecureModelMixin):
         read_only_fields = ('id', 'step_name')
 
 
+TIMING_SOURCES = ['authored', 'measured', 'expected', 'none']
+
+
+class MeasuredStepTimingSerializer(serializers.Serializer):
+    """A step's measured aspects beside what the scheduler uses for each
+    (services/scheduling/measured.compare_step_timings). Read only."""
+    step = serializers.UUIDField(source='step_id')
+    step_name = serializers.CharField()
+    runs = serializers.IntegerField(source='measured.runs')
+    pieces = serializers.IntegerField(source='measured.pieces')
+    per_piece_minutes = serializers.FloatField(source='measured.per_piece_minutes', allow_null=True)
+    setup_minutes = serializers.FloatField(source='measured.setup_minutes', allow_null=True)
+    method = serializers.ChoiceField(choices=['fit', 'average', 'none'], source='measured.method')
+    note = serializers.CharField(source='measured.note', allow_blank=True)
+    loads = serializers.IntegerField(source='measured.loads')
+    cycle_per_load_minutes = serializers.FloatField(source='measured.cycle_per_load_minutes',
+                                                    allow_null=True)
+    setup_in_use = serializers.ChoiceField(choices=TIMING_SOURCES)
+    cycle_in_use = serializers.ChoiceField(choices=TIMING_SOURCES)
+    setup_drift = serializers.BooleanField()
+    cycle_drift = serializers.BooleanField()
+    drift_pct = serializers.IntegerField()
+
+
 class StepEquipmentAffinitySerializer(SecureModelMixin):
     """A machine that can run a step, how well, and optionally its own cycle time."""
     step_name = serializers.CharField(source='step.name', read_only=True)

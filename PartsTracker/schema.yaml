@@ -33394,6 +33394,60 @@ paths:
                 format: binary
                 description: Template file download
           description: ''
+  /api/StepTimings/measured/:
+    get:
+      operationId: api_StepTimings_measured_list
+      description: |-
+        What the step records measure for each aspect (setup, per piece, cycle per
+        load), beside what the scheduler uses for it. Never writes: "Use measured" is
+        an ordinary edit of the timing.
+      parameters:
+      - in: query
+        name: attention_type
+        schema:
+          type: string
+          enum:
+          - full
+          - load_unload
+          - unattended
+        description: |-
+          Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+
+          * `full` - Full attention (operator tied to the machine)
+          * `load_unload` - Load/unload only (machine runs unattended between)
+          * `unattended` - Unattended (robot/cobot fed — setup only)
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+        description: Only this step.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeasuredStepTiming'
+          description: ''
   /api/StepTimings/metadata/:
     get:
       operationId: api_StepTimings_metadata_retrieve
@@ -62601,6 +62655,65 @@ components:
       - part_erp_id
       - qty_consumed
       - updated_at
+    MeasuredStepTiming:
+      type: object
+      description: |-
+        A step's measured aspects beside what the scheduler uses for each
+        (services/scheduling/measured.compare_step_timings). Read only.
+      properties:
+        step:
+          type: string
+          format: uuid
+        step_name:
+          type: string
+        runs:
+          type: integer
+        pieces:
+          type: integer
+        per_piece_minutes:
+          type: number
+          format: double
+          nullable: true
+        setup_minutes:
+          type: number
+          format: double
+          nullable: true
+        method:
+          $ref: '#/components/schemas/MethodEnum'
+        note:
+          type: string
+        loads:
+          type: integer
+        cycle_per_load_minutes:
+          type: number
+          format: double
+          nullable: true
+        setup_in_use:
+          $ref: '#/components/schemas/TimingSourceEnum'
+        cycle_in_use:
+          $ref: '#/components/schemas/TimingSourceEnum'
+        setup_drift:
+          type: boolean
+        cycle_drift:
+          type: boolean
+        drift_pct:
+          type: integer
+      required:
+      - cycle_drift
+      - cycle_in_use
+      - cycle_per_load_minutes
+      - drift_pct
+      - loads
+      - method
+      - note
+      - per_piece_minutes
+      - pieces
+      - runs
+      - setup_drift
+      - setup_in_use
+      - setup_minutes
+      - step
+      - step_name
     MeasurementDataPoint:
       type: object
       description: |-
@@ -62956,6 +63069,16 @@ components:
           type: boolean
       required:
       - definition
+    MethodEnum:
+      enum:
+      - fit
+      - average
+      - none
+      type: string
+      description: |-
+        * `fit` - fit
+        * `average` - average
+        * `none` - none
     Milestone:
       type: object
       description: Single milestone within a template.
@@ -63674,6 +63797,13 @@ components:
           description: 'Anti-churn floor for LIVE auto-resolve: don''t re-solve a
             schedule sooner than this many minutes after its last solve, so a burst
             of changes batches into one re-solve.'
+        timing_drift_pct:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Step Timings flags an authored setup or cycle time whose measured
+            value differs from it by more than this percentage. 0 = no flag. A flag
+            only points; the authored time is never changed for you.
       required:
       - id
     OrderBlocker:
@@ -70545,6 +70675,13 @@ components:
           description: 'Anti-churn floor for LIVE auto-resolve: don''t re-solve a
             schedule sooner than this many minutes after its last solve, so a burst
             of changes batches into one re-solve.'
+        timing_drift_pct:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Step Timings flags an authored setup or cycle time whose measured
+            value differs from it by more than this percentage. 0 = no flag. A flag
+            only points; the authored time is never changed for you.
     PatchedOrderLineRequest:
       type: object
       description: |-
@@ -85938,6 +86075,18 @@ components:
         * `SHIFT` - On Shift
         * `BREAK` - Break
         * `LUNCH` - Lunch
+    TimingSourceEnum:
+      enum:
+      - authored
+      - measured
+      - expected
+      - none
+      type: string
+      description: |-
+        * `authored` - authored
+        * `measured` - measured
+        * `expected` - expected
+        * `none` - none
     ToolingRequirement:
       type: object
       properties:

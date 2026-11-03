@@ -13651,6 +13651,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/StepTimings/measured/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description What the step records measure for each aspect (setup, per piece, cycle per
+         *     load), beside what the scheduler uses for it. Never writes: "Use measured" is
+         *     an ordinary edit of the timing.
+         */
+        get: operations["api_StepTimings_measured_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StepTimings/metadata/": {
         parameters: {
             query?: never;
@@ -27081,6 +27102,31 @@ export interface components {
             archived?: boolean;
         };
         /**
+         * @description A step's measured aspects beside what the scheduler uses for each
+         *     (services/scheduling/measured.compare_step_timings). Read only.
+         */
+        MeasuredStepTiming: {
+            /** Format: uuid */
+            step: string;
+            step_name: string;
+            runs: number;
+            pieces: number;
+            /** Format: double */
+            per_piece_minutes: number | null;
+            /** Format: double */
+            setup_minutes: number | null;
+            method: components["schemas"]["MethodEnum"];
+            note: string;
+            loads: number;
+            /** Format: double */
+            cycle_per_load_minutes: number | null;
+            setup_in_use: components["schemas"]["TimingSourceEnum"];
+            cycle_in_use: components["schemas"]["TimingSourceEnum"];
+            setup_drift: boolean;
+            cycle_drift: boolean;
+            drift_pct: number;
+        };
+        /**
          * @description Individual measurement data point for SPC charts.
          *
          *     `id` / `report_id` are nullable: points now come from the merged two-tier
@@ -27267,6 +27313,13 @@ export interface components {
             value_pass_fail?: (components["schemas"]["ValuePassFailEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             archived?: boolean;
         };
+        /**
+         * @description * `fit` - fit
+         *     * `average` - average
+         *     * `none` - none
+         * @enum {string}
+         */
+        MethodEnum: "fit" | "average" | "none";
         /** @description Single milestone within a template. */
         Milestone: {
             /** Format: uuid */
@@ -27586,6 +27639,8 @@ export interface components {
             auto_resolve?: components["schemas"]["AutoResolveEnum"];
             /** @description Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule sooner than this many minutes after its last solve, so a burst of changes batches into one re-solve. */
             auto_resolve_min_interval_minutes?: number;
+            /** @description Step Timings flags an authored setup or cycle time whose measured value differs from it by more than this percentage. 0 = no flag. A flag only points; the authored time is never changed for you. */
+            timing_drift_pct?: number;
         };
         OrderBlocker: {
             kind: string;
@@ -31437,6 +31492,8 @@ export interface components {
             auto_resolve?: components["schemas"]["AutoResolveEnum"];
             /** @description Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule sooner than this many minutes after its last solve, so a burst of changes batches into one re-solve. */
             auto_resolve_min_interval_minutes?: number;
+            /** @description Step Timings flags an authored setup or cycle time whose measured value differs from it by more than this percentage. 0 = no flag. A flag only points; the authored time is never changed for you. */
+            timing_drift_pct?: number;
         };
         /**
          * @description One demand line on an order.
@@ -39421,6 +39478,14 @@ export interface components {
          * @enum {string}
          */
         TimeEntryTypeEnum: "PRODUCTION" | "SETUP" | "REWORK" | "DOWNTIME" | "INDIRECT" | "SHIFT" | "BREAK" | "LUNCH";
+        /**
+         * @description * `authored` - authored
+         *     * `measured` - measured
+         *     * `expected` - expected
+         *     * `none` - none
+         * @enum {string}
+         */
+        TimingSourceEnum: "authored" | "measured" | "expected" | "none";
         ToolingRequirement: {
             fixture: string;
             kind: string;
@@ -65669,6 +65734,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_StepTimings_measured_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+                 *
+                 *     * `full` - Full attention (operator tied to the machine)
+                 *     * `load_unload` - Load/unload only (machine runs unattended between)
+                 *     * `unattended` - Unattended (robot/cobot fed — setup only)
+                 */
+                attention_type?: "full" | "load_unload" | "unattended";
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /** @description Only this step. */
+                step?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeasuredStepTiming"][];
                 };
             };
         };

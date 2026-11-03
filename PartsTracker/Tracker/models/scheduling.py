@@ -455,6 +455,12 @@ class OptimizationConfig(SecureModel):
                   "sooner than this many minutes after its last solve, so a burst of "
                   "changes batches into one re-solve.",
     )
+    timing_drift_pct = models.PositiveIntegerField(
+        default=25,
+        help_text="Step Timings flags an authored setup or cycle time whose measured "
+                  "value differs from it by more than this percentage. 0 = no flag. "
+                  "A flag only points; the authored time is never changed for you.",
+    )
 
     class Meta:
         verbose_name = 'Optimization Config'

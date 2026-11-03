@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q
+from django.db.models import Q
 from django.utils import timezone
 
 from Tracker.services.core.clock import plant_tz
@@ -58,7 +58,8 @@ class TimingData:
     setup_minutes: float
     load_unload_per_piece: float
     attention_type: str  # 'full' | 'load_unload' | 'unattended'
-    cycle_source: str  # 'timing' | 'history' | 'expected' | 'none'
+    cycle_source: str  # 'timing' | 'measured' | 'expected' | 'none'
+    setup_source: str = 'timing'  # 'timing' | 'measured' | 'none'
 
     def machine_wall_time(self, quantity: int) -> float:
         """Minutes the machine is occupied for a batch: internal setup + run."""
@@ -200,13 +201,21 @@ class OperatorData:
 
 # --- Timings (with the duration fallback chain) -----------------------------
 
-def get_step_timings(tenant, min_samples: int = 20) -> dict[UUID, TimingData]:
-    """Per current step: `StepTiming.cycle_time_minutes` → `StepExecution`
-    historical average (≥ `min_samples` completed visits) → `Steps.expected_duration`.
-    Setup / load-unload / external / attention come from `StepTiming` when present,
-    else default to 0 / FULL."""
-    from Tracker.models import StepExecution, Steps, StepTiming
+def get_step_timings(tenant, measured=None) -> dict[UUID, TimingData]:
+    """Per current step, each aspect from its own fallback chain:
+
+    - cycle: `StepTiming.cycle_time_minutes` → measured (per load for a batch step,
+      else per piece; services/scheduling/measured) → `Steps.expected_duration`.
+    - setup: `StepTiming.setup_minutes` → measured setup, where the runs separate it
+      from per-piece time → 0.
+    - load-unload / external / attention: `StepTiming` only (the records can't
+      separate them), else 0 / FULL.
+
+    An authored 0 counts as unset, as it always has for cycle. `measured` takes a
+    `measure_step_timings` result already in hand."""
+    from Tracker.models import Steps, StepTiming
     from Tracker.models.scheduling import AttentionType
+    from Tracker.services.scheduling.measured import measure_step_timings
 
     # `archived=False`: clearing a step's timing (`timing: null`) soft-deletes the
     # row, because hard delete is disabled repo-wide. Without this filter the solver
@@ -214,45 +223,37 @@ def get_step_timings(tenant, min_samples: int = 20) -> dict[UUID, TimingData]:
     # appeared to save and changed nothing.
     timings = {t.step_id: t
                for t in StepTiming.objects.filter(tenant=tenant, archived=False)}
-
-    # Worked time only: start to exit. Arrival to exit counted the queue in front of
-    # the step too, so a step's learned time ran long by however long parts waited.
-    # Visits never started (advanced straight from the queue) carry no run time.
-    dur = ExpressionWrapper(F('exited_at') - F('started_at'), output_field=DurationField())
-    hist = {
-        row['step']: row
-        for row in StepExecution.objects
-        .filter(archived=False, tenant=tenant, exited_at__isnull=False,
-                started_at__isnull=False)
-        .values('step').annotate(avg=Avg(dur), n=Count('id'))
-    }
-
-    def _historical(step_id):
-        h = hist.get(step_id)
-        if h and h['n'] >= min_samples and h['avg'] is not None:
-            return h['avg'].total_seconds() / 60.0
-        return None
+    if measured is None:
+        measured = measure_step_timings(tenant)
 
     result: dict[UUID, TimingData] = {}
     for step in Steps.objects.filter(tenant=tenant, is_current_version=True):
         t = timings.get(step.id)
+        m = measured.get(step.id)
         if t and t.cycle_time_minutes:
             cycle, source = t.cycle_time_minutes, 'timing'
+        elif m and m.cycle_per_load_minutes is not None:
+            cycle, source = m.cycle_per_load_minutes, 'measured'
+        elif m and m.per_piece_minutes is not None:
+            cycle, source = m.per_piece_minutes, 'measured'
+        elif step.expected_duration:
+            cycle, source = step.expected_duration.total_seconds() / 60.0, 'expected'
         else:
-            hist_cycle = _historical(step.id)
-            if hist_cycle is not None:
-                cycle, source = hist_cycle, 'history'
-            elif step.expected_duration:
-                cycle, source = step.expected_duration.total_seconds() / 60.0, 'expected'
-            else:
-                cycle, source = 0.0, 'none'
+            cycle, source = 0.0, 'none'
+        if t and t.setup_minutes:
+            setup, setup_source = t.setup_minutes, 'timing'
+        elif m and m.setup_minutes is not None and m.cycle_per_load_minutes is None:
+            setup, setup_source = m.setup_minutes, 'measured'
+        else:
+            setup, setup_source = 0.0, 'none'
         result[step.id] = TimingData(
             step_id=step.id,
             cycle_time_minutes=cycle,
-            setup_minutes=t.setup_minutes if t else 0.0,
+            setup_minutes=setup,
             load_unload_per_piece=t.load_unload_per_piece if t else 0.0,
             attention_type=t.attention_type if t else AttentionType.FULL,
             cycle_source=source,
+            setup_source=setup_source,
         )
     return result
 

@@ -59,39 +59,44 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
     def test_timing_fallback_chain(self):
         StepTiming.objects.create(
             tenant=self.tenant, step=self.s_timing, cycle_time_minutes=5, setup_minutes=8)
-        # history step: two completed executions, each 10 minutes of work after
+        # measured step: five work orders of one part, each 10 minutes of work after
         # 30 minutes waiting in the queue — only the work is the step's time.
-        wo = WorkOrder.objects.create(
-            tenant=self.tenant, ERP_id="WO-D", workorder_status=WorkOrderStatus.IN_PROGRESS,
-            quantity=1, process=self.process)
-        part = Parts.objects.create(
-            tenant=self.tenant, ERP_id="P-D", part_type=self.pt, work_order=wo, step=self.s_history)
         now = timezone.now()
-        for i in range(2):
+        for i in range(5):
+            wo = WorkOrder.objects.create(
+                tenant=self.tenant, ERP_id=f"WO-D{i}", workorder_status=WorkOrderStatus.IN_PROGRESS,
+                quantity=1, process=self.process)
+            part = Parts.objects.create(
+                tenant=self.tenant, ERP_id=f"P-D{i}", part_type=self.pt, work_order=wo, step=self.s_history)
             ex = StepExecution.objects.create(
-                tenant=self.tenant, part=part, step=self.s_history, visit_number=i + 1, status="COMPLETED")
+                tenant=self.tenant, part=part, step=self.s_history, visit_number=1, status="COMPLETED")
             StepExecution.objects.filter(pk=ex.pk).update(
                 entered_at=now - timedelta(minutes=40), started_at=now - timedelta(minutes=10),
                 exited_at=now)
+            # A re-visit is rework, not the step's standard: it doesn't count.
+            ex = StepExecution.objects.create(
+                tenant=self.tenant, part=part, step=self.s_history, visit_number=2, status="COMPLETED")
+            StepExecution.objects.filter(pk=ex.pk).update(
+                started_at=now - timedelta(minutes=300), exited_at=now)
         # A visit advanced without ever being started carries no run time.
         ex = StepExecution.objects.create(
-            tenant=self.tenant, part=part, step=self.s_history, visit_number=3, status="COMPLETED")
+            tenant=self.tenant, part=part, step=self.s_history, visit_number=1, status="COMPLETED")
         StepExecution.objects.filter(pk=ex.pk).update(
             entered_at=now - timedelta(minutes=500), exited_at=now)
 
-        timings = data.get_step_timings(self.tenant, min_samples=2)
+        timings = data.get_step_timings(self.tenant)
         self.assertEqual(timings[self.s_timing.id].cycle_source, 'timing')
         self.assertEqual(timings[self.s_timing.id].cycle_time_minutes, 5)
         self.assertEqual(timings[self.s_timing.id].setup_minutes, 8)
-        self.assertEqual(timings[self.s_history.id].cycle_source, 'history')
+        self.assertEqual(timings[self.s_history.id].cycle_source, 'measured')
         self.assertAlmostEqual(timings[self.s_history.id].cycle_time_minutes, 10, places=1)
         self.assertEqual(timings[self.s_expected.id].cycle_source, 'expected')
         self.assertEqual(timings[self.s_expected.id].cycle_time_minutes, 12)
         self.assertEqual(timings[self.s_none.id].cycle_source, 'none')
         self.assertEqual(timings[self.s_none.id].cycle_time_minutes, 0.0)
 
-    def test_history_below_min_samples_falls_through(self):
-        # One sample only, min_samples=20 → not enough → falls to expected/none.
+    def test_too_few_measured_runs_fall_through(self):
+        # One run only, five needed → not enough → falls to expected/none.
         wo = WorkOrder.objects.create(
             tenant=self.tenant, ERP_id="WO-D2", workorder_status=WorkOrderStatus.IN_PROGRESS,
             quantity=1, process=self.process)
@@ -101,8 +106,8 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
             tenant=self.tenant, part=part, step=self.s_history, visit_number=1, status="COMPLETED")
         now = timezone.now()
         StepExecution.objects.filter(pk=ex.pk).update(
-            entered_at=now - timedelta(minutes=10), exited_at=now)
-        timings = data.get_step_timings(self.tenant)  # default min_samples=20
+            started_at=now - timedelta(minutes=10), exited_at=now)
+        timings = data.get_step_timings(self.tenant)
         self.assertEqual(timings[self.s_history.id].cycle_source, 'none')
 
     # ---- affinities / changeover / fixtures / horizon ---------------------

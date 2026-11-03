@@ -62,6 +62,8 @@ const FLOW: FieldSpec[] = [
     hint: "Setup charged when a resource switches work order on the same op." },
   { key: "default_move_minutes", label: "Move / queue time (min)", kind: "int",
     hint: "Transport + queue gap between consecutive operations of a route (0 = none)." },
+  { key: "timing_drift_pct", label: "Timing drift flag (%)", kind: "int", min: 0,
+    hint: "Step Timings flags an authored setup or cycle time its measurement differs from by more than this. 0 = no flag. Nothing is changed for you." },
 ];
 const COSTS: FieldSpec[] = [
   { key: "shop_rate_per_hour", label: "Shop rate / hour", kind: "decimal" },

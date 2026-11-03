@@ -2,6 +2,9 @@
  * A step's standard times, edited on the step's own form: what the scheduler and
  * rough-cut capacity size each operation from. One timing per step; saving creates
  * it the first time and updates it after.
+ *
+ * Setup and cycle also show what the step records measure and which the scheduler
+ * uses; "Use measured" copies the measurement into the field, to save like any edit.
  */
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -12,7 +15,10 @@ import { Label } from "@/components/ui/label";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { useCreateStepTiming, useStepTimings, useUpdateStepTiming } from "@/hooks/useSchedulingSetup";
+import { MeasuredLine, SourceBadge, measuredValue, type Aspect } from "@/components/scheduling/MeasuredTiming";
+import {
+    useCreateStepTiming, useMeasuredStepTimings, useStepTimings, useUpdateStepTiming,
+} from "@/hooks/useSchedulingSetup";
 import type { components } from "@/lib/api/generated-types";
 import { ATTENTION_LABEL, parseMinutes, toastApiError, useAllows } from "@/pages/scheduling/setup/shared";
 
@@ -26,10 +32,15 @@ const FIELDS = [
 ] as const;
 type Key = typeof FIELDS[number]["key"];
 
+/** The fields a measurement exists for. */
+const MEASURED: Partial<Record<Key, Aspect>> = { setup_minutes: "setup", cycle_time_minutes: "cycle" };
+
 export function StepTimingFields({ stepId }: { stepId: string }) {
     const allows = useAllows();
     const { data, isLoading } = useStepTimings({ step: stepId, limit: 1 });
     const existing = data?.results?.[0];
+    const { data: measuredRows } = useMeasuredStepTimings(stepId);
+    const measured = measuredRows?.[0];
     const canSave = existing ? allows("change_steptiming") : allows("add_steptiming");
     const create = useCreateStepTiming();
     const update = useUpdateStepTiming();
@@ -81,6 +92,22 @@ export function StepTimingFields({ stepId }: { stepId: string }) {
                             value={values[f.key]} disabled={!canSave}
                             onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))} />
                         <p className="text-xs text-muted-foreground">{f.hint}</p>
+                        {MEASURED[f.key] && (() => {
+                            const aspect = MEASURED[f.key]!;
+                            const value = measuredValue(measured, aspect);
+                            return (
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <SourceBadge source={aspect === "setup" ? measured?.setup_in_use : measured?.cycle_in_use} />
+                                    <MeasuredLine m={measured} aspect={aspect} />
+                                    {canSave && value != null && String(value) !== values[f.key] && (
+                                        <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs"
+                                            onClick={() => setValues((v) => ({ ...v, [f.key]: String(value) }))}>
+                                            Use measured
+                                        </Button>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
                 ))}
                 <div className="space-y-1.5">

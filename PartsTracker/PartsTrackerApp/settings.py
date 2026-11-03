@@ -395,6 +395,8 @@ SPECTACULAR_SETTINGS = {
 
 
     "ENUM_NAME_OVERRIDES": {
+        # Where the scheduler takes a step's setup / cycle from (Step Timings).
+        "TimingSourceEnum": "Tracker.serializers.scheduling_setup.TIMING_SOURCES",
         # Inspection-inbox row 'type' — would otherwise collide with
         # MeasurementDefinition.type and rename the long-exported TypeEnum.
         "InspectionInboxTypeEnum": "Tracker.serializers.qms.INSPECTION_INBOX_TYPES",
