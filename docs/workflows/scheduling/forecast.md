@@ -93,8 +93,9 @@ What counts as claiming it: order lines that aren't cancelled or deleted, at
 their full quantity, plus work orders that aren't on any order line. A work
 order on an order line is that line's own units, not counted twice. The
 forecast covers **new builds only**, so remanufacturing claims nothing:
-teardown and disassembly work, and order lines whose units come in as the
-customer's own cores (repair and return, or exchange).
+teardown and remanufacture work orders, and order lines whose
+[fulfilment](../orders/creating-orders.md#order-lines) is **Repair & return** or
+**Exchange** — from the moment the line is entered, before any core arrives.
 
 A forecast belongs to its part type: when the part type is revised to a new
 version, its forecast moves with it. When the part type is archived, its

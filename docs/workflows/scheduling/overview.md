@@ -181,7 +181,7 @@ Home has a **What ships when** tile that opens this page.
 | Column | Shows |
 |--------|-------|
 | **Due** | The line's due date, red when past |
-| **Order** | The order and line number, with the customer underneath; an RFI line carries *RFI · tentative* |
+| **Order** | The order and line number, with the customer underneath; an RFI line carries *RFI · tentative*, and a remanufacture line its [fulfilment](../orders/creating-orders.md#order-lines) — *Repair & return* or *Exchange* |
 | **Part type** | Its name and ERP id |
 | **To ship** | Units still to ship — *of &lt;quantity&gt;* when some have gone |
 | **Planned / not yet** | Of those, how many are on work orders and how many aren't yet planned (amber when any) |

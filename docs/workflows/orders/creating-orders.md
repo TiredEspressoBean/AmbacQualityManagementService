@@ -72,6 +72,35 @@ or reversing a shipment on it, puts the order back to **In Progress**.
 | **Completed** | All parts finished |
 | **Cancelled** | Order cancelled |
 
+## Order Lines
+
+What the customer asked for goes on the order's **lines**, under **Order lines**
+on the order's page (**Production** > **Orders**, then the order). **Add line**
+takes a **part type**, a **fulfilment**, a **quantity** and a **due date**.
+
+**Fulfilment** says how the line's units will be made:
+
+| Fulfilment | Means |
+|------------|-------|
+| **New build** | Built new. The default |
+| **Repair & return** | The customer's own units come in as cores, are remanufactured, and go back to them |
+| **Exchange** | The customer gets a remanufactured unit from stock; their core comes in, often later |
+
+Set it when you enter the line: it decides whether the line uses up the
+[volume forecast](../scheduling/forecast.md#orders-use-up-the-forecast), which
+covers new builds only. A **Repair & return** or **Exchange** line never does.
+Change it on the line later, with `change_orderline`; without that permission it
+shows as text.
+
+If the cores received for the order disagree with a line's fulfilment, an amber
+⚠ beside it says so — *Cores for this order have been received (Repair &
+return), but this line is a new build. If it's remanufacture, change its
+fulfilment.* It is a warning only: the line's own setting is what counts.
+
+A Repair & return or Exchange line carries a badge with its fulfilment in the
+order page's line list and on the [Ship lane](../scheduling/overview.md#what-ships-when).
+Customers see their lines but not the fulfilment.
+
 ## Linking to Work Orders
 
 Orders need work orders to track production:
@@ -95,7 +124,8 @@ For creating multiple orders:
 4. Fill in order data
 5. Upload the completed file
 
-The system validates the import and reports any errors.
+The system validates the import and reports any errors. The import creates
+orders only; add their lines on each order's page.
 
 ## Order Permissions
 
