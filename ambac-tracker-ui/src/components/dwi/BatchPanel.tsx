@@ -17,7 +17,8 @@
  * engine fires advancement.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { PartContext } from "@/components/dwi/shared/PartContext";
 import { Loader2, Package, Lock, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,9 @@ import {
 } from "@/components/dwi/shared/OperatorResponseContext";
 import { buildCaptures, findMissingRequired } from "@/lib/dwi/build-captures";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
+import { api } from "@/lib/api/generated";
+import { batchCompletionsOptions } from "@/components/dwi/StepCompletionsList";
+import { useDraftAutosave } from "@/lib/dwi/capture-draft-saver";
 
 export type CohortPart = { id: string; label: string; /** why it can't be loaded */ held?: string };
 
@@ -333,6 +337,12 @@ export function BatchPanel({
 
 const EMPTY_DOC = { type: "doc", content: [] } as const;
 
+const batchCaptureStateOptions = (batchId: string) =>
+    queryOptions({
+        queryKey: ["batch-capture-state", batchId],
+        queryFn: () => api.api_BatchExecutions_capture_state_retrieve({ params: { id: batchId } }),
+    });
+
 /**
  * Once-per-lot capture surface for an open batch. Renders the step's
  * BATCH-scope substeps with the same operator view the per-part runtime
@@ -359,6 +369,51 @@ function BatchCaptureSection({
     >({});
     const [capturedIds, setCapturedIds] = useState<Set<string>>(new Set());
     const [submittingId, setSubmittingId] = useState<string | null>(null);
+    // The substep last typed into: the one the autosave has queued.
+    const [editingId, setEditingId] = useState<string | null>(null);
+
+    // What the load already holds — confirmed captures with any draft over them —
+    // so walking away from a half-entered load and coming back loses nothing.
+    const { data: storedState } = useQuery(batchCaptureStateOptions(batchId));
+    const { data: completions } = useQuery(batchCompletionsOptions([batchId]));
+    const [hydrated, setHydrated] = useState(false);
+    const draftWarned = useRef(false);
+    const { markSaved } = useDraftAutosave({
+        current: editingId
+            ? {
+                kind: "batch",
+                executionId: batchId,
+                substepId: editingId,
+                responses: (responsesBySubstep[editingId] ?? {}) as Record<string, unknown>,
+            }
+            : null,
+        ready: hydrated,
+        onRefused: (detail) => toast.error("The load's entries aren't being saved", { description: detail }),
+        onSignedOut: () => toast.error("Your last load entries weren't saved", {
+            description: "You were signed out before they reached the server. " +
+                "Sign in and re-enter them on the load.",
+            duration: Infinity,
+        }),
+        onFailed: () => {
+            if (draftWarned.current) return;
+            draftWarned.current = true;
+            toast.warning("Couldn't save the load's progress", {
+                description: "It's still on this screen, and Confirm for batch records it.",
+            });
+        },
+    });
+    useEffect(() => {
+        if (hydrated || !storedState || !completions) return;
+        const state = storedState as Record<string, Record<string, unknown>>;
+        markSaved(batchId, state);
+        setResponsesBySubstep((prev) => (Object.keys(prev).length ? prev : state));
+        setCapturedIds((prev) => prev.size ? prev : new Set(
+            (completions.results ?? [])
+                .filter((c) => !c.is_voided)
+                .map((c) => String(c.substep)),
+        ));
+        setHydrated(true);
+    }, [hydrated, storedState, completions, batchId, markSaved]);
 
     const batchSubsteps = (substepsData?.results ?? []).filter(
         (s: Substep) => s.scope === "batch",
@@ -366,11 +421,13 @@ function BatchCaptureSection({
 
     if (isLoading || batchSubsteps.length === 0) return null;
 
-    const setResponse = (substepId: string, nodeId: string, value: unknown) =>
+    const setResponse = (substepId: string, nodeId: string, value: unknown) => {
+        setEditingId(substepId);
         setResponsesBySubstep((prev) => ({
             ...prev,
             [substepId]: { ...(prev[substepId] ?? {}), [nodeId]: value },
         }));
+    };
 
     const handleConfirm = async (substep: Substep) => {
         const body = substep.body_blocks ?? EMPTY_DOC;
@@ -391,6 +448,9 @@ function BatchCaptureSection({
                     data: { batch_execution: batchId, captures, ...fields },
                 }));
             if (refused === null) {
+                // Committed: the server holds these now, so the autosave mustn't send
+                // them back as a draft.
+                markSaved(batchId, { [substep.id]: responses as Record<string, unknown> });
                 setCapturedIds((prev) => new Set(prev).add(substep.id));
                 toast.success(`Captured "${substep.title}" for the batch.`);
                 onCaptured?.();

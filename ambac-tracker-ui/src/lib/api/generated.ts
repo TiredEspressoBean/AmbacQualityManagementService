@@ -19685,6 +19685,14 @@ const RemoveBatchPartResponse = z.object({
   part: z.string().uuid(),
   outcome: RemoveBatchPartResponseOutcomeEnum,
 });
+const BatchCaptureDraftRequestRequest = z.object({
+  substep: z.string().uuid(),
+  responses: z.object({}).partial().passthrough(),
+});
+const BatchCaptureDraftResponse = z.object({
+  saved_substeps: z.array(z.string()),
+});
+const BatchCaptureDraftError = z.object({ detail: z.string() });
 const BatchSealResponse = z.object({
   batch_id: z.string(),
   sealed_at: z.string(),
@@ -30172,6 +30180,9 @@ export const schemas = {
   RemoveBatchPartRequestRequest,
   RemoveBatchPartResponseOutcomeEnum,
   RemoveBatchPartResponse,
+  BatchCaptureDraftRequestRequest,
+  BatchCaptureDraftResponse,
+  BatchCaptureDraftError,
   BatchSealResponse,
   CapaTypeEnum,
   SeverityEnum,
@@ -32749,6 +32760,21 @@ for advancement.`,
     response: z.void(),
   },
   {
+    method: "get",
+    path: "/api/BatchExecutions/:id/capture-state/",
+    alias: "api_BatchExecutions_capture_state_retrieve",
+    description: `The load&#x27;s batch substep captures as {substep_id: {node_id: response}}: what was confirmed for the load, with any draft overlaid. The batch panel hydrates from it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
     method: "post",
     path: "/api/BatchExecutions/:id/remove-part/",
     alias: "api_BatchExecutions_remove_part_create",
@@ -32767,6 +32793,32 @@ for advancement.`,
       },
     ],
     response: RemoveBatchPartResponse,
+  },
+  {
+    method: "post",
+    path: "/api/BatchExecutions/:id/save-draft/",
+    alias: "api_BatchExecutions_save_draft_create",
+    description: `Save one batch substep&#x27;s work in progress on the load, so a half-entered load survives walking away. Records nothing official — Confirm for batch does. Refused once the load is sealed.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: BatchCaptureDraftRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: BatchCaptureDraftResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
   },
   {
     method: "post",
@@ -36193,7 +36245,10 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "post",
     path: "/api/CustomerShipments/:id/void/",
@@ -36228,10 +36283,7 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: DeliveryPerformance,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/CustomerShipments/export/:export_format/",
@@ -41329,7 +41381,10 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: z.object({ status: z.string() }),
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/integrations/catalog/",
@@ -41387,10 +41442,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: PaginatedJobRoleList,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "post",
     path: "/api/JobRoles/",
@@ -45595,7 +45647,10 @@ field metadata).`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/OrderBook/:id/",
@@ -45624,10 +45679,7 @@ Permissioned on &#x60;view_orders&#x60; (TenantModelPermissions derives it from 
 queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60;for_user&#x60;).`,
     requestFormat: "json",
     response: OrderBook,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/OrderLines/",
@@ -51053,7 +51105,10 @@ Usage:
       },
     ],
     response: QualityReports,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "put",
     path: "/api/QualityReports/:id/",
@@ -51141,10 +51196,7 @@ Usage:
       },
     ],
     response: QualityReports,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/QualityReports/:id/",
@@ -56120,7 +56172,10 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       },
     ],
     response: StepExecution,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepExecutions/:id/flag-override/",
@@ -56170,10 +56225,7 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
         schema: z.object({ detail: z.string() }),
       },
     ],
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutions/duration_stats/",
@@ -61744,7 +61796,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingTypes/",
@@ -61794,10 +61849,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: TrainingType,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingTypes/:id/",

@@ -718,6 +718,10 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     queryset = BatchExecution.unscoped.select_related(
         'work_order', 'step', 'started_by',
     ).prefetch_related('parts')
+    # Saving a load's work in progress is gated like committing it (substep submit),
+    # not as creating a batch — POST would otherwise demand add_batchexecution.
+    crud_exempt_actions = {'save_draft'}
+    action_permissions = {'save_draft': ['add_substepcompletion']}
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['work_order', 'step', 'sealed_at']
     ordering_fields = ['started_at', 'sealed_at']
@@ -766,6 +770,48 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 serializer.save(started_by=self.request.user)
         except DjangoValidationError as exc:
             raise DRFValidationError({'detail': exc.messages})
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+        description="The load's batch substep captures as {substep_id: {node_id: response}}: "
+                    "what was confirmed for the load, with any draft overlaid. The batch "
+                    "panel hydrates from it.",
+    )
+    @action(detail=True, methods=['get'], url_path='capture-state')
+    def capture_state(self, request, pk=None):
+        from Tracker.services.dwi.operator_capture import build_batch_capture_state
+        return Response(build_batch_capture_state(self.get_object()))
+
+    @extend_schema(
+        request=inline_serializer(name='BatchCaptureDraftRequest', fields={
+            'substep': drf_serializers.UUIDField(),
+            'responses': drf_serializers.DictField(),
+        }),
+        responses={
+            200: inline_serializer(name='BatchCaptureDraftResponse', fields={
+                'saved_substeps': drf_serializers.ListField(child=drf_serializers.CharField()),
+            }),
+            400: inline_serializer(name='BatchCaptureDraftError', fields={
+                'detail': drf_serializers.CharField(),
+            }),
+        },
+        description="Save one batch substep's work in progress on the load, so a "
+                    "half-entered load survives walking away. Records nothing official — "
+                    "Confirm for batch does. Refused once the load is sealed.",
+    )
+    @action(detail=True, methods=['post'], url_path='save-draft')
+    def save_draft(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.models import Substep
+        from Tracker.services.dwi.operator_capture import save_batch_capture_draft
+
+        batch = self.get_object()
+        substep = get_object_or_404(Substep, pk=request.data.get('substep'))
+        try:
+            draft = save_batch_capture_draft(batch, substep, request.data.get('responses') or {})
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'saved_substeps': sorted(draft)})
 
     @extend_schema(
         request=None,

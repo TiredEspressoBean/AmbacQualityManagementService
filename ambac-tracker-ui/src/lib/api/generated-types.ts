@@ -727,6 +727,23 @@ export interface paths {
         patch: operations["api_BatchExecutions_partial_update"];
         trace?: never;
     };
+    "/api/BatchExecutions/{id}/capture-state/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The load's batch substep captures as {substep_id: {node_id: response}}: what was confirmed for the load, with any draft overlaid. The batch panel hydrates from it. */
+        get: operations["api_BatchExecutions_capture_state_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/BatchExecutions/{id}/remove-part/": {
         parameters: {
             query?: never;
@@ -738,6 +755,23 @@ export interface paths {
         put?: never;
         /** @description Take the wrong part out of a sealed batch, with a reason. It goes back to the batch's step and its batch-done work no longer counts for it. No unseal. */
         post: operations["api_BatchExecutions_remove_part_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/BatchExecutions/{id}/save-draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Save one batch substep's work in progress on the load, so a half-entered load survives walking away. Records nothing official — Confirm for batch does. Refused once the load is sealed. */
+        post: operations["api_BatchExecutions_save_draft_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22106,6 +22140,19 @@ export interface components {
          * @enum {string}
          */
         BasisEnum: "AUDIT" | "PPAP" | "FAI" | "SURVEY" | "HISTORICAL" | "CERTIFICATION";
+        BatchCaptureDraftError: {
+            detail: string;
+        };
+        BatchCaptureDraftRequestRequest: {
+            /** Format: uuid */
+            substep: string;
+            responses: {
+                [key: string]: unknown;
+            };
+        };
+        BatchCaptureDraftResponse: {
+            saved_substeps: string[];
+        };
         /**
          * @description * `PASS` - PASS
          *     * `FAIL` - FAIL
@@ -43026,6 +43073,30 @@ export interface operations {
             };
         };
     };
+    api_BatchExecutions_capture_state_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this batch execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_BatchExecutions_remove_part_create: {
         parameters: {
             query?: never;
@@ -43050,6 +43121,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RemoveBatchPartResponse"];
+                };
+            };
+        };
+    };
+    api_BatchExecutions_save_draft_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this batch execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchCaptureDraftRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BatchCaptureDraftRequestRequest"];
+                "multipart/form-data": components["schemas"]["BatchCaptureDraftRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchCaptureDraftResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchCaptureDraftError"];
                 };
             };
         };

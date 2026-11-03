@@ -96,6 +96,33 @@ class BatchCaptureWritePathTests(TenantContextMixin, VectorTestCase):
         with self.assertRaisesMessage(ValidationError, "isn't in this batch"):
             remove_part_from_sealed_batch(batch=self.batch, part=wrong, user=self.user, reason="again")
 
+    def test_a_half_entered_load_is_drafted_on_the_batch_until_confirmed(self):
+        """Batch drafts (2026-11-03): a load's in-progress captures survive walking away,
+        read back through the load's capture state, and leave the draft on confirm."""
+        from django.utils import timezone
+        from Tracker.services.dwi.operator_capture import (
+            build_batch_capture_state, save_batch_capture_draft,
+        )
+        node = str(uuid4())
+        save_batch_capture_draft(self.batch, self.batch_substep, {node: True})
+        self.batch.refresh_from_db()
+        self.assertEqual(build_batch_capture_state(self.batch), {str(self.batch_substep.id): {node: True}})
+
+        per_part = Substep.objects.create(tenant=self.tenant, step=self.step, order=1,
+                                          title="Per part", scope="sampled")
+        with self.assertRaises(ValidationError):
+            save_batch_capture_draft(self.batch, per_part, {node: True})
+
+        submit_substep(substep=self.batch_substep, batch_execution=self.batch, user=self.user,
+                       captures=[{"node_id": node, "kind": "attestation", "confirm": True}])
+        self.batch.refresh_from_db()
+        self.assertEqual(self.batch.capture_draft, {}, "confirmed: no longer work in progress")
+
+        self.batch.sealed_at = timezone.now()
+        self.batch.save(update_fields=["sealed_at"])
+        with self.assertRaisesMessage(ValidationError, "sealed"):
+            save_batch_capture_draft(self.batch, self.batch_substep, {node: False})
+
     def test_seal_fails_without_batch_completion(self):
         with self.assertRaises(ValidationError):
             seal_batch(batch=self.batch, user=self.user)

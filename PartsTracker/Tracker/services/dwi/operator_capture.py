@@ -408,8 +408,8 @@ def submit_substep(
 
         # Committed now, so it's no longer work in progress: drop it from the draft
         # (same transaction, so a failed commit keeps the draft to resume from).
-        if step_execution is not None:
-            _drop_from_draft(step_execution, substep.id)
+        _drop_from_draft(step_execution if step_execution is not None else batch_execution,
+                         substep.id)
 
         # NOTE: substep submit does NOT trigger advancement. Per the
         # MES behavior spec (Flow #1 + #12), captures are recorded and
@@ -1352,28 +1352,41 @@ def _response_from_stored(node_type, attrs, sr):
 def build_capture_state(step_execution) -> dict:
     """Return {substep_id: {node_id: response}} for a step execution's stored
     captures — the read-side inverse of `submit_substep`."""
+    return _build_state({'step_execution': step_execution}, step_execution.step,
+                        step_execution.capture_draft)
+
+
+def build_batch_capture_state(batch_execution) -> dict:
+    """The same for a load: its batch substeps' committed captures, with the load's
+    draft overlaid. The batch panel hydrates from it, so a reopened load shows what was
+    entered and confirmed instead of a blank form."""
+    return _build_state({'batch_execution': batch_execution}, batch_execution.step,
+                        batch_execution.capture_draft)
+
+
+def _build_state(owner: dict, step, draft) -> dict:
+    """`owner` is {'step_execution': …} or {'batch_execution': …}: whose captures."""
     from Tracker.models import Substep, SubstepCompletion, SubstepResponse, StepExecutionMeasurement
 
     # A substep voided for re-capture comes back empty, not with the wrong values it
     # was voided for — those pre-filled read "1 of 1 confirmed", as if nothing needed
     # doing (Operator walk 2026-10-21). Its draft, if any, still overlays below.
-    done = SubstepCompletion.objects.filter(  # tenant-safe: keyed to a scoped execution
-        step_execution=step_execution)
+    done = SubstepCompletion.objects.filter(**owner)  # tenant-safe: keyed to a scoped execution or batch
     reopened = (set(done.filter(is_voided=True).values_list('substep_id', flat=True))
                 - set(done.filter(is_voided=False).values_list('substep_id', flat=True)))
 
     sr_by_key = {
         (str(sr.substep_id), str(sr.node_id)): sr
-        for sr in SubstepResponse.objects.filter(archived=False, step_execution=step_execution)
+        for sr in SubstepResponse.objects.filter(archived=False, **owner)  # tenant-safe: keyed to a scoped execution or batch
     }
     meas_by_key = {
         (str(m.substep_id), str(m.measurement_definition_id)): m
-        for m in StepExecutionMeasurement.objects.filter(archived=False, step_execution=step_execution)
+        for m in StepExecutionMeasurement.objects.filter(archived=False, **owner)  # tenant-safe: keyed to a scoped execution or batch
         if m.substep_id and m.measurement_definition_id
     }
 
     out: dict = {}
-    for substep in Substep.objects.filter(archived=False, step=step_execution.step):
+    for substep in Substep.objects.filter(archived=False, step=step):
         if substep.id in reopened:
             continue
         nodes: list = []
@@ -1405,7 +1418,7 @@ def build_capture_state(step_execution) -> dict:
 
     # Work in progress overlays what's committed: a substep the operator re-entered
     # after an earlier commit shows what they last typed, not the stale record.
-    for substep_id, responses in (step_execution.capture_draft or {}).items():
+    for substep_id, responses in (draft or {}).items():
         if isinstance(responses, dict):
             out[str(substep_id)] = responses
     return out
@@ -1458,8 +1471,41 @@ def save_capture_draft(step_execution, substep, responses: dict, *, by=None) -> 
     return draft
 
 
-def _drop_from_draft(step_execution, substep_id) -> None:
-    locked = StepExecution.objects.select_for_update().get(pk=step_execution.pk)  # tenant-safe: by pk of an already-scoped row
+def save_batch_capture_draft(batch_execution, substep, responses: dict) -> dict:
+    """Save one batch substep's in-progress responses on its load — the load's
+    counterpart of `save_capture_draft`. The load is shared work, so anyone who may
+    record substeps may save to it, until it is sealed.
+
+    Raises:
+        ValidationError: the substep isn't one of this load's batch substeps, or the
+            load is already sealed (its captures are final).
+    """
+    from django.core.exceptions import ValidationError
+    from Tracker.models import BatchExecution, SubstepScope
+
+    if substep.step_id != batch_execution.step_id or substep.scope != SubstepScope.BATCH:
+        raise ValidationError("That isn't one of this load's batch substeps.")
+    if not isinstance(responses, dict):
+        raise ValidationError("`responses` must be an object of {node_id: response}.")
+
+    with transaction.atomic():
+        locked = BatchExecution.objects.select_for_update().get(pk=batch_execution.pk)  # tenant-safe: by pk of an already-scoped row
+        if locked.sealed_at is not None:
+            raise ValidationError("This load is sealed; its captures are final.")
+        draft = dict(locked.capture_draft or {})
+        if responses:
+            draft[str(substep.id)] = responses
+        else:
+            draft.pop(str(substep.id), None)
+        locked.capture_draft = draft
+        locked.save(update_fields=['capture_draft'])
+    return draft
+
+
+def _drop_from_draft(owner, substep_id) -> None:
+    """Remove a committed substep from `owner`'s draft — a StepExecution or a
+    BatchExecution, both carrying `capture_draft`."""
+    locked = type(owner).objects.select_for_update().get(pk=owner.pk)  # tenant-safe: by pk of an already-scoped row
     draft = dict(locked.capture_draft or {})
     if draft.pop(str(substep_id), None) is not None:
         locked.capture_draft = draft

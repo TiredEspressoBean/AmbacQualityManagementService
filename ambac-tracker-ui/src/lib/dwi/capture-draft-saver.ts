@@ -26,23 +26,27 @@ import { getCookie } from "@/lib/utils";
 export const DEBOUNCE_MS = 1500;
 
 export type DraftPayload = {
+    /** The step execution's id — or, for a load's batch substeps, the batch's. */
     executionId: string;
     substepId: string;
     responses: Record<string, unknown>;
+    /** Whose draft: a part's step visit (default) or a load (BatchExecution). */
+    kind?: "step" | "batch";
 };
 
 type SaveResult = { status: number; detail?: string };
 
 function request(d: DraftPayload, keepalive: boolean) {
-    return api.api_StepExecutions_save_draft_create(
-        { substep: d.substepId, responses: d.responses },
-        {
-            params: { id: d.executionId },
-            headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
-            // axios's fetch adapter, for `keepalive`: the request outlives the page.
-            ...(keepalive ? { adapter: "fetch", fetchOptions: { keepalive: true } } : {}),
-        },
-    );
+    const config = {
+        params: { id: d.executionId },
+        headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+        // axios's fetch adapter, for `keepalive`: the request outlives the page.
+        ...(keepalive ? { adapter: "fetch" as const, fetchOptions: { keepalive: true } } : {}),
+    };
+    const body = { substep: d.substepId, responses: d.responses };
+    return d.kind === "batch"
+        ? api.api_BatchExecutions_save_draft_create(body, config)
+        : api.api_StepExecutions_save_draft_create(body, config);
 }
 
 async function postDraft(d: DraftPayload, keepalive: boolean): Promise<SaveResult> {

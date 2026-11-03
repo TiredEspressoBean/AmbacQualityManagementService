@@ -423,6 +423,15 @@ class BatchExecution(SecureModel):
         help_text="Operator notes captured at batch start / during the run.",
     )
 
+    # The load's batch substeps in progress, {substep_id: {node_id: response}} — the
+    # same shape and rule as StepExecution.capture_draft: saved as the operator
+    # works, so a half-entered load survives walking away. Nothing official; "Confirm
+    # for batch" commits a substep and removes it from here.
+    capture_draft = models.JSONField(
+        default=dict, blank=True,
+        help_text="Uncommitted batch substep captures, saved as the operator works.",
+    )
+
     class Meta:
         ordering = ['-started_at']
         indexes = [
