@@ -32027,6 +32027,155 @@ paths:
               schema:
                 $ref: '#/components/schemas/StepDurationStats'
           description: ''
+  /api/StepExecutions/in-flight/:
+    get:
+      operationId: api_StepExecutions_in_flight_list
+      description: The current user's open step visits and unsealed loads, to pick
+        one up again (Operator Home's Resume, a work order's Continue work), most
+        recently started first, with how far each has got.
+      parameters:
+      - in: query
+        name: assigned_to
+        schema:
+          type: integer
+      - in: query
+        name: assigned_to__isnull
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: part__isnull
+        schema:
+          type: boolean
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - CANCELLED
+          - CLAIMED
+          - COMPLETED
+          - IN_PROGRESS
+          - PENDING
+          - ROLLED_BACK
+          - SKIPPED
+        description: |-
+          * `PENDING` - Pending
+          * `CLAIMED` - Claimed
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `SKIPPED` - Skipped
+          * `CANCELLED` - Cancelled
+          * `ROLLED_BACK` - Rolled Back
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__process_memberships__process
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center__in
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step__work_center__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: step__work_center__kind
+        schema:
+          type: string
+          enum:
+          - INSPECTION
+          - OSP
+          - PRODUCTION
+          - RECEIVING
+        description: |-
+          * `PRODUCTION` - Production
+          * `INSPECTION` - Inspection
+          * `RECEIVING` - Receiving
+          * `OSP` - Outside Process
+      - in: query
+        name: step__work_center__kind__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: visit_number
+        schema:
+          type: integer
+      - in: query
+        name: visit_number__gte
+        schema:
+          type: integer
+      - in: query
+        name: visit_number__lte
+        schema:
+          type: integer
+      - in: query
+        name: work_order
+        schema:
+          type: string
+          format: uuid
+        description: Only this work order's work.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InFlightItem'
+          description: ''
   /api/StepExecutions/metadata/:
     get:
       operationId: api_StepExecutions_metadata_retrieve
@@ -59769,6 +59918,95 @@ components:
       - errors
       - total
       - updated
+    InFlightItem:
+      type: object
+      description: |-
+        One open part visit or load, for the Resume / Continue work picker
+        (services/mes/in_flight). Read only.
+      properties:
+        kind:
+          $ref: '#/components/schemas/InFlightItemKindEnum'
+        id:
+          type: string
+          format: uuid
+        step_id:
+          type: string
+          format: uuid
+        step_name:
+          type: string
+        part_id:
+          type: string
+          format: uuid
+          nullable: true
+        part_erp_id:
+          type: string
+          nullable: true
+        part_count:
+          type: integer
+        work_order_id:
+          type: string
+          format: uuid
+          nullable: true
+        work_order_erp_id:
+          type: string
+          nullable: true
+        status:
+          type: string
+        holder_id:
+          type: integer
+          nullable: true
+        holder_name:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        entered_at:
+          type: string
+          format: date-time
+          nullable: true
+        substeps_total:
+          type: integer
+        substeps_done:
+          type: integer
+        left_at_clock_out:
+          type: boolean
+        resume_execution_id:
+          type: string
+          format: uuid
+          nullable: true
+        resume_part_id:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - entered_at
+      - holder_id
+      - holder_name
+      - id
+      - kind
+      - left_at_clock_out
+      - part_count
+      - part_erp_id
+      - part_id
+      - resume_execution_id
+      - resume_part_id
+      - started_at
+      - status
+      - step_id
+      - step_name
+      - substeps_done
+      - substeps_total
+      - work_order_erp_id
+      - work_order_id
+    InFlightItemKindEnum:
+      enum:
+      - part
+      - load
+      type: string
+      description: |-
+        * `part` - part
+        * `load` - load
     InProcessActionsResponse:
       type: object
       properties:

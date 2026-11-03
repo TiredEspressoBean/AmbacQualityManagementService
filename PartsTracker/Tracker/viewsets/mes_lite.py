@@ -40,7 +40,7 @@ from Tracker.serializers.mes_lite import (
     BulkAddPartsSerializer, BulkRemovePartsSerializer,
     StepAdvancementSerializer, BulkStepAdvancementSerializer,
     StepExecutionSerializer, StepExecutionCreateSerializer,
-    StepExecutionListSerializer, WIPSummarySerializer,
+    InFlightItemSerializer, StepExecutionListSerializer, WIPSummarySerializer,
     OutsideProcessShipmentSerializer, ReadyToShipGroupSerializer,
     # Digital Traveler serializers
     WorkOrderStepHistoryResponseSerializer, PartTravelerResponseSerializer,
@@ -3780,6 +3780,22 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
 
         serializer = StepExecutionListSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @extend_schema(
+        parameters=[OpenApiParameter('work_order', OpenApiTypes.UUID, required=False,
+                                     description="Only this work order's work.")],
+        responses={200: InFlightItemSerializer(many=True)},
+        description="The current user's open step visits and unsealed loads, to pick one "
+                    "up again (Operator Home's Resume, a work order's Continue work), "
+                    "most recently started first, with how far each has got.",
+    )
+    @action(detail=False, methods=['get'], url_path='in-flight', pagination_class=None)
+    def in_flight(self, request):
+        from Tracker.serializers.mes_lite import InFlightItemSerializer
+        from Tracker.services.mes.in_flight import in_flight
+        rows = in_flight(self.tenant, user=request.user,
+                         work_order_id=request.query_params.get('work_order') or None)
+        return Response(InFlightItemSerializer(rows, many=True).data)
 
     @extend_schema(
         responses={200: StepExecutionListSerializer(many=True)},

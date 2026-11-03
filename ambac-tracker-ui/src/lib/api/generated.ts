@@ -3684,6 +3684,35 @@ export type ImportSummary = {
   unchanged?: number | undefined;
   errors: number;
 };
+export type InFlightItem = {
+  kind: InFlightItemKindEnum;
+  id: string;
+  step_id: string;
+  step_name: string;
+  part_id: string | null;
+  part_erp_id: string | null;
+  part_count: number;
+  work_order_id: string | null;
+  work_order_erp_id: string | null;
+  status: string;
+  holder_id: number | null;
+  holder_name: string;
+  started_at: string | null;
+  entered_at: string | null;
+  substeps_total: number;
+  substeps_done: number;
+  left_at_clock_out: boolean;
+  resume_execution_id: string | null;
+  resume_part_id: string | null;
+};
+export type InFlightItemKindEnum =
+  /**
+   * * `part` - part
+   * `load` - load
+   *
+   * @enum part, load
+   */
+  "part" | "load";
 export type IncomingInspectionRow = {
   source: IncomingInspectionRowSourceEnum;
   id: string;
@@ -26011,6 +26040,28 @@ const StepDurationStats = z.object({
   max_duration_seconds: z.number(),
   completed_count: z.number().int(),
 });
+const InFlightItemKindEnum = z.enum(["part", "load"]);
+const InFlightItem = z.object({
+  kind: InFlightItemKindEnum,
+  id: z.string().uuid(),
+  step_id: z.string().uuid(),
+  step_name: z.string(),
+  part_id: z.string().uuid().nullable(),
+  part_erp_id: z.string().nullable(),
+  part_count: z.number().int(),
+  work_order_id: z.string().uuid().nullable(),
+  work_order_erp_id: z.string().nullable(),
+  status: z.string(),
+  holder_id: z.number().int().nullable(),
+  holder_name: z.string(),
+  started_at: z.string().datetime({ offset: true }).nullable(),
+  entered_at: z.string().datetime({ offset: true }).nullable(),
+  substeps_total: z.number().int(),
+  substeps_done: z.number().int(),
+  left_at_clock_out: z.boolean(),
+  resume_execution_id: z.string().uuid().nullable(),
+  resume_part_id: z.string().uuid().nullable(),
+});
 const MyLastFinished = z.object({
   execution_id: z.string().uuid(),
   step_name: z.string(),
@@ -30863,6 +30914,8 @@ export const schemas = {
   CaptureDraftError,
   CaptureDraftRefused,
   StepDurationStats,
+  InFlightItemKindEnum,
+  InFlightItem,
   MyLastFinished,
   MyDay,
   PaginatedStepExecutionList,
@@ -56236,6 +56289,123 @@ const endpoints5 = makeApi([
   },
   {
     method: "get",
+    path: "/api/StepExecutions/in-flight/",
+    alias: "api_StepExecutions_in_flight_list",
+    description: `The current user&#x27;s open step visits and unsealed loads, to pick one up again (Operator Home&#x27;s Resume, a work order&#x27;s Continue work), most recently started first, with how far each has got.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "assigned_to",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "assigned_to__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "part__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "CANCELLED",
+            "CLAIMED",
+            "COMPLETED",
+            "IN_PROGRESS",
+            "PENDING",
+            "ROLLED_BACK",
+            "SKIPPED",
+          ])
+          .optional(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__process_memberships__process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center__in",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
+      },
+      {
+        name: "step__work_center__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "step__work_center__kind",
+        type: "Query",
+        schema: z
+          .enum(["INSPECTION", "OSP", "PRODUCTION", "RECEIVING"])
+          .optional(),
+      },
+      {
+        name: "step__work_center__kind__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
+        name: "visit_number",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "visit_number__gte",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "visit_number__lte",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: z.array(InFlightItem),
+  },
+  {
+    method: "get",
     path: "/api/StepExecutions/metadata/",
     alias: "api_StepExecutions_metadata_retrieve",
     description: `Return searchable/filterable/orderable field information with filter options.`,
@@ -61788,7 +61958,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.unknown(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingRequirements/metadata/",
@@ -61796,10 +61969,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingTypes/",

@@ -1850,6 +1850,30 @@ class StepExecutionCreateSerializer(StepExecutionSerializer):
         )
 
 
+class InFlightItemSerializer(serializers.Serializer):
+    """One open part visit or load, for the Resume / Continue work picker
+    (services/mes/in_flight). Read only."""
+    kind = serializers.ChoiceField(choices=['part', 'load'])
+    id = serializers.UUIDField()
+    step_id = serializers.UUIDField()
+    step_name = serializers.CharField()
+    part_id = serializers.UUIDField(allow_null=True)
+    part_erp_id = serializers.CharField(allow_null=True)
+    part_count = serializers.IntegerField()
+    work_order_id = serializers.UUIDField(allow_null=True)
+    work_order_erp_id = serializers.CharField(allow_null=True)
+    status = serializers.CharField()
+    holder_id = serializers.IntegerField(allow_null=True)
+    holder_name = serializers.CharField(allow_blank=True)
+    started_at = serializers.DateTimeField(allow_null=True)
+    entered_at = serializers.DateTimeField(allow_null=True)
+    substeps_total = serializers.IntegerField()
+    substeps_done = serializers.IntegerField()
+    left_at_clock_out = serializers.BooleanField()
+    resume_execution_id = serializers.UUIDField(allow_null=True)
+    resume_part_id = serializers.UUIDField(allow_null=True)
+
+
 class StepExecutionListSerializer(SecureModelMixin):
     """Lightweight serializer for list views - avoids N+1 with select_related."""
     # StepExecution.part is nullable (receiving-inspection / OSP-return-inspection

@@ -15,6 +15,7 @@ import { QaProgressSection } from "@/components/qa-progress-section";
 import { QaRightPanel } from "@/components/qa-right-panel";
 import { WorkOrderStatusActions } from "@/components/work-order-status-actions";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
+import { ContinueWorkButton } from "@/components/operator/InFlightPicker";
 import { WorkOrderPartsTable } from "@/components/work-order-parts-table";
 import { WorkOrderMaterialsPanel } from "@/components/workorder/WorkOrderMaterialsPanel";
 import { WorkOrderLaborPanel } from "@/components/workorder/WorkOrderLaborPanel";
@@ -181,6 +182,7 @@ export function WorkOrderDetailPage() {
                 {/* Status Actions */}
                 <div className="flex items-center gap-2">
                     <WorkOrderDocuments workOrderId={workOrderId} />
+                    <ContinueWorkButton workOrderId={workOrderId} />
                     <StartWorkDialog workOrderId={workOrderId} blockedReason={workOrder.start_refusal}
                                      initialPartId={startPartId} />
                     <WorkOrderStatusActions

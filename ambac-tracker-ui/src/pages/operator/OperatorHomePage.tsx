@@ -28,6 +28,7 @@
  */
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useMemo, useState } from "react";
+import { InFlightPicker, inFlightOptions } from "@/components/operator/InFlightPicker";
 import { toast } from "sonner";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -221,6 +222,10 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     // LIVE — the operator's own open runs, scoped to production surface + station.
     const { data: workload } = useQuery(myWorkloadOptions(scopedWcIds));
     const runs = workload?.results ?? [];
+    // Everything I have open — part visits and loads, any station — for Resume's picker.
+    const { data: inFlight } = useQuery(inFlightOptions());
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const openCount = Math.max(inFlight?.length ?? 0, runs.length);
     const activeRun = runs.find((r) => r.status === "IN_PROGRESS") ?? runs[0] ?? null;
 
     // LIVE — clock state: my one open time entry (end_time is null).
@@ -602,12 +607,13 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                         : activeRun.entered_at
                                             ? ` · waiting ${formatDistanceToNow(new Date(activeRun.entered_at))}`
                                             : ""}
-                                    {runs.length > 1 ? ` · +${runs.length - 1} more open` : ""}
+                                    {openCount > 1 ? ` · +${openCount - 1} more open` : ""}
                                 </div>
                             </div>
                             <Button
                                 className="h-12 w-full"
-                                onClick={() => navigate({
+                                // Several open (visits or loads, anywhere): pick one. One: straight in.
+                                onClick={() => (inFlight?.length ?? 0) > 1 ? setPickerOpen(true) : navigate({
                                     to: "/operator/steps/$stepId/substeps",
                                     params: { stepId: String(activeRun.step) },
                                     search: {
@@ -622,13 +628,19 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                             >
                                 Resume
                             </Button>
+                            <InFlightPicker open={pickerOpen} onOpenChange={setPickerOpen} />
                         </>
                     ) : (
                         <>
                             <p className="my-2 text-sm text-muted-foreground">
-                                No open run. Scan a traveler to pick up where you left off.
+                                {inFlight?.length
+                                    // Open work off the production stations (a load, a receiving run).
+                                    ? `${inFlight.length} open elsewhere — a load or another station.`
+                                    : "No open run. Scan a traveler to pick up where you left off."}
                             </p>
-                            <Button className="h-12 w-full" variant="outline" disabled>Resume</Button>
+                            <Button className="h-12 w-full" variant="outline" disabled={!inFlight?.length}
+                                onClick={() => setPickerOpen(true)}>Resume</Button>
+                            <InFlightPicker open={pickerOpen} onOpenChange={setPickerOpen} />
                         </>
                     )}
                 </Tile>

@@ -13293,6 +13293,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/StepExecutions/in-flight/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The current user's open step visits and unsealed loads, to pick one up again (Operator Home's Resume, a work order's Continue work), most recently started first, with how far each has got. */
+        get: operations["api_StepExecutions_in_flight_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StepExecutions/metadata/": {
         parameters: {
             query?: never;
@@ -25774,6 +25791,45 @@ export interface components {
             unchanged?: number;
             errors: number;
         };
+        /**
+         * @description One open part visit or load, for the Resume / Continue work picker
+         *     (services/mes/in_flight). Read only.
+         */
+        InFlightItem: {
+            kind: components["schemas"]["InFlightItemKindEnum"];
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            step_id: string;
+            step_name: string;
+            /** Format: uuid */
+            part_id: string | null;
+            part_erp_id: string | null;
+            part_count: number;
+            /** Format: uuid */
+            work_order_id: string | null;
+            work_order_erp_id: string | null;
+            status: string;
+            holder_id: number | null;
+            holder_name: string;
+            /** Format: date-time */
+            started_at: string | null;
+            /** Format: date-time */
+            entered_at: string | null;
+            substeps_total: number;
+            substeps_done: number;
+            left_at_clock_out: boolean;
+            /** Format: uuid */
+            resume_execution_id: string | null;
+            /** Format: uuid */
+            resume_part_id: string | null;
+        };
+        /**
+         * @description * `part` - part
+         *     * `load` - load
+         * @enum {string}
+         */
+        InFlightItemKindEnum: "part" | "load";
         InProcessActionsResponse: {
             data: {
                 [key: string]: unknown;
@@ -64962,6 +65018,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StepDurationStats"];
+                };
+            };
+        };
+    };
+    api_StepExecutions_in_flight_list: {
+        parameters: {
+            query?: {
+                assigned_to?: number;
+                assigned_to__isnull?: boolean;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part?: string;
+                part__isnull?: boolean;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `PENDING` - Pending
+                 *     * `CLAIMED` - Claimed
+                 *     * `IN_PROGRESS` - In Progress
+                 *     * `COMPLETED` - Completed
+                 *     * `SKIPPED` - Skipped
+                 *     * `CANCELLED` - Cancelled
+                 *     * `ROLLED_BACK` - Rolled Back
+                 */
+                status?: "CANCELLED" | "CLAIMED" | "COMPLETED" | "IN_PROGRESS" | "PENDING" | "ROLLED_BACK" | "SKIPPED";
+                /** @description Multiple values may be separated by commas. */
+                status__in?: string[];
+                step?: string;
+                step__process_memberships__process?: string;
+                step__work_center?: string;
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__in?: string[];
+                step__work_center__isnull?: boolean;
+                /**
+                 * @description * `PRODUCTION` - Production
+                 *     * `INSPECTION` - Inspection
+                 *     * `RECEIVING` - Receiving
+                 *     * `OSP` - Outside Process
+                 */
+                step__work_center__kind?: "INSPECTION" | "OSP" | "PRODUCTION" | "RECEIVING";
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__kind__in?: string[];
+                visit_number?: number;
+                visit_number__gte?: number;
+                visit_number__lte?: number;
+                /** @description Only this work order's work. */
+                work_order?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InFlightItem"][];
                 };
             };
         };
