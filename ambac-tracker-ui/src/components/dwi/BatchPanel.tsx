@@ -78,6 +78,10 @@ export function BatchPanel({
     const completeBatch = useCompleteBatchExecution();
     const [sealingId, setSealingId] = useState<string | null>(null);
     const [completingId, setCompletingId] = useState<string | null>(null);
+    // Completed loads are history, not work: tucked away unless asked for (walk
+    // 2026-11-03 — four old loads sat above the operator's work, and read as if a
+    // discard had touched them).
+    const [showCompleted, setShowCompleted] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     // The step's seal point, if one is authored: confirming it seals the load, so
     // there's no Seal button.
@@ -198,7 +202,7 @@ export function BatchPanel({
                     <Package className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Batch step</span>
                     <span className="ml-auto text-xs text-muted-foreground">
-                        {loadingBatches.length} loading · {runningBatches.length} running · {completedBatches.length} completed
+                        {loadingBatches.length} loading · {runningBatches.length} running
                     </span>
                 </div>
                 {/* 3b — up-front batch-gating context: this step moves by load,
@@ -235,9 +239,9 @@ export function BatchPanel({
                     </div>
                 ) : (
                     <>
-                        {batches.length === 0 && (
+                        {openBatches.length === 0 && (
                             <p className="text-xs text-muted-foreground">
-                                No batches yet for this WO/step.
+                                No load open at this step for this work order.
                             </p>
                         )}
                         {loadingBatches.map((b) => (
@@ -318,7 +322,16 @@ export function BatchPanel({
                                 />
                             </div>
                         ))}
-                        {completedBatches.map((b) => (
+                        {completedBatches.length > 0 && (
+                            <button type="button"
+                                className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+                                onClick={() => setShowCompleted((v) => !v)}>
+                                {showCompleted
+                                    ? `Hide completed loads`
+                                    : `Show ${completedBatches.length} completed load${completedBatches.length === 1 ? "" : "s"}`}
+                            </button>
+                        )}
+                        {showCompleted && completedBatches.map((b) => (
                             <div
                                 key={b.id}
                                 className="flex items-center gap-3 rounded border bg-background/60 px-3 py-2 text-sm opacity-70"
