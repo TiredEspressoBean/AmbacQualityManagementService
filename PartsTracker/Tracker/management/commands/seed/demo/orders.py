@@ -872,7 +872,7 @@ class DemoOrdersSeeder(BaseSeeder):
                 sealed = started + timedelta(hours=1, minutes=20)
                 # started_at is auto_now_add; .update() bypasses it to backdate.
                 BatchExecution.objects.filter(pk=be.pk).update(
-                    started_at=started, sealed_at=sealed, completed_at=sealed,
+                    started_at=started, sealed_at=sealed,
                 )
                 count += 1
 

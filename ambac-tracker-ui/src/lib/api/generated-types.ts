@@ -22143,12 +22143,12 @@ export interface components {
             readonly started_at: string;
             /**
              * Format: date-time
-             * @description When the batch was sealed (first BATCH-scope substep fired). Parts can be added freely before this; locked after.
+             * @description When the operator sealed the batch, every required BATCH-scope substep done: the load is released and its parts may advance.
              */
             readonly sealed_at: string | null;
             /**
              * Format: date-time
-             * @description When every BATCH-scope substep on the Step was completed.
+             * @description Not written by the product: sealing is where a batch ends (sealed_at). Left empty.
              */
             readonly completed_at: string | null;
             /** @description Operator notes captured at batch start / during the run. */
@@ -27316,10 +27316,11 @@ export interface components {
         /**
          * @description * `fit` - fit
          *     * `average` - average
+         *     * `batch` - batch
          *     * `none` - none
          * @enum {string}
          */
-        MethodEnum: "fit" | "average" | "none";
+        MethodEnum: "fit" | "average" | "batch" | "none";
         /** @description Single milestone within a template. */
         Milestone: {
             /** Format: uuid */

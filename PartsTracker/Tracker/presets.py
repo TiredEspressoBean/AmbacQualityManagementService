@@ -987,6 +987,9 @@ GROUP_PRESETS = {
             *SPC_BASELINE_WRITE,
             *TRAINING_RECORD_WRITE,
             *AUTHORING_PERMISSIONS,
+            # A step's standard times (setup, cycle, load/unload): engineering knows
+            # the process, and Step Timings' "Use measured" is an edit of this table.
+            'add_steptiming', 'change_steptiming', 'delete_steptiming',
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],
@@ -1082,6 +1085,10 @@ GROUP_PRESETS = {
             # Sequence-dependent setup between jobs on the same resource.
             'add_workcenterchangeover', 'change_workcenterchangeover',
             'delete_workcenterchangeover',
+            # A step's standard times — what the plan sizes every operation from,
+            # shared with Engineering (user decision 2026-11-03). Includes taking a
+            # measured time on Step Timings ("Use measured").
+            'add_steptiming', 'change_steptiming', 'delete_steptiming',
             # Who is rostered where. This is the labour side of capacity — the
             # unstaffable blocker at release reads exactly this.
             'add_userworkcentermembership', 'change_userworkcentermembership',

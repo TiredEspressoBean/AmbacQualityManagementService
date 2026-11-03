@@ -4970,11 +4970,12 @@ export type MethodEnum =
   /**
    * * `fit` - fit
    * `average` - average
+   * `batch` - batch
    * `none` - none
    *
-   * @enum fit, average, none
+   * @enum fit, average, batch, none
    */
-  "fit" | "average" | "none";
+  "fit" | "average" | "batch" | "none";
 export type TimingSourceEnum =
   /**
    * * `authored` - authored
@@ -6064,11 +6065,11 @@ export type BatchExecution = {
    */
   started_at: string;
   /**
-   * When the batch was sealed (first BATCH-scope substep fired). Parts can be added freely before this; locked after.
+   * When the operator sealed the batch, every required BATCH-scope substep done: the load is released and its parts may advance.
    */
   sealed_at: string | null;
   /**
-   * When every BATCH-scope substep on the Step was completed.
+   * Not written by the product: sealing is where a batch ends (sealed_at). Left empty.
    */
   completed_at: string | null;
   notes?: /**
@@ -26153,7 +26154,7 @@ const PatchedStepTimingRecordRequest = z
     archived: z.boolean(),
   })
   .partial();
-const MethodEnum = z.enum(["fit", "average", "none"]);
+const MethodEnum = z.enum(["fit", "average", "batch", "none"]);
 const TimingSourceEnum = z.enum(["authored", "measured", "expected", "none"]);
 const MeasuredStepTiming = z.object({
   step: z.string().uuid(),

@@ -344,9 +344,12 @@ class BatchExecution(SecureModel):
     A batch of parts moving through a Step together for one or more
     BATCH-scope substeps (heat-treat cycle, wash tank, plating bath).
 
-    Created at runtime when an operator starts a batch on a Step that has at
-    least one BATCH-scope substep. The batch is mutable (parts can be added)
-    up to the first BATCH-scope substep firing; after that it's sealed.
+    Created at runtime when an operator starts a batch (loads it) on a Step that
+    has at least one BATCH-scope substep, with its parts named then. It is sealed
+    when the operator seals it, which needs every required BATCH-scope substep
+    completed on it (services/dwi/batch_lifecycle.seal_batch); sealing releases
+    its parts to advance. Started → sealed is the load's measured cycle
+    (services/scheduling/measured).
 
     Captures on BATCH-scope substeps write `SubstepCompletion` and
     `SubstepResponse` rows against this BatchExecution rather than against
@@ -403,15 +406,16 @@ class BatchExecution(SecureModel):
         null=True,
         blank=True,
         help_text=(
-            "When the batch was sealed (first BATCH-scope substep fired). "
-            "Parts can be added freely before this; locked after."
+            "When the operator sealed the batch, every required BATCH-scope "
+            "substep done: the load is released and its parts may advance."
         ),
     )
 
     completed_at = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="When every BATCH-scope substep on the Step was completed.",
+        help_text="Not written by the product: sealing is where a batch ends "
+                  "(sealed_at). Left empty.",
     )
 
     notes = models.TextField(

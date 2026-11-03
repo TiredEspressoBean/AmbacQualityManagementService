@@ -79,19 +79,42 @@ class MeasuredTimingTests(TenantContextMixin, TestCase):
         m = measure_step_timings(self.tenant)[self.step.id]
         self.assertAlmostEqual(m.per_piece_minutes, 10, places=1)
 
-    def test_a_batch_step_measures_cycle_per_load(self):
-        wo, _ = self._run(1, 1, step=self.wash)
+    def _batch_step(self):
+        from Tracker.models import Substep, SubstepScope
+        Substep.objects.create(tenant=self.tenant, step=self.wash, title="Bath temp", order=1,
+                               scope=SubstepScope.BATCH)
+
+    def test_a_batch_step_measures_cycle_per_load_from_start_to_seal(self):
+        self._batch_step()
+        wo = None
+        for _ in range(6):
+            wo, _ = self._run(3, 40, step=self.wash)  # per-part records: never a per-piece figure
         for i in range(5):
             b = BatchExecution.objects.create(tenant=self.tenant, work_order=wo, step=self.wash,
                                               started_by=self.user)
             start = self.t0 + timedelta(days=1, hours=i * 3)
             BatchExecution.objects.filter(pk=b.pk).update(
-                started_at=start, sealed_at=start + timedelta(minutes=15),
-                completed_at=start + timedelta(minutes=105))
+                started_at=start, sealed_at=start + timedelta(minutes=90))
+        # An unsealed load has no end yet.
+        BatchExecution.objects.create(tenant=self.tenant, work_order=wo, step=self.wash,
+                                      started_by=self.user)
         m = measure_step_timings(self.tenant)[self.wash.id]
-        self.assertEqual((m.loads, m.cycle_per_load_minutes), (5, 90))
+        self.assertEqual((m.method, m.loads, m.cycle_per_load_minutes), ("batch", 5, 90))
+        self.assertIsNone(m.per_piece_minutes)
         t = data.get_step_timings(self.tenant)[self.wash.id]
         self.assertEqual((t.cycle_time_minutes, t.cycle_source), (90, "measured"))
+        StepTiming.objects.create(tenant=self.tenant, step=self.wash, cycle_time_minutes=85)
+        row = next(r for r in compare_step_timings(self.tenant) if r.step_id == self.wash.id)
+        self.assertFalse(row.cycle_drift, "compared per load: 90 against 85 is inside 25%")
+
+    def test_a_batch_step_without_enough_loads_does_not_fall_back_to_per_piece(self):
+        self._batch_step()
+        for _ in range(6):
+            self._run(3, 40, step=self.wash)
+        m = measure_step_timings(self.tenant)[self.wash.id]
+        self.assertEqual((m.method, m.per_piece_minutes, m.cycle_per_load_minutes), ("batch", None, None))
+        self.assertIn("per load", m.note)
+        self.assertNotEqual(data.get_step_timings(self.tenant)[self.wash.id].cycle_source, "measured")
 
     def test_authored_wins_and_drift_is_flagged_past_the_setting(self):
         for _ in range(5):

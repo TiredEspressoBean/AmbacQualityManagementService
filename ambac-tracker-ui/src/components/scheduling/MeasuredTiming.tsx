@@ -36,14 +36,18 @@ export function MeasuredLine({ m, aspect }: { m: MeasuredStepTiming | undefined;
     if (!m) return <span className="text-xs text-muted-foreground">No runs recorded</span>;
     const value = measuredValue(m, aspect);
     const drift = aspect === "setup" ? m.setup_drift : m.cycle_drift;
-    const perLoad = aspect === "cycle" && m.cycle_per_load_minutes != null;
-    const basis = perLoad
+    // A batch step is measured per load only (cycle); it has no per-piece or setup figure.
+    const batch = m.method === "batch";
+    const perLoad = aspect === "cycle" && batch;
+    const basis = batch
         ? `${m.loads} load${m.loads === 1 ? "" : "s"}`
         : `${m.runs} run${m.runs === 1 ? "" : "s"}`;
     if (value == null) {
-        const why = aspect === "setup" && m.method === "average"
-            ? "not separated from per-piece time"
-            : `not enough runs yet`;
+        const why = batch && aspect === "setup"
+            ? "a batch step is measured per load"
+            : aspect === "setup" && m.method === "average"
+                ? "not separated from per-piece time"
+                : batch ? "not enough loads yet" : "not enough runs yet";
         return (
             <span className="text-xs text-muted-foreground" title={m.note || undefined}>
                 measured: {why} · {basis}

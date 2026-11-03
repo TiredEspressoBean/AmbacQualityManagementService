@@ -1,8 +1,9 @@
 """
 BatchExecution lifecycle service.
 
-Today the model has `sealed_at` but no service writes to it. This module
-is the only sanctioned write path for sealing a batch. Sealing:
+This module is the only write path for sealing a batch (`sealed_at`). Sealing
+ends the batch — nothing writes `completed_at` — so started → sealed is the
+load's cycle as measured for Step Timings. Sealing:
 
   1. Validates every required BATCH-scope substep has a non-voided
      SubstepCompletion on this batch.

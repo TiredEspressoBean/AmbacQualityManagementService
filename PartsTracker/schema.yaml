@@ -51992,14 +51992,15 @@ components:
           format: date-time
           readOnly: true
           nullable: true
-          description: When the batch was sealed (first BATCH-scope substep fired).
-            Parts can be added freely before this; locked after.
+          description: 'When the operator sealed the batch, every required BATCH-scope
+            substep done: the load is released and its parts may advance.'
         completed_at:
           type: string
           format: date-time
           readOnly: true
           nullable: true
-          description: When every BATCH-scope substep on the Step was completed.
+          description: 'Not written by the product: sealing is where a batch ends
+            (sealed_at). Left empty.'
         notes:
           type: string
           description: Operator notes captured at batch start / during the run.
@@ -63073,11 +63074,13 @@ components:
       enum:
       - fit
       - average
+      - batch
       - none
       type: string
       description: |-
         * `fit` - fit
         * `average` - average
+        * `batch` - batch
         * `none` - none
     Milestone:
       type: object
