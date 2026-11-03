@@ -24,6 +24,19 @@ import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 
 export const DEBOUNCE_MS = 1500;
+// How long a save waits behind the one before it. Saves go in order, but a request
+// that never settles must not hold every later one back.
+const CHAIN_WAIT_MS = 8000;
+
+/** `localStorage.setItem("uqmes.debugDrafts", "1")` logs every autosave decision to the
+ *  console — what was queued, sent, skipped and why — for chasing a lost entry. */
+function debug(...args: unknown[]) {
+    try {
+        if (window.localStorage.getItem("uqmes.debugDrafts") === "1") console.warn("[drafts]", ...args);
+    } catch {
+        // storage unavailable: no logging
+    }
+}
 
 export type DraftPayload = {
     /** The step execution's id — or, for a load's batch substeps, the batch's. */
@@ -134,14 +147,24 @@ export function useDraftAutosave({
         window.clearTimeout(timer.current);
         const d = pending.current;
         pending.current = null; // taken synchronously: a second flush finds nothing
-        if (!d || stopped.current) return;
+        if (!d || stopped.current) {
+            debug("send: nothing to send", { keepalive, pending: !!d, stopped: stopped.current });
+            return;
+        }
         const json = JSON.stringify(d.responses);
-        if ((saved.current.get(key(d)) ?? "{}") === json) return;
-        const run = chain.current.then(() => postDraft(d, keepalive));
+        if ((saved.current.get(key(d)) ?? "{}") === json) {
+            debug("send: unchanged since last save", key(d), json);
+            return;
+        }
+        debug("send: posting", { keepalive, key: key(d), json });
+        const before = chain.current;
+        const run = Promise.race([before, new Promise((r) => window.setTimeout(r, CHAIN_WAIT_MS))])
+            .then(() => postDraft(d, keepalive));
         chain.current = run.catch(() => undefined);
         inFlight.add(run);
         void run.finally(() => inFlight.delete(run));
         const { status, detail } = await run;
+        debug("send: result", status, key(d));
         if (status >= 200 && status < 300) {
             saved.current.set(key(d), json);
         } else if (status === 403) {
@@ -162,12 +185,17 @@ export function useDraftAutosave({
         for (const [substepId, responses] of Object.entries(state)) {
             saved.current.set(key({ executionId, substepId }), JSON.stringify(responses ?? {}));
         }
+        debug("markSaved", executionId, state);
     }, []);
 
     // Queue the current substep's responses whenever they change.
     const json = current ? JSON.stringify(current.responses) : null;
     useEffect(() => {
-        if (!ready || !current) return;
+        if (!ready || !current) {
+            debug("queue: not ready", { ready, current: current ? key(current) : null });
+            return;
+        }
+        debug("queue", key(current), json);
         pending.current = current;
         window.clearTimeout(timer.current);
         timer.current = window.setTimeout(() => void send(false), DEBOUNCE_MS);
@@ -175,7 +203,10 @@ export function useDraftAutosave({
     }, [ready, current?.executionId, current?.substepId, json, send]);
 
     // Leaving the substep (or the runtime): send what's pending now.
-    useEffect(() => () => void send(true), [current?.executionId, current?.substepId, send]);
+    useEffect(() => () => {
+        debug("leaving substep or page: flush");
+        void send(true);
+    }, [current?.executionId, current?.substepId, send]);
 
     // Tab hidden or closed, and logout.
     useEffect(() => {

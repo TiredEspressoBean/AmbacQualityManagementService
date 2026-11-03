@@ -490,7 +490,15 @@ function BatchCaptureSection({
         if (hydrated || !storedState || !completions) return;
         const state = storedState as Record<string, Record<string, unknown>>;
         markSaved(batchId, state);
-        setResponsesBySubstep((prev) => (Object.keys(prev).length ? prev : state));
+        // Stored state as the base, anything already on screen (a signature block's
+        // mirrored record) over it, per node — as the runtime does.
+        setResponsesBySubstep((prev) => {
+            const merged: Record<string, OperatorResponses> = { ...(state as Record<string, OperatorResponses>) };
+            for (const [sid, nodes] of Object.entries(prev)) {
+                merged[sid] = { ...(merged[sid] ?? {}), ...nodes };
+            }
+            return merged;
+        });
         setCapturedIds((prev) => prev.size ? prev : new Set(
             (completions.results ?? [])
                 .filter((c) => !c.is_voided)

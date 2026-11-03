@@ -291,8 +291,17 @@ export function OperatorSubstepRuntimePage() {
         }
         markSaved(exec, state);
         setHydratedFor(exec);
-        // Functional guards so a stored state never clobbers in-session edits.
-        setResponsesBySubstepId((prev) => (Object.keys(prev).length ? prev : state));
+        // The stored state is the base; anything already on screen lays over it, per node.
+        // Not "keep what's on screen if anything is": a signature block mirrors its record
+        // into its node as it mounts, so the screen was rarely empty by the time the stored
+        // state arrived, and the stored entries were dropped (walk 2026-11-03).
+        setResponsesBySubstepId((prev) => {
+            const merged: Record<string, OperatorResponses> = { ...(state as Record<string, OperatorResponses>) };
+            for (const [sid, nodes] of Object.entries(prev)) {
+                merged[sid] = { ...(merged[sid] ?? {}), ...nodes };
+            }
+            return merged;
+        });
         const done = new Set<string>();
         for (const s of sortedForBind) {
             const resp = state[s.id];
