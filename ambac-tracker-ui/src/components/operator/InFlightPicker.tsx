@@ -68,6 +68,8 @@ export function useOpenInFlight() {
 }
 
 function since(item: InFlightItem) {
+    // A running load: what matters is how long the machine has had it.
+    if (item.sealed_at) return `sealed ${formatDistanceToNow(new Date(item.sealed_at))} ago`;
     if (item.started_at) return `started ${formatDistanceToNow(new Date(item.started_at))} ago`;
     if (item.entered_at) return `waiting ${formatDistanceToNow(new Date(item.entered_at))}`;
     return "";
@@ -145,7 +147,8 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                                             {item.work_order_erp_id ? ` · ${item.work_order_erp_id}` : ""}
                                         </div>
                                         <div className="text-xs text-muted-foreground">
-                                            {item.kind === "load" ? "Open load"
+                                            {item.kind === "load"
+                                                ? (item.status === "RUNNING" ? "Running" : "Loading")
                                                 : item.status === "IN_PROGRESS" ? "Running" : "Assigned"}
                                             {since(item) ? ` · ${since(item)}` : ""}
                                             {!mine(item) && item.holder_name ? ` · ${item.holder_name}` : ""}

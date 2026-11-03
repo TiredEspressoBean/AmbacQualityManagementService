@@ -419,8 +419,8 @@ class DemoQaWalkSeeder(BaseSeeder):
 
     def _run_batch_step(self, wo, parts, step_name, result):
         """A batch step: each part's own substeps, then one load for the batch
-        substeps, sealed — sealing advances the load."""
-        from Tracker.services.dwi.batch_lifecycle import seal_batch
+        substeps, sealed and completed — completing advances the load."""
+        from Tracker.services.dwi.batch_lifecycle import complete_batch, seal_batch
         for part in parts:
             se = self._start(part, result)
             for ss in self._substeps(part.step, scope='sampled'):
@@ -432,6 +432,7 @@ class DemoQaWalkSeeder(BaseSeeder):
         for ss in self._substeps(step, scope='batch'):
             self._submit(ss, batch_execution=batch)
         seal_batch(batch=batch, user=self.mike)
+        complete_batch(batch=batch, user=self.mike)
         for part in parts:
             part.refresh_from_db()
 
@@ -683,6 +684,8 @@ class DemoQaWalkSeeder(BaseSeeder):
         BatchExecution.objects.filter(work_order=wo).update(started_at=F('started_at') - delta)
         BatchExecution.objects.filter(work_order=wo, sealed_at__isnull=False).update(
             sealed_at=F('sealed_at') - delta)
+        BatchExecution.objects.filter(work_order=wo, completed_at__isnull=False).update(
+            completed_at=F('completed_at') - delta)
 
 
 

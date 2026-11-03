@@ -149,6 +149,8 @@ def submit_substep(
             "submit_substep requires exactly one of step_execution / batch_execution."
         )
     is_batch = batch_execution is not None
+    if is_batch:
+        _assert_batch_phase_open(batch_execution, substep)
 
     # Server-side sequencing gate. `Steps.sequencing_mode='sequential'` means a
     # substep can't be completed until the earlier *required* substeps are done —
@@ -410,6 +412,13 @@ def submit_substep(
         # (same transaction, so a failed commit keeps the draft to resume from).
         _drop_from_draft(step_execution if step_execution is not None else batch_execution,
                          substep.id)
+
+        # The seal point: confirming it seals the load, in the same transaction, so a
+        # load that can't seal (a required loading check missing) keeps the capture
+        # unrecorded and says why.
+        if is_batch and substep.seals_load and batch_execution.sealed_at is None:
+            from Tracker.services.dwi.batch_lifecycle import seal_batch
+            seal_batch(batch=batch_execution, user=user)
 
         # NOTE: substep submit does NOT trigger advancement. Per the
         # MES behavior spec (Flow #1 + #12), captures are recorded and
@@ -1474,11 +1483,12 @@ def save_capture_draft(step_execution, substep, responses: dict, *, by=None) -> 
 def save_batch_capture_draft(batch_execution, substep, responses: dict) -> dict:
     """Save one batch substep's in-progress responses on its load — the load's
     counterpart of `save_capture_draft`. The load is shared work, so anyone who may
-    record substeps may save to it, until it is sealed.
+    record substeps may save to it, while that substep's phase is open: loading
+    checks until it's sealed, completion-phase ones until it's completed.
 
     Raises:
-        ValidationError: the substep isn't one of this load's batch substeps, or the
-            load is already sealed (its captures are final).
+        ValidationError: the substep isn't one of this load's batch substeps, or its
+            phase is over for this load.
     """
     from django.core.exceptions import ValidationError
     from Tracker.models import BatchExecution, SubstepScope
@@ -1490,8 +1500,7 @@ def save_batch_capture_draft(batch_execution, substep, responses: dict) -> dict:
 
     with transaction.atomic():
         locked = BatchExecution.objects.select_for_update().get(pk=batch_execution.pk)  # tenant-safe: by pk of an already-scoped row
-        if locked.sealed_at is not None:
-            raise ValidationError("This load is sealed; its captures are final.")
+        _assert_batch_phase_open(locked, substep)
         draft = dict(locked.capture_draft or {})
         if responses:
             draft[str(substep.id)] = responses
@@ -1500,6 +1509,22 @@ def save_batch_capture_draft(batch_execution, substep, responses: dict) -> dict:
         locked.capture_draft = draft
         locked.save(update_fields=['capture_draft'])
     return draft
+
+
+def _assert_batch_phase_open(batch_execution, substep) -> None:
+    """A load's captures follow its phase: loading checks until it's sealed, the
+    completion-phase ones until it's completed, nothing after.
+
+    Raises:
+        ValidationError: the substep's phase is over for this load.
+    """
+    from django.core.exceptions import ValidationError
+    from Tracker.services.dwi.batch_lifecycle import phase_of
+
+    if batch_execution.completed_at is not None:
+        raise ValidationError("This load is complete; its captures are final.")
+    if batch_execution.sealed_at is not None and phase_of(substep) == 'load':
+        raise ValidationError("This load is sealed; its loading checks are final.")
 
 
 def _drop_from_draft(owner, substep_id) -> None:

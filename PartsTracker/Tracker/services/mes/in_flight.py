@@ -5,7 +5,9 @@ What the "Resume" picker on Operator Home and "Continue work" on a work order li
   - **part visits**: a StepExecution someone holds (`assigned_to`) that hasn't left the
     step — waiting (PENDING / CLAIMED) or started (IN_PROGRESS). An unassigned waiting
     part is the queue, not anyone's work in flight, so it isn't listed.
-  - **loads**: an unsealed BatchExecution, held by whoever started it.
+  - **loads**: a BatchExecution not yet completed, held by whoever started it —
+    loading (OPEN) or sealed and running (RUNNING): a running load still has its
+    completion-phase substeps and its Complete to come.
 
 Progress counts a substep as done when it is confirmed (a live completion) or has a
 draft — "where the work has got to", not a quality figure. A part visit counts its
@@ -43,7 +45,8 @@ class InFlightItem:
     part_count: int  # 1 for a part visit; the load's size for a load
     work_order_id: UUID | None
     work_order_erp_id: str | None
-    status: str  # an execution status, or 'OPEN' for a load
+    status: str  # an execution status; a load's is 'OPEN' (loading) or 'RUNNING' (sealed)
+    sealed_at: datetime | None  # a load's seal; None for a part visit
     holder_id: int | None
     holder_name: str
     started_at: datetime | None
@@ -70,7 +73,7 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
                      exited_at__isnull=True, assigned_to__isnull=False)
              .select_related('step', 'part', 'part__work_order', 'assigned_to'))
     loads = (BatchExecution.objects
-             .filter(tenant=tenant, archived=False, sealed_at__isnull=True)
+             .filter(tenant=tenant, archived=False, completed_at__isnull=True)
              .select_related('step', 'work_order', 'started_by'))
     if not everyone:
         execs = execs.filter(assigned_to=user)
@@ -121,7 +124,8 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
             kind='part', id=e.id, step_id=e.step_id, step_name=e.step.name,
             part_id=e.part_id, part_erp_id=e.part.ERP_id if e.part_id else None, part_count=1,
             work_order_id=wo.id if wo else None, work_order_erp_id=wo.ERP_id if wo else None,
-            status=e.status, holder_id=e.assigned_to_id, holder_name=_name(e.assigned_to),
+            status=e.status, sealed_at=None,
+            holder_id=e.assigned_to_id, holder_name=_name(e.assigned_to),
             started_at=e.started_at, entered_at=e.entered_at,
             substeps_total=total, substeps_done=done,
             holder_off_clock=e.assigned_to_id not in on_clock,
@@ -150,7 +154,8 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
             kind='load', id=b.id, step_id=b.step_id, step_name=b.step.name,
             part_id=None, part_erp_id=None, part_count=len(members[b.id]),
             work_order_id=b.work_order_id, work_order_erp_id=b.work_order.ERP_id,
-            status='OPEN', holder_id=b.started_by_id, holder_name=_name(b.started_by),
+            status='RUNNING' if b.sealed_at else 'OPEN', sealed_at=b.sealed_at,
+            holder_id=b.started_by_id, holder_name=_name(b.started_by),
             started_at=b.started_at, entered_at=b.started_at,
             substeps_total=total, substeps_done=done,
             holder_off_clock=b.started_by_id not in on_clock,

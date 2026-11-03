@@ -859,7 +859,8 @@ class DemoOrdersSeeder(BaseSeeder):
         now = timezone.now()
         count = 0
 
-        # Sealed historical loads — chunk each WO's cleaned parts into baskets.
+        # Completed historical loads — chunk each WO's cleaned parts into baskets. Each
+        # has its three phases: loaded (attended), sealed (the wash runs), completed.
         for wo_parts in past.values():
             wo = wo_parts[0].work_order
             for i in range(0, len(wo_parts), 6):
@@ -869,14 +870,17 @@ class DemoOrdersSeeder(BaseSeeder):
                 )
                 be.parts.set(load)
                 started = now - timedelta(days=8, hours=i)
-                sealed = started + timedelta(hours=1, minutes=20)
+                sealed = started + timedelta(minutes=15)
+                # The run: about half an hour, varying a little load to load.
+                completed = sealed + timedelta(minutes=30 + (i % 3) * 5)
                 # started_at is auto_now_add; .update() bypasses it to backdate.
                 BatchExecution.objects.filter(pk=be.pk).update(
-                    started_at=started, sealed_at=sealed,
+                    started_at=started, sealed_at=sealed, completed_at=completed,
+                    completed_by=operator,
                 )
                 count += 1
 
-        # One open (unsealed) load for a WO that still has parts at Cleaning.
+        # One open (loading, not yet sealed) load for a WO that still has parts at Cleaning.
         for wo_parts in at.values():
             wo = wo_parts[0].work_order
             be = BatchExecution.objects.create(
@@ -994,10 +998,18 @@ class DemoOrdersSeeder(BaseSeeder):
                         })
             # preverified: the seed replays history; nobody can re-enter a password
             # for it, so a verified-signature substep records its method as NONE.
+            # The load's captures belong to its open phase, so the replay reopens it
+            # for the capture and puts its seal and completion back after.
+            phases = {'sealed_at': be.sealed_at, 'completed_at': be.completed_at,
+                      'completed_by': be.completed_by}
+            BatchExecution.objects.filter(pk=be.pk).update(sealed_at=None, completed_at=None)
+            be.sealed_at = be.completed_at = None
             submit_substep(
                 substep=substep, batch_execution=be, user=operator, captures=caps,
                 preverified=True,
             )
+            BatchExecution.objects.filter(pk=be.pk).update(**phases)
+            be.refresh_from_db()
             # Backdate the reading + report to the load's date (submit_substep
             # stamps 'now'); .update() bypasses auto_now.
             when = be.sealed_at or be.started_at

@@ -170,6 +170,8 @@ type PendingEdits = {
     is_critical?: boolean;
     scope?: "sampled" | "batch";
     once_per_lot?: boolean;
+    /** Batch substeps: confirming this one seals the load (one per step). */
+    seals_load?: boolean;
     /** Which parts the substep applies to: a rule, or null for every part. Saved as a
      *  new rule (POST Substeps/sampling-rule) and then the substep's `sampling_rule`. */
     sampling?: SubstepSampling | null;
@@ -987,6 +989,8 @@ function SubstepExpandedBody({
     const workingScope = pending?.scope ?? (substep.scope ?? "sampled");
     const workingOncePerLot =
         pending?.once_per_lot ?? ((substep as { once_per_lot?: boolean }).once_per_lot ?? false);
+    const workingSealsLoad =
+        pending?.seals_load ?? ((substep as { seals_load?: boolean }).seals_load ?? false);
     // The saved rule, unless a change is staged (null = every part).
     const workingSampling: SubstepSampling | null = pending?.sampling !== undefined
         ? pending.sampling
@@ -1103,7 +1107,7 @@ function SubstepExpandedBody({
                         id={`scope-${substep.id}`}
                         checked={workingScope === "batch"}
                         disabled={!editable}
-                        onCheckedChange={(v) => mergePending({ scope: v ? "batch" : "sampled" })}
+                        onCheckedChange={(v) => mergePending(v ? { scope: "batch" } : { scope: "sampled", seals_load: false })}
                     />
                     <Label
                         htmlFor={`scope-${substep.id}`}
@@ -1113,6 +1117,26 @@ function SubstepExpandedBody({
                         Batch (once per lot)
                     </Label>
                 </div>
+
+                {/* The seal point: batch substeps up to here are loading, those after it
+                    are done when the load is completed (services/dwi/batch_lifecycle). */}
+                {workingScope === "batch" && (
+                    <div className="flex items-center gap-2">
+                        <Switch
+                            id={`seals-load-${substep.id}`}
+                            checked={workingSealsLoad}
+                            disabled={!editable}
+                            onCheckedChange={(v) => mergePending({ seals_load: v })}
+                        />
+                        <Label
+                            htmlFor={`seals-load-${substep.id}`}
+                            className="text-xs"
+                            title="Confirming this substep seals the load: it closes and the machine runs, and the operator can leave it. Batch substeps before it (and this one) are done while loading; those after it are done when the load is completed, and the parts move on then. One per step: turning it on here moves it from any other substep. With none, the operator seals with Seal load after the last batch substep."
+                        >
+                            Seals the load
+                        </Label>
+                    </div>
+                )}
 
                 <div className="flex items-center gap-2">
                     <Switch

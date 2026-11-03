@@ -123,6 +123,53 @@ class BatchCaptureWritePathTests(TenantContextMixin, VectorTestCase):
         with self.assertRaisesMessage(ValidationError, "sealed"):
             save_batch_capture_draft(self.batch, self.batch_substep, {node: False})
 
+    def _attest(self, substep):
+        return submit_substep(substep=substep, batch_execution=self.batch, user=self.user,
+                              captures=[{"node_id": str(uuid4()), "kind": "attestation", "confirm": True}])
+
+    def test_the_seal_point_seals_on_confirm_and_the_rest_waits_for_complete(self):
+        """Three phases (2026-11-03): the substep flagged seals_load closes the load;
+        what follows it is done at completion, which is what stamps completed_at."""
+        from Tracker.services.dwi.batch_lifecycle import complete_batch, keep_one_seal_point
+        from Tracker.services.dwi.operator_capture import save_batch_capture_draft
+        self.batch_substep.seals_load = True
+        self.batch_substep.save(update_fields=["seals_load"])
+        unload = Substep.objects.create(tenant=self.tenant, step=self.step, order=1,
+                                        title="Unload and check", scope="batch", is_optional=False)
+
+        self._attest(self.batch_substep)
+        self.batch.refresh_from_db()
+        self.assertIsNotNone(self.batch.sealed_at, "confirming the seal point seals the load")
+        with self.assertRaisesMessage(ValidationError, "loading checks are final"):
+            self._attest(self.batch_substep)
+        save_batch_capture_draft(self.batch, unload, {"n": True})  # completion phase: open
+
+        with self.assertRaisesMessage(ValidationError, "Unload and check"):
+            complete_batch(batch=self.batch, user=self.user)
+        self._attest(unload)
+        complete_batch(batch=self.batch, user=self.user)
+        self.batch.refresh_from_db()
+        self.assertEqual(self.batch.completed_by, self.user)
+        with self.assertRaisesMessage(ValidationError, "complete"):
+            self._attest(unload)
+
+        # One seal point per step: flagging another moves it.
+        unload.seals_load = True
+        unload.save(update_fields=["seals_load"])
+        keep_one_seal_point(unload)
+        self.batch_substep.refresh_from_db()
+        self.assertFalse(self.batch_substep.seals_load)
+
+    def test_unflagged_the_load_seals_with_seal_and_completes_bare(self):
+        from Tracker.services.dwi.batch_lifecycle import complete_batch
+        with self.assertRaisesMessage(ValidationError, "Seal the load"):
+            complete_batch(batch=self.batch, user=self.user)
+        self._attest(self.batch_substep)
+        seal_batch(batch=self.batch, user=self.user)
+        complete_batch(batch=self.batch, user=self.user)
+        self.batch.refresh_from_db()
+        self.assertIsNotNone(self.batch.completed_at)
+
     def test_seal_fails_without_batch_completion(self):
         with self.assertRaises(ValidationError):
             seal_batch(batch=self.batch, user=self.user)

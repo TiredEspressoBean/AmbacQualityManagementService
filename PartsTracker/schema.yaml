@@ -2513,6 +2513,41 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/BatchExecutions/{id}/complete/:
+    post:
+      operationId: api_BatchExecutions_complete_create
+      description: |-
+        POST /api/BatchExecutions/{id}/complete/
+
+        Completes a sealed load: the run is finished and the completion-phase
+        substeps are done. Stamps `completed_at` and advances the parts. 400 if
+        the load isn't sealed or a required completion-phase substep isn't done.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this batch execution.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchCompleteResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchCompleteError'
+          description: ''
   /api/BatchExecutions/{id}/remove-part/:
     post:
       operationId: api_BatchExecutions_remove_part_create
@@ -2601,9 +2636,10 @@ paths:
       description: |-
         POST /api/BatchExecutions/{id}/seal/
 
-        Locks the batch (timestamps `sealed_at`) and fires the
-        advancement retry. ValidationError if required cohort substeps
-        aren't all completed, or if membership crosses WO boundaries.
+        Seals the load (timestamps `sealed_at`): loaded, its load-phase
+        substeps done, the machine running. Membership locks; the parts do
+        NOT advance until the load is completed. 400 if a required load-phase
+        substep isn't done, or if membership crosses WO boundaries.
       parameters:
       - in: path
         name: id
@@ -52255,6 +52291,28 @@ components:
             type: string
       required:
       - saved_substeps
+    BatchCompleteError:
+      type: object
+      properties:
+        detail:
+          type: string
+        problems:
+          type: array
+          items:
+            type: string
+      required:
+      - detail
+      - problems
+    BatchCompleteResponse:
+      type: object
+      properties:
+        batch_id:
+          type: string
+        completed_at:
+          type: string
+      required:
+      - batch_id
+      - completed_at
     BatchCycleQualityStatusEnum:
       enum:
       - PASS
@@ -52304,20 +52362,27 @@ components:
           format: date-time
           readOnly: true
           nullable: true
-          description: 'When the operator sealed the batch, every required BATCH-scope
-            substep done: the load is released and its parts may advance.'
+          description: When the load was sealed — loaded, its load-phase substeps
+            done, and the machine running. Membership is locked from here; the parts
+            don't advance until the load is completed.
         completed_at:
           type: string
           format: date-time
           readOnly: true
           nullable: true
-          description: 'Not written by the product: sealing is where a batch ends
-            (sealed_at). Left empty.'
+          description: When the load was completed — the run finished and the substeps
+            after the seal point done. Its parts advance from here.
+        completed_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Who completed the load.
         notes:
           type: string
           description: Operator notes captured at batch start / during the run.
       required:
       - completed_at
+      - completed_by
       - id
       - sealed_at
       - started_at
@@ -60009,6 +60074,10 @@ components:
           nullable: true
         status:
           type: string
+        sealed_at:
+          type: string
+          format: date-time
+          nullable: true
         holder_id:
           type: integer
           nullable: true
@@ -60048,6 +60117,7 @@ components:
       - part_id
       - resume_execution_id
       - resume_part_id
+      - sealed_at
       - started_at
       - status
       - step_id
@@ -63093,6 +63163,10 @@ components:
           type: string
         loads:
           type: integer
+        load_per_load_minutes:
+          type: number
+          format: double
+          nullable: true
         cycle_per_load_minutes:
           type: number
           format: double
@@ -63112,6 +63186,7 @@ components:
       - cycle_in_use
       - cycle_per_load_minutes
       - drift_pct
+      - load_per_load_minutes
       - loads
       - method
       - note
@@ -72853,6 +72928,14 @@ components:
             per sampled unit; a lot-level check — is the CoC present and correct?
             — belongs on the first pass only. Distinct from BATCH scope, which is
             a work-order batch sharing one BatchExecution.'
+        seals_load:
+          type: boolean
+          description: 'Batch substeps only: completing this substep seals the load
+            — the machine runs and the operator may walk away. Batch substeps up to
+            and including it are the load phase; those after it are done when the
+            load is completed, and the parts advance then. One per step. With none,
+            the load is sealed with Seal after the last batch substep, and completed
+            with a bare Complete.'
         expected_duration:
           type: string
           nullable: true
@@ -83667,6 +83750,14 @@ components:
             per sampled unit; a lot-level check — is the CoC present and correct?
             — belongs on the first pass only. Distinct from BATCH scope, which is
             a work-order batch sharing one BatchExecution.'
+        seals_load:
+          type: boolean
+          description: 'Batch substeps only: completing this substep seals the load
+            — the machine runs and the operator may walk away. Batch substeps up to
+            and including it are the load phase; those after it are done when the
+            load is completed, and the parts advance then. One per step. With none,
+            the load is sealed with Seal after the last batch substep, and completed
+            with a bare Complete.'
         expected_duration:
           type: string
           nullable: true
@@ -84099,6 +84190,14 @@ components:
             per sampled unit; a lot-level check — is the CoC present and correct?
             — belongs on the first pass only. Distinct from BATCH scope, which is
             a work-order batch sharing one BatchExecution.'
+        seals_load:
+          type: boolean
+          description: 'Batch substeps only: completing this substep seals the load
+            — the machine runs and the operator may walk away. Batch substeps up to
+            and including it are the load phase; those after it are done when the
+            load is completed, and the parts advance then. One per step. With none,
+            the load is sealed with Seal after the last batch substep, and completed
+            with a bare Complete.'
         expected_duration:
           type: string
           nullable: true

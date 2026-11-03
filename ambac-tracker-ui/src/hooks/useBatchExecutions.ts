@@ -48,7 +48,9 @@ export function useBatchesForWoStep(workOrderId: string, stepId: string) {
     return useQuery(batchesForWoStepOptions(workOrderId, stepId));
 }
 
-const invalidateBatches = (qc: QueryClient) =>
+/** Refresh every batch list — after anything that changes a load's phase (confirming
+ *  the substep that seals it, say). */
+export const invalidateBatches = (qc: QueryClient) =>
     qc.invalidateQueries({
         predicate: (q) => q.queryKey[0] === batchKeys.all[0],
     });
@@ -83,16 +85,38 @@ export function useSealBatchExecution() {
                 params: { id },
                 headers: csrfHeaders(),
             }) as Promise<SealResult>,
+        onSuccess: () => invalidateBatches(qc),
+        // The panel says why a seal was refused (the missing loading checks).
+        meta: {
+            suppressGlobalError: true,
+            successMessage: "Load sealed: the machine runs",
+        },
+    });
+}
+
+type CompleteResult = { batch_id: string; completed_at: string };
+
+/** Complete a sealed load: its run is finished and its completion checks done. This
+ *  is where the load's parts advance. */
+export function useCompleteBatchExecution() {
+    const qc = useQueryClient();
+    return useMutation<CompleteResult, unknown, { id: string }>({
+        mutationFn: ({ id }) =>
+            api.api_BatchExecutions_complete_create(undefined, {
+                params: { id },
+                headers: csrfHeaders(),
+            }) as Promise<CompleteResult>,
         onSuccess: () => {
             invalidateBatches(qc);
-            // Advancement may have moved parts; refresh parts/queries too.
+            // Advancement moved the parts; refresh parts and open work too.
             qc.invalidateQueries({
-                predicate: (q) => q.queryKey[0] === "parts",
+                predicate: (q) => q.queryKey[0] === "parts" || q.queryKey[0] === "step-executions",
             });
         },
+        // The panel says why a completion was refused (the missing checks).
         meta: {
-            errorMessage: "Couldn't seal batch",
-            successMessage: "Batch sealed",
+            suppressGlobalError: true,
+            successMessage: "Load complete: its parts move on",
         },
     });
 }

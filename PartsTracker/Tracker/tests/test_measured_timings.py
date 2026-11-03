@@ -84,7 +84,7 @@ class MeasuredTimingTests(TenantContextMixin, TestCase):
         Substep.objects.create(tenant=self.tenant, step=self.wash, title="Bath temp", order=1,
                                scope=SubstepScope.BATCH)
 
-    def test_a_batch_step_measures_cycle_per_load_from_start_to_seal(self):
+    def test_a_batch_step_measures_cycle_seal_to_complete_and_load_start_to_seal(self):
         self._batch_step()
         wo = None
         for _ in range(6):
@@ -94,12 +94,17 @@ class MeasuredTimingTests(TenantContextMixin, TestCase):
                                               started_by=self.user)
             start = self.t0 + timedelta(days=1, hours=i * 3)
             BatchExecution.objects.filter(pk=b.pk).update(
-                started_at=start, sealed_at=start + timedelta(minutes=90))
-        # An unsealed load has no end yet.
+                started_at=start, sealed_at=start + timedelta(minutes=15),
+                completed_at=start + timedelta(minutes=105))
+        # A load still loading, and one sealed and running: neither has finished a cycle.
         BatchExecution.objects.create(tenant=self.tenant, work_order=wo, step=self.wash,
                                       started_by=self.user)
+        running = BatchExecution.objects.create(tenant=self.tenant, work_order=wo, step=self.wash,
+                                                started_by=self.user)
+        BatchExecution.objects.filter(pk=running.pk).update(sealed_at=timezone.now())
         m = measure_step_timings(self.tenant)[self.wash.id]
-        self.assertEqual((m.method, m.loads, m.cycle_per_load_minutes), ("batch", 5, 90))
+        self.assertEqual((m.method, m.loads, m.cycle_per_load_minutes, m.load_per_load_minutes),
+                         ("batch", 5, 90, 15))
         self.assertIsNone(m.per_piece_minutes)
         t = data.get_step_timings(self.tenant)[self.wash.id]
         self.assertEqual((t.cycle_time_minutes, t.cycle_source), (90, "measured"))

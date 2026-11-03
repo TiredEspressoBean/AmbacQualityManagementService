@@ -1863,6 +1863,7 @@ class InFlightItemSerializer(serializers.Serializer):
     work_order_id = serializers.UUIDField(allow_null=True)
     work_order_erp_id = serializers.CharField(allow_null=True)
     status = serializers.CharField()
+    sealed_at = serializers.DateTimeField(allow_null=True)
     holder_id = serializers.IntegerField(allow_null=True)
     holder_name = serializers.CharField(allow_blank=True)
     started_at = serializers.DateTimeField(allow_null=True)

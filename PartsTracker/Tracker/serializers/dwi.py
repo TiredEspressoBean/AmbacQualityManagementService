@@ -110,6 +110,7 @@ class SubstepSerializer(SecureModelMixin):
             'requires_signature',
             'is_inspection_point',
             'once_per_lot',
+            'seals_load',
             'expected_duration',
             'scope',
             'sampling_rule',
@@ -191,6 +192,13 @@ class SubstepSerializer(SecureModelMixin):
         refusal = substep_refusal(step, body, optional=bool(optional))
         if refusal:
             raise serializers.ValidationError({'body_blocks': refusal})
+        # The seal point is a batch substep's: it closes the load.
+        seals = attrs.get('seals_load') if 'seals_load' in attrs else (
+            self.instance.seals_load if self.instance else False)
+        if seals and scope != 'batch':
+            raise serializers.ValidationError({
+                'seals_load': "Only a batch substep can seal the load.",
+            })
         return attrs
 
     def update(self, instance, validated_data):
@@ -451,8 +459,8 @@ class BatchExecutionSerializer(SecureModelMixin):
         model = BatchExecution
         fields = [
             'id', 'work_order', 'step', 'parts', 'started_by',
-            'started_at', 'sealed_at', 'completed_at', 'notes',
+            'started_at', 'sealed_at', 'completed_at', 'completed_by', 'notes',
         ]
         # started_by is stamped from request.user in the viewset, not sent by
         # the client; sealed/completed timestamps are lifecycle-service-owned.
-        read_only_fields = ['id', 'started_by', 'started_at', 'sealed_at', 'completed_at']
+        read_only_fields = ['id', 'started_by', 'started_at', 'sealed_at', 'completed_at', 'completed_by']

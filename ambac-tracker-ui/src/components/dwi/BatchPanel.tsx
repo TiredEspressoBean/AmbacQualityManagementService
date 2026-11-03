@@ -2,30 +2,31 @@
  * Operator-runtime BatchPanel.
  *
  * Surfaces when the current Step has at least one BATCH-scope substep.
- * Lets an operator:
- *   - Start a BatchExecution for a chosen subset of units at (WO, Step) —
- *     a step can run several loads (furnace/wash/autoclave capacity), so the
- *     operator selects which units go into THIS load; membership is disjoint
- *   - See existing open / sealed batches for the same (WO, Step)
- *   - Capture the step's BATCH-scope substeps once for the lot (3a)
- *   - Seal an open batch
+ * Every load has three phases (services/dwi/batch_lifecycle, 2026-11-03):
+ *   - **Loading**: start a load with a chosen subset of the units at (WO, Step) —
+ *     a step can run several loads (furnace/wash/autoclave capacity), membership
+ *     disjoint — and do the batch substeps up to the seal point.
+ *   - **Running**: sealed — confirming the substep flagged "Seals the load", or
+ *     Seal when none is. The machine runs; the operator may walk away.
+ *   - **Completed**: back at the load, the substeps after the seal point, then
+ *     Complete load — which is where the load's parts advance.
  *
  * BATCH-scope substeps are captured a single time per BatchExecution
  * (not per part): submit posts `{ batch_execution, captures }`, which the
- * backend binds to the batch via a SubstepCompletion. Once every required
- * BATCH substep has a completion, the batch can seal and the lot-cohesion
- * engine fires advancement.
+ * backend binds to the batch via a SubstepCompletion.
  */
 
 import { useEffect, useRef, useState } from "react";
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PartContext } from "@/components/dwi/shared/PartContext";
 import { Loader2, Package, Lock, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
+    invalidateBatches,
     useBatchesForWoStep,
+    useCompleteBatchExecution,
     useCreateBatchExecution,
     useSealBatchExecution,
 } from "@/hooks/useBatchExecutions";
@@ -66,22 +67,32 @@ export function BatchPanel({
     const { data: batchesData, isLoading } = useBatchesForWoStep(workOrderId, stepId);
     const createBatch = useCreateBatchExecution();
     const sealBatch = useSealBatchExecution();
+    const completeBatch = useCompleteBatchExecution();
     const [sealingId, setSealingId] = useState<string | null>(null);
+    const [completingId, setCompletingId] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    // The step's seal point, if one is authored: confirming it seals the load, so
+    // there's no Seal button.
+    const { data: stepSubsteps } = useSubsteps(stepId ? { step: stepId } : undefined);
+    const sealPoint = (stepSubsteps?.results ?? []).find(
+        (s: Substep) => s.scope === "batch" && (s as { seals_load?: boolean }).seals_load);
 
     const batches = batchesData?.results ?? [];
-    const openBatches = batches.filter((b) => !b.sealed_at);
-    const sealedBatches = batches.filter((b) => b.sealed_at);
+    const loadingBatches = batches.filter((b) => !b.sealed_at);
+    const runningBatches = batches.filter((b) => b.sealed_at && !b.completed_at);
+    const completedBatches = batches.filter((b) => b.completed_at);
+    // Loading or running: still holding its parts.
+    const openBatches = [...loadingBatches, ...runningBatches];
 
-    // Disjoint membership: a part already in an OPEN batch can't join another,
-    // so the picker only offers parts not in an open load. Parts in a SEALED
-    // batch ARE still offered (a reworked part can re-batch on a later visit)
-    // but get tagged below so they don't read-batched.
+    // Disjoint membership: a part in a load not yet completed — loading or running —
+    // can't join another, so the picker only offers parts not in one. Parts in a
+    // COMPLETED load ARE still offered (a reworked part can re-batch on a later
+    // visit) but get tagged below so they don't read-batched.
     const openBatchedIds = new Set(
         openBatches.flatMap((b) => (b.parts ?? []).map((p) => String(p))),
     );
     const sealedBatchedIds = new Set(
-        sealedBatches.flatMap((b) => (b.parts ?? []).map((p) => String(p))),
+        completedBatches.flatMap((b) => (b.parts ?? []).map((p) => String(p))),
     );
     const availableParts = cohortParts.filter((p) => !openBatchedIds.has(p.id));
     // "Fresh" = in no batch at all. Coverage + select-all key off these so a
@@ -144,6 +155,25 @@ export function BatchPanel({
         );
     };
 
+    const handleComplete = (id: string) => {
+        setCompletingId(id);
+        completeBatch.mutate(
+            { id },
+            {
+                onSettled: () => setCompletingId(null),
+                onSuccess: () => onChange?.(),
+                onError: (err: unknown) => {
+                    const detail = (err as {
+                        response?: { data?: { problems?: string[]; detail?: string } };
+                    })?.response?.data;
+                    toast.error("The load isn't complete yet", {
+                        description: detail?.problems?.join("; ") ?? detail?.detail ?? "Try again.",
+                    });
+                },
+            },
+        );
+    };
+
     const totalAtStep = cohortParts.length;
     const unbatched = freshParts.length;            // never in any batch, and loadable
     // In an open OR sealed load — counted, not derived: a held unit is neither batched
@@ -159,15 +189,16 @@ export function BatchPanel({
                     <Package className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Batch step</span>
                     <span className="ml-auto text-xs text-muted-foreground">
-                        {openBatches.length} open · {sealedBatches.length} sealed
+                        {loadingBatches.length} loading · {runningBatches.length} running · {completedBatches.length} completed
                     </span>
                 </div>
                 {/* 3b — up-front batch-gating context: this step moves by load,
-                    not part-by-part, and each sealed load advances on its own. */}
+                    not part-by-part, and each completed load advances on its own. */}
                 <p className="mt-1 text-xs text-muted-foreground">
-                    Parts advance by <span className="font-medium">load</span> — group the units
-                    going through this op together, capture once, then seal. Each sealed load
-                    moves on independently.
+                    Parts advance by <span className="font-medium">load</span>. Load the units
+                    going through this op together and do the loading checks, then seal: the
+                    machine runs and you can leave it. Come back to finish the load's checks
+                    and complete it. Each completed load moves on independently.
                 </p>
                 {totalAtStep > 0 && (
                     <p className="mt-1 text-xs">
@@ -195,55 +226,97 @@ export function BatchPanel({
                     </div>
                 ) : (
                     <>
-                        {openBatches.length === 0 && sealedBatches.length === 0 && (
+                        {batches.length === 0 && (
                             <p className="text-xs text-muted-foreground">
                                 No batches yet for this WO/step.
                             </p>
                         )}
-                        {openBatches.map((b) => (
+                        {loadingBatches.map((b) => (
                             <div key={b.id} className="rounded border bg-background">
                                 <div className="flex items-center gap-3 px-3 py-2 text-sm">
-                                    <Badge variant="secondary" className="text-[10px]">Open</Badge>
+                                    <Badge variant="secondary" className="text-[10px]">Loading</Badge>
                                     <div className="flex-1 text-xs">
                                         <div className="font-mono">{b.id.slice(0, 8)}…</div>
                                         <div className="text-muted-foreground">
                                             {(b.parts ?? []).length} part{(b.parts ?? []).length === 1 ? "" : "s"} · started {new Date(b.started_at).toLocaleString()}
                                         </div>
                                     </div>
+                                    {sealPoint ? (
+                                        <span className="max-w-[12rem] text-right text-[11px] text-muted-foreground">
+                                            Confirming “{sealPoint.title}” seals the load.
+                                        </span>
+                                    ) : (
+                                        <Button
+                                            size="sm"
+                                            variant="default"
+                                            disabled={sealingId === b.id}
+                                            onClick={() => handleSeal(b.id)}
+                                        >
+                                            {sealingId === b.id ? (
+                                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                            ) : (
+                                                <Lock className="mr-1 h-3 w-3" />
+                                            )}
+                                            Seal load
+                                        </Button>
+                                    )}
+                                </div>
+                                <BatchCaptureSection
+                                    batchId={b.id}
+                                    stepId={stepId}
+                                    phase="load"
+                                    onCaptured={onChange}
+                                />
+                            </div>
+                        ))}
+                        {runningBatches.map((b) => (
+                            <div key={b.id} className="rounded border bg-background">
+                                <div className="flex items-center gap-3 px-3 py-2 text-sm">
+                                    <Badge variant="outline" className="border-blue-500 text-[10px] text-blue-700 dark:text-blue-400">
+                                        <Lock className="mr-1 h-3 w-3" /> Running
+                                    </Badge>
+                                    <div className="flex-1 text-xs">
+                                        <div className="font-mono">{b.id.slice(0, 8)}…</div>
+                                        <div className="text-muted-foreground">
+                                            {(b.parts ?? []).length} part{(b.parts ?? []).length === 1 ? "" : "s"} · sealed{" "}
+                                            {b.sealed_at ? new Date(b.sealed_at).toLocaleString() : ""}
+                                        </div>
+                                    </div>
                                     <Button
                                         size="sm"
                                         variant="default"
-                                        disabled={sealingId === b.id}
-                                        onClick={() => handleSeal(b.id)}
+                                        disabled={completingId === b.id}
+                                        onClick={() => handleComplete(b.id)}
                                     >
-                                        {sealingId === b.id ? (
+                                        {completingId === b.id ? (
                                             <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                                         ) : (
-                                            <Lock className="mr-1 h-3 w-3" />
+                                            <CheckCircle2 className="mr-1 h-3 w-3" />
                                         )}
-                                        Seal batch
+                                        Complete load
                                     </Button>
                                 </div>
                                 <BatchCaptureSection
                                     batchId={b.id}
                                     stepId={stepId}
+                                    phase="completion"
                                     onCaptured={onChange}
                                 />
                             </div>
                         ))}
-                        {sealedBatches.map((b) => (
+                        {completedBatches.map((b) => (
                             <div
                                 key={b.id}
                                 className="flex items-center gap-3 rounded border bg-background/60 px-3 py-2 text-sm opacity-70"
                             >
                                 <Badge variant="outline" className="text-[10px]">
-                                    <CheckCircle2 className="mr-1 h-3 w-3" /> Sealed
+                                    <CheckCircle2 className="mr-1 h-3 w-3" /> Completed
                                 </Badge>
                                 <div className="flex-1 text-xs">
                                     <div className="font-mono">{b.id.slice(0, 8)}…</div>
                                     <div className="text-muted-foreground">
-                                        {(b.parts ?? []).length} part{(b.parts ?? []).length === 1 ? "" : "s"} · sealed{" "}
-                                        {b.sealed_at ? new Date(b.sealed_at).toLocaleString() : ""}
+                                        {(b.parts ?? []).length} part{(b.parts ?? []).length === 1 ? "" : "s"} · completed{" "}
+                                        {b.completed_at ? new Date(b.completed_at).toLocaleString() : ""}
                                     </div>
                                 </div>
                             </div>
@@ -306,7 +379,7 @@ export function BatchPanel({
                                         )}
                                         {inSealed && (
                                             <Badge variant="outline" className="text-[9px] text-muted-foreground">
-                                                in a sealed load
+                                                in a completed load
                                             </Badge>
                                         )}
                                     </label>
@@ -344,24 +417,28 @@ const batchCaptureStateOptions = (batchId: string) =>
     });
 
 /**
- * Once-per-lot capture surface for an open batch. Renders the step's
- * BATCH-scope substeps with the same operator view the per-part runtime
+ * Once-per-lot capture surface for one phase of a load. Renders the step's
+ * BATCH-scope substeps of that phase — up to the seal point while loading, the
+ * rest once it's running — with the same operator view the per-part runtime
  * uses, but submits each to the batch (`{ batch_execution, captures }`)
- * rather than a per-part StepExecution. Captures stay editable until the
- * batch is sealed (Decision #3); re-submitting a substep upserts its
+ * rather than a per-part StepExecution. A phase's captures stay editable until
+ * it ends (seal, then Complete); re-submitting a substep upserts its
  * completion server-side.
  */
 function BatchCaptureSection({
     batchId,
     stepId,
+    phase,
     onCaptured,
 }: {
     batchId: string;
     stepId: string;
+    phase: "load" | "completion";
     onCaptured?: () => void;
 }) {
     const { data: substepsData, isLoading } = useSubsteps(stepId ? { step: stepId } : undefined);
     const submit = useSubmitSubstep();
+    const qc = useQueryClient();
     // Signature blocks are signed where they sit; this prompt is only the retry path.
     const signaturePrompt = useSignaturePrompt();
     const [responsesBySubstep, setResponsesBySubstep] = useState<
@@ -415,9 +492,15 @@ function BatchCaptureSection({
         setHydrated(true);
     }, [hydrated, storedState, completions, batchId, markSaved]);
 
-    const batchSubsteps = (substepsData?.results ?? []).filter(
-        (s: Substep) => s.scope === "batch",
-    );
+    // The step's batch substeps in order; the one flagged "Seals the load" ends the
+    // load phase (with none, every batch substep is loading and completion is bare).
+    const allBatch = (substepsData?.results ?? [])
+        .filter((s: Substep) => s.scope === "batch")
+        .sort((a: Substep, b: Substep) => (a.order ?? 0) - (b.order ?? 0));
+    const sealAt = allBatch.findIndex((s: Substep) => (s as { seals_load?: boolean }).seals_load);
+    const batchSubsteps = sealAt === -1
+        ? (phase === "load" ? allBatch : [])
+        : (phase === "load" ? allBatch.slice(0, sealAt + 1) : allBatch.slice(sealAt + 1));
 
     if (isLoading || batchSubsteps.length === 0) return null;
 
@@ -451,8 +534,12 @@ function BatchCaptureSection({
                 // Committed: the server holds these now, so the autosave mustn't send
                 // them back as a draft.
                 markSaved(batchId, { [substep.id]: responses as Record<string, unknown> });
+                // The seal point sealed the load: it moves from Loading to Running.
+                if ((substep as { seals_load?: boolean }).seals_load) void invalidateBatches(qc);
                 setCapturedIds((prev) => new Set(prev).add(substep.id));
-                toast.success(`Captured "${substep.title}" for the batch.`);
+                toast.success((substep as { seals_load?: boolean }).seals_load
+                    ? `Captured "${substep.title}": the load is sealed and running.`
+                    : `Captured "${substep.title}" for the batch.`);
                 onCaptured?.();
             } else {
                 toast.error(`"${substep.title}" not captured: ${refused}`);
@@ -466,7 +553,9 @@ function BatchCaptureSection({
         <div className="space-y-2 border-t px-3 py-2">
             {signaturePrompt.dialog}
             <p className="text-xs font-medium text-muted-foreground">
-                Batch substeps — captured once for the whole lot
+                {phase === "load"
+                    ? "Loading checks — captured once for the whole load"
+                    : "Completion checks — once the run is done, before Complete load"}
             </p>
             {batchSubsteps.map((s: Substep) => {
                 const captured = capturedIds.has(s.id);

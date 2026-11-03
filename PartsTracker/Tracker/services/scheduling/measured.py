@@ -14,10 +14,11 @@ the same aspects a planner authors on `StepTiming`:
     the measurement is the plain average per piece (total time / total pieces), with
     `note` saying why setup could not be separated.
   - **Cycle per load** for a batch step (one with a BATCH-scope substep: a wash, an
-    oven): from `BatchExecution`, started (the load going in) to sealed (released,
-    which needs every required batch capture done), per sealed load. A batch step is
-    measured per load only — never per piece, since a load's cycle doesn't grow with
-    the parts in it.
+    oven, a bar-fed lathe batching out): from `BatchExecution`, sealed (the machine
+    starts its unattended run) to completed (the run finished and its completion
+    checks done), per completed load. Beside it, the **load time** per load —
+    started to sealed, the attended loading. A batch step is measured per load only,
+    never per piece, since a load's cycle doesn't grow with the parts in it.
   - Cycle vs load/unload, external setup and attention are not separable from the
     records, so they stay authored only.
 
@@ -59,6 +60,7 @@ class MeasuredTiming:
     note: str
     loads: int
     cycle_per_load_minutes: float | None
+    load_per_load_minutes: float | None = None  # attended loading, started -> sealed
 
 
 def measure_step_timings(tenant, step_ids=None) -> dict[UUID, MeasuredTiming]:
@@ -87,7 +89,7 @@ def _measure(step_id, runs, loads, is_batch=False) -> MeasuredTiming:
     if is_batch:
         method = 'batch'
         if len(loads) < MIN_RUNS:
-            note = (f"A batch step is measured per load: only {len(loads)} sealed "
+            note = (f"A batch step is measured per load: only {len(loads)} completed "
                     f"load{'s' if len(loads) != 1 else ''} recorded; {MIN_RUNS} needed.")
     elif len(runs) < MIN_RUNS:
         note = f"Only {len(runs)} run{'s' if len(runs) != 1 else ''} recorded; {MIN_RUNS} needed."
@@ -99,14 +101,16 @@ def _measure(step_id, runs, loads, is_batch=False) -> MeasuredTiming:
         elif pieces:
             per_piece = sum(d for _, d in runs) / pieces
             method = 'average'
-    cycle = None
+    cycle = load = None
     if len(loads) >= MIN_RUNS:
-        cycle = sum(loads) / len(loads)
+        cycle = sum(c for c, _ in loads) / len(loads)
+        load = sum(ld for _, ld in loads) / len(loads)
     return MeasuredTiming(
         step_id=step_id, runs=len(runs), pieces=pieces,
         per_piece_minutes=_round(per_piece), setup_minutes=_round(setup),
         method=method, note=note,
         loads=len(loads), cycle_per_load_minutes=_round(cycle),
+        load_per_load_minutes=_round(load),
     )
 
 
@@ -197,17 +201,17 @@ def _runs(tenant, since, now, step_ids) -> dict:
 
 
 def _loads(tenant, since, now, step_ids) -> dict:
-    """{step_id: [cycle_minutes, ...]}, one per sealed batch load: started (the load
-    going in) to sealed (released, every required batch capture done), less any hold
-    on its work order. Sealing is the only end the product records for a load."""
+    """{step_id: [(cycle_minutes, load_minutes), ...]}, one per completed batch load:
+    the cycle sealed -> completed (the unattended run), the load started -> sealed
+    (the attended loading), each less any hold on its work order."""
     from Tracker.models import BatchExecution, WorkOrderHold
     from Tracker.services.mes.labor_report import _subtract, _total
 
-    qs = BatchExecution.objects.filter(tenant=tenant, archived=False,
-                                       started_at__gte=since, sealed_at__isnull=False)
+    qs = BatchExecution.objects.filter(tenant=tenant, archived=False, started_at__gte=since,
+                                       sealed_at__isnull=False, completed_at__isnull=False)
     if step_ids is not None:
         qs = qs.filter(step_id__in=step_ids)
-    rows = list(qs.values('step_id', 'work_order_id', 'started_at', 'sealed_at'))
+    rows = list(qs.values('step_id', 'work_order_id', 'started_at', 'sealed_at', 'completed_at'))
     if not rows:
         return {}
     holds = defaultdict(list)
@@ -218,10 +222,11 @@ def _loads(tenant, since, now, step_ids) -> dict:
         holds[h['work_order_id']].append((h['placed_at'], h['cleared_at'] or now))
     out = defaultdict(list)
     for r in rows:
-        minutes = _total(_subtract([(r['started_at'], r['sealed_at'])],
-                                   holds.get(r['work_order_id'], []))) / 60.0
-        if minutes > 0:
-            out[r['step_id']].append(minutes)
+        cuts = holds.get(r['work_order_id'], [])
+        cycle = _total(_subtract([(r['sealed_at'], r['completed_at'])], cuts)) / 60.0
+        load = _total(_subtract([(r['started_at'], r['sealed_at'])], cuts)) / 60.0
+        if cycle > 0:
+            out[r['step_id']].append((cycle, load))
     return out
 
 

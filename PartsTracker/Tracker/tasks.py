@@ -672,10 +672,10 @@ def fire_one_escalation(self, instance_id):
 
 @shared_task(bind=True, max_retries=3)
 def advance_lot_task(self, work_order_id, step_id, tenant_id, operator_id=None):
-    """Async lot advancement — the deferred path for a large batch seal (3d).
+    """Async lot advancement — the deferred path for completing a large load (3d).
 
-    `seal_batch` runs advancement synchronously for small cohorts; for large
-    ones it dispatches here so the seal request stays bounded. Idempotent:
+    `complete_batch` runs advancement synchronously for small cohorts; for large
+    ones it dispatches here so the request stays bounded. Idempotent:
     `try_advance_lot` is safe to re-run, so a retry can't double-advance.
     """
     from Tracker.services.mes.advancement import try_advance_lot

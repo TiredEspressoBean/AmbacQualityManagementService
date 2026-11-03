@@ -17,10 +17,11 @@ What the gate enforces (per substep):
   the substep is satisfied automatically. If SELECTED, a non-voided
   SubstepCompletion must exist; the N/A path is re-validated at gate
   time so retroactive `is_critical=True` edits properly block.
-- BATCH substeps: the part must be covered by a sealed BatchExecution
-  that has a non-voided SubstepCompletion for the substep. Split parts
-  inherit batch completions from any sealed BatchExecution they were a
-  member of.
+- BATCH substeps: the part must be covered by a COMPLETED BatchExecution
+  that has a non-voided SubstepCompletion for the substep — completed, not
+  merely sealed: a sealed load is still in the machine, and parts advance at
+  Complete (batch_lifecycle, user decision 2026-11-03). Split parts inherit
+  batch completions from any completed BatchExecution they were a member of.
 
 The gate runs only when `feature_flags.substep_gate_enabled(tenant)`
 returns True. Existing tenants default to legacy behavior.
@@ -122,14 +123,14 @@ def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
         )
     }
 
-    # Pre-fetch sealed batches that cover this part for this step
+    # Pre-fetch completed batches that cover this part for this step
     # (regardless of current cohort-split status — see Case 19 in the
-    # sandbox).
+    # sandbox). A sealed load still running doesn't count yet.
     sealed_batches_for_part = list(
         BatchExecution.objects.filter(archived=False,
             step=step,
             parts=part,
-            sealed_at__isnull=False,
+            completed_at__isnull=False,
         )
     )
     cohort_completions_index: dict[tuple[int, int], SubstepCompletion] = {}
@@ -145,7 +146,7 @@ def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
 
     def _sealed_batch_with_completion(substep: Substep) -> tuple[BatchExecution | None, bool]:
         """Return (covering batch, has_completion). batch=None means no
-        sealed batch covers this part."""
+        completed batch covers this part."""
         for b in sealed_batches_for_part:
             if (b.id, substep.id) in cohort_completions_index:
                 return b, True
@@ -209,14 +210,14 @@ def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
             batch, has_completion = _sealed_batch_with_completion(substep)
             if batch is None:
                 blockers.append(
-                    f"Batch substep '{substep.title}' requires a sealed "
-                    "batch covering this part"
+                    f"Batch substep '{substep.title}' requires a completed "
+                    "load covering this part"
                 )
                 continue
             if not has_completion:
                 blockers.append(
                     f"Batch substep '{substep.title}' has no completion "
-                    f"on sealed batch #{batch.id}"
+                    f"on completed load #{batch.id}"
                 )
 
     # Terminal-step reconciliation gate. Flow #9 blocker #8: if this is

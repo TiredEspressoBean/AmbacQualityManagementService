@@ -3695,6 +3695,7 @@ export type InFlightItem = {
   work_order_id: string | null;
   work_order_erp_id: string | null;
   status: string;
+  sealed_at: string | null;
   holder_id: number | null;
   holder_name: string;
   started_at: string | null;
@@ -4988,6 +4989,7 @@ export type MeasuredStepTiming = {
   method: MethodEnum;
   note: string;
   loads: number;
+  load_per_load_minutes: number | null;
   cycle_per_load_minutes: number | null;
   setup_in_use: TimingSourceEnum;
   cycle_in_use: TimingSourceEnum;
@@ -6094,13 +6096,17 @@ export type BatchExecution = {
    */
   started_at: string;
   /**
-   * When the operator sealed the batch, every required BATCH-scope substep done: the load is released and its parts may advance.
+   * When the load was sealed — loaded, its load-phase substeps done, and the machine running. Membership is locked from here; the parts don't advance until the load is completed.
    */
   sealed_at: string | null;
   /**
-   * Not written by the product: sealing is where a batch ends (sealed_at). Left empty.
+   * When the load was completed — the run finished and the substeps after the seal point done. Its parts advance from here.
    */
   completed_at: string | null;
+  /**
+   * Who completed the load.
+   */
+  completed_by: number | null;
   notes?: /**
    * Operator notes captured at batch start / during the run.
    */
@@ -10937,6 +10943,10 @@ export type Substep = {
    * Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution.
    */
   boolean | undefined;
+  seals_load?: /**
+   * Batch substeps only: completing this substep seals the load — the machine runs and the operator may walk away. Batch substeps up to and including it are the load phase; those after it are done when the load is completed, and the parts advance then. One per step. With none, the load is sealed with Seal after the last batch substep, and completed with a bare Complete.
+   */
+  boolean | undefined;
   expected_duration?:
     | /**
      * Estimated time the substep typically takes. Informational.
@@ -15156,6 +15166,10 @@ export type PatchedSubstepRequest = Partial<{
    */
   once_per_lot: boolean;
   /**
+   * Batch substeps only: completing this substep seals the load — the machine runs and the operator may walk away. Batch substeps up to and including it are the load phase; those after it are done when the load is completed, and the parts advance then. One per step. With none, the load is sealed with Seal after the last batch substep, and completed with a bare Complete.
+   */
+  seals_load: boolean;
+  /**
    * Estimated time the substep typically takes. Informational.
    */
   expected_duration: string | null;
@@ -18066,6 +18080,10 @@ export type SubstepRequest = {
    * Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution.
    */
   boolean | undefined;
+  seals_load?: /**
+   * Batch substeps only: completing this substep seals the load — the machine runs and the operator may walk away. Batch substeps up to and including it are the load phase; those after it are done when the load is completed, and the parts advance then. One per step. With none, the load is sealed with Seal after the last batch substep, and completed with a bare Complete.
+   */
+  boolean | undefined;
   expected_duration?:
     | /**
      * Estimated time the substep typically takes. Informational.
@@ -19679,6 +19697,7 @@ const BatchExecution = z.object({
   started_at: z.string().datetime({ offset: true }),
   sealed_at: z.string().datetime({ offset: true }).nullable(),
   completed_at: z.string().datetime({ offset: true }).nullable(),
+  completed_by: z.number().int().nullable(),
   notes: z.string().optional(),
 });
 const PaginatedBatchExecutionList = z.object({
@@ -19701,6 +19720,14 @@ const PatchedBatchExecutionRequest = z
     notes: z.string(),
   })
   .partial();
+const BatchCompleteResponse = z.object({
+  batch_id: z.string(),
+  completed_at: z.string(),
+});
+const BatchCompleteError = z.object({
+  detail: z.string(),
+  problems: z.array(z.string()),
+});
 const RemoveBatchPartRequestRequest = z.object({
   part: z.string().uuid(),
   reason: z.string().min(1),
@@ -26060,6 +26087,7 @@ const InFlightItem = z.object({
   work_order_id: z.string().uuid().nullable(),
   work_order_erp_id: z.string().nullable(),
   status: z.string(),
+  sealed_at: z.string().datetime({ offset: true }).nullable(),
   holder_id: z.number().int().nullable(),
   holder_name: z.string(),
   started_at: z.string().datetime({ offset: true }).nullable(),
@@ -26234,6 +26262,7 @@ const MeasuredStepTiming = z.object({
   method: MethodEnum,
   note: z.string(),
   loads: z.number().int(),
+  load_per_load_minutes: z.number().nullable(),
   cycle_per_load_minutes: z.number().nullable(),
   setup_in_use: TimingSourceEnum,
   cycle_in_use: TimingSourceEnum,
@@ -26904,6 +26933,7 @@ const Substep = z.object({
   requires_signature: z.boolean().optional(),
   is_inspection_point: z.boolean().optional(),
   once_per_lot: z.boolean().optional(),
+  seals_load: z.boolean().optional(),
   expected_duration: z.string().nullish(),
   scope: ScopeEnum.optional(),
   sampling_rule: z.string().uuid().nullish(),
@@ -26941,6 +26971,7 @@ const SubstepRequest = z.object({
   requires_signature: z.boolean().optional(),
   is_inspection_point: z.boolean().optional(),
   once_per_lot: z.boolean().optional(),
+  seals_load: z.boolean().optional(),
   expected_duration: z.string().nullish(),
   scope: ScopeEnum.optional(),
   sampling_rule: z.string().uuid().nullish(),
@@ -26967,6 +26998,7 @@ const PatchedSubstepRequest = z
     requires_signature: z.boolean(),
     is_inspection_point: z.boolean(),
     once_per_lot: z.boolean(),
+    seals_load: z.boolean(),
     expected_duration: z.string().nullable(),
     scope: ScopeEnum,
     sampling_rule: z.string().uuid().nullable(),
@@ -30236,6 +30268,8 @@ export const schemas = {
   PaginatedBatchExecutionList,
   BatchExecutionRequest,
   PatchedBatchExecutionRequest,
+  BatchCompleteResponse,
+  BatchCompleteError,
   RemoveBatchPartRequestRequest,
   RemoveBatchPartResponseOutcomeEnum,
   RemoveBatchPartResponse,
@@ -32839,6 +32873,31 @@ for advancement.`,
   },
   {
     method: "post",
+    path: "/api/BatchExecutions/:id/complete/",
+    alias: "api_BatchExecutions_complete_create",
+    description: `POST /api/BatchExecutions/{id}/complete/
+
+Completes a sealed load: the run is finished and the completion-phase
+substeps are done. Stamps &#x60;completed_at&#x60; and advances the parts. 400 if
+the load isn&#x27;t sealed or a required completion-phase substep isn&#x27;t done.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: BatchCompleteResponse,
+    errors: [
+      {
+        status: 400,
+        schema: BatchCompleteError,
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/BatchExecutions/:id/remove-part/",
     alias: "api_BatchExecutions_remove_part_create",
     description: `Take the wrong part out of a sealed batch, with a reason. It goes back to the batch&#x27;s step and its batch-done work no longer counts for it. No unseal.`,
@@ -32889,9 +32948,10 @@ for advancement.`,
     alias: "api_BatchExecutions_seal_create",
     description: `POST /api/BatchExecutions/{id}/seal/
 
-Locks the batch (timestamps &#x60;sealed_at&#x60;) and fires the
-advancement retry. ValidationError if required cohort substeps
-aren&#x27;t all completed, or if membership crosses WO boundaries.`,
+Seals the load (timestamps &#x60;sealed_at&#x60;): loaded, its load-phase
+substeps done, the machine running. Membership locks; the parts do
+NOT advance until the load is completed. 400 if a required load-phase
+substep isn&#x27;t done, or if membership crosses WO boundaries.`,
     requestFormat: "json",
     parameters: [
       {
@@ -36287,7 +36347,10 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "patch",
     path: "/api/CustomerShipments/:id/",
@@ -36308,10 +36371,7 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "post",
     path: "/api/CustomerShipments/:id/void/",
@@ -41429,7 +41489,10 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: TestConnectionResult,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "post",
     path: "/api/integrations/:id/trigger_sync/",
@@ -41444,10 +41507,7 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: z.object({ status: z.string() }),
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/integrations/catalog/",
@@ -45695,7 +45755,10 @@ field metadata).`,
       },
     ],
     response: TenantSchedule,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "delete",
     path: "/api/notifications/schedules/tenant/:id/",
@@ -45710,10 +45773,7 @@ field metadata).`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/OrderBook/:id/",
@@ -51129,7 +51189,10 @@ Usage:
       },
     ],
     response: QualityReports,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/QualityReports/:id/",
@@ -51168,10 +51231,7 @@ Usage:
       },
     ],
     response: QualityReports,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "put",
     path: "/api/QualityReports/:id/",
@@ -56199,7 +56259,10 @@ Used by the workflow engine for tracking part progression through steps.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepExecutions/:id/claim/",
@@ -56235,10 +56298,7 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       },
     ],
     response: StepExecution,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepExecutions/:id/flag-override/",
@@ -61968,7 +62028,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: ImportStatusResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingRequirements/import-template/:template_format/",
@@ -61983,10 +62046,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/TrainingRequirements/import/",

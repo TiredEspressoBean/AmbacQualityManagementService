@@ -46,6 +46,7 @@ class MeasuredStepTimingSerializer(serializers.Serializer):
     method = serializers.ChoiceField(choices=['fit', 'average', 'batch', 'none'], source='measured.method')
     note = serializers.CharField(source='measured.note', allow_blank=True)
     loads = serializers.IntegerField(source='measured.loads')
+    load_per_load_minutes = serializers.FloatField(source='measured.load_per_load_minutes', allow_null=True)
     cycle_per_load_minutes = serializers.FloatField(source='measured.cycle_per_load_minutes',
                                                     allow_null=True)
     setup_in_use = serializers.ChoiceField(choices=TIMING_SOURCES)

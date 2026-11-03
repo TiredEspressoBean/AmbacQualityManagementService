@@ -123,16 +123,18 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             )
 
     def perform_create(self, serializer):
+        from Tracker.services.dwi.batch_lifecycle import keep_one_seal_point
         step = serializer.validated_data.get('step')
         if step is not None:
             self._assert_step_editable(step)
-        serializer.save()
+        keep_one_seal_point(serializer.save())
 
     def perform_update(self, serializer):
+        from Tracker.services.dwi.batch_lifecycle import keep_one_seal_point
         from Tracker.services.dwi.substep_sampling import retire_if_unused
         self._assert_step_editable(serializer.instance.step)
         former_rule = serializer.instance.sampling_rule_id
-        serializer.save()
+        keep_one_seal_point(serializer.save())
         # A sampling choice changed or cleared: its old rule goes once nothing uses it.
         if 'sampling_rule' in serializer.validated_data:
             retire_if_unused(former_rule)
@@ -827,9 +829,10 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     def seal(self, request, pk=None):
         """POST /api/BatchExecutions/{id}/seal/
 
-        Locks the batch (timestamps `sealed_at`) and fires the
-        advancement retry. ValidationError if required cohort substeps
-        aren't all completed, or if membership crosses WO boundaries.
+        Seals the load (timestamps `sealed_at`): loaded, its load-phase
+        substeps done, the machine running. Membership locks; the parts do
+        NOT advance until the load is completed. 400 if a required load-phase
+        substep isn't done, or if membership crosses WO boundaries.
         """
         from django.core.exceptions import ValidationError
         from Tracker.services.dwi.batch_lifecycle import seal_batch
@@ -846,6 +849,40 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             'batch_id': result.batch_id,
             'sealed_at': result.sealed_at,
         })
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: inline_serializer(name='BatchCompleteResponse', fields={
+                'batch_id': drf_serializers.CharField(),
+                'completed_at': drf_serializers.CharField(),
+            }),
+            400: inline_serializer(name='BatchCompleteError', fields={
+                'detail': drf_serializers.CharField(),
+                'problems': drf_serializers.ListField(child=drf_serializers.CharField()),
+            }),
+        },
+    )
+    @action(detail=True, methods=['post'], url_path='complete')
+    def complete(self, request, pk=None):
+        """POST /api/BatchExecutions/{id}/complete/
+
+        Completes a sealed load: the run is finished and the completion-phase
+        substeps are done. Stamps `completed_at` and advances the parts. 400 if
+        the load isn't sealed or a required completion-phase substep isn't done.
+        """
+        from django.core.exceptions import ValidationError
+        from Tracker.services.dwi.batch_lifecycle import complete_batch
+
+        batch = self.get_object()
+        try:
+            result = complete_batch(batch=batch, user=request.user)
+        except ValidationError as exc:
+            return Response(
+                {'detail': 'Cannot complete the load', 'problems': list(exc.messages)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({'batch_id': result.batch_id, 'completed_at': result.completed_at})
 
     @extend_schema(
         request=inline_serializer(name='RemoveBatchPartRequest', fields={

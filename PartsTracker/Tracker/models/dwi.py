@@ -242,6 +242,18 @@ class Substep(SecureModel):
     for the semantics. SAMPLED is the right default - every shop has way
     more per-part work than per-batch cycle work."""
 
+    seals_load = models.BooleanField(
+        default=False,
+        help_text=(
+            "Batch substeps only: completing this substep seals the load — the "
+            "machine runs and the operator may walk away. Batch substeps up to and "
+            "including it are the load phase; those after it are done when the load "
+            "is completed, and the parts advance then. One per step. With none, the "
+            "load is sealed with Seal after the last batch substep, and completed "
+            "with a bare Complete."
+        ),
+    )
+
     once_per_lot = models.BooleanField(
         default=False,
         help_text=(
@@ -344,12 +356,20 @@ class BatchExecution(SecureModel):
     A batch of parts moving through a Step together for one or more
     BATCH-scope substeps (heat-treat cycle, wash tank, plating bath).
 
-    Created at runtime when an operator starts a batch (loads it) on a Step that
-    has at least one BATCH-scope substep, with its parts named then. It is sealed
-    when the operator seals it, which needs every required BATCH-scope substep
-    completed on it (services/dwi/batch_lifecycle.seal_batch); sealing releases
-    its parts to advance. Started → sealed is the load's measured cycle
-    (services/scheduling/measured).
+    Three phases, always (user decision 2026-11-03; services/dwi/batch_lifecycle):
+
+      1. **Load** — started when the operator loads it (parts named then); the batch
+         substeps authored up to the step's seal point are done, attended.
+      2. **Sealed** — the load is closed and the machine runs (a wash, an oven, a
+         bar-fed lathe batching out); the operator may walk away. Sealing needs the
+         load phase's required substeps; it happens on the substep flagged
+         `seals_load`, or with Seal when none is.
+      3. **Completed** — the operator comes back and does the substeps after the
+         seal point; confirming completion stamps `completed_at` and releases the
+         parts to advance. Never at seal.
+
+    Started → sealed is the load's attended load time, sealed → completed its
+    cycle (services/scheduling/measured).
 
     Captures on BATCH-scope substeps write `SubstepCompletion` and
     `SubstepResponse` rows against this BatchExecution rather than against
@@ -386,9 +406,9 @@ class BatchExecution(SecureModel):
         blank=True,
         help_text="Parts that are members of this batch.",
     )
-    """Parts in the batch. Mutable until the first BATCH substep fires
-    (`sealed_at` set); after that, locked. Per-part audit queries join
-    through this M2M to pick up batch-level captures."""
+    """Parts in the batch. Locked once it is sealed (a wrong part comes out with a
+    reason: remove_part_from_sealed_batch). Per-part audit queries join through this
+    M2M to pick up batch-level captures."""
 
     started_by = models.ForeignKey(
         User,
@@ -406,16 +426,26 @@ class BatchExecution(SecureModel):
         null=True,
         blank=True,
         help_text=(
-            "When the operator sealed the batch, every required BATCH-scope "
-            "substep done: the load is released and its parts may advance."
+            "When the load was sealed — loaded, its load-phase substeps done, and "
+            "the machine running. Membership is locked from here; the parts don't "
+            "advance until the load is completed."
         ),
     )
 
     completed_at = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="Not written by the product: sealing is where a batch ends "
-                  "(sealed_at). Left empty.",
+        help_text="When the load was completed — the run finished and the substeps "
+                  "after the seal point done. Its parts advance from here.",
+    )
+
+    completed_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='batch_executions_completed',
+        help_text="Who completed the load.",
     )
 
     notes = models.TextField(

@@ -231,6 +231,10 @@ export const QaRightPanel = memo(function QaRightPanel({ workOrder, selectedPart
                                                                             Batch cycle
                                                                             <span className="font-normal">
                                                                                 · shared with {b.part_count} part{b.part_count === 1 ? "" : "s"}
+                                                                                {/* The run: sealed (machine starts) to completed. */}
+                                                                                {b.completed_at && b.sealed_at
+                                                                                    ? ` · ran ${new Date(b.sealed_at).toLocaleString()} to ${new Date(b.completed_at).toLocaleTimeString()}`
+                                                                                    : b.sealed_at ? " · running" : ""}
                                                                             </span>
                                                                             {b.quality_status && (
                                                                                 <Badge

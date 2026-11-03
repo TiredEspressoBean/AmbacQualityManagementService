@@ -73,6 +73,13 @@ class InFlightTests(TenantContextMixin, VectorTestCase):
         self.assertEqual((load.substeps_total, load.part_count, load.resume_execution_id),
                          (1, 1, self.at_wash.id))
 
+    def test_a_sealed_load_stays_in_flight_running_until_completed(self):
+        BatchExecution.objects.filter(pk=self.load.pk).update(sealed_at=timezone.now())
+        load = next(i for i in in_flight(self.tenant, user=self.me) if i.kind == "load")
+        self.assertEqual(load.status, "RUNNING")
+        BatchExecution.objects.filter(pk=self.load.pk).update(completed_at=timezone.now())
+        self.assertFalse([i for i in in_flight(self.tenant, user=self.me) if i.kind == "load"])
+
     def test_narrowed_to_a_work_order_and_everyone(self):
         self.assertEqual(len(in_flight(self.tenant, user=self.me, work_order_id=self.wo2.id)), 1)
         everyone = in_flight(self.tenant, user=self.me, everyone=True)

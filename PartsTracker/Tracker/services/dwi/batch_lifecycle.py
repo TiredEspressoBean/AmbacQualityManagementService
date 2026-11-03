@@ -1,18 +1,23 @@
 """
-BatchExecution lifecycle service.
+BatchExecution lifecycle service — the only write path for sealing and completing a
+load.
 
-This module is the only write path for sealing a batch (`sealed_at`). Sealing
-ends the batch — nothing writes `completed_at` — so started → sealed is the
-load's cycle as measured for Step Timings. Sealing:
+Every batch step has three phases (user decision 2026-11-03):
 
-  1. Validates every required BATCH-scope substep has a non-voided
-     SubstepCompletion on this batch.
-  2. Validates membership integrity (all parts share the batch's WO —
-     multi-WO batches are modeled as one BatchExecution per WO, see
-     `scratch_advancement_gate.py` case 9).
-  3. Stamps `sealed_at = now()`.
-  4. Fires the advancement retry task for the (WO, Step) the batch
-     covers, since every member part may now be ready to advance.
+  1. **Load** (attended): the load is started and the batch substeps up to the
+     step's seal point are done.
+  2. **Seal**: the load closes — membership locked — and the machine runs; the
+     operator may walk away. The seal point is the batch substep flagged
+     `seals_load` (confirming it seals the load); with none, it sits after the last
+     batch substep and the operator presses Seal.
+  3. **Complete**: the operator comes back, does the batch substeps after the seal
+     point (none, when unflagged: a bare Complete), and completes the load. That
+     stamps `completed_at` and fires advancement. **Parts advance at Complete, never
+     at Seal.**
+
+Started -> sealed is the attended load time; sealed -> completed the cycle
+(services/scheduling/measured). A FAIL on a completion-phase inspection contains the
+load as any batch FAIL does (qms.batch_disposition.contain_failed_batch).
 """
 
 from __future__ import annotations
@@ -45,6 +50,52 @@ def _queue_lot_advance(**kwargs):
     advance_lot_task.delay(**kwargs)
 
 
+def batch_phases(step) -> tuple[list, list]:
+    """(load-phase, completion-phase) batch substeps of `step`, each in order. The
+    substep flagged `seals_load` ends the load phase; with none, every batch substep
+    is in the load phase and the completion phase is empty."""
+    from Tracker.models import Substep, SubstepScope
+    subs = list(Substep.objects.filter(step=step, scope=SubstepScope.BATCH, archived=False)  # tenant-safe: FK to a scoped step
+                .order_by('order', 'created_at'))
+    seal = next((i for i, s in enumerate(subs) if s.seals_load), None)
+    if seal is None:
+        return subs, []
+    return subs[:seal + 1], subs[seal + 1:]
+
+
+def phase_of(substep) -> str:
+    """'load' or 'completion': which phase of its step's batch substeps this is."""
+    load, _ = batch_phases(substep.step)
+    return 'load' if any(s.id == substep.id for s in load) else 'completion'
+
+
+def keep_one_seal_point(substep) -> None:
+    """One seal point per step: flagging a substep `seals_load` moves the seal point
+    there, clearing it from the step's other substeps."""
+    from Tracker.models import Substep
+    if not getattr(substep, 'seals_load', False):
+        return
+    (Substep.objects.filter(step_id=substep.step_id, seals_load=True)  # tenant-safe: FK to a scoped step
+     .exclude(pk=substep.pk).update(seals_load=False))
+
+
+def _missing(batch, substeps) -> list[str]:
+    """Required substeps among `substeps` with no live completion on the batch."""
+    from Tracker.models import SubstepCompletion
+    required = [s for s in substeps if not s.is_optional]
+    done = set(SubstepCompletion.objects.filter(  # tenant-safe: keyed to a scoped batch
+        batch_execution_id=batch.id, substep_id__in=[s.id for s in required], is_voided=False,
+    ).values_list('substep_id', flat=True))
+    return [f"Batch substep '{s.title}' has no completion on this batch."
+            for s in required if s.id not in done]
+
+
+@dataclass(frozen=True)
+class CompleteResult:
+    batch_id: str
+    completed_at: str
+
+
 @dataclass(frozen=True)
 class SealResult:
     batch_id: str
@@ -55,14 +106,14 @@ class SealResult:
 def assert_no_open_batch_overlap(*, step, parts) -> None:
     """3c — disjoint-membership invariant for open batches.
 
-    A part may be a member of at most one OPEN (unsealed) batch at a given
-    step. Multiple concurrent open batches per (WO, step) are allowed — a
-    fixed-capacity op (furnace/wash/autoclave) legitimately splits one lot
-    into several loads — but their membership must be disjoint, else it's
-    ambiguous which load's cycle data covers the part.
+    A part may be a member of at most one OPEN (not yet completed) batch at a
+    given step — loading, or sealed and running. Multiple concurrent open batches
+    per (WO, step) are allowed — a fixed-capacity op (furnace/wash/autoclave)
+    legitimately splits one lot into several loads — but their membership must be
+    disjoint, else it's ambiguous which load's cycle data covers the part.
 
-    Sealed batches don't count: once a load is sealed its parts have their
-    capture recorded, so a part may later join a new batch (rare, but valid).
+    Completed loads don't count: a part may later join a new batch (rare, but
+    valid — a redo).
 
     Raises ValidationError naming the overlapping part count.
     """
@@ -73,29 +124,28 @@ def assert_no_open_batch_overlap(*, step, parts) -> None:
         return
     in_open_batch = set(
         BatchExecution.objects.filter(archived=False,
-            step=step, sealed_at__isnull=True, parts__id__in=part_ids,
+            step=step, completed_at__isnull=True, parts__id__in=part_ids,
         ).values_list('parts__id', flat=True)
     )
     overlapping = in_open_batch & set(part_ids)
     if overlapping:
         raise ValidationError(
             f"{len(overlapping)} selected part(s) are already in an open batch "
-            "at this step. Seal or finish that batch before starting another."
+            "at this step. Complete that load before starting another with them."
         )
 
 
 def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
-    """Seal a BatchExecution and trigger advancement retry. Raises
-    ValidationError if the batch isn't ready to seal (missing
-    completions, foreign parts, empty)."""
-    from Tracker.models import BatchExecution, Substep, SubstepCompletion, SubstepScope
+    """Seal a load: it's loaded, its load-phase substeps are done, and the machine
+    runs. Locks membership; does NOT advance the parts (complete_batch does). Raises
+    ValidationError if it isn't ready to seal (missing load-phase completions,
+    foreign parts, empty)."""
+    from Tracker.models import BatchExecution
     from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
 
-    # One transaction holds a row lock on the batch across the whole check →
-    # validate → seal → fire-advancement sequence, so two concurrent seals
-    # can't both pass the already-sealed check, double-stamp sealed_at, and
-    # double-fire advancement. The second seal blocks on the lock, then sees
-    # sealed_at set and returns the idempotent result.
+    # One transaction holds a row lock on the batch across check -> validate -> seal,
+    # so two concurrent seals can't both pass the already-sealed check. The second
+    # blocks on the lock, then sees sealed_at set and returns the idempotent result.
     with transaction.atomic():
         batch = BatchExecution.objects.select_for_update().get(pk=batch.id)
 
@@ -133,27 +183,8 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
                 "One BatchExecution per WO is invariant."
             )
 
-        required_subs = list(
-            Substep.objects.filter(
-                step_id=batch.step_id,
-                scope=SubstepScope.BATCH,
-                is_optional=False,
-                archived=False,
-            )
-        )
-        if required_subs:
-            completed_ids = set(
-                SubstepCompletion.objects.filter(
-                    batch_execution_id=batch.id,
-                    substep_id__in=[s.id for s in required_subs],
-                    is_voided=False,
-                ).values_list('substep_id', flat=True)
-            )
-            for s in required_subs:
-                if s.id not in completed_ids:
-                    problems.append(
-                        f"Batch substep '{s.title}' has no completion on this batch."
-                    )
+        load_phase, _ = batch_phases(batch.step)
+        problems += _missing(batch, load_phase)
 
         if problems:
             raise ValidationError(problems)
@@ -162,14 +193,47 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
         batch.save(update_fields=['sealed_at'])
         logger.info("BatchExecution %s sealed by user %s", batch.id, user.id)
 
-        # Seal IS the cohort's "Complete step" — the BATCH substep just got
-        # satisfied, so member parts may now be ready to advance.
-        #
+    return SealResult(
+        batch_id=str(batch.id),
+        sealed_at=batch.sealed_at.isoformat(),
+        problems=[],
+    )
+
+
+def complete_batch(*, batch: "BatchExecution", user: "User") -> CompleteResult:
+    """Complete a sealed load: the run is finished and the completion-phase substeps
+    are done. Stamps completed_at / completed_by and releases the parts to advance;
+    this, not the seal, is the cohort's "Complete step". Idempotent once completed.
+
+    Raises:
+        ValidationError: the load isn't sealed yet, or a required completion-phase
+            substep has no completion on it.
+    """
+    from Tracker.models import BatchExecution
+    from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
+
+    with transaction.atomic():
+        batch = BatchExecution.objects.select_for_update().get(pk=batch.id)
+        if batch.completed_at is not None:
+            return CompleteResult(batch_id=str(batch.id), completed_at=batch.completed_at.isoformat())
+        if batch.sealed_at is None:
+            raise ValidationError("Seal the load before completing it.")
+        _, completion_phase = batch_phases(batch.step)
+        problems = _missing(batch, completion_phase)
+        if problems:
+            raise ValidationError(problems)
+
+        batch.completed_at = timezone.now()
+        batch.completed_by = user
+        batch.save(update_fields=['completed_at', 'completed_by'])
+        logger.info("BatchExecution %s completed by user %s", batch.id, user.id)
+
+        live = [p for p in batch.parts.all() if p.part_status not in TERMINAL_PART_STATUSES]
         # Small cohorts advance synchronously so the operator sees the move
-        # immediately. Large cohorts (3d) would make the seal request gate +
-        # advance hundreds of parts inline and risk a timeout, so dispatch the
-        # advancement to Celery after commit; the batch is sealed regardless.
-        if len(parts) > ASYNC_ADVANCE_THRESHOLD:
+        # immediately. Large cohorts (3d) would make the request gate + advance
+        # hundreds of parts inline and risk a timeout, so dispatch the advancement
+        # to Celery after commit; the load is completed regardless.
+        if len(live) > ASYNC_ADVANCE_THRESHOLD:
             wo_id = str(batch.work_order_id)
             step_id = str(batch.step_id)
             tenant_id = str(batch.tenant_id)
@@ -182,10 +246,8 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
                     operator_id=operator_id,
                 )
             )
-            logger.info(
-                "Batch %s seal: %d-part cohort - advancement dispatched async.",
-                batch.id, len(parts),
-            )
+            logger.info("Batch %s complete: %d-part cohort - advancement dispatched async.",
+                        batch.id, len(live))
         else:
             from Tracker.services.mes.advancement import try_advance_lot
             try_advance_lot(
@@ -195,11 +257,7 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
                 operator=user,
             )
 
-    return SealResult(
-        batch_id=str(batch.id),
-        sealed_at=batch.sealed_at.isoformat(),
-        problems=[],
-    )
+    return CompleteResult(batch_id=str(batch.id), completed_at=batch.completed_at.isoformat())
 
 
 REMOVED = "REMOVED"

@@ -58,6 +58,9 @@ export function MeasuredLine({ m, aspect }: { m: MeasuredStepTiming | undefined;
         <span className="inline-flex flex-wrap items-center gap-1 text-xs text-muted-foreground"
             title={m.note || undefined}>
             measured {value} min{perLoad ? " per load" : aspect === "cycle" ? " per piece" : ""} · {basis}
+            {/* A batch step's run is sealed to completed; the attended loading before it
+                (started to sealed) is shown beside it, since it isn't in the cycle. */}
+            {perLoad && m.load_per_load_minutes != null && ` · loading ${m.load_per_load_minutes} min per load`}
             {aspect === "cycle" && m.method === "average" && !perLoad && " (average)"}
             {drift && (
                 <Badge variant="outline" className="border-amber-500 text-[10px] font-normal text-amber-700 dark:text-amber-400">

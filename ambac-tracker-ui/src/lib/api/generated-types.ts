@@ -744,6 +744,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/BatchExecutions/{id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description POST /api/BatchExecutions/{id}/complete/
+         *
+         *     Completes a sealed load: the run is finished and the completion-phase
+         *     substeps are done. Stamps `completed_at` and advances the parts. 400 if
+         *     the load isn't sealed or a required completion-phase substep isn't done.
+         */
+        post: operations["api_BatchExecutions_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/BatchExecutions/{id}/remove-part/": {
         parameters: {
             query?: never;
@@ -790,9 +813,10 @@ export interface paths {
         /**
          * @description POST /api/BatchExecutions/{id}/seal/
          *
-         *     Locks the batch (timestamps `sealed_at`) and fires the
-         *     advancement retry. ValidationError if required cohort substeps
-         *     aren't all completed, or if membership crosses WO boundaries.
+         *     Seals the load (timestamps `sealed_at`): loaded, its load-phase
+         *     substeps done, the machine running. Membership locks; the parts do
+         *     NOT advance until the load is completed. 400 if a required load-phase
+         *     substep isn't done, or if membership crosses WO boundaries.
          */
         post: operations["api_BatchExecutions_seal_create"];
         delete?: never;
@@ -22187,6 +22211,14 @@ export interface components {
         BatchCaptureDraftResponse: {
             saved_substeps: string[];
         };
+        BatchCompleteError: {
+            detail: string;
+            problems: string[];
+        };
+        BatchCompleteResponse: {
+            batch_id: string;
+            completed_at: string;
+        };
         /**
          * @description * `PASS` - PASS
          *     * `FAIL` - FAIL
@@ -22224,14 +22256,16 @@ export interface components {
             readonly started_at: string;
             /**
              * Format: date-time
-             * @description When the operator sealed the batch, every required BATCH-scope substep done: the load is released and its parts may advance.
+             * @description When the load was sealed — loaded, its load-phase substeps done, and the machine running. Membership is locked from here; the parts don't advance until the load is completed.
              */
             readonly sealed_at: string | null;
             /**
              * Format: date-time
-             * @description Not written by the product: sealing is where a batch ends (sealed_at). Left empty.
+             * @description When the load was completed — the run finished and the substeps after the seal point done. Its parts advance from here.
              */
             readonly completed_at: string | null;
+            /** @description Who completed the load. */
+            readonly completed_by: number | null;
             /** @description Operator notes captured at batch start / during the run. */
             notes?: string;
         };
@@ -25827,6 +25861,8 @@ export interface components {
             work_order_id: string | null;
             work_order_erp_id: string | null;
             status: string;
+            /** Format: date-time */
+            sealed_at: string | null;
             holder_id: number | null;
             holder_name: string;
             /** Format: date-time */
@@ -27241,6 +27277,8 @@ export interface components {
             method: components["schemas"]["MethodEnum"];
             note: string;
             loads: number;
+            /** Format: double */
+            load_per_load_minutes: number | null;
             /** Format: double */
             cycle_per_load_minutes: number | null;
             setup_in_use: components["schemas"]["TimingSourceEnum"];
@@ -32701,6 +32739,8 @@ export interface components {
             is_inspection_point?: boolean;
             /** @description Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution. */
             once_per_lot?: boolean;
+            /** @description Batch substeps only: completing this substep seals the load — the machine runs and the operator may walk away. Batch substeps up to and including it are the load phase; those after it are done when the load is completed, and the parts advance then. One per step. With none, the load is sealed with Seal after the last batch substep, and completed with a bare Complete. */
+            seals_load?: boolean;
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
@@ -38191,6 +38231,8 @@ export interface components {
             is_inspection_point?: boolean;
             /** @description Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution. */
             once_per_lot?: boolean;
+            /** @description Batch substeps only: completing this substep seals the load — the machine runs and the operator may walk away. Batch substeps up to and including it are the load phase; those after it are done when the load is completed, and the parts advance then. One per step. With none, the load is sealed with Seal after the last batch substep, and completed with a bare Complete. */
+            seals_load?: boolean;
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
@@ -38413,6 +38455,8 @@ export interface components {
             is_inspection_point?: boolean;
             /** @description Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution. */
             once_per_lot?: boolean;
+            /** @description Batch substeps only: completing this substep seals the load — the machine runs and the operator may walk away. Batch substeps up to and including it are the load phase; those after it are done when the load is completed, and the parts advance then. One per step. With none, the load is sealed with Seal after the last batch substep, and completed with a bare Complete. */
+            seals_load?: boolean;
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
@@ -43175,6 +43219,36 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    api_BatchExecutions_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this batch execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchCompleteResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchCompleteError"];
                 };
             };
         };

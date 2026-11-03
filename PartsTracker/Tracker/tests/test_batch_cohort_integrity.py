@@ -33,6 +33,7 @@ from Tracker.models import (
 )
 from Tracker.services.dwi.batch_lifecycle import (
     assert_no_open_batch_overlap,
+    complete_batch,
     seal_batch,
 )
 from Tracker.services.dwi.operator_capture import submit_substep
@@ -121,7 +122,7 @@ class BatchCohortIntegrityTests(TenantContextMixin, VectorTestCase):
         assert_no_open_batch_overlap(step=self.step, parts=[self.parts[1]])
         self._open_batch([self.parts[1]])
         open_count = BatchExecution.objects.filter(
-            work_order=self.wo, step=self.step, sealed_at__isnull=True,
+            work_order=self.wo, step=self.step, completed_at__isnull=True,
         ).count()
         self.assertEqual(open_count, 2)
 
@@ -130,11 +131,15 @@ class BatchCohortIntegrityTests(TenantContextMixin, VectorTestCase):
         with self.assertRaises(ValidationError):
             assert_no_open_batch_overlap(step=self.step, parts=[self.parts[0]])
 
-    def test_overlap_allowed_after_seal(self):
+    def test_a_running_load_holds_its_parts_and_a_completed_one_does_not(self):
         first = self._open_batch([self.parts[0]])
         self._capture_batch_substep(first)
         seal_batch(batch=first, user=self.user)
-        # Sealed batches don't reserve membership — no raise.
+        # Sealed: still in the machine — its parts can't go into another load.
+        with self.assertRaises(ValidationError):
+            assert_no_open_batch_overlap(step=self.step, parts=[self.parts[0]])
+        complete_batch(batch=first, user=self.user)
+        # Completed loads don't reserve membership — no raise.
         assert_no_open_batch_overlap(step=self.step, parts=[self.parts[0]])
 
     # ----- 3c: advancement never touches a terminal part -----
@@ -151,8 +156,8 @@ class BatchCohortIntegrityTests(TenantContextMixin, VectorTestCase):
         self.assertEqual(result.status, "noop")
         self.assertEqual(result.reason, "no_parts_at_step")
 
-    # ----- 3c: each sealed load advances independently -----
-    def test_sealed_load_advances_without_waiting_for_other_load(self):
+    # ----- 3c: each completed load advances independently -----
+    def test_completed_load_advances_without_waiting_for_other_load(self):
         next_step = Steps.objects.create(
             tenant=self.tenant, part_type=self.part_type, name="Quench", step_type="TASK",
         )
@@ -167,22 +172,24 @@ class BatchCohortIntegrityTests(TenantContextMixin, VectorTestCase):
         self._capture_batch_substep(load_a)
 
         seal_batch(batch=load_a, user=self.user)
+        complete_batch(batch=load_a, user=self.user)
 
         self.parts[0].refresh_from_db()
         self.parts[1].refresh_from_db()
-        # Load A's part advanced; load B's part stays put (its batch isn't sealed).
+        # Load A's part advanced; load B's part stays put (its load isn't completed).
         self.assertEqual(self.parts[0].step_id, next_step.id)
         self.assertEqual(self.parts[1].step_id, self.step.id)
 
-    # ----- 3d: large-cohort seal defers advancement to Celery -----
-    def test_large_cohort_seal_dispatches_async(self):
+    # ----- 3d: completing a large load defers advancement to Celery -----
+    def test_large_cohort_complete_dispatches_async(self):
         batch = self._open_batch(self.parts)
         self._capture_batch_substep(batch)
+        seal_batch(batch=batch, user=self.user)
         with mock.patch(
             "Tracker.services.dwi.batch_lifecycle.ASYNC_ADVANCE_THRESHOLD", 1
         ), mock.patch("Tracker.services.dwi.batch_lifecycle._queue_lot_advance") as delay:
             with self.captureOnCommitCallbacks(execute=True):
-                seal_batch(batch=batch, user=self.user)
+                complete_batch(batch=batch, user=self.user)
         delay.assert_called_once()
         _, kwargs = delay.call_args
         self.assertEqual(kwargs["work_order_id"], str(self.wo.id))

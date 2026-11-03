@@ -34,7 +34,7 @@ from Tracker.models import (
 )
 from Tracker.services.mes.splits import split_part_from_lot
 from Tracker.services.mes.step_override import approve_step_override
-from Tracker.services.dwi.batch_lifecycle import seal_batch
+from Tracker.services.dwi.batch_lifecycle import complete_batch, seal_batch
 from Tracker.tests.test_advancement_engine import (
     _build_lot,
     _complete_substeps_for_part,
@@ -150,9 +150,10 @@ class StepOverrideRewireTests(AdvancementRewiresBase):
 
 
 class BatchSealRewireTests(AdvancementRewiresBase):
-    """`seal_batch` synchronously re-fires advancement."""
+    """A load advances at Complete, never at Seal (2026-11-03): sealing starts the
+    machine's run; `complete_batch` synchronously fires advancement."""
 
-    def test_batch_seal_advances_cohort(self):
+    def test_batch_complete_advances_cohort_and_seal_does_not(self):
         # Step A has one BATCH-scope substep. We don't bother with
         # SAMPLED substeps on step A (substeps_per_step=0 baseline; add
         # a single BATCH substep below).
@@ -187,8 +188,13 @@ class BatchSealRewireTests(AdvancementRewiresBase):
         )
 
         seal_batch(batch=batch, user=self.user)
+        # Sealed: the load is in the machine; nothing moves yet.
+        for p in lot['parts']:
+            p.refresh_from_db()
+            self.assertEqual(p.step_id, step_a.id)
 
-        # Parts should have advanced synchronously to step B.
+        complete_batch(batch=batch, user=self.user)
+        # Completed: the parts advance synchronously to step B.
         for p in lot['parts']:
             p.refresh_from_db()
             self.assertEqual(p.step_id, step_b.id)
