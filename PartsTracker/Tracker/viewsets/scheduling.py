@@ -852,7 +852,10 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             # orders due that month), placed as due at each month's end. Its hours are
             # in the lanes as forecast_hours.
             'forecast_demand': inline_serializer(name='ForecastDemand', fields={
+                # Units placed in the load (net of the demand time fence) — the same
+                # units `labor_hours` costs. Unplaceable ones are counted apart.
                 'units': serializers.IntegerField(),
+                'unplaceable_units': serializers.IntegerField(),
                 'labor_hours': serializers.FloatField(),
                 'unplaceable': inline_serializer(name='UnplaceableForecast', many=True, fields={
                     'part_type': serializers.CharField(),

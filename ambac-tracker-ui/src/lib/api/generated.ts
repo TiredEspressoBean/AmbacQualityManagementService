@@ -1663,6 +1663,7 @@ export type UnplaceableOrderLine = {
 };
 export type ForecastDemand = {
   units: number;
+  unplaceable_units: number;
   labor_hours: number;
   unplaceable: Array<UnplaceableForecast>;
 };
@@ -25271,6 +25272,7 @@ const UnplaceableForecast = z.object({
 });
 const ForecastDemand = z.object({
   units: z.number().int(),
+  unplaceable_units: z.number().int(),
   labor_hours: z.number(),
   unplaceable: z.array(UnplaceableForecast),
 });

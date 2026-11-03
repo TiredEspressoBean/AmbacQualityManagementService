@@ -557,7 +557,10 @@ export type CapacityLoad = {
   /** The volume forecast's unclaimed remainder (forecast less firm and RFI orders due
    *  that month). Its hours are in the lanes as `forecast_hours`. */
   forecast_demand?: {
+    /** Units IN the load (net of the fence) — the same units `labor_hours` costs. */
     units: number; labor_hours: number;
+    /** Forecast that couldn't be placed (no approved routing) — not in the load. */
+    unplaceable_units: number;
     unplaceable: { part_type: string; month: string; quantity: number; reason: string }[];
   };
   /** Material demand on the same buckets. Separate shape from the capacity lanes: a

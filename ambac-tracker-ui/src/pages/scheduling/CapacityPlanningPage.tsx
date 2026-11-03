@@ -138,7 +138,7 @@ function CrewVerdict({ labor, pools, unplanned, forecast }: {
       {forecast && forecast.unplaceable.length > 0 && (
         <span className="text-amber-700 dark:text-amber-400"
               title={forecast.unplaceable.map((u) => `${u.part_type} ${u.month} × ${u.quantity}: ${u.reason}`).join("\n")}>
-          Forecast for {forecast.unplaceable.length} part type-month{forecast.unplaceable.length === 1 ? "" : "s"} can't be placed (no approved routing) — not in the load
+          Forecast for {forecast.unplaceable.length} part type-month{forecast.unplaceable.length === 1 ? "" : "s"} ({forecast.unplaceable_units} unit{forecast.unplaceable_units === 1 ? "" : "s"}) can't be placed (no approved routing) — not in the load
         </span>
       )}
       {unplanned && unplanned.unplaceable.length > 0 && (

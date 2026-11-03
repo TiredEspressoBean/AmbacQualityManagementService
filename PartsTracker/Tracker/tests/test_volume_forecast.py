@@ -519,6 +519,10 @@ class ForecastPlanningTests(_ForecastFixture, TestCase):
         out = self._load()
         self.assertEqual(self._sum(out["labor"]["series"], "forecast_hours"), 0.0)
         self.assertEqual([u["part_type"] for u in out["forecast_demand"]["unplaceable"]], ["No Route"])
+        # The units count what's IN the load — the same units the hours cost — and the
+        # unplaceable ones are counted apart ("Includes 2780 units" read 3780 before).
+        self.assertEqual((out["forecast_demand"]["units"],
+                          out["forecast_demand"]["unplaceable_units"]), (0, 5))
 
 
 class RfiPlanningRefusalTests(_ForecastFixture, TestCase):

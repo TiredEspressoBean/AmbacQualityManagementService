@@ -650,13 +650,16 @@ def _forecast_demand(tenant, ref: _RefData, buckets, now) -> dict:
         entry, why = _place_demand(ref, buckets, now, pt_id, qty, due, routes)
         if entry is None and why is None:
             continue
-        units += qty
         if entry is None:
             unplaceable.append({**row, 'reason': why})
             continue
+        # Only units that are IN the load, so the count and the hours describe the same
+        # thing; the unplaceable ones are reported apart (they aren't in the load).
+        units += qty
         labor_total += entry['labor']
         placed.append({**row, **entry})
     return {'placed': placed, 'unplaceable': unplaceable, 'units': units,
+            'unplaceable_units': sum(u['quantity'] for u in unplaceable),
             'labor_hours': round(labor_total, 1)}
 
 
@@ -808,6 +811,7 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         'forecast_demand': {
             'units': forecast_demand['units'], 'labor_hours': forecast_demand['labor_hours'],
             'unplaceable': forecast_demand['unplaceable'],
+            'unplaceable_units': forecast_demand['unplaceable_units'],
         },
         # Certification-limited labour, one row per distinct qualified crew that
         # actually carries gated work. The aggregate row above answers "have we enough

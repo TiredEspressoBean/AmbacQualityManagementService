@@ -25255,6 +25255,7 @@ export interface components {
         };
         ForecastDemand: {
             units: number;
+            unplaceable_units: number;
             /** Format: double */
             labor_hours: number;
             unplaceable: components["schemas"]["UnplaceableForecast"][];

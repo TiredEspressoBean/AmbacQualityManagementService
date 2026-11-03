@@ -58640,6 +58640,8 @@ components:
       properties:
         units:
           type: integer
+        unplaceable_units:
+          type: integer
         labor_hours:
           type: number
           format: double
@@ -58651,6 +58653,7 @@ components:
       - labor_hours
       - units
       - unplaceable
+      - unplaceable_units
     FpiReading:
       type: object
       properties:
