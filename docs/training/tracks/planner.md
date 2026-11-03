@@ -264,12 +264,15 @@ build: the [volume forecast](../../workflows/scheduling/forecast.md).
    scheduling**).
 2. One row, **Common Rail Injector**, 24 months from this month. This month's
    column is muted. Hover it: *Inside the demand time fence: only orders are
-   planned.* Close in, only real orders drive the plan.
-3. Hover the **fifth** month: *Firm orders 0 · RFI 60* and *Planned on top of
-   orders: 150*. `ORD-2027-RFI-FLEET`, Midwest Fleet's quoted program, uses up 60
-   of that month's 210, so only 150 adds load. Next month may show *of which Firm
-   &lt;n&gt; (from &lt;this month&gt;)*: firm orders this month's fenced forecast
-   couldn't hold, using up the next month's instead.
+   planned.* The fence is the next 30 days: close in, only real orders drive the
+   plan. When the fence ends partway through next month, that month's tooltip
+   says how much of its forecast the fence holds back — *&lt;n&gt; of the
+   &lt;u&gt; unclaimed fall inside the demand time fence*.
+3. Hover the **fifth** month: *Forecast used up by orders: firm 0 · RFI 60* and
+   *Planned on top of orders: 150*. `ORD-2027-RFI-FLEET`, Midwest Fleet's quoted
+   program, uses up 60 of that month's 210, so only 150 adds load. When a month's
+   orders outgrow its forecast, the rest use up a neighbouring month's: that
+   month's tooltip then adds *of which Firm &lt;n&gt; (from &lt;month&gt;)*.
 4. Raise a later month by 200 and press **Enter**. Back on Capacity Planning, the
    months running up to it carry more load. The load lands where the work starts,
    ahead of the month it's due. Put the cell back.

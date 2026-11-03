@@ -85,8 +85,8 @@ work**:
 - **The unclaimed forecast.** The [volume forecast](forecast.md) adds whatever
   orders don't already use up — orders use up their due month's forecast, then
   neighbouring months' within the [consumption window](forecast.md#orders-use-up-the-forecast).
-  Inside the [demand time fence](forecast.md#the-demand-time-fence) — the
-  current month, by default — no forecast is planned, only orders. The verdict
+  Inside the [demand time fence](forecast.md#the-demand-time-fence) — the next
+  30 days, by default — no forecast is planned, only orders. The verdict
   says *Includes &lt;U&gt; units of unclaimed forecast*, linking to the forecast.
 
 A heatmap cell carrying either has a thin strip along its bottom edge — **sky
@@ -133,19 +133,37 @@ One row per bought item, keyed the way the ERP keys it:
 | **Item** | A material's part number, or a bought part type's ERP id |
 | **Name**, **Kind** | *Material* or *Bought part* |
 | **Stock unit**, **Purchase unit**, **Stock units per purchase unit** | How it is counted and bought; the last is blank when it is bought in the stock unit |
-| **On hand**, **Safety stock**, **Incoming** | Incoming is lots promised within the horizon |
+| **On hand**, **Safety stock**, **Incoming** | Incoming is lots promised within the horizon, plus lots promised before this month and still expected |
+| **Incoming (late)** | Of Incoming, the lots already past their promised month and not yet received — counted as supply in the current month; blank when none |
 | **Lead time (days)** | The item's purchase lead time, from its sourcing |
-| **First short month** | The first month (`YYYY-MM`) whose running balance — on hand − safety stock + incoming − demand so far — goes below zero |
+| **First short (firm)** | The first month (`YYYY-MM`) whose running balance — on hand − safety stock + incoming − firm demand so far — goes below zero |
 | **Order by** | The 1st of the first short month, less the lead time in calendar days; with no lead time set, the 1st of that month |
 | **Late** | *Late* when the order-by date has already passed (the date is still shown) |
+| **Watch from** | For a shortage only RFI or forecast demand causes: the month it starts and what causes it — *2026-12 (on forecast)*, *(on RFI)* or *(on RFI and forecast)* |
 | One column per month (`YYYY-MM`) | Demand in **stock units** |
 | **Total demand**, **Balance at end** | Balance at end = on hand − safety stock + incoming − total demand; negative is short |
 
-The four order-by columns are blank for an item that never goes short in the
+**First short (firm)**, **Order by** and **Late** come from **firm** demand
+alone — work orders and firm order lines. A shortage that appears only once RFI
+or forecast demand is added isn't something to buy yet: it gets no order-by
+date, and **Watch from** says when it would start instead. When firm demand
+goes short first, Watch from is blank. The lane's month cells count **all**
+demand, so a row can go negative before its first firm shortage — that's the
+watch.
+
+The order-by columns are blank for an item firm demand never takes short in the
 horizon. On the page, hovering a material's name shows the same answer — *First
-short &lt;month&gt; · order by &lt;date&gt; · &lt;n&gt;-day lead time* (or *no
-lead time set*) — and a red *order late* marker sits beside the name when the
-order-by date has passed.
+short (firm) &lt;month&gt; · order by &lt;date&gt; · &lt;n&gt;-day lead time* (or *no
+lead time set*), or *Watch: short from &lt;month&gt; (on forecast)* — and a red
+*order late* marker sits beside the name when the order-by date has passed.
+
+!!! info "Why its order-by can differ from the Requirements page's"
+    [Requirements](overview.md#requirements) dates each shortage from the exact need-by
+    date of the open work orders, netting stock and receipts due in time. The
+    outlook works by **month** — the 1st of the first short month, less the lead
+    time — and also counts open order lines not yet planned into work. Use the
+    outlook for the long view; Requirements is the precise one for released
+    work.
 
 !!! warning "When to act, not a buying plan"
     Only the **first** shortage is dated: it tells you when to act. There are no
@@ -184,17 +202,30 @@ conversation.
 ### When the order was already forecast
 
 An order you expected shouldn't be refused for colliding with its own forecast.
-So the quantity asked for first uses up its part type's **unclaimed** forecast,
-the way a real order does: its due month, then earlier months nearest first,
-then later ones, within the [consumption
-window](forecast.md#orders-use-up-the-forecast) — never inside the demand time
-fence. Only the rest needs free capacity, and the answer says so:
+So the quantity asked for first uses up its part type's **unclaimed** forecast:
+its due month, then earlier months nearest first, within the [consumption
+window](forecast.md#orders-use-up-the-forecast) — never later months, and never
+inside the demand time fence. A later month's forecast is planned after the date
+you asked about, so it frees nothing in time.
+
+The due month's **own** forecast is planned as due at the month's end, so its
+hours may fall after the date you asked about. Units taken from it still need
+free capacity by that date; only units from earlier months come free. The answer
+says so:
 
 - *&lt;n&gt; of the &lt;q&gt; were already forecast (&lt;n&gt; in
-  &lt;month&gt;); &lt;m&gt; need free capacity, which exists by then.* — or
-  *…, which isn't there by then.*
-- *All &lt;q&gt; were already forecast (…) — promisable against that
-  forecast.*
+  &lt;month&gt;, …); &lt;m&gt; need free capacity, which exists by then.* — or *…, which
+  isn't there by then.*
+- *All &lt;q&gt; were already forecast (…)* — followed by *; &lt;m&gt; need
+  free capacity…* when some came from the due month, or *— promisable against
+  that forecast.* when none did.
+- Beneath, when the due month contributed: *&lt;k&gt; of those come from
+  &lt;month&gt;'s own forecast, planned to month end — so they still have to fit
+  by the due date.*
+
+So 500 asked for by 25 March, with 150 unclaimed in March and 190 in February,
+reads *340 of the 500 were already forecast (150 in 2027-03, 190 in 2027-02);
+310 need free capacity* — the 160 not forecast plus March's 150.
 
 !!! info "It measures the window, not the month"
     Capacity-to-promise counts the hours available between **now and the date

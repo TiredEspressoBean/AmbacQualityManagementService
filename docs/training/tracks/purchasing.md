@@ -153,18 +153,26 @@ next two years of orders, quoted deals and the volume forecast will draw.
    months. Scroll to **Materials**. Each bought item has a row of months: the stock
    left after the demand to date, negative once it runs short. Hover a month for
    what's needed in it and how much of that is firm, RFI or forecast.
-2. Hover an item's name: *First short &lt;month&gt; · order by &lt;date&gt; ·
-   &lt;n&gt;-day lead time*. The order-by date is the 1st of the first short
-   month, less the lead time. An item already past it says **order late** in red.
-3. **Material outlook (24 months): Excel**. One row per item, keyed as your ERP keys
-   it, quantities in the stock unit with the purchase unit
-   and conversion beside. **Lead time (days)**, **First short month**, **Order by**
-   and **Late** come before the months.
+2. Hover **Control Valve Assembly**: *First short (firm) &lt;month&gt; · order by
+   &lt;date&gt; (late) · 28-day lead time*. Firm orders alone take it short, so
+   it gets an order-by date: the 1st of the first short month, less the lead
+   time. It's already past, so the row says **order late** in red.
+3. Hover **Injector Nozzle Assembly**: *Watch: short from &lt;month&gt; (on
+   forecast)*. Its row goes negative too, but only once the forecast is added.
+   Nothing to order yet — a forecast isn't a customer's order — but it's the one
+   to watch: when orders arrive to fill that forecast, it becomes a real shortage
+   with an order-by date.
+4. **Material outlook (24 months): Excel**. One row per item, keyed as your ERP keys
+   it, quantities in the stock unit with the purchase unit and conversion beside.
+   **Incoming (late)** shows receipts past their promised month and still
+   expected. **Lead time (days)**, **First short (firm)**, **Order by**, **Late**
+   and **Watch from** come before the months.
 
 **Exercise 6.1.** From the export, say which Common Rail Injector part is already
-late to order, which is due within days, and which fall over the next weeks. Say
-which number you'd check first if an order-by date looked wrong. (The lead time: it
-comes from the part's sourcing, module 4.)
+late to order, and which are only watches and from when. Say why a watch has no
+order-by date, and which number you'd check first if an order-by date looked
+wrong. (A watch is short only on RFI or forecast demand. The lead time comes from
+the part's sourcing, module 4.)
 
 !!! important "A spread, not a buying plan"
     The outlook says when each item first runs short. It doesn't size orders,

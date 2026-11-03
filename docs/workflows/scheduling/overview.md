@@ -188,8 +188,12 @@ Home has a **What ships when** tile that opens this page.
 | **Status** | *&lt;N&gt; ready to ship*, *in work* or *not started* |
 
 Shipped means parts on the line's work orders that have shipped — the same rule
-as the order page — so a fully shipped line drops out. Only open lines on orders
-that aren't completed or cancelled are listed. RFI lines are shown muted: a deal
+as the order page — so a fully shipped line drops out. A **repair-and-return**
+unit counts for its line too: a core received for that order, of the line's part
+type, and worked on its own teardown work order is planned, ready or shipped on
+the line like any other unit — one awaiting pickup reads *1 ready to ship*. Only
+open lines on orders that aren't completed or cancelled are listed; a deleted
+line drops out. RFI lines are shown muted: a deal
 not yet won. There are no forecast rows: a forecast isn't a customer's order.
 
 The CSV and PDF carry the same rows (in the CSV, **Lane** = *Ship*).

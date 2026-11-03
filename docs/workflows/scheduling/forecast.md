@@ -15,12 +15,25 @@ current month. Type a quantity in a cell; it saves when you leave the cell or
 press **Enter**. A blank or **0** clears that month. **Add a part type…** adds a
 row.
 
-Under each cell, *&lt;N&gt; ordered* is how much of that month's forecast orders
-have used up — firm orders and RFIs together, including orders due in a
-neighbouring month (see below). It turns green once orders cover the whole
-forecast. Hover a cell for the breakdown: the forecast, which orders used it up
-and from which month — *of which Firm 10 (from Mar 27), RFI 60 (from Apr 27)* —
-and *Planned on top of orders*.
+Under each cell, *&lt;N&gt; ordered or planned* is everything due that month, in
+full: firm and RFI order lines, plus stock builds (work orders on no order line).
+It can be more than the forecast. It turns green once the month's forecast is all
+used up. When some of it is beyond **every** forecast it could use up — this
+month's and its neighbours' within the [consumption window](#settings) — it turns
+amber and adds *· &lt;M&gt; over forecast*. An order a neighbouring month's
+forecast covers isn't over.
+
+Hover a cell for the breakdown, one line each:
+
+- *Forecast &lt;F&gt;*
+- *Ordered or planned this month: firm &lt;X&gt; (order lines and stock builds)
+  · RFI &lt;Y&gt;*
+- *&lt;M&gt; beyond every forecast within the consumption window* — only when
+  some is over
+- *Forecast used up by orders: firm &lt;A&gt; · RFI &lt;B&gt;* — whichever month
+  the orders are due in, followed by *of which RFI 50 (from Mar 27)* for those
+  due in a neighbouring month
+- *Planned on top of orders: &lt;P&gt;*
 
 ## Orders use up the forecast
 
@@ -84,7 +97,8 @@ teardown and disassembly work, and order lines whose units come in as the
 customer's own cores (repair and return, or exchange).
 
 A forecast belongs to its part type: when the part type is revised to a new
-version, its forecast moves with it.
+version, its forecast moves with it. When the part type is archived, its
+forecast stops loading and its row leaves the grid.
 
 ## Importing a forecast
 

@@ -98,10 +98,10 @@ Diesel's order for 6 injectors, due in three weeks, with nothing planned.
    promised date.
 2. **Check capacity** on the line. The capacity check opens with the line's part
    type, quantity and date filled in. Press **Check capacity**.
-3. *Yes — capacity exists by …*, with the work content at each resource, and *All 6
-   were already forecast (6 in &lt;month&gt;) — promisable against that forecast.*
-   The forecast already expected these injectors, so the order uses up forecast
-   near its due date, never inside the demand time fence, instead of adding load.
+3. *Yes — capacity exists by …*, with the work content at each resource. The order
+   is due within the next 30 days, inside the demand time fence, where no forecast
+   is planned — so there's no forecast for it to use up, and all 6 are measured
+   against free capacity.
 
 **Try to break it:** change the quantity to **1500**, set the date to the 20th of
 next month, and check again. It says no, names the resources that run out, ordered
@@ -113,8 +113,13 @@ planned, and the unclaimed forecast. Whether it's real orders or a forecast in t
 way decides the conversation you have next.
 
 **An order you expected:** change it to **40**, due the 20th of the month six
-months from now. *All 40 were already forecast (40 in &lt;that month&gt;) —
-promisable against that forecast.*
+months from now. *All 40 were already forecast (40 in &lt;that month&gt;); 40 need
+free capacity, which exists by then.* Underneath: *40 of those come from &lt;that
+month&gt;'s own forecast, planned to month end — so they still have to fit by the
+due date.* The forecast expected them, so they add no load beyond it; but that
+forecast was planned for the month's end, and the customer wants them on the 20th.
+Only forecast from **earlier** months comes free: make it **400** and the answer
+draws on the month before too.
 
 The check is rough-cut: it adds the order to everything already in the load (work
 orders, open order lines, quoted deals and the forecast) and compares that with the
