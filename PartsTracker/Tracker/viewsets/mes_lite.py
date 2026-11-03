@@ -3416,13 +3416,16 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
     serializer_class = StepExecutionSerializer
     # Saving work in progress is gated like committing it (substep submit), not as
     # creating an execution — POST would otherwise demand add_stepexecution.
-    crud_exempt_actions = {'save_draft', 'flag_override'}
+    crud_exempt_actions = {'save_draft', 'flag_override', 'reassign'}
     # Reviewing training overrides across parts is browsing the trail across records
     # (Tenant Admin, Document Controller, QA Manager, Auditor). Flagging one as given
     # wrongly is the override authority's call (leads, QA manager, production manager).
     action_permissions = {'save_draft': ['add_substepcompletion'],
                           'training_overrides': ['view_auditlog'],
-                          'flag_override': ['override_training_gate']}
+                          'flag_override': ['override_training_gate'],
+                          # Take over / hand off a step in progress: the leads, the
+                          # production manager, the QA manager (2026-11-03).
+                          'reassign': ['reassign_stepexecution']}
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
         'part': ['exact', 'isnull'],
@@ -3782,20 +3785,79 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
         return Response(serializer.data)
 
     @extend_schema(
-        parameters=[OpenApiParameter('work_order', OpenApiTypes.UUID, required=False,
-                                     description="Only this work order's work.")],
+        parameters=[
+            OpenApiParameter('work_order', OpenApiTypes.UUID, required=False,
+                             description="Only this work order's work."),
+            OpenApiParameter('everyone', OpenApiTypes.BOOL, required=False,
+                             description="Everyone's work, not just mine. Needs "
+                                         "reassign_stepexecution (a supervisor)."),
+            OpenApiParameter('off_clock', OpenApiTypes.BOOL, required=False,
+                             description="Only work whose holder is off the clock."),
+        ],
         responses={200: InFlightItemSerializer(many=True)},
-        description="The current user's open step visits and unsealed loads, to pick one "
-                    "up again (Operator Home's Resume, a work order's Continue work), "
-                    "most recently started first, with how far each has got.",
+        description="Open step visits and unsealed loads, to pick one up again (Operator "
+                    "Home's Resume, a work order's Continue work), most recently started "
+                    "first, with how far each has got. The current user's own, unless a "
+                    "supervisor asks for everyone's.",
     )
     @action(detail=False, methods=['get'], url_path='in-flight', pagination_class=None)
     def in_flight(self, request):
+        from rest_framework.exceptions import PermissionDenied
         from Tracker.serializers.mes_lite import InFlightItemSerializer
         from Tracker.services.mes.in_flight import in_flight
-        rows = in_flight(self.tenant, user=request.user,
-                         work_order_id=request.query_params.get('work_order') or None)
+        flag = lambda name: request.query_params.get(name) in ('1', 'true', 'True')  # noqa: E731
+        everyone = flag('everyone')
+        if everyone and not request.user.has_tenant_perm('reassign_stepexecution', self.tenant):
+            raise PermissionDenied("Only a supervisor sees everyone's work in progress.")
+        rows = in_flight(self.tenant, user=request.user, everyone=everyone,
+                         work_order_id=request.query_params.get('work_order') or None,
+                         off_clock=flag('off_clock'))
         return Response(InFlightItemSerializer(rows, many=True).data)
+
+    @extend_schema(
+        request=inline_serializer(name='ReassignStepRequest', fields={
+            'to': serializers.IntegerField(help_text="Who will hold the step: yourself to take it over."),
+            'reason': serializers.CharField(),
+        }),
+        responses={
+            200: StepExecutionSerializer,
+            400: inline_serializer(name='ReassignStepError', fields={
+                'detail': serializers.CharField(),
+                'missing_training': serializers.ListField(child=serializers.CharField(), required=False),
+            }),
+        },
+        description="A supervisor takes over a step in progress (`to` = themselves) or "
+                    "hands it to a named operator, with a reason. The step keeps its "
+                    "status and draft. Whoever ends up holding it must be trained for it, "
+                    "or the supervisor handing it on authorizes the training override.",
+    )
+    @action(detail=True, methods=['post'], url_path='reassign')
+    def reassign(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.models import User
+        from Tracker.services.mes.lifecycle import NotQualified, reassign_execution
+
+        execution = self.get_object()
+        to = User.objects.filter(pk=request.data.get('to'), tenant=self.tenant, is_active=True).first()
+        if to is None:
+            return Response({'detail': "Pick who takes the step."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            reassign_execution(execution, by=request.user, to=to, reason=request.data.get('reason'))
+        except NotQualified as e:
+            names = [m.get('training', '') for m in e.missing if isinstance(m, dict)]
+            who = "You aren't" if to.id == request.user.id else f"{to.get_full_name() or to.get_username()} isn't"
+            return Response({
+                'detail': f"{who} trained for this step"
+                          + (f" (missing: {', '.join(n for n in names if n)})" if any(names) else "")
+                          + ". " + ("A second person can authorize you through Start Work's "
+                                    "supervisor override." if to.id == request.user.id else
+                                    "Handing it to them needs the training override."),
+                'missing_training': names,
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        execution.refresh_from_db()
+        return Response(StepExecutionSerializer(execution, context={'request': request}).data)
 
     @extend_schema(
         responses={200: StepExecutionListSerializer(many=True)},

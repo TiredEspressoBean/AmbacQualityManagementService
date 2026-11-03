@@ -3701,7 +3701,7 @@ export type InFlightItem = {
   entered_at: string | null;
   substeps_total: number;
   substeps_done: number;
-  left_at_clock_out: boolean;
+  holder_off_clock: boolean;
   resume_execution_id: string | null;
   resume_part_id: string | null;
 };
@@ -26025,6 +26025,14 @@ const FlagOverrideResponse = z.object({
   execution_id: z.string().uuid(),
   flagged: z.boolean(),
 });
+const ReassignStepRequestRequest = z.object({
+  to: z.number().int(),
+  reason: z.string().min(1),
+});
+const ReassignStepError = z.object({
+  detail: z.string(),
+  missing_training: z.array(z.string()).optional(),
+});
 const CaptureDraftRequestRequest = z.object({
   substep: z.string().uuid(),
   responses: z.object({}).partial().passthrough(),
@@ -26058,7 +26066,7 @@ const InFlightItem = z.object({
   entered_at: z.string().datetime({ offset: true }).nullable(),
   substeps_total: z.number().int(),
   substeps_done: z.number().int(),
-  left_at_clock_out: z.boolean(),
+  holder_off_clock: z.boolean(),
   resume_execution_id: z.string().uuid().nullable(),
   resume_part_id: z.string().uuid().nullable(),
 });
@@ -30909,6 +30917,8 @@ export const schemas = {
   ClaimStepInputRequest,
   FlagOverrideInputRequest,
   FlagOverrideResponse,
+  ReassignStepRequestRequest,
+  ReassignStepError,
   CaptureDraftRequestRequest,
   CaptureDraftResponse,
   CaptureDraftError,
@@ -56251,6 +56261,32 @@ const endpoints5 = makeApi([
   },
   {
     method: "post",
+    path: "/api/StepExecutions/:id/reassign/",
+    alias: "api_StepExecutions_reassign_create",
+    description: `A supervisor takes over a step in progress (&#x60;to&#x60; &#x3D; themselves) or hands it to a named operator, with a reason. The step keeps its status and draft. Whoever ends up holding it must be trained for it, or the supervisor handing it on authorizes the training override.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ReassignStepRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: StepExecution,
+    errors: [
+      {
+        status: 400,
+        schema: ReassignStepError,
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/StepExecutions/:id/save-draft/",
     alias: "api_StepExecutions_save_draft_create",
     description: `Save one substep&#x27;s work in progress, so the step resumes where the operator left off. Records nothing official — that happens at Complete step, through substep submit. Once the step is someone&#x27;s, only they may save to it (403 otherwise).`,
@@ -56291,7 +56327,7 @@ const endpoints5 = makeApi([
     method: "get",
     path: "/api/StepExecutions/in-flight/",
     alias: "api_StepExecutions_in_flight_list",
-    description: `The current user&#x27;s open step visits and unsealed loads, to pick one up again (Operator Home&#x27;s Resume, a work order&#x27;s Continue work), most recently started first, with how far each has got.`,
+    description: `Open step visits and unsealed loads, to pick one up again (Operator Home&#x27;s Resume, a work order&#x27;s Continue work), most recently started first, with how far each has got. The current user&#x27;s own, unless a supervisor asks for everyone&#x27;s.`,
     requestFormat: "json",
     parameters: [
       {
@@ -56301,6 +56337,16 @@ const endpoints5 = makeApi([
       },
       {
         name: "assigned_to__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "everyone",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "off_clock",
         type: "Query",
         schema: z.boolean().optional(),
       },
@@ -61937,7 +61983,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/TrainingRequirements/import/",
@@ -61958,10 +62007,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.unknown(),
       },
     ],
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingRequirements/metadata/",

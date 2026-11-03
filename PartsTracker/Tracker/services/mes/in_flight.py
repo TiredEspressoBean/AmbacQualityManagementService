@@ -13,6 +13,12 @@ per-part substeps; a load its batch substeps.
 
 `everyone=False` is the operator's own work. Seeing everyone's is the supervisor view;
 the caller decides who may ask for it.
+
+**Holder off the clock.** Work whose holder has no open attendance entry (SHIFT, or a
+BREAK / LUNCH pause) is marked `holder_off_clock`: they clocked out, or never clocked
+in, and left it open. It stays theirs, drafts and all; the mark is for a supervisor
+deciding whether to take it over. It is read live from the clock rather than stamped
+at clock-out, so a break never trips it and clocking back in clears it.
 """
 from __future__ import annotations
 
@@ -44,7 +50,7 @@ class InFlightItem:
     entered_at: datetime | None
     substeps_total: int
     substeps_done: int
-    left_at_clock_out: bool
+    holder_off_clock: bool
     # Where "continue" opens the runtime: a load is worked from one of its parts.
     resume_execution_id: UUID | None
     resume_part_id: UUID | None
@@ -55,7 +61,7 @@ def _name(user) -> str:
 
 
 def in_flight(tenant, *, user, everyone=False, work_order_id=None,
-              left_at_clock_out=False) -> list[InFlightItem]:
+              off_clock=False) -> list[InFlightItem]:
     """Open part visits and loads, newest activity first."""
     from Tracker.models import BatchExecution, StepExecution, Substep, SubstepCompletion
 
@@ -72,10 +78,18 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
     if work_order_id:
         execs = execs.filter(part__work_order_id=work_order_id)
         loads = loads.filter(work_order_id=work_order_id)
-    if left_at_clock_out:
-        execs = execs.filter(needs_reassignment=True)
-        loads = loads.none()
     execs, loads = list(execs), list(loads)
+
+    from Tracker.models import TimeEntry
+    from Tracker.services.mes.labor_report import ATTENDANCE_TYPES
+    holders = {e.assigned_to_id for e in execs} | {b.started_by_id for b in loads}
+    on_clock = set(TimeEntry.objects
+                   .filter(tenant=tenant, archived=False, user_id__in=holders,
+                           end_time__isnull=True, entry_type__in=ATTENDANCE_TYPES)
+                   .values_list('user_id', flat=True))
+    if off_clock:
+        execs = [e for e in execs if e.assigned_to_id not in on_clock]
+        loads = [b for b in loads if b.started_by_id not in on_clock]
 
     step_ids = {e.step_id for e in execs} | {b.step_id for b in loads}
     per_part, per_load = defaultdict(set), defaultdict(set)
@@ -110,7 +124,7 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
             status=e.status, holder_id=e.assigned_to_id, holder_name=_name(e.assigned_to),
             started_at=e.started_at, entered_at=e.entered_at,
             substeps_total=total, substeps_done=done,
-            left_at_clock_out=e.needs_reassignment,
+            holder_off_clock=e.assigned_to_id not in on_clock,
             resume_execution_id=e.id, resume_part_id=e.part_id,
         ))
 
@@ -138,7 +152,8 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
             work_order_id=b.work_order_id, work_order_erp_id=b.work_order.ERP_id,
             status='OPEN', holder_id=b.started_by_id, holder_name=_name(b.started_by),
             started_at=b.started_at, entered_at=b.started_at,
-            substeps_total=total, substeps_done=done, left_at_clock_out=False,
+            substeps_total=total, substeps_done=done,
+            holder_off_clock=b.started_by_id not in on_clock,
             resume_execution_id=resume[1], resume_part_id=resume[0],
         ))
 

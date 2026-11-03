@@ -1835,6 +1835,10 @@ class StepExecution(SecureModel):
                 'override_training_gate',
                 'Can override the training authorization gate to start unqualified work',
             ),
+            (
+                'reassign_stepexecution',
+                "Can see everyone's work in progress, and take over or hand off a step",
+            ),
         ]
         indexes = [
             models.Index(fields=['part', 'step']),

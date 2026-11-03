@@ -1869,7 +1869,7 @@ class InFlightItemSerializer(serializers.Serializer):
     entered_at = serializers.DateTimeField(allow_null=True)
     substeps_total = serializers.IntegerField()
     substeps_done = serializers.IntegerField()
-    left_at_clock_out = serializers.BooleanField()
+    holder_off_clock = serializers.BooleanField()
     resume_execution_id = serializers.UUIDField(allow_null=True)
     resume_part_id = serializers.UUIDField(allow_null=True)
 

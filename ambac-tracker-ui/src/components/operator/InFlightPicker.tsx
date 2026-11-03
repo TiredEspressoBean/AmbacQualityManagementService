@@ -3,29 +3,51 @@
  * One component in two places: Operator Home's Resume (when more than one is open)
  * and a work order's Continue work (narrowed to that order). Picking one opens the
  * runtime with no position, so it continues at the first substep not yet complete.
+ *
+ * A supervisor (`reassign_stepexecution`: the leads, the production manager, the QA
+ * manager) can switch to everyone's work, narrow it to work whose holder is off the
+ * clock, and take a step over or hand it to a named operator, with a reason. Whoever
+ * ends up holding it must be trained for it; the server says so when they aren't.
  */
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2, Package } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-    Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { usersOptions } from "@/hooks/useRetrieveUsers";
 import { api } from "@/lib/api/generated";
 import type { components } from "@/lib/api/generated-types";
+import { getCookie } from "@/lib/utils";
 
 export type InFlightItem = components["schemas"]["InFlightItem"];
 
-export const inFlightOptions = (workOrderId?: string) =>
+type Scope = { workOrderId?: string; everyone?: boolean; offClock?: boolean };
+
+export const inFlightOptions = (workOrderId?: string, scope: Omit<Scope, "workOrderId"> = {}) =>
     queryOptions({
-        queryKey: ["step-executions", "in-flight", workOrderId ?? null],
-        queryFn: () => api.api_StepExecutions_in_flight_list(
-            workOrderId ? { queries: { work_order: workOrderId } } : undefined,
-        ) as Promise<InFlightItem[]>,
+        queryKey: ["step-executions", "in-flight", workOrderId ?? null,
+            Boolean(scope.everyone), Boolean(scope.offClock)],
+        queryFn: () => api.api_StepExecutions_in_flight_list({
+            queries: {
+                ...(workOrderId ? { work_order: workOrderId } : {}),
+                ...(scope.everyone ? { everyone: true } : {}),
+                ...(scope.offClock ? { off_clock: true } : {}),
+            },
+        }) as Promise<InFlightItem[]>,
     });
 
 /** Open the runtime on an in-flight item: the visit itself, or a load from one of its parts. */
@@ -51,15 +73,27 @@ function since(item: InFlightItem) {
     return "";
 }
 
+const isSupervisor = (perms: { has: (perm: string) => boolean }) => perms.has("reassign_stepexecution");
+
 export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick up where you left off" }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     workOrderId?: string;
     title?: string;
 }) {
-    const { data, isLoading } = useQuery({ ...inFlightOptions(workOrderId), enabled: open });
+    const perms = usePermissionSet();
+    const supervisor = isSupervisor(perms);
+    const { data: me } = useAuthUser();
+    const [everyone, setEveryone] = useState(false);
+    const [offClock, setOffClock] = useState(false);
+    const [moving, setMoving] = useState<{ item: InFlightItem; mode: "take" | "hand" } | null>(null);
+    const { data, isLoading } = useQuery({
+        ...inFlightOptions(workOrderId, { everyone: supervisor && everyone, offClock: supervisor && everyone && offClock }),
+        enabled: open,
+    });
     const openItem = useOpenInFlight();
     const items = data ?? [];
+    const mine = (item: InFlightItem) => item.holder_id === me?.pk;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -67,10 +101,26 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>
-                        Your open steps and loads{workOrderId ? " on this work order" : ""}, most
-                        recently started first. Each opens at its first substep not yet done.
+                        {everyone ? "Everyone's" : "Your"} open steps and loads
+                        {workOrderId ? " on this work order" : ""}, most recently started
+                        first. Each opens at its first substep not yet done.
                     </DialogDescription>
                 </DialogHeader>
+                {supervisor && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button size="sm" variant={everyone ? "outline" : "secondary"} onClick={() => setEveryone(false)}>
+                            Mine
+                        </Button>
+                        <Button size="sm" variant={everyone ? "secondary" : "outline"} onClick={() => setEveryone(true)}>
+                            Everyone's
+                        </Button>
+                        {everyone && (
+                            <Button size="sm" variant={offClock ? "secondary" : "outline"} onClick={() => setOffClock((v) => !v)}>
+                                Off the clock only
+                            </Button>
+                        )}
+                    </div>
+                )}
                 {isLoading ? (
                     <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
                 ) : items.length === 0 ? (
@@ -78,12 +128,13 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                 ) : (
                     <ul className="max-h-[60vh] space-y-2 overflow-auto">
                         {items.map((item) => (
-                            <li key={`${item.kind}:${item.id}`}>
+                            <li key={`${item.kind}:${item.id}`} className="rounded-md border">
                                 <button
                                     type="button"
-                                    disabled={!item.resume_execution_id}
+                                    // Someone else's step is theirs until it's taken over.
+                                    disabled={!item.resume_execution_id || !mine(item)}
                                     onClick={() => { onOpenChange(false); void openItem(item); }}
-                                    className="flex w-full items-start justify-between gap-3 rounded-md border p-3 text-left hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="flex w-full items-start justify-between gap-3 p-3 text-left hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
                                 >
                                     <div className="min-w-0">
                                         <div className="truncate font-medium">{item.step_name}</div>
@@ -97,6 +148,7 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                                             {item.kind === "load" ? "Open load"
                                                 : item.status === "IN_PROGRESS" ? "Running" : "Assigned"}
                                             {since(item) ? ` · ${since(item)}` : ""}
+                                            {!mine(item) && item.holder_name ? ` · ${item.holder_name}` : ""}
                                         </div>
                                         {!item.resume_execution_id && (
                                             <div className="text-xs text-amber-700 dark:text-amber-400">
@@ -104,12 +156,32 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                                             </div>
                                         )}
                                     </div>
-                                    {item.substeps_total > 0 && (
-                                        <Badge variant="secondary" className="shrink-0 font-normal">
-                                            {item.substeps_done} of {item.substeps_total} done
-                                        </Badge>
-                                    )}
+                                    <div className="flex shrink-0 flex-col items-end gap-1">
+                                        {item.substeps_total > 0 && (
+                                            <Badge variant="secondary" className="font-normal">
+                                                {item.substeps_done} of {item.substeps_total} done
+                                            </Badge>
+                                        )}
+                                        {everyone && item.holder_off_clock && (
+                                            <Badge variant="outline" className="border-amber-500 font-normal text-amber-700 dark:text-amber-400">
+                                                Off the clock
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </button>
+                                {/* A load is shared work, not one person's step: nothing to take over. */}
+                                {supervisor && item.kind === "part" && (
+                                    <div className="flex gap-2 border-t px-3 py-2">
+                                        {!mine(item) && (
+                                            <Button size="sm" variant="outline" onClick={() => setMoving({ item, mode: "take" })}>
+                                                Take over
+                                            </Button>
+                                        )}
+                                        <Button size="sm" variant="outline" onClick={() => setMoving({ item, mode: "hand" })}>
+                                            Hand off…
+                                        </Button>
+                                    </div>
+                                )}
                             </li>
                         ))}
                     </ul>
@@ -117,21 +189,115 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                 <div className="flex justify-end">
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
                 </div>
+                {moving && (
+                    <ReassignDialog
+                        item={moving.item}
+                        mode={moving.mode}
+                        meId={me?.pk}
+                        onClose={() => setMoving(null)}
+                        onTaken={(item) => { setMoving(null); onOpenChange(false); void openItem(item); }}
+                    />
+                )}
             </DialogContent>
         </Dialog>
     );
 }
 
-/** A work order's "Continue work": shown only when the user has something open on it —
- * back to the traveller after the wash, say — and opens the picker narrowed to it. */
+/** Take a step over (to yourself) or hand it to a named operator, with a reason. */
+function ReassignDialog({ item, mode, meId, onClose, onTaken }: {
+    item: InFlightItem;
+    mode: "take" | "hand";
+    meId: number | undefined;
+    onClose: () => void;
+    onTaken: (item: InFlightItem) => void;
+}) {
+    const qc = useQueryClient();
+    const [reason, setReason] = useState("");
+    const [to, setTo] = useState<string>("");
+    const { data: users } = useQuery({
+        ...usersOptions({ is_active: true, limit: 500, ordering: "first_name" }),
+        enabled: mode === "hand",
+    });
+    const target = mode === "take" ? meId : Number(to) || undefined;
+    const reassign = useMutation({
+        mutationFn: () => api.api_StepExecutions_reassign_create(
+            { to: target as number, reason },
+            { params: { id: item.id }, headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" } },
+        ),
+        onSuccess: () => {
+            void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === "step-executions" });
+            if (mode === "take") {
+                toast.success(`${item.step_name} is yours now`);
+                onTaken(item);
+            } else {
+                toast.success(`${item.step_name} handed off`);
+                onClose();
+            }
+        },
+        onError: (err: unknown) => {
+            const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+            toast.error("The step didn't change hands", { description: detail ?? "Try again." });
+        },
+    });
+    const people = (users?.results ?? []).filter((u) => u.id !== item.holder_id);
+
+    return (
+        <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{mode === "take" ? "Take over this step" : "Hand off this step"}</DialogTitle>
+                    <DialogDescription>
+                        {item.step_name} · {item.part_erp_id ?? "—"}
+                        {item.holder_name ? `, now ${item.holder_name}'s` : ""}. It keeps its
+                        progress: {mode === "take" ? "you continue" : "they continue"} where it was left.
+                    </DialogDescription>
+                </DialogHeader>
+                {mode === "hand" && (
+                    <div className="space-y-1.5">
+                        <Label>Hand to</Label>
+                        <Select value={to} onValueChange={(v) => v && setTo(v)}>
+                            <SelectTrigger><SelectValue placeholder="Pick an operator" /></SelectTrigger>
+                            <SelectContent>
+                                {people.map((u) => (
+                                    <SelectItem key={u.id} value={String(u.id)}>
+                                        {[u.first_name, u.last_name].filter(Boolean).join(" ") || u.username}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+                <div className="space-y-1.5">
+                    <Label htmlFor="reassign-reason">Why</Label>
+                    <Textarea id="reassign-reason" value={reason} onChange={(e) => setReason(e.target.value)}
+                        placeholder={mode === "take" ? "e.g. Went home sick; finishing the lot" : "e.g. Moved to the bench; Sam finishes it"} />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button disabled={!reason.trim() || !target || reassign.isPending} onClick={() => reassign.mutate()}>
+                        {reassign.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                        {mode === "take" ? "Take over" : "Hand off"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+/** A work order's "Continue work": shown only when there is something open on it to
+ * continue — your own, or, for a supervisor, anyone's — and opens the picker narrowed
+ * to it (back to the traveller after the wash, say). */
 export function ContinueWorkButton({ workOrderId }: { workOrderId: string }) {
+    const supervisor = isSupervisor(usePermissionSet());
     const { data } = useQuery(inFlightOptions(workOrderId));
+    const { data: anyone } = useQuery({ ...inFlightOptions(workOrderId, { everyone: true }), enabled: supervisor });
     const [open, setOpen] = useState(false);
-    if (!data?.length) return null;
+    const count = data?.length ?? 0;
+    if (!count && !(supervisor && anyone?.length)) return null;
     return (
         <>
             <Button variant="outline" onClick={() => setOpen(true)}>
-                Continue work ({data.length})
+                Continue work{count ? ` (${count})` : ""}
             </Button>
             <InFlightPicker open={open} onOpenChange={setOpen} workOrderId={workOrderId}
                 title="Continue work on this order" />

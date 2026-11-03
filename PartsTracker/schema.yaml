@@ -31960,6 +31960,51 @@ paths:
               schema:
                 $ref: '#/components/schemas/FlagOverrideResponse'
           description: ''
+  /api/StepExecutions/{id}/reassign/:
+    post:
+      operationId: api_StepExecutions_reassign_create
+      description: A supervisor takes over a step in progress (`to` = themselves)
+        or hands it to a named operator, with a reason. The step keeps its status
+        and draft. Whoever ends up holding it must be trained for it, or the supervisor
+        handing it on authorizes the training override.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Execution.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReassignStepRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReassignStepRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReassignStepRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepExecution'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReassignStepError'
+          description: ''
   /api/StepExecutions/{id}/save-draft/:
     post:
       operationId: api_StepExecutions_save_draft_create
@@ -32030,9 +32075,10 @@ paths:
   /api/StepExecutions/in-flight/:
     get:
       operationId: api_StepExecutions_in_flight_list
-      description: The current user's open step visits and unsealed loads, to pick
-        one up again (Operator Home's Resume, a work order's Continue work), most
-        recently started first, with how far each has got.
+      description: Open step visits and unsealed loads, to pick one up again (Operator
+        Home's Resume, a work order's Continue work), most recently started first,
+        with how far each has got. The current user's own, unless a supervisor asks
+        for everyone's.
       parameters:
       - in: query
         name: assigned_to
@@ -32042,6 +32088,17 @@ paths:
         name: assigned_to__isnull
         schema:
           type: boolean
+      - in: query
+        name: everyone
+        schema:
+          type: boolean
+        description: Everyone's work, not just mine. Needs reassign_stepexecution
+          (a supervisor).
+      - in: query
+        name: off_clock
+        schema:
+          type: boolean
+        description: Only work whose holder is off the clock.
       - name: ordering
         required: false
         in: query
@@ -59969,7 +60026,7 @@ components:
           type: integer
         substeps_done:
           type: integer
-        left_at_clock_out:
+        holder_off_clock:
           type: boolean
         resume_execution_id:
           type: string
@@ -59983,9 +60040,9 @@ components:
       - entered_at
       - holder_id
       - holder_name
+      - holder_off_clock
       - id
       - kind
-      - left_at_clock_out
       - part_count
       - part_erp_id
       - part_id
@@ -77082,6 +77139,29 @@ components:
       required:
       - machines
       - operators
+    ReassignStepError:
+      type: object
+      properties:
+        detail:
+          type: string
+        missing_training:
+          type: array
+          items:
+            type: string
+      required:
+      - detail
+    ReassignStepRequestRequest:
+      type: object
+      properties:
+        to:
+          type: integer
+          description: 'Who will hold the step: yourself to take it over.'
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+      - to
     RebuildCandidate:
       type: object
       description: Something that could fill a slot, whatever supply world it lives

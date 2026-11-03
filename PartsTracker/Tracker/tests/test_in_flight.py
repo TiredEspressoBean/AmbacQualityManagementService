@@ -78,6 +78,19 @@ class InFlightTests(TenantContextMixin, VectorTestCase):
         everyone = in_flight(self.tenant, user=self.me, everyone=True)
         self.assertEqual(sum(i.kind == "part" for i in everyone), 3, "the unassigned one is the queue")
 
+    def test_work_whose_holder_is_off_the_clock_is_marked_and_a_break_is_not(self):
+        from Tracker.models import TimeEntry
+        now = timezone.now()
+        # I'm on a break (the pause entry is open); the other operator clocked out.
+        TimeEntry.objects.create(tenant=self.tenant, user=self.me, entry_type="BREAK", start_time=now)
+        TimeEntry.objects.create(tenant=self.tenant, user=self.other, entry_type="SHIFT",
+                                 start_time=now, end_time=now)
+        everyone = in_flight(self.tenant, user=self.me, everyone=True)
+        self.assertEqual({i.holder_name: i.holder_off_clock for i in everyone if i.kind == "part"},
+                         {"me": False, "other": True})
+        off = in_flight(self.tenant, user=self.me, everyone=True, off_clock=True)
+        self.assertEqual([i.holder_id for i in off], [self.other.id])
+
     def test_the_endpoint_lists_mine(self):
         client = APIClient()
         client.force_authenticate(user=self.me)

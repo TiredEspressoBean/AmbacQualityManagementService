@@ -444,6 +444,15 @@ TRAINING_GATE_OVERRIDE_PERMISSIONS = [
     'override_training_gate',
 ]
 
+# Supervising work in progress (user decision 2026-11-03): see everyone's open steps and
+# loads, take a step over, or hand it to a named operator — with a reason, and no
+# second-person sign-in, since the supervisor is the one signed in. The training gate
+# still applies to whoever ends up holding the step (services/mes/lifecycle.reassign).
+# Same tier as the gate override: the leads, the production manager, the QA manager.
+SUPERVISE_STEP_WORK_PERMISSIONS = [
+    'reassign_stepexecution',
+]
+
 # Writing a training record certifies someone as qualified — the evidence the training
 # gate, "prove qualification before starting" and ISO 9001 7.2 all read. It used to sit
 # in STAFF_OPERATIONAL_WRITE, so an operator could award themselves a certification.
@@ -751,6 +760,7 @@ GROUP_PRESETS = {
             *SUBMITTED_ANNOTATION_DELETE_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
+            *SUPERVISE_STEP_WORK_PERMISSIONS,
             *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             # Author shift notes (floor handoff)
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
@@ -802,6 +812,7 @@ GROUP_PRESETS = {
             *SUBMITTED_ANNOTATION_DELETE_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
+            *SUPERVISE_STEP_WORK_PERMISSIONS,
             *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             # Formally raise a CAPA
             'initiate_capa',
@@ -876,6 +887,7 @@ GROUP_PRESETS = {
             *COMPONENT_DISPOSITION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
+            *SUPERVISE_STEP_WORK_PERMISSIONS,
             *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
@@ -932,6 +944,7 @@ GROUP_PRESETS = {
             *COMPONENT_DISPOSITION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
+            *SUPERVISE_STEP_WORK_PERMISSIONS,
             *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             # Formally raise a CAPA
             'initiate_capa',

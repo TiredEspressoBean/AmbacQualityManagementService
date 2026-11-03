@@ -310,6 +310,64 @@ def assert_startable(part, work_order) -> None:
             raise ValidationError(held_or_ended)
 
 
+REASSIGNABLE_STATUSES = ('PENDING', 'CLAIMED', 'IN_PROGRESS')
+
+
+def reassign_execution(execution, *, by, to, reason):
+    """A supervisor taking over a step in progress (`to` is themselves) or handing it
+    to a named operator (user decision 2026-11-03). Holding `reassign_stepexecution` is
+    checked by the caller; no second person signs, because the supervisor is the one
+    signed in.
+
+    The step keeps its status and its draft: the new holder continues where it was
+    left. The training gate still applies to whoever ends up holding it — the
+    advancement gate trusts this snapshot, so carrying the previous holder's forward
+    would let unqualified work through. When `to` isn't qualified, a supervisor handing
+    it on authorizes the training override themselves (recorded, with the reason); a
+    supervisor can't authorize their own, so an untrained supervisor can't take a step
+    over — a second person does that, through Start Work's supervisor override.
+
+    The record carries the hand-off (from, to, by, why, when) and the snapshot it
+    replaced, under `previous`.
+
+    Raises:
+        ValidationError: no reason, the step isn't open, or it's already `to`'s.
+        NotQualified: `to` isn't trained for the step and `by` can't authorize it
+            (taking over themselves, or not holding the override).
+    """
+    from django.core.exceptions import ValidationError
+
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValidationError("Say why the step is changing hands.")
+    if execution.status not in REASSIGNABLE_STATUSES or execution.exited_at is not None:
+        raise ValidationError("Only a step still in progress can change hands.")
+    if execution.assigned_to_id == to.id:
+        raise ValidationError(f"This step is already {_person(to)}'s.")
+
+    may_authorize = by.id != to.id and by.has_tenant_perm('override_training_gate', execution.tenant)
+    process = getattr(execution.subject_work_order, 'process', None)
+    snapshot = authorize_start(to, execution.step, process,
+                               authorizer=by if may_authorize else None, reason=reason)
+    prior = execution.assigned_to
+    if prior is not None:
+        snapshot['reassignment'] = build_reassignment(
+            prior=prior, operator=to, authorizer=by, reason=reason).to_dict()
+    else:
+        snapshot['reassignment'] = {
+            'from': None, 'from_name': '', 'to': to.id, 'to_name': _person(to),
+            'authorized_by': by.id, 'authorized_by_name': _person(by),
+            'reason': reason, 'at': _iso(),
+        }
+    if execution.training_authorization:
+        snapshot['previous'] = execution.training_authorization
+
+    execution.assigned_to = to
+    execution.training_authorization = snapshot
+    execution.save(update_fields=['assigned_to', 'training_authorization', 'updated_at'])
+    return execution
+
+
 def start_execution(execution, operator, *, authorizer=None, reason=None):
     """Apply the waiting -> in-process transition to an existing execution.
 

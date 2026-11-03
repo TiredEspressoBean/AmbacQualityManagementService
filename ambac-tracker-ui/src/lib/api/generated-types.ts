@@ -13259,6 +13259,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/StepExecutions/{id}/reassign/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A supervisor takes over a step in progress (`to` = themselves) or hands it to a named operator, with a reason. The step keeps its status and draft. Whoever ends up holding it must be trained for it, or the supervisor handing it on authorizes the training override. */
+        post: operations["api_StepExecutions_reassign_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StepExecutions/{id}/save-draft/": {
         parameters: {
             query?: never;
@@ -13300,7 +13317,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description The current user's open step visits and unsealed loads, to pick one up again (Operator Home's Resume, a work order's Continue work), most recently started first, with how far each has got. */
+        /** @description Open step visits and unsealed loads, to pick one up again (Operator Home's Resume, a work order's Continue work), most recently started first, with how far each has got. The current user's own, unless a supervisor asks for everyone's. */
         get: operations["api_StepExecutions_in_flight_list"];
         put?: never;
         post?: never;
@@ -25818,7 +25835,7 @@ export interface components {
             entered_at: string | null;
             substeps_total: number;
             substeps_done: number;
-            left_at_clock_out: boolean;
+            holder_off_clock: boolean;
             /** Format: uuid */
             resume_execution_id: string | null;
             /** Format: uuid */
@@ -34885,6 +34902,15 @@ export interface components {
         ReassignOptions: {
             machines: components["schemas"]["ReassignMachineOption"][];
             operators: components["schemas"]["ReassignOperatorOption"][];
+        };
+        ReassignStepError: {
+            detail: string;
+            missing_training?: string[];
+        };
+        ReassignStepRequestRequest: {
+            /** @description Who will hold the step: yourself to take it over. */
+            to: number;
+            reason: string;
         };
         /** @description Something that could fill a slot, whatever supply world it lives in. */
         RebuildCandidate: {
@@ -64959,6 +64985,42 @@ export interface operations {
             };
         };
     };
+    api_StepExecutions_reassign_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step Execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignStepRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReassignStepRequestRequest"];
+                "multipart/form-data": components["schemas"]["ReassignStepRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepExecution"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReassignStepError"];
+                };
+            };
+        };
+    };
     api_StepExecutions_save_draft_create: {
         parameters: {
             query?: never;
@@ -65027,6 +65089,10 @@ export interface operations {
             query?: {
                 assigned_to?: number;
                 assigned_to__isnull?: boolean;
+                /** @description Everyone's work, not just mine. Needs reassign_stepexecution (a supervisor). */
+                everyone?: boolean;
+                /** @description Only work whose holder is off the clock. */
+                off_clock?: boolean;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 part?: string;
