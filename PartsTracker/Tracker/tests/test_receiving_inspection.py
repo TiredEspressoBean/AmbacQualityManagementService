@@ -224,6 +224,9 @@ class ReceivingFlowTests(_ReceivingFixtureMixin, TenantTestCase):
         lot.refresh_from_db()
         self.assertEqual(lot.status, "AWAITING_INSPECTION")
         self.assertTrue(report.personnel_links.filter(role="INSPECTOR").exists())
+        # The inspector is also who detected — what lists of failures read.
+        self.assertEqual(report.detected_by_id,
+                         report.personnel_links.get(role="INSPECTOR").user_id)
 
     def test_open_without_receiving_step_raises(self):
         from Tracker.models import PartTypes, MaterialLot

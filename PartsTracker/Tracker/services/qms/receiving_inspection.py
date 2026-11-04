@@ -563,6 +563,9 @@ def open_inspection(lot, user):
             reject_number=sp.reject_number,
             acceptability_constant_k=sp.k,
             variables_characteristic=variables_char,
+            # The inspector is who detects: lists reading detected_by (a receiving FAIL's
+            # detector, the inspector's day) see them as for any other report.
+            detected_by=user if (user is not None and user.is_authenticated) else None,
         )
         if user is not None and user.is_authenticated:
             report.personnel_links.create(user=user, role="INSPECTOR")
@@ -574,6 +577,13 @@ def open_inspection(lot, user):
 def receiving_characteristics(step):
     """The measurement definitions to capture for a receiving step."""
     return list(step.required_measurements.all()) if step else []
+
+
+def _detected_by(report, user):
+    """An inspection opened without a person (system, import) takes whoever records it."""
+    if report.detected_by_id is None and user is not None and user.is_authenticated:
+        report.detected_by = user
+        report.save(update_fields=["detected_by"])
 
 
 def record_inspection(report, measurements, user):
@@ -589,6 +599,7 @@ def record_inspection(report, measurements, user):
         raise ValueError("Report is not a receiving inspection (no material_lot).")
 
     with transaction.atomic():
+        _detected_by(report, user)
         any_recorded = False
         all_ok = True
         for m in measurements:
@@ -625,6 +636,7 @@ def record_sample_units(report, units, user):
         raise ValueError("Report is not a receiving inspection (no material_lot).")
 
     with transaction.atomic():
+        _detected_by(report, user)
         for unit in units:
             sn = unit.get("sample_number")
             for m in unit.get("measurements", []):
@@ -648,6 +660,7 @@ def record_bulk(report, defectives_found, user):
     if defectives_found < 0:
         raise ValueError("defectives_found must be non-negative.")
     with transaction.atomic():
+        _detected_by(report, user)
         report.defectives_found = defectives_found
         report.save(update_fields=["defectives_found"])
         evaluate_lot_acceptance(report)

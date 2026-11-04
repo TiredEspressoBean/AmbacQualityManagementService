@@ -238,6 +238,8 @@ def receive_parts_back(shipment, user=None):
             reject_number=sp.reject_number,
             acceptability_constant_k=sp.k,
             variables_characteristic=variables_char,
+            # The inspector is who detects, as on a receiving inspection.
+            detected_by=user if (user is not None and user.is_authenticated) else None,
         )
         if user is not None and user.is_authenticated:
             report.personnel_links.create(user=user, role="INSPECTOR")
