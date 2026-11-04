@@ -7787,6 +7787,70 @@ paths:
               schema:
                 $ref: '#/components/schemas/CountAccuracy'
           description: ''
+  /api/CycleCounts/accuracy-trend/:
+    get:
+      operationId: api_CycleCounts_accuracy_trend_list
+      description: Inventory record accuracy per ABC class for each recent month,
+        oldest first; a month with nothing counted has null percentages.
+      parameters:
+      - in: query
+        name: location
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: material
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: months
+        schema:
+          type: integer
+        description: How many months back (default 12).
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPLIED
+          - OPEN
+          - SUBMITTED
+        description: |-
+          * `OPEN` - Counting
+          * `SUBMITTED` - Submitted
+          * `APPLIED` - Applied
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccuracyMonth'
+          description: ''
   /api/CycleCounts/due/:
     get:
       operationId: api_CycleCounts_due_list
@@ -51000,6 +51064,25 @@ components:
       - component
       - part_erp_id
       - part_id
+    AccuracyMonth:
+      type: object
+      description: 'One month of the accuracy trend: per ABC class, by when counts
+        were applied.'
+      properties:
+        month:
+          type: string
+          description: YYYY-MM, plant time
+        A:
+          $ref: '#/components/schemas/ClassAccuracy'
+        B:
+          $ref: '#/components/schemas/ClassAccuracy'
+        C:
+          $ref: '#/components/schemas/ClassAccuracy'
+      required:
+      - A
+      - B
+      - C
+      - month
     AddBatchPartsError:
       type: object
       properties:

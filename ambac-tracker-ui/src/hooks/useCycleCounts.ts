@@ -114,6 +114,15 @@ export const countAccuracyOptions = (days = 90) =>
         queryFn: () => api.api_CycleCounts_accuracy_retrieve({ queries: { days } }) as Promise<CountAccuracy>,
     });
 
+export type AccuracyMonth = Schema<"AccuracyMonth">;
+
+/** Accuracy per ABC class for each of the last `months` months, oldest first. */
+export const accuracyTrendOptions = (months = 12) =>
+    queryOptions({
+        queryKey: ["cycle-counts", "accuracy-trend", months],
+        queryFn: () => api.api_CycleCounts_accuracy_trend_list({ queries: { months } }) as Promise<AccuracyMonth[]>,
+    });
+
 
 /** Units a count didn't find, still unresolved. */
 export const missingUnitsOptions = () =>

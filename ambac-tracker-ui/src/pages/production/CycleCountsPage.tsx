@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FileSpreadsheet, ListChecks } from "lucide-react";
+import { FileSpreadsheet, ListChecks, TrendingUp } from "lucide-react";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Combobox } from "@/components/ui/combobox";
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -15,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import {
-    REASON_LABEL, countAccuracyOptions, cycleCountsOptions, dueForCountOptions, missingUnitsOptions,
+    REASON_LABEL, accuracyTrendOptions, countAccuracyOptions, cycleCountsOptions, dueForCountOptions, missingUnitsOptions,
     toKeyOptions, useMarkKeyed, useResolveMissing, useStartCount,
     type CountAccuracy, type CycleCount, type DueForCount, type MissingUnit,
 } from "@/hooks/useCycleCounts";
@@ -217,6 +219,7 @@ function CountTable({ rows, loading, empty }: { rows: CycleCount[]; loading: boo
 
 /** Inventory record accuracy per class, and the commonest reasons records were off. */
 function AccuracyStrip({ accuracy }: { accuracy: CountAccuracy }) {
+    const [showTrend, setShowTrend] = useState(false);
     const cells = (["A", "B", "C"] as const).map((c) => ({ c, ...accuracy[c] }));
     const reasons = Object.entries(accuracy.by_reason ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 3);
     return (
@@ -229,13 +232,64 @@ function AccuracyStrip({ accuracy }: { accuracy: CountAccuracy }) {
                         <span className="tabular-nums">{pct == null ? "—" : `${pct}%`}</span>
                     </span>
                 ))}
+                <Button size="sm" variant="ghost" className="ml-auto h-7" aria-expanded={showTrend}
+                    onClick={() => setShowTrend((s) => !s)}>
+                    <TrendingUp className="mr-1 h-4 w-4" /> {showTrend ? "Hide trend" : "12-month trend"}
+                </Button>
             </div>
             {reasons.length > 0 && (
                 <div className="text-xs text-muted-foreground">
                     Off because: {reasons.map(([code, n]) => `${REASON_LABEL[code] ?? code} (${n})`).join(" · ")}
                 </div>
             )}
+            {showTrend && <AccuracyTrend />}
         </div>
+    );
+}
+
+const CLASS_COLOR = { A: "var(--chart-1)", B: "var(--chart-2)", C: "var(--chart-3)" } as const;
+const trendConfig: ChartConfig = {
+    A: { label: "Class A", color: CLASS_COLOR.A },
+    B: { label: "Class B", color: CLASS_COLOR.B },
+    C: { label: "Class C", color: CLASS_COLOR.C },
+};
+
+/** Accuracy per class month by month, as each count was judged when applied. Dots, not
+ *  just lines: most months count little, and a month with nothing counted is a gap. */
+function AccuracyTrend() {
+    const { data, isLoading } = useQuery(accuracyTrendOptions(12));
+    if (isLoading || !data) return <div className="h-56" />;
+    const rows = data.map((m) => ({
+        month: m.month, A: m.A.pct, B: m.B.pct, C: m.C.pct,
+        n: { A: m.A, B: m.B, C: m.C } as Record<"A" | "B" | "C", { counted: number; hits: number }>,
+    }));
+    if (rows.every((r) => r.A == null && r.B == null && r.C == null)) {
+        return <p className="py-3 text-xs text-muted-foreground">No counts applied in the last 12 months.</p>;
+    }
+    const monthLabel = (v: string) => {
+        const [y, m] = v.split("-").map(Number);
+        return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+    };
+    return (
+        <ChartContainer config={trendConfig} className="h-56 w-full pt-2">
+            <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="month" tickFormatter={monthLabel} tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} tickLine={false} axisLine={false}
+                    tick={{ fontSize: 11 }} width={40} />
+                <ChartTooltip content={<ChartTooltipContent
+                    labelFormatter={(v) => monthLabel(String(v))}
+                    formatter={(value, name, item) => {
+                        const cls = name as "A" | "B" | "C";
+                        const t = (item.payload as (typeof rows)[number]).n[cls];
+                        return `Class ${cls}: ${value}% (${t.hits} of ${t.counted} lines)`;
+                    }} />} />
+                {(["A", "B", "C"] as const).map((c) => (
+                    <Line key={c} dataKey={c} stroke={CLASS_COLOR[c]} strokeWidth={2} type="monotone"
+                        dot={{ r: 3 }} connectNulls={false} isAnimationActive={false} />
+                ))}
+            </LineChart>
+        </ChartContainer>
     );
 }
 

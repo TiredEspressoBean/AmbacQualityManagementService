@@ -12,7 +12,7 @@ from rest_framework.response import Response
 
 from Tracker.models import CycleCount
 from Tracker.serializers.cycle_counts import (
-    ApplyCountSerializer, CountAccuracySerializer, CycleCountSerializer, DueForCountSerializer,
+    AccuracyMonthSerializer, ApplyCountSerializer, CountAccuracySerializer, CycleCountSerializer, DueForCountSerializer,
     ItemCountStatusSerializer, MarkKeyedSerializer, MissingUnitSerializer, RecordCountSerializer, ResolveMissingSerializer,
     SendBackCountSerializer, StartCycleCountSerializer,
 )
@@ -213,6 +213,20 @@ class CycleCountViewSet(TenantScopedMixin, mixins.ListModelMixin, mixins.Retriev
         except ValueError:
             days = 90
         return Response(CountAccuracySerializer({'days': days, **accuracy(request.tenant, days=days)}).data)
+
+    @extend_schema(parameters=[OpenApiParameter('months', OpenApiTypes.INT, required=False,
+                                                description="How many months back (default 12).")],
+                   responses=AccuracyMonthSerializer(many=True),
+                   description="Inventory record accuracy per ABC class for each recent month, "
+                               "oldest first; a month with nothing counted has null percentages.")
+    @action(detail=False, methods=['get'], url_path='accuracy-trend', pagination_class=None)
+    def accuracy_trend(self, request):
+        from Tracker.services.mes.count_cadence import accuracy_trend
+        try:
+            months = max(1, min(int(request.query_params.get('months') or 12), 60))
+        except ValueError:
+            months = 12
+        return Response(AccuracyMonthSerializer(accuracy_trend(request.tenant, months=months), many=True).data)
 
     @extend_schema(responses={(200, XLSX): OpenApiTypes.BINARY},
                    description="The count's differences as a spreadsheet, for keying into the ERP.")

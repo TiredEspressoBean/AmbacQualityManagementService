@@ -2709,6 +2709,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/CycleCounts/accuracy-trend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Inventory record accuracy per ABC class for each recent month, oldest first; a month with nothing counted has null percentages. */
+        get: operations["api_CycleCounts_accuracy_trend_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/CycleCounts/due/": {
         parameters: {
             query?: never;
@@ -21627,6 +21644,14 @@ export interface components {
             /** Format: uuid */
             part_id: string;
             part_erp_id: string;
+        };
+        /** @description One month of the accuracy trend: per ABC class, by when counts were applied. */
+        AccuracyMonth: {
+            /** @description YYYY-MM, plant time */
+            month: string;
+            A: components["schemas"]["ClassAccuracy"];
+            B: components["schemas"]["ClassAccuracy"];
+            C: components["schemas"]["ClassAccuracy"];
         };
         AddBatchPartsError: {
             detail: string;
@@ -47725,6 +47750,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CountAccuracy"];
+                };
+            };
+        };
+    };
+    api_CycleCounts_accuracy_trend_list: {
+        parameters: {
+            query?: {
+                location?: string;
+                material?: string;
+                /** @description How many months back (default 12). */
+                months?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `OPEN` - Counting
+                 *     * `SUBMITTED` - Submitted
+                 *     * `APPLIED` - Applied
+                 */
+                status?: "APPLIED" | "OPEN" | "SUBMITTED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccuracyMonth"][];
                 };
             };
         };

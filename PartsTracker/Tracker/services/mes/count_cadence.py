@@ -18,7 +18,9 @@ Standard practice (user decision 2026-11-04): schedule by item, walk by location
     must say why (warned, not blocked: recounting is the usual answer, but the lead may
     already know the difference is real).
   - **Accuracy.** Hits ÷ counted lines, per class, over applied counts in a window —
-    the inventory record accuracy auditors read.
+    the inventory record accuracy auditors read — and month by month as a trend. A line
+    keeps the class and verdict it was applied under, so history doesn't shift when a
+    class or tolerance changes later.
 
 The class is set by hand (or by import). UQMES doesn't rank by value: that needs cost,
 which is the ERP's.
@@ -275,6 +277,54 @@ def _place(loc) -> str:
 
 # --- accuracy -----------------------------------------------------------------------
 
+def _scored(tenant, lines) -> list[tuple[str, bool]]:
+    """(class, hit) per counted line: as judged when the count was applied, or — for a
+    count applied before verdicts were kept — judged now under today's class and policy."""
+    policy = count_policy(tenant)
+    classes = line_classes(tenant, [l for l in lines if 'within_tolerance' not in l])
+    out = []
+    for l in lines:
+        if 'within_tolerance' in l:
+            out.append((l.get('abc_class') or 'C', bool(l['within_tolerance'])))
+        else:
+            cls = classes.get((l.get('kind'), str(l.get('id'))), 'C')
+            out.append((cls, judge(l, cls, policy)[0]))
+    return out
+
+
+def _tally(scored) -> dict:
+    tally = {c: {'counted': 0, 'hits': 0} for c in CLASSES}
+    for cls, hit in scored:
+        tally[cls]['counted'] += 1
+        tally[cls]['hits'] += hit
+    return {c: {**t, 'pct': round(100.0 * t['hits'] / t['counted'], 1) if t['counted'] else None}
+            for c, t in tally.items()}
+
+
+def accuracy_trend(tenant, *, months: int = 12) -> list[dict]:
+    """Accuracy per class for each of the last `months` calendar months (plant time),
+    oldest first, by the month a count was applied — every month listed, counted or not:
+    [{'month': 'YYYY-MM', 'A': {'counted', 'hits', 'pct'}, …}]."""
+    from Tracker.models import CycleCount
+    from Tracker.services.core.clock import plant_tz, tenant_today
+
+    tz = plant_tz(tenant)
+    today = tenant_today(tenant)
+    y, m = today.year, today.month
+    keys = []
+    for _ in range(months):
+        keys.append(f"{y:04d}-{m:02d}")
+        y, m = (y, m - 1) if m > 1 else (y - 1, 12)
+    keys.reverse()
+    start = datetime(int(keys[0][:4]), int(keys[0][5:]), 1, tzinfo=tz)
+    by_month = defaultdict(list)
+    for c in (CycleCount.objects.filter(tenant=tenant, status='APPLIED', applied_at__gte=start)  # tenant-safe: explicit tenant filter
+              .only('applied_at', 'lines')):
+        key = c.applied_at.astimezone(tz).strftime('%Y-%m')
+        by_month[key].extend(l for l in (c.lines or []) if l.get('counted') is not None)
+    return [{'month': k, **_tally(_scored(tenant, by_month.get(k, [])))} for k in keys]
+
+
 def accuracy(tenant, *, days: int = 90) -> dict:
     """{'A': {'counted', 'hits', 'pct'}, …, 'by_reason': {code: n}} over counts applied in
     the last `days`: each counted line a hit when within its class's tolerance (pct None
@@ -282,18 +332,10 @@ def accuracy(tenant, *, days: int = 90) -> dict:
     from django.utils import timezone
     from Tracker.models import CycleCount
 
-    policy = count_policy(tenant)
     counts = list(CycleCount.objects.filter(tenant=tenant, status='APPLIED',  # tenant-safe: explicit tenant filter
                                             applied_at__gte=timezone.now() - timedelta(days=days)))
     lines = [l for c in counts for l in (c.lines or []) if l.get('counted') is not None]
-    classes = line_classes(tenant, lines)
-    tally = {c: {'counted': 0, 'hits': 0} for c in CLASSES}
-    for l in lines:
-        cls = classes.get((l.get('kind'), str(l.get('id'))), 'C')
-        tally[cls]['counted'] += 1
-        tally[cls]['hits'] += judge(l, cls, policy)[0]
-    out = {c: {**t, 'pct': round(100.0 * t['hits'] / t['counted'], 1) if t['counted'] else None}
-           for c, t in tally.items()}
+    out = _tally(_scored(tenant, lines))
     # Why the records were off: the lead's reason on each difference applied.
     by_reason = defaultdict(int)
     for l in lines:

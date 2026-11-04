@@ -66,6 +66,20 @@ export type BlankEnum =
    * @enum
    */
   unknown;
+export type AccuracyMonth = {
+  /**
+   * YYYY-MM, plant time
+   */
+  month: string;
+  A: ClassAccuracy;
+  B: ClassAccuracy;
+  C: ClassAccuracy;
+};
+export type ClassAccuracy = {
+  counted: number;
+  hits: number;
+  pct: number | null;
+};
 export type AddNoteInputRequest = {
   /**
    * @minLength 1
@@ -2230,11 +2244,6 @@ export type CountAccuracy = {
   B: ClassAccuracy;
   C: ClassAccuracy;
   by_reason: {};
-};
-export type ClassAccuracy = {
-  counted: number;
-  hits: number;
-  pct: number | null;
 };
 export type CountEntryRequest = {
   kind: CycleCountLineKindEnum;
@@ -21328,6 +21337,12 @@ const CountAccuracy = z.object({
   C: ClassAccuracy,
   by_reason: z.record(z.number().int()),
 });
+const AccuracyMonth = z.object({
+  month: z.string(),
+  A: ClassAccuracy,
+  B: ClassAccuracy,
+  C: ClassAccuracy,
+});
 const DueForCountKindEnum = z.enum(["MATERIAL", "PART_TYPE"]);
 const DueLocation = z.object({
   location_id: z.string().uuid(),
@@ -30840,6 +30855,7 @@ export const schemas = {
   SendBackCountRequest,
   ClassAccuracy,
   CountAccuracy,
+  AccuracyMonth,
   DueForCountKindEnum,
   DueLocation,
   DueForCount,
@@ -37089,6 +37105,51 @@ move it on. Never edited or deleted otherwise — a count is a record of what wa
   },
   {
     method: "get",
+    path: "/api/CycleCounts/accuracy-trend/",
+    alias: "api_CycleCounts_accuracy_trend_list",
+    description: `Inventory record accuracy per ABC class for each recent month, oldest first; a month with nothing counted has null percentages.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "location",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "material",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "months",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["APPLIED", "OPEN", "SUBMITTED"]).optional(),
+      },
+    ],
+    response: z.array(AccuracyMonth),
+  },
+  {
+    method: "get",
     path: "/api/CycleCounts/accuracy/",
     alias: "api_CycleCounts_accuracy_retrieve",
     description: `Inventory record accuracy per ABC class: counted lines within their class&#x27;s tolerance, over counts applied in the window.`,
@@ -41982,7 +42043,10 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: PaginatedIntegrationConfigListList,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "post",
     path: "/api/integrations/",
@@ -41998,10 +42062,7 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: IntegrationConfig,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/integrations/:id/",
@@ -46233,7 +46294,10 @@ let customers self-manage their digest cadence.`,
       },
     ],
     response: PersonalSchedule,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "patch",
     path: "/api/notifications/schedules/personal/:id/",
@@ -46257,10 +46321,7 @@ let customers self-manage their digest cadence.`,
       },
     ],
     response: PersonalSchedule,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/notifications/schedules/personal/:id/",
@@ -51504,7 +51565,10 @@ Usage:
       },
     ],
     response: Processes,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "put",
     path: "/api/Processes/:id/",
@@ -51548,10 +51612,7 @@ Usage:
       },
     ],
     response: Processes,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/Processes/:id/",
@@ -56607,7 +56668,10 @@ Response:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutionMeasurements/required/",
@@ -56622,10 +56686,7 @@ Response:
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutions/",
@@ -62406,7 +62467,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: TrainingRequirement,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingRequirements/:id/",
@@ -62421,10 +62485,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: TrainingRequirement,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "put",
     path: "/api/TrainingRequirements/:id/",

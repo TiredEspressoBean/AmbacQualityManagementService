@@ -334,6 +334,21 @@ class CountCadenceTests(_Fixture):
         self.assertEqual(acc["by_reason"], {"SCRAPPED": 1})
         self.assertIsNone(acc["A"]["pct"])
 
+        # History keeps the class each line was applied under: promoting the item to A
+        # later doesn't move these lines out of C.
+        self.bar.abc_class = "A"
+        self.bar.save(update_fields=["abc_class"])
+        acc = self.client.get("/api/CycleCounts/accuracy/").json()
+        self.assertEqual((acc["C"]["counted"], acc["A"]["counted"]), (2, 0))
+
+        # The trend: every one of the last 12 months, oldest first, this month last.
+        from Tracker.services.core.clock import tenant_today
+        trend = self.client.get("/api/CycleCounts/accuracy-trend/").json()
+        self.assertEqual(len(trend), 12)
+        self.assertEqual(trend[-1]["month"], tenant_today(self.tenant).strftime("%Y-%m"))
+        self.assertEqual((trend[-1]["C"]["counted"], trend[-1]["C"]["pct"]), (2, 50.0))
+        self.assertIsNone(trend[0]["C"]["pct"], "a month with nothing counted is a gap")
+
 
 class CountScopeAndFollowUpTests(_Fixture):
     """Counting by item, and what follows a count (user decision 2026-11-04): units not

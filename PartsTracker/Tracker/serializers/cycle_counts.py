@@ -131,6 +131,14 @@ class CountAccuracySerializer(serializers.Serializer):
     by_reason = serializers.DictField(child=serializers.IntegerField())
 
 
+class AccuracyMonthSerializer(serializers.Serializer):
+    """One month of the accuracy trend: per ABC class, by when counts were applied."""
+    month = serializers.CharField(help_text="YYYY-MM, plant time")
+    A = ClassAccuracySerializer()
+    B = ClassAccuracySerializer()
+    C = ClassAccuracySerializer()
+
+
 def _name(u):
     return ((u.get_full_name() or "").strip() or u.email) if u is not None else None
 

@@ -245,8 +245,11 @@ def variances(count) -> list[dict]:
         else:
             kind = "SHORT" if counted < expected else "OVER"
         if kind:
-            cls = classes.get((line.get("kind"), str(line.get("id"))), "C")
-            within, tol = judge(line, cls, policy)
+            if "within_tolerance" in line:  # applied: as judged then
+                cls, within, tol = line["abc_class"], line["within_tolerance"], line.get("tolerance", 0.0)
+            else:
+                cls = classes.get((line.get("kind"), str(line.get("id"))), "C")
+                within, tol = judge(line, cls, policy)
             out.append({**line, "difference": counted - expected, "variance": kind,
                         "abc_class": cls, "tolerance": tol, "within_tolerance": within,
                         "reason": line.get("reason") or ""})
@@ -312,10 +315,19 @@ def apply_count(count, user, note: str = "", reasons: dict | None = None):
                 if part is not None:
                     move_parts(count.tenant, [part], to=to, user=user, reason=why)
         lines = list(count.lines)
+        # Each counted line keeps the class and verdict it was applied under, so accuracy
+        # history doesn't shift when an item's class or a class's tolerance changes later.
+        from Tracker.services.mes.count_cadence import count_policy, judge, line_classes
+        policy = count_policy(count.tenant)
+        classes = line_classes(count.tenant, lines)
         for line in lines:
             code = reasons.get(f"{line['kind']}:{line['id']}")
             if code in REASON_CODES:
                 line["reason"] = code
+            if line.get("counted") is not None:
+                cls = classes.get((line.get("kind"), str(line.get("id"))), "C")
+                within, tol = judge(line, cls, policy)
+                line.update(abc_class=cls, within_tolerance=within, tolerance=tol)
         count.lines = lines
         count.status = "APPLIED"
         count.applied_by = _who(user)
