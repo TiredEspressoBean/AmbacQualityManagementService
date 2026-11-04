@@ -1,5 +1,5 @@
-"""Planner exhibit for Plan vs actual (Planner track module 9): the last shift's plan,
-and how the floor ran against it.
+"""Planner exhibit for Plan vs actual (Planner track module 9): an earlier plan, and
+how the floor ran against it.
 
 Five single-part work orders on ORD-2024-PLAN, released and urgent so the solver puts
 their Machining first on the lathe. A plan is solved, then dated back by whole days to
@@ -171,8 +171,14 @@ class DemoPlanWalkSeeder(DemoQaWalkSeeder):
         some hours put a body on the lathe at midnight."""
         import math
         from Tracker.models.scheduling import ScheduledTask, ScheduleResult
+        from datetime import datetime
+        from Tracker.services.core.clock import plant_tz, tenant_today
         latest_end = max(t.end_time for t in slots.values())
-        needed = latest_end - timezone.now() + CLEARANCE
+        # Every exhibit slot ends before today begins: the last shift was Dave's, and
+        # he's off sick today, so none of the four runs can fall this morning.
+        day = tenant_today(self.tenant)
+        today_start = timezone.make_aware(datetime(day.year, day.month, day.day), plant_tz(self.tenant))
+        needed = latest_end - min(today_start, timezone.now() - CLEARANCE)
         delta = timedelta(days=max(1, math.ceil(needed / timedelta(days=1))))
         # The last shift is a working day's: a Monday seed dates it to Friday.
         while (timezone.localtime(timezone.now()) - delta).weekday() >= 5:

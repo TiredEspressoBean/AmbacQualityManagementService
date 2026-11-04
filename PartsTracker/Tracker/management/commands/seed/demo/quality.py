@@ -905,7 +905,11 @@ class DemoQualitySeeder(BaseSeeder):
         for i, d in enumerate(bare):
             dtype = types[i % len(types)]
             sev = severities[i % len(severities)]
-            created_at = self.today - timedelta(days=12 - (i % 10))
+            # Opened by the failed report that raised it, so it's dated with that report
+            # (and its containment and resolution after it), not at the seed's run time.
+            report = d.quality_reports.order_by('created_at').first()
+            created_at = (report.created_at if report is not None
+                          else self.today - timedelta(days=12 - (i % 10)))
             outcome = i % 3  # 0 = triaged (stays OPEN), 1 = IN_PROGRESS, 2 = CLOSED
             # A part that has already left decides the outcome: a shipped part's
             # disposition was closed, and it can only have been reworked or accepted;
@@ -920,18 +924,19 @@ class DemoQualitySeeder(BaseSeeder):
                 'disposition_type': dtype,
                 'severity': sev,
                 'assigned_to': assignees[i % len(assignees)],
+                'created_at': created_at,
             }
 
             if outcome >= 1:
                 fields.update({
                     'containment_action': 'Part quarantined and segregated pending disposition',
-                    'containment_completed_at': created_at + timedelta(hours=3),
+                    'containment_completed_at': min(created_at + timedelta(hours=3), self.today),
                     'containment_completed_by': approver,
                 })
             if outcome == 1:
                 fields['current_state'] = 'IN_PROGRESS'
             elif outcome == 2:
-                resolved_at = created_at + timedelta(days=2)
+                resolved_at = min(created_at + timedelta(days=2), self.today)
                 fields.update({
                     'current_state': 'CLOSED',
                     'resolution_completed': True,

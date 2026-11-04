@@ -82,7 +82,8 @@ DEMO_CAPAS = [
         'status': CapaStatus.PENDING_VERIFICATION,
         'capa_type': CapaType.PREVENTIVE,
         'severity': CapaSeverity.MINOR,
-        'initiated_by': 'mike.ops@demo.ambac.com',
+        # Raised by receiving, who live with the delays.
+        'initiated_by': 'luis.recv@demo.ambac.com',
         'assigned_to': 'sarah.qa@demo.ambac.com',
         'initiated_days_ago': 30,
         'due_days': 7,  # Past due for verification
