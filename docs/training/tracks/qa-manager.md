@@ -84,12 +84,12 @@ decide; **My submitted requests** lists what you asked others for. Find
 the decision rests on.
 
 `INJ-QA-MANAGE-002`'s bore measured **4.007 mm** against a maximum of 4.005.
-Sarah failed it at Body Inspection, contained it (the other bodies from that grinder
-setup were re-checked) and assigned the decision to you. Find it in your **Inbox** >
+Ken failed it at Body Inspection. Sarah contained it (the other bodies from that
+grinder setup were re-checked) and assigned the decision to you. Find it in your **Inbox** >
 **Dispositions**.
 
 1. Open it. Read the failed report it carries: the reading, the limits, and the
-   defect Sarah recorded.
+   defect Ken recorded.
 2. The bore is 0.002 mm over, the seat finish is good, and engineering has issued
    concession `ENG-CONC-0041`. Choose **Use As Is**.
 

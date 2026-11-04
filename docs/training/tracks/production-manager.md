@@ -287,9 +287,9 @@ Two pages answer two different questions.
 **Scheduling** > **Capacity Planning** > **Capacity heatmap** asks *does the plan fit
 the month?* The headline says it, one of *Crew: enough for the planned work ·
 busiest &lt;month&gt; at &lt;n&gt;%*, *Crew: tight in &lt;month&gt; (&lt;n&gt;%)*
-or *Crew: short in &lt;months&gt; (over 100%)*. With the training forecast loaded,
-expect a tight month in the run-up to the forecast's peak (the demo's months move
-with the day it was set up). The **Labor** row compares the operator hours the work needs (setup and the hands-on
+or *Crew: short in &lt;months&gt; (over 100%)*. In the training shop the crew is
+enough: the busiest month, in the run-up to the forecast's peak, is about two-thirds
+full (the demo's months move with the day it was set up). The **Labor** row compares the operator hours the work needs (setup and the hands-on
 part of each operation, not a machine's whole run) with your crew's working hours
 left in each month. Under about 85% is comfortable; over 100% you're short.
 

@@ -79,10 +79,11 @@ preview: it shows you the operator's home, not the operator's permissions.
 Dave Wilson has called in sick. Before you move his work, find out who can do it.
 
 **Quality** > **Training** > **Matrix**: one row per person, one column per skill.
-Hover a cell to read it: *Dave Wilson — Assembly Certification: Qualified*. The
-footer counts how many people are qualified (L3 and up) for each skill, so a column
-with one is a single point of failure. A cell marked *Expires 2026-10-29* lapses
-then, and after that date the plan won't give that person the step.
+Hover a cell to read it: on Dave Wilson's row, *Assembly Certification: Qualified*.
+The footer counts how many people are qualified (L3 and up) for each skill, so a
+column with one is a single point of failure. A cell with the **Expiring** dot lapses
+soon: hover it for the date (*Dimensional Inspection Certification: Trainee — expires
+&lt;date&gt;*). After that date the plan won't give that person the step.
 
 **Scheduling** > **Schedule (Gantt)**, then **People**: one row per operator, with
 the work the plan gives them, and **— Unassigned —** for work nobody could be given.
@@ -223,9 +224,8 @@ overnight isn't charged to the next shift.
 or **Approve all**. Your own entries read *Your time*: someone else approves those.
 
 In the demo week, each operator has some **Unallocated** time — on shift, but not at a
-step — and Dave and you show a little **Rework**: INJ-0042-016 failed Flow Calibration
-and Dave took it back through, and INJ-0042-019 is in Rework under your name now.
-Rework is part of direct time, not extra to it.
+step — and Dave shows a little **Rework**: INJ-0042-016 failed Flow Calibration and
+Dave took it back through. Rework is part of direct time, not extra to it.
 
 Someone clocked out late, or forgot to clock in on time? **Correct times** on their
 entry, before you approve it. Change the clock-in or clock-out, say why, and the hours

@@ -135,7 +135,8 @@ step back only.
 **You will:** dispatch operators to the plan's work.
 
 **Dispatch** puts a named, qualified operator on each operation the plan holds:
-*Assigned 224 of 243 operations · 19 have no qualified operator free.* The header
+*Dispatch assigned &lt;N&gt; of &lt;M&gt; operations. &lt;K&gt; have no qualified
+operator free.* The header
 then counts the operations without an operator, and **People** shows each
 operator's work.
 
