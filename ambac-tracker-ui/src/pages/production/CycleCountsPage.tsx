@@ -48,6 +48,7 @@ export function CycleCountsPage() {
     const { data: missing } = useQuery(missingUnitsOptions());
     const { data: toKey } = useQuery(toKeyOptions());
     const [startOpen, setStartOpen] = useState(false);
+    const [tab, setTab] = useState<string | null>(null);
 
     const waiting = counts.filter((c) => c.status === "SUBMITTED");
     const inProgress = counts.filter((c) => c.status === "OPEN");
@@ -66,7 +67,9 @@ export function CycleCountsPage() {
             </div>
             {accuracy && <AccuracyStrip accuracy={accuracy} />}
 
-            <Tabs defaultValue={lead && waiting.length ? "waiting" : "due"}>
+            {/* Until someone picks a tab, a lead with counts waiting lands on them — decided as
+                the counts (and permissions) arrive, not frozen at the first render. */}
+            <Tabs value={tab ?? (lead && waiting.length ? "waiting" : "due")} onValueChange={(v) => setTab(String(v))}>
                 <TabsList className="flex-wrap">
                     <TabsTrigger value="due">Due{due?.length ? ` (${due.length})` : ""}</TabsTrigger>
                     <TabsTrigger value="waiting">Waiting for a lead{waiting.length ? ` (${waiting.length})` : ""}</TabsTrigger>
