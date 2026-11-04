@@ -41737,6 +41737,7 @@ export interface components {
             /** Format: date */
             expected_completion: string | null;
             qty_ready: number;
+            qty_mine: number;
             /** Format: date-time */
             earliest_entered_at: string | null;
             /** Format: date-time */

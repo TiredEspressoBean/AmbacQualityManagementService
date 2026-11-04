@@ -2,7 +2,8 @@
 
 Serves ranked WO × step rows to UP NEXT / THEN and (later) the shop queue page.
 Grain: one row per (WorkOrder, Step) with open StepExecutions, with distinct-
-parts qty_ready + aging + a is_held flag. Ranked priority → due → aging.
+parts qty_ready + aging + a is_held flag. Ranked priority → due → aging, after the
+asker's own in-progress work (qty_mine); work someone else has in hand is left out.
 
 v1 readiness = 'blocked' when the WO has an active hold, else 'ready'. Upstream-
 done is implicit for open executions. Cert / calibration / downtime / manual-
@@ -17,7 +18,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 
 from Tracker.models import (
-    Parts, ScheduledTask, ScheduleResult, StepExecution, WorkOrder, WorkOrderHold,
+    BatchExecution, Parts, ScheduledTask, ScheduleResult, StepExecution, WorkOrder, WorkOrderHold,
 )
 from Tracker.serializers.work_queue import WorkQueueRowSerializer
 from Tracker.viewsets.base import TenantScopedMixin
@@ -95,6 +96,15 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             is_voided=False,
         )
 
+        # Whose work is it (user decision 2026-11-04): an operator finishes their own work
+        # before being offered new work. A visit someone else has in hand — in progress
+        # under them, or in an open load (BatchExecution) and not ours — isn't waiting
+        # for anyone else, so it drops out; our own in-progress visits lead the queue.
+        me = getattr(self.request.user, "pk", None)
+        mine = Q(status="IN_PROGRESS", assigned_to_id=me)
+        in_open_load = Exists(BatchExecution.unscoped.filter(  # tenant-safe: explicit tenant filter
+            tenant=tenant, step_id=OuterRef("step_id"), parts=OuterRef("part_id"),
+            completed_at__isnull=True))
         rows_qs = (
             StepExecution.unscoped.filter(
                 tenant=tenant,
@@ -104,6 +114,8 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 # part of the operator's work queue.
                 part__isnull=False,
             )
+            .exclude(Q(status="IN_PROGRESS", assigned_to__isnull=False) & ~Q(assigned_to_id=me))
+            .exclude(in_open_load & ~Q(assigned_to_id=me))
             .values(
                 "part__work_order_id",
                 "part__work_order__ERP_id",
@@ -116,7 +128,9 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "step__work_center__kind",
             )
             .annotate(
-                qty_ready=Count("part_id", distinct=True),
+                # Waiting = nobody's started it; our own in-progress pieces count apart.
+                qty_ready=Count("part_id", distinct=True, filter=~mine),
+                qty_mine=Count("part_id", distinct=True, filter=mine),
                 earliest_entered_at=Min("entered_at"),
                 is_held=Exists(active_holds),
             )
@@ -214,7 +228,8 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "step_id": u["step_id"], "step__name": u["step__name"],
                 "step__work_center_id": u["step__work_center_id"],
                 "step__work_center__kind": u["step__work_center__kind"],
-                "qty_ready": u["qty_ready"], "earliest_entered_at": u["earliest_entered_at"],
+                "qty_ready": u["qty_ready"], "qty_mine": 0,
+                "earliest_entered_at": u["earliest_entered_at"],
                 "is_held": u["is_held"],
             }
         # Same fallback rank as the query's order_by, now over both sources.
@@ -236,6 +251,7 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "priority": r["part__work_order__priority"],
                 "expected_completion": r["part__work_order__expected_completion"],
                 "qty_ready": r["qty_ready"],
+                "qty_mine": r["qty_mine"],
                 "earliest_entered_at": r["earliest_entered_at"],
                 "is_held": r["is_held"],
                 "readiness": "blocked" if r["is_held"] else "ready",
@@ -255,6 +271,7 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         # key is safe — it's only compared within a same-`scheduled?` group.
         rows.sort(key=lambda row: (
             row["is_held"],
+            0 if row["qty_mine"] else 1,  # finish your own work first
             0 if row["scheduled_start"] is not None else 1,
             row["scheduled_start"] if row["scheduled_start"] is not None else 0,
         ))

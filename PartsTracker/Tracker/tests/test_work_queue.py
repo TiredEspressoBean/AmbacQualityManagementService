@@ -289,3 +289,44 @@ class WorkQueueApiTests(TenantTestCase):
         WorkOrder.objects.filter(pk=wo.pk).update(released_at=timezone.now())
         rows = [r for r in self._get().json()["results"] if r["work_order_erp_id"] == "WO-REL-3"]
         self.assertEqual([r["qty_ready"] for r in rows], [3])
+
+    # --- whose work it is (user decision 2026-11-04) --------------------------
+
+    def _colleague(self):
+        from Tracker.models import User
+        return User.objects.create_user(username="ken_q", email="ken_q@tenant-a.com",
+                                        password="x", tenant=self.tenant_a)
+
+    def test_someone_elses_work_in_progress_is_not_offered(self):
+        pt, proc, wo = self._make_wo(erp="WO-THEIRS")
+        step = self._step(name="Wash", part_type=pt)
+        p = self._part_at_step(wo=wo, part_type=pt, step=step, erp="THEIRS-1")
+        StepExecution.objects.filter(part=p).update(assigned_to=self._colleague())
+        rows = [r for r in self._get().json()["results"] if r["work_order_erp_id"] == "WO-THEIRS"]
+        self.assertEqual(rows, [], "a part someone else is working isn't waiting for anyone")
+
+    def test_a_part_in_someone_elses_open_load_is_not_offered(self):
+        from Tracker.models import BatchExecution
+        pt, proc, wo = self._make_wo(erp="WO-LOAD")
+        step = self._step(name="Wash", part_type=pt)
+        p = self._part_at_step(wo=wo, part_type=pt, step=step, erp="LOAD-1")
+        # Loaded but its visit not yet taken by anyone: the open load still holds it.
+        load = BatchExecution.objects.create(tenant=self.tenant_a, work_order=wo, step=step,
+                                             started_by=self._colleague())
+        load.parts.add(p)
+        rows = [r for r in self._get().json()["results"] if r["work_order_erp_id"] == "WO-LOAD"]
+        self.assertEqual(rows, [])
+
+    def test_your_own_work_in_progress_leads_before_new_work(self):
+        pt_a, _, urgent = self._make_wo(erp="WO-NEW-URGENT", priority=1)
+        s_a = self._step(name="Grind", part_type=pt_a)
+        self._part_at_step(wo=urgent, part_type=pt_a, step=s_a, erp="NEW-1")
+        pt_b, _, low = self._make_wo(erp="WO-MINE-LOW", priority=4)
+        s_b = self._step(name="Wash", part_type=pt_b)
+        mine = self._part_at_step(wo=low, part_type=pt_b, step=s_b, erp="MINE-1")
+        StepExecution.objects.filter(part=mine).update(assigned_to=self.user_a)
+        results = self._get().json()["results"]
+        self.assertEqual(results[0]["work_order_erp_id"], "WO-MINE-LOW",
+                         "finish your own work before an urgent new job")
+        self.assertEqual((results[0]["qty_mine"], results[0]["qty_ready"]), (1, 0))
+        self.assertEqual(results[1]["work_order_erp_id"], "WO-NEW-URGENT")

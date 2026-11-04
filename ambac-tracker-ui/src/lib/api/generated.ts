@@ -12709,6 +12709,7 @@ export type WorkQueueRow = {
   priority: number | null;
   expected_completion: string | null;
   qty_ready: number;
+  qty_mine: number;
   earliest_entered_at: string | null;
   scheduled_start: string | null;
   work_center: string | null;
@@ -29029,6 +29030,7 @@ const WorkQueueRow = z.object({
   priority: z.number().int().nullable(),
   expected_completion: z.string().nullable(),
   qty_ready: z.number().int(),
+  qty_mine: z.number().int(),
   earliest_entered_at: z.string().datetime({ offset: true }).nullable(),
   scheduled_start: z.string().datetime({ offset: true }).nullable(),
   work_center: z.string().uuid().nullable(),

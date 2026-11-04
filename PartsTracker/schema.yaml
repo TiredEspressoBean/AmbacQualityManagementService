@@ -91308,6 +91308,8 @@ components:
           nullable: true
         qty_ready:
           type: integer
+        qty_mine:
+          type: integer
         earliest_entered_at:
           type: string
           format: date-time
@@ -91342,6 +91344,7 @@ components:
       - machine_name
       - part_type_name
       - priority
+      - qty_mine
       - qty_ready
       - readiness
       - scheduled_start

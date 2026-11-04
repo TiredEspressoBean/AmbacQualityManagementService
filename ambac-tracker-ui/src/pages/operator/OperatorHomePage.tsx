@@ -554,7 +554,14 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                     {heroRow.machine_name ? <> · on <span className="font-medium text-foreground">{heroRow.machine_name}</span></> : null}
                                 </div>
                                 <div className="mt-2 text-sm text-muted-foreground">
-                                    <b className="text-foreground">{heroRow.qty_ready}</b> pc{heroRow.qty_ready === 1 ? "" : "s"} waiting
+                                    {/* Your own work in progress leads the queue: finish it first. */}
+                                    {heroRow.qty_mine > 0 && (
+                                        <><b className="text-foreground">{heroRow.qty_mine}</b> pc{heroRow.qty_mine === 1 ? "" : "s"} you started
+                                        {heroRow.qty_ready > 0 ? " · " : ""}</>
+                                    )}
+                                    {(heroRow.qty_ready > 0 || heroRow.qty_mine === 0) && (
+                                        <><b className="text-foreground">{heroRow.qty_ready}</b> pc{heroRow.qty_ready === 1 ? "" : "s"} waiting</>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-4 flex gap-2">
@@ -563,7 +570,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                         to: "/workorder/$workOrderId",
                                         params: { workOrderId: String(heroRow.work_order) },
                                     })}>
-                                    <PlayCircle className="mr-2 h-6 w-6" /> Start
+                                    <PlayCircle className="mr-2 h-6 w-6" /> {heroRow.qty_mine > 0 ? "Finish" : "Start"}
                                 </Button>
                                 <Button size="lg" variant="outline" className="h-16" onClick={() => say("Would open the work instructions for this step")}>
                                     <BookOpen className="mr-2 h-5 w-5" /> Instructions
@@ -735,7 +742,9 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                     )}
                                 </div>
                                 <div className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                                    {row.work_order_erp_id} · {row.qty_ready} pc{row.qty_ready === 1 ? "" : "s"}
+                                    {row.work_order_erp_id}
+                                    {row.qty_mine > 0 ? ` · ${row.qty_mine} yours in progress` : ""}
+                                    {row.qty_ready > 0 || row.qty_mine === 0 ? ` · ${row.qty_ready} pc${row.qty_ready === 1 ? "" : "s"}` : ""}
                                     {row.machine_name ? ` · ${row.machine_name}` : ""}
                                     {row.scheduled_start ? ` · planned ${new Date(row.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
                                     {row.earliest_entered_at ? ` · waiting ${formatDistanceToNow(new Date(row.earliest_entered_at))}` : ""}

@@ -21,7 +21,11 @@ class WorkQueueRowSerializer(serializers.Serializer):
     priority = serializers.IntegerField(allow_null=True)
     expected_completion = serializers.DateField(allow_null=True)
 
+    # Pieces nobody has started (waiting), and pieces the asker has in progress here —
+    # a row with any of the asker's own work leads the queue (finish yours first).
+    # Work someone else has in progress, or in their open load, isn't in either.
     qty_ready = serializers.IntegerField()
+    qty_mine = serializers.IntegerField()
     earliest_entered_at = serializers.DateTimeField(allow_null=True)
 
     # Earliest planned start for this (WO, step) on the live APS schedule; null
