@@ -419,18 +419,11 @@ class DemoDwiSeeder(BaseSeeder):
                     ),
                 },
             ],
+            # No per-part scan-in: the batch panel's unit selection records the load.
             "Cleaning": [
                 {
-                    "title": "Load parts into the cleaner",
-                    "order": 0,
-                    "body": _doc(
-                        _para("Scan each part as you load it into the ultrasonic basket. Every part in this load is cleaned together."),
-                        _scan("Cleaning", "load-scan", "Scan each part into the load"),
-                    ),
-                },
-                {
                     "title": "Start the cleaning cycle",
-                    "order": 1,
+                    "order": 0,
                     # BATCH scope: one cycle cleans the whole basket, so the
                     # capture binds to the load's BatchExecution, not per part.
                     # The seal point: confirming it closes the load and the cleaner
@@ -445,7 +438,7 @@ class DemoDwiSeeder(BaseSeeder):
                 },
                 {
                     "title": "Finish the cleaning cycle",
-                    "order": 2,
+                    "order": 1,
                     # Completion checks, done when the run is over. Inspection
                     # point: the bath-temperature reading is a cycle-level QA
                     # measurement, so this substep promotes to a batch-scoped
@@ -698,18 +691,13 @@ class DemoDwiSeeder(BaseSeeder):
                     ),
                 },
             ],
+            # No per-body scan-in: the batch panel's "Start a load — select its units"
+            # is the record of what went in the basket (user decision 2026-11-03 —
+            # a scan per body duplicated the selection).
             "Wash": [
                 {
-                    "title": "Load bodies into the washer",
-                    "order": 0,
-                    "body": _doc(
-                        _para("Scan each body as you load it into the ultrasonic basket. Every body in this load is washed together."),
-                        _scan(b("Wash"), "load-scan", "Scan each body into the load"),
-                    ),
-                },
-                {
                     "title": "Start the wash cycle",
-                    "order": 1,
+                    "order": 0,
                     # BATCH scope: one cycle washes the whole basket, so the capture
                     # binds to the load's BatchExecution, not per part. The seal
                     # point: confirming it closes the load and the washer runs; the
@@ -724,7 +712,7 @@ class DemoDwiSeeder(BaseSeeder):
                 },
                 {
                     "title": "Finish the wash cycle",
-                    "order": 2,
+                    "order": 1,
                     # Completion checks, done when the run is over: a hot bath
                     # FAILs here and contains the load.
                     "scope": SubstepScope.BATCH,

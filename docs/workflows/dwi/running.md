@@ -70,7 +70,8 @@ to you directly — see [Picking work back up](#picking-work-back-up).
 
 Some steps act on a whole load at once — a wash basket, an oven, a bar-fed lathe
 running out a batch. A step like that shows a **Batch step** panel above its
-instructions, counting *N loading · N running · N completed*:
+instructions, counting the loads open for this work order — *N loading · N
+running*:
 
 *"Parts advance by load. Load the units going through this op together and do
 the loading checks, then seal: the machine runs and you can leave it. Come back
@@ -103,6 +104,45 @@ Each check is recorded once, for the load. A confirmed check shows **Captured**
 with its value, and what you enter is kept as a draft in each phase the same way
 as part-by-part work.
 
+The panel shows only the open loads. Loads already completed for this work order
+sit behind **Show N completed loads** (read-only, **Hide completed loads** to
+fold them away); with nothing open it says *No load open at this step for this
+work order.*
+
+### Correcting what's in the load
+
+Until the parts' step is completed — while the load is loading **or** running —
+what's in the load can be put right, with no reason asked:
+
+- Each part in an open load shows as a chip. **×** on a chip takes it out —
+  *"Take it out of the load — it wasn't put in"* — and it waits at the step for a
+  load of its own: *Taken out of the load*. The load's only part has no ×.
+- **Add parts** lists the other units at the step on this work order that aren't
+  held and aren't in another open load: *"In the basket but not on the load? Tick
+  them. They ride this load's cycle."* **Add N to the load** puts them in, and
+  they carry the load's checks: *Added to the load*. It isn't shown when there's
+  nothing to add.
+
+Each change is listed under the chips — *"INJ-OPS-014 taken out by Mike Rodriguez
+· …"*, *"… added by …"* — and kept in the record. Once the parts' step is
+completed the load is final; taking a part out after that is a correction on the
+part's traveller (**Take this part out**, with a reason), and it rolls the part
+back to the step.
+
+### Discarding a load
+
+A load started by mistake can be thrown away while it's still **loading** —
+never once it's sealed. **Discard load** on its row asks *"Discard this load?"*:
+
+- **Discard load** — its parts go back to the step, unloaded, ready for a new
+  load, and anything captured for it is voided: *Load discarded: its parts are
+  back at the step*. You stay on the step.
+- **Discard and release the parts** — the same, and the parts' steps go back to
+  the queue, unassigned and not started, as if nobody had picked them up: *Load
+  discarded and its parts released to the queue*. You're taken home.
+
+The discarded load is kept, archived, with who discarded it and when.
+
 !!! warning "A failed completion check holds the whole load"
     A completion check out of limits — a bath that ran hot — fails the cycle,
     and every unit in the load that is still in production is quarantined
@@ -114,26 +154,45 @@ as part-by-part work.
 A step you started and haven't finished stays yours, with its entries saved,
 until you complete it or a supervisor moves it.
 
-**Resume**, on your home page's **In progress** tile, takes you straight back
-when one thing is open. When several are, it opens **Pick up where you left
-off**: your open steps and loads, most recently started first, each with its
-step, the part (or *Load · N parts*), the work order, *Running* or *Assigned*
-with how long ago, and how far it got — *2 of 3 done* counts substeps confirmed
-or drafted. Pick one; it opens at its first substep not yet done.
+**Resume** is only for work you **started and haven't finished**:
+
+- a step you started whose substeps aren't all done, and
+- a load you're working that isn't completed — loading, or running
+  (*Load · N parts · Running · sealed … ago*).
+
+Steps assigned to you but not started, the Ship step, and steps where your part
+is done and the step is **waiting on someone else** — QA's buy-off, an approval,
+a disposition, a hold — aren't in it. Those are counted instead, under the
+button: *"7 of yours done and waiting: 4 on QA or an approval · 3 on a
+disposition."* A part that's in a load shows as the load, not on its own.
+
+The **In progress** tile names the most recent unfinished item — *"Nozzle
+Inspection · INJ-SHOWCASE-001 · Running · started 18 minutes ago · +2 more to
+finish"*. **Resume** goes straight back when there's one; with several, it opens
+**Pick up where you left off**: *your unfinished steps and loads*, most recently
+started first, each with its step, the part (or *Load · N parts*), the work
+order, how long ago, and how far it got — *2 of 3 done* counts substeps confirmed
+or drafted. Pick one; it opens at its first substep not yet done. With nothing
+left: *"Nothing left unfinished. Scan a traveler to start work."*
 
 On a work order, **Continue work (N)** — beside **Start Work**, shown only when
-you have something open on that order — opens the same list narrowed to it,
+you have unfinished work on that order — opens the same list narrowed to it,
 titled **Continue work on this order**. That is the way back after leaving a
 job part-way: go to its traveller and carry on.
+
+**A load goes with its parts.** It belongs to whoever holds its parts' steps, and
+when they change hands — taken over through Start Work's supervisor override, or
+by a supervisor below — the whole load moves together.
 
 ### Supervisors: taking over and handing off
 
 A **Shift Lead**, **Production Manager**, **QA Manager** or **QA Inspector**
 (and Tenant Admin) holds `reassign_stepexecution`. Their home page has a **Work
-in progress** card — *"Steps and loads open across the plant. Take one over, or
-hand it to someone."* — with **Work in progress (N)**, which opens the list for
-the whole plant, and an amber **Off the clock (N)**, which opens it narrowed to
-work whose holder isn't clocked in.
+in progress** card — *"Steps and loads started across the plant and not yet
+finished. Take one over, or hand it to someone."* — with **Work in progress
+(N)**, which opens the list for the whole plant, and an amber **Off the clock
+(N)**, which opens it narrowed to work whose holder isn't clocked in. On a break
+or at lunch counts as on the clock.
 
 In the list they can switch between **Mine** and **Everyone's**: each row on
 Everyone's shows who holds it, and an amber **Off the clock** badge when that
@@ -151,8 +210,9 @@ Under someone else's step:
   station"*, *"… not trained for this step"*.
 
 No second person signs: the supervisor is the one signed in, and the record
-keeps who it moved from and to, who moved it, why, and when. Loads aren't moved
-this way — they are shared work.
+keeps who it moved from and to, who moved it, why, and when. A load row has the
+same **Take over** and **Hand off…**, and moves as one — the dialog says *load of
+N parts, all moving together*.
 
 !!! important "Whoever ends up holding the step must be trained for it"
     A supervisor who isn't trained for the step can't take it over — *"You

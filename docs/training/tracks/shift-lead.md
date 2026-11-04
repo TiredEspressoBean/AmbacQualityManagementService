@@ -97,6 +97,23 @@ The toolbar has **Dispatch**, **New WO** and **Undo**, but no **Solve** or
 **What-if**: re-planning the shop is your planner's or production manager's. When
 the board says *stale — re-solve*, tell them.
 
+Dave also left work **half done**: the plan moves future work, but a step he
+started stays his until someone moves it.
+
+3. Back on your home page, the **Work in progress** card: *Steps and loads started
+   across the plant and not yet finished.* **Off the clock (N)** counts what's held
+   by someone who isn't clocked in. You're on a break, which still counts as on the
+   clock, so your own work isn't in it. Click it.
+4. **Wash · Load · 4 parts · WO-OPS-02 · Loading … · Dave Wilson**, marked *Off the
+   clock*: the basket he was loading when he went home. Click **Hand off…** under
+   it. The dialog says *load of 4 parts, all moving together*: a load moves as one.
+5. **Hand to**: **Mike Rodriguez** (*trained · at this station*). **Why**: *Dave is
+   out sick; Mike finishing his wash load*. **Hand off**.
+
+*Wash handed off*, and the row now reads **Mike Rodriguez**. All four bodies are
+his, and the load is in his own **Resume**. The hand-off is on the record: from
+whom, to whom, by you, why, and when.
+
 ---
 
 ## 3. Clear what stops a job

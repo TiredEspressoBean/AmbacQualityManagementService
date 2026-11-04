@@ -85,5 +85,38 @@ class DemoTimeEntrySeeder(BaseSeeder):
                 entry(user, 'LUNCH', at(day, 12, 0), at(day, 12, 30))
                 entry(user, 'SHIFT', at(day, 12, 30), at(day, 15, 30))
 
+        created += self._live_floor_today(at, today)
+
         self.log(f"  Time entries: {created} created for {len(floor_users)} floor users over {len(days)} days")
         return {'entries': created, 'users': len(floor_users)}
+
+    def _live_floor_today(self, at, today) -> int:
+        """Who is on the floor right now — so a supervisor's Work in progress shows the
+        difference between work whose holder is here and work left by someone who isn't
+        ("Off the clock"). Casey (the shift lead) is on shift and on a break: a break
+        still counts as on the clock, so her own open work isn't flagged. Mike and Dave
+        are deliberately NOT clocked in: the Operator track starts with Mike clocking
+        in, and the Shift Lead track has Dave off sick — his unfinished work is the
+        off-the-clock case. Open entries only; today otherwise stays clean."""
+        now = timezone.now()
+        shift_start = min(at(today, 7, 0), now - timedelta(hours=1))
+        live = 0
+        for email, on_break in (("casey.dual@demo.ambac.com", True),):
+            user = User.objects.filter(tenant=self.tenant, email=email).first()
+            if user is None:
+                continue
+            TimeEntry.objects.filter(tenant=self.tenant, user=user,
+                                     start_time__gte=at(today, 0, 0)).delete()
+            if on_break:
+                # The clock's shape: a break closes the shift segment and opens a BREAK.
+                break_start = now - timedelta(minutes=10)
+                TimeEntry.objects.create(tenant=self.tenant, user=user, entry_type='SHIFT',
+                                         start_time=shift_start, end_time=break_start)
+                TimeEntry.objects.create(tenant=self.tenant, user=user, entry_type='BREAK',
+                                         start_time=break_start, end_time=None)
+                live += 2
+            else:
+                TimeEntry.objects.create(tenant=self.tenant, user=user, entry_type='SHIFT',
+                                         start_time=shift_start, end_time=None)
+                live += 1
+        return live

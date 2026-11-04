@@ -116,9 +116,8 @@ unit the operator's instrument reads. If it's pass/fail, make it pass/fail.
 
 A defined measurement is only asked for where an instruction captures it.
 
-1. Still on the draft's **Wash**, **Edit substeps**. Wash has *Load bodies into the
-   washer*, *Start the wash cycle* (marked **Seals the load**) and *Finish the wash
-   cycle*.
+1. Still on the draft's **Wash**, **Edit substeps**. Wash has *Start the wash cycle*
+   (marked **Seals the load**) and *Finish the wash cycle*.
 2. **Add substep**. Title it **Rinse and dry** and write the instruction: one action
    per substep, in the order it happens.
 3. Add a **Measurement** block and link it to **Rinse water conductivity**: the label,

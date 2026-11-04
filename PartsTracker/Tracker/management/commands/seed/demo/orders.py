@@ -1048,9 +1048,51 @@ class DemoOrdersSeeder(BaseSeeder):
         # The seal point is the seal point again for every live load from here on.
         Substep.objects.filter(id__in=seal_ids).update(seals_load=True)
 
+        self._seal_running_exhibit(wash, operator)
+
         self.log(f"  Backfilled {count} batch cycle readings"
                  f"{' (incl. 1 FAIL)' if len(batches) > 1 else ''}")
         return {'batch_captures': count}
+
+    def _seal_running_exhibit(self, wash, operator):
+        """A load that is running right now: WO-2024-0042-A's open Wash load, sealed
+        about 20 minutes ago through the real capture (its "Start the wash cycle"
+        confirmed) and not yet completed. It is what an operator comes back to — Resume
+        lists it as "Running · sealed … ago", its completion checks wait, and Complete
+        load refuses until they're done. Dave's WO-OPS-02 load stays loading: the
+        Operator track takes it over and seals it."""
+        from Tracker.models import BatchExecution, Substep
+        from Tracker.services.dwi.operator_capture import submit_substep
+
+        be = (BatchExecution.objects
+              .filter(tenant=self.tenant, step=wash, archived=False, sealed_at__isnull=True,
+                      work_order__ERP_id='WO-2024-0042-A')
+              .first())
+        seal = Substep.objects.filter(tenant=self.tenant, step=wash, archived=False,
+                                      seals_load=True).first()
+        if be is None or seal is None or operator is None:
+            return
+        caps = []
+
+        def _collect(node):
+            if isinstance(node, dict):
+                attrs = node.get('attrs') or {}
+                if node.get('type') == 'attestationCheckpoint' and attrs.get('node_id'):
+                    caps.append({"node_id": attrs['node_id'], "kind": "attestation",
+                                 "confirm": True, "meaning": attrs.get('label') or 'Confirmed'})
+                for v in node.values():
+                    _collect(v)
+            elif isinstance(node, list):
+                for v in node:
+                    _collect(v)
+
+        _collect(seal.body_blocks)
+        submit_substep(substep=seal, batch_execution=be, user=operator, captures=caps,
+                       preverified=True)
+        now = timezone.now()
+        BatchExecution.objects.filter(pk=be.pk).update(
+            started_at=now - timedelta(minutes=33), sealed_at=now - timedelta(minutes=20))
+        self.log("  WO-2024-0042-A's Wash load sealed and left running")
 
     def _close_hot_load(self, be, users, when):
         """Decide the hot load's disposition the way QA would have at the time.
