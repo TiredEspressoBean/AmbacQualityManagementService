@@ -114,7 +114,11 @@ class WholeLotTests(_Fixture):
         self.assertEqual(resp.json()["outcome"], "WHOLE_LOT", resp.content)
         lot.refresh_from_db()
         self.assertEqual(lot.status, "REJECTED")
-        self.assertEqual(lot.dispositions.get().quantity, Decimal(500))
+        disposition = lot.dispositions.get()
+        self.assertEqual(disposition.quantity, Decimal(500))
+        # The reject is the disposition decision: the record says who authorized it.
+        self.assertEqual(disposition.decision_authorized_by_id, self.qa.id)
+        self.assertIsNotNone(disposition.decision_authorized_at)
 
     def test_the_dialogs_whole_lot_body_is_accepted(self):
         """The dialog sends rejected_quantity: null with whole_lot. The endpoint was
@@ -136,6 +140,7 @@ class WholeLotTests(_Fixture):
         lot = self._lot()
         rejected, disposition, outcome = reject_lot(self._report(lot), self.inspector, whole_lot=True)
         self.assertEqual(outcome, "WHOLE_LOT_REQUESTED")
+        self.assertIsNone(disposition.decision_authorized_by_id, "a request isn't a decision")
         lot.refresh_from_db()
         self.assertEqual((lot.status, lot.hold_reason), ("QUARANTINE", "WHOLE_LOT_REJECT_REQUESTED"))
         with self.assertRaises(ValueError):
@@ -143,6 +148,8 @@ class WholeLotTests(_Fixture):
         confirm_whole_lot_reject(lot, self.qa)
         lot.refresh_from_db()
         self.assertEqual((lot.status, lot.hold_reason), ("REJECTED", ""))
+        disposition.refresh_from_db()
+        self.assertEqual(disposition.decision_authorized_by_id, self.qa.id, "confirming is deciding")
 
     def test_the_request_waits_on_the_deciders_home(self):
         """Whoever may decide sees the request under Needs attention, linked to the lot;

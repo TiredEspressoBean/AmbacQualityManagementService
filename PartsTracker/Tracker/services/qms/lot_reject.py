@@ -41,9 +41,19 @@ def can_reject_whole_lot(user) -> bool:
                 and user.has_tenant_perm(WHOLE_LOT_PERMISSION))
 
 
+def _authority(user):
+    return user if user and getattr(user, "is_authenticated", False) else None
+
+
 def _open_disposition(lot, *, user, disposition_type, quantity, description, report=None,
-                      severity="MAJOR"):
+                      severity="MAJOR", decided: bool = True):
+    """``decided``: the reject *is* the disposition decision (an inspector's partial
+    reject, a whole-lot reject by someone allowed to make it), so the record carries
+    who authorized it, as `decide_disposition` does (ISO 9001 8.7.2). A whole-lot
+    *request* only asks for an outcome; it's decided when confirmed."""
+    from django.utils import timezone
     from Tracker.models import QuarantineDisposition
+    authority = _authority(user) if decided else None
     disposition = QuarantineDisposition.objects.create(
         tenant=lot.tenant,
         material_lot=lot,
@@ -51,7 +61,9 @@ def _open_disposition(lot, *, user, disposition_type, quantity, description, rep
         disposition_type=disposition_type,
         description=description or "",
         severity=severity or "MAJOR",
-        assigned_to=user if user and getattr(user, "is_authenticated", False) else None,
+        assigned_to=_authority(user),
+        decision_authorized_by=authority,
+        decision_authorized_at=timezone.now() if authority else None,
     )
     if report is not None:
         disposition.quality_reports.add(report)
@@ -113,7 +125,7 @@ def reject_lot(report, user, *, disposition_type: str = "RETURN_TO_SUPPLIER",
             lot_holds.hold(lot, HOLD_WHOLE_LOT_REJECT_REQUESTED)
             disposition = _open_disposition(
                 lot, user=user, disposition_type=disposition_type, quantity=total,
-                description=description, report=report, severity=severity)
+                description=description, report=report, severity=severity, decided=False)
             return lot, disposition, "WHOLE_LOT_REQUESTED"
 
         ri.reject(report, user)
@@ -140,6 +152,12 @@ def confirm_whole_lot_reject(lot, user):
                        .filter(material_lot=lot).exclude(current_state="CLOSED")
                        .order_by("-created_at").first())
         if disposition is not None:
+            # Confirming the request is the decision: who confirmed authorized it.
+            from django.utils import timezone
+            disposition.decision_authorized_by = _authority(user)
+            disposition.decision_authorized_at = timezone.now()
+            disposition.save(update_fields=["decision_authorized_by", "decision_authorized_at",
+                                            "updated_at"])
             apply_disposition_to_lot(disposition)
     lot.refresh_from_db()
     return lot, disposition
