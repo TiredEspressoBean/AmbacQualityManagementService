@@ -4165,6 +4165,18 @@ export type IntegrationSyncLogStatusEnum =
    * @enum RUNNING, SUCCESS, FAILED
    */
   "RUNNING" | "SUCCESS" | "FAILED";
+export type ItemCountStatus = {
+  abc_class: AbcClassEnum;
+  interval_days: number;
+  /**
+   * False: no stock in a location, so nothing is due.
+   */
+  on_hand: boolean;
+  last_counted: string | null;
+  next_due: string | null;
+  never_counted: boolean;
+  locations: Array<DueLocation>;
+};
 export type LaborCalendarBlock = {
   id: string;
   user?:
@@ -21334,6 +21346,15 @@ const DueForCount = z.object({
   never_counted: z.boolean(),
   locations: z.array(DueLocation),
 });
+const ItemCountStatus = z.object({
+  abc_class: AbcClassEnum,
+  interval_days: z.number().int(),
+  on_hand: z.boolean(),
+  last_counted: z.string().datetime({ offset: true }).nullable(),
+  next_due: z.string().nullable(),
+  never_counted: z.boolean(),
+  locations: z.array(DueLocation),
+});
 const MarkKeyedRequest = z.object({ counts: z.array(z.string().uuid()) });
 const MissingUnit = z.object({
   count_id: z.string().uuid(),
@@ -30822,6 +30843,7 @@ export const schemas = {
   DueForCountKindEnum,
   DueLocation,
   DueForCount,
+  ItemCountStatus,
   MarkKeyedRequest,
   MissingUnit,
   DisassemblyBOMLine,
@@ -37121,6 +37143,26 @@ move it on. Never edited or deleted otherwise — a count is a record of what wa
     response: z.array(DueForCount),
   },
   {
+    method: "get",
+    path: "/api/CycleCounts/item-status/",
+    alias: "api_CycleCounts_item_status_retrieve",
+    description: `When one material or part type (exactly one) was last counted and is next due, on the same terms as the due list — for its form.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "material",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: ItemCountStatus,
+  },
+  {
     method: "post",
     path: "/api/CycleCounts/mark-keyed/",
     alias: "api_CycleCounts_mark_keyed_create",
@@ -41956,7 +41998,10 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: IntegrationConfig,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/integrations/:id/",
@@ -41972,10 +42017,7 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: IntegrationConfig,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "put",
     path: "/api/integrations/:id/",
@@ -46215,7 +46257,10 @@ let customers self-manage their digest cadence.`,
       },
     ],
     response: PersonalSchedule,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "delete",
     path: "/api/notifications/schedules/personal/:id/",
@@ -46234,10 +46279,7 @@ let customers self-manage their digest cadence.`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/notifications/schedules/providers/",
@@ -51506,7 +51548,10 @@ Usage:
       },
     ],
     response: Processes,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "patch",
     path: "/api/Processes/:id/",
@@ -51550,10 +51595,7 @@ Usage:
       },
     ],
     response: Processes,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/Processes/:id/",
@@ -56580,7 +56622,10 @@ Response:
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutions/",
@@ -56710,10 +56755,7 @@ Used by the workflow engine for tracking part progression through steps.`,
       },
     ],
     response: PaginatedStepExecutionListList,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepExecutions/",
@@ -62379,7 +62421,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: TrainingRequirement,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "put",
     path: "/api/TrainingRequirements/:id/",
@@ -62399,10 +62444,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: TrainingRequirement,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/TrainingRequirements/:id/",

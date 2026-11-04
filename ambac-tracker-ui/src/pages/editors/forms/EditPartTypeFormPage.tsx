@@ -54,7 +54,7 @@ import { RebuildLevelsPanel } from "@/components/reman/RebuildLevelsPanel";
 import {
     DEFAULT_RECEIVING_CONTROLS, ReceivingControlsFields, receivingControlsOf, type ReceivingControls,
 } from "@/components/receiving/ReceivingControlsFields";
-import { ABC_HINT, AbcClassSelect, type AbcClass } from "@/components/inventory/AbcClassSelect";
+import { ABC_HINT, AbcClassSelect, CountStatusLine, type AbcClass } from "@/components/inventory/AbcClassSelect";
 
 const supplierPickerOptions = () =>
     queryOptions({
@@ -383,6 +383,7 @@ export default function PartTypeFormPage() {
                                             <AbcClassSelect value={field.value as AbcClass | undefined} onChange={field.onChange} />
                                         </FormControl>
                                         <FormDescription>{ABC_HINT}</FormDescription>
+                                        {mode === "edit" && partTypeId && <CountStatusLine item={{ part_type: partTypeId }} />}
                                         <FormMessage />
                                     </FormItem>
                                 )}

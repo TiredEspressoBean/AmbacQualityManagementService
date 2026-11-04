@@ -125,36 +125,49 @@ class DueItem:
     locations: tuple = field(default_factory=tuple)  # DueLocation, the ones due
 
 
-def due_for_count(tenant, *, today: date | None = None) -> list[DueItem]:
-    """Items with stock in a location that's due for counting under their class —
-    never-counted first, then most overdue."""
+@dataclass(frozen=True)
+class _Held:
+    """An item's stock and when each location holding it was last counted."""
+    name: str
+    abc_class: str
+    last: dict  # location id -> datetime | None
+    locs: dict  # location id -> StorageLocation
+
+
+def _held(tenant, only: tuple | None = None) -> dict:
+    """(kind, id) -> _Held, for every item with stock in a location (or just `only`)."""
     from django.db.models import Max
     from Tracker.models import CycleCount, MaterialLot, Parts, StorageLocation
-    from Tracker.services.core.clock import plant_tz, tenant_today
 
-    policy = count_policy(tenant)
-    today = today or tenant_today(tenant)
-    tz = plant_tz(tenant)
+    lots = MaterialLot.objects.filter(tenant=tenant, archived=False, quantity_remaining__gt=0,  # tenant-safe: explicit tenant filter
+                                      location__isnull=False)
+    parts = (Parts.objects.filter(tenant=tenant, archived=False, location__isnull=False,  # tenant-safe: explicit tenant filter
+                                  part_type__isnull=False).exclude(part_status__in=_GONE))
+    item_counts = CycleCount.objects.filter(tenant=tenant, status='APPLIED', location__isnull=True)  # tenant-safe: explicit tenant filter
+    if only is not None:
+        kind, oid = only
+        if kind == 'MATERIAL':
+            lots, parts = lots.filter(material_id=oid), parts.none()
+            item_counts = item_counts.filter(material_id=oid)
+        else:
+            lots = lots.filter(material__isnull=True, material_type_id=oid)
+            parts = parts.filter(part_type_id=oid)
+            item_counts = item_counts.filter(part_type_id=oid)
 
     held = defaultdict(set)  # (kind, id) -> location ids
     names, classes = {}, {}
     for (m_id, m_name, m_cls, t_id, t_name, t_cls, loc) in (
-            MaterialLot.objects.filter(tenant=tenant, archived=False, quantity_remaining__gt=0,  # tenant-safe: explicit tenant filter
-                                       location__isnull=False)
-            .values_list('material_id', 'material__name', 'material__abc_class',
-                         'material_type_id', 'material_type__name', 'material_type__abc_class',
-                         'location_id')):
+            lots.values_list('material_id', 'material__name', 'material__abc_class',
+                             'material_type_id', 'material_type__name', 'material_type__abc_class',
+                             'location_id')):
         key = ('MATERIAL', m_id) if m_id else ('PART_TYPE', t_id) if t_id else None
         if key is None:
             continue
         held[key].add(loc)
         names[key] = m_name if m_id else t_name
         classes[key] = (m_cls if m_id else t_cls) or 'C'
-    for (t_id, t_name, t_cls, loc) in (
-            Parts.objects.filter(tenant=tenant, archived=False, location__isnull=False,  # tenant-safe: explicit tenant filter
-                                 part_type__isnull=False)
-            .exclude(part_status__in=_GONE)
-            .values_list('part_type_id', 'part_type__name', 'part_type__abc_class', 'location_id')):
+    for (t_id, t_name, t_cls, loc) in parts.values_list(
+            'part_type_id', 'part_type__name', 'part_type__abc_class', 'location_id'):
         key = ('PART_TYPE', t_id)
         held[key].add(loc)
         names[key] = t_name
@@ -167,8 +180,7 @@ def due_for_count(tenant, *, today: date | None = None) -> list[DueItem]:
     # An item count counted that item wherever its lines were (and wherever something was
     # found): it credits those (item, location) pairs as a location count credits a place.
     credit = {}
-    for c in (CycleCount.objects.filter(tenant=tenant, status='APPLIED', location__isnull=True)  # tenant-safe: explicit tenant filter
-              .only('material_id', 'part_type_id', 'applied_at', 'lines')):
+    for c in item_counts.only('material_id', 'part_type_id', 'applied_at', 'lines'):
         key = ('MATERIAL', c.material_id) if c.material_id else ('PART_TYPE', c.part_type_id)
         for line in c.lines or []:
             for where in (line.get('location_id'), line.get('found_at')):
@@ -176,28 +188,83 @@ def due_for_count(tenant, *, today: date | None = None) -> list[DueItem]:
                     pair = (key, str(where))
                     credit[pair] = max(credit.get(pair, c.applied_at), c.applied_at)
     locs = {l.id: l for l in StorageLocation.objects.filter(tenant=tenant, pk__in=loc_ids)}  # tenant-safe: explicit tenant filter
+    return {key: _Held(name=names[key] or '—', abc_class=classes[key], locs=locs,
+                       last={loc: max((t for t in (last.get(loc), credit.get((key, str(loc)))) if t), default=None)
+                             for loc in loc_set})
+            for key, loc_set in held.items()}
+
+
+def _due_on(at, interval, today, tz) -> date:
+    return today if at is None else at.astimezone(tz).date() + timedelta(days=interval)
+
+
+def due_for_count(tenant, *, today: date | None = None) -> list[DueItem]:
+    """Items with stock in a location that's due for counting under their class —
+    never-counted first, then most overdue."""
+    from Tracker.services.core.clock import plant_tz, tenant_today
+
+    policy = count_policy(tenant)
+    today = today or tenant_today(tenant)
+    tz = plant_tz(tenant)
 
     rows = []
-    for key, loc_set in held.items():
-        cls = classes[key]
+    for key, h in _held(tenant).items():
+        cls = h.abc_class
         interval = policy.interval_days[cls]
         due = []
-        for loc in loc_set:
-            at = max((t for t in (last.get(loc), credit.get((key, str(loc)))) if t), default=None)
-            due_on = today if at is None else at.astimezone(tz).date() + timedelta(days=interval)
+        for loc, at in h.last.items():
+            due_on = _due_on(at, interval, today, tz)
             if due_on <= today:
-                due.append(DueLocation(location_id=loc, location=_place(locs.get(loc)),
+                due.append(DueLocation(location_id=loc, location=_place(h.locs.get(loc)),
                                        last_counted=at, due_on=due_on))
         if not due:
             continue
         due.sort(key=lambda d: (d.last_counted is not None, d.due_on, d.location))
         earliest = min(d.due_on for d in due)
         rows.append(DueItem(
-            kind=key[0], id=key[1], name=names[key] or '—', abc_class=cls, interval_days=interval,
+            kind=key[0], id=key[1], name=h.name, abc_class=cls, interval_days=interval,
             due_on=earliest, days_overdue=(today - earliest).days,
             never_counted=any(d.last_counted is None for d in due), locations=tuple(due)))
     rows.sort(key=lambda r: (not r.never_counted, r.due_on, r.abc_class, r.name.lower()))
     return rows
+
+
+@dataclass(frozen=True)
+class ItemCountStatus:
+    """Where one item stands for counting — what its form shows."""
+    abc_class: str
+    interval_days: int
+    on_hand: bool  # no stock in a location: nothing to count, nothing due
+    last_counted: datetime | None  # the most recent count of any location holding it
+    next_due: date | None  # the earliest location due (today if one was never counted)
+    never_counted: bool  # some location holding it has never been counted
+    locations: tuple = field(default_factory=tuple)  # DueLocation for each, soonest first
+
+
+def count_status(tenant, kind: str, item_id, *, abc_class: str = 'C',
+                 today: date | None = None) -> ItemCountStatus:
+    """When `kind` ('MATERIAL' | 'PART_TYPE') `item_id` was last counted and is next due,
+    on the same terms as the due list. `abc_class` is the item's own, for when it has no
+    stock to read it from."""
+    from Tracker.services.core.clock import plant_tz, tenant_today
+
+    policy = count_policy(tenant)
+    today = today or tenant_today(tenant)
+    tz = plant_tz(tenant)
+    h = _held(tenant, only=(kind, item_id)).get((kind, item_id))
+    cls = h.abc_class if h else (abc_class or 'C')
+    interval = policy.interval_days[cls]
+    if h is None:
+        return ItemCountStatus(abc_class=cls, interval_days=interval, on_hand=False,
+                               last_counted=None, next_due=None, never_counted=False)
+    places = sorted((DueLocation(location_id=loc, location=_place(h.locs.get(loc)), last_counted=at,
+                                 due_on=_due_on(at, interval, today, tz))
+                     for loc, at in h.last.items()), key=lambda d: (d.due_on, d.location))
+    counted = [d.last_counted for d in places if d.last_counted]
+    return ItemCountStatus(
+        abc_class=cls, interval_days=interval, on_hand=True,
+        last_counted=max(counted) if counted else None, next_due=places[0].due_on,
+        never_counted=any(d.last_counted is None for d in places), locations=tuple(places))
 
 
 def _place(loc) -> str:

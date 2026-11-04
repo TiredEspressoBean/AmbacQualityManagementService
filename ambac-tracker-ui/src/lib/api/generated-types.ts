@@ -2726,6 +2726,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/CycleCounts/item-status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description When one material or part type (exactly one) was last counted and is next due, on the same terms as the due list — for its form. */
+        get: operations["api_CycleCounts_item_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/CycleCounts/mark-keyed/": {
         parameters: {
             query?: never;
@@ -26497,6 +26514,19 @@ export interface components {
             invitation_id: number | null;
             user_created: boolean;
         };
+        /** @description When one item was last counted and is next due, on the due list's terms. */
+        ItemCountStatus: {
+            abc_class: components["schemas"]["AbcClassEnum"];
+            interval_days: number;
+            /** @description False: no stock in a location, so nothing is due. */
+            on_hand: boolean;
+            /** Format: date-time */
+            last_counted: string | null;
+            /** Format: date */
+            next_due: string | null;
+            never_counted: boolean;
+            locations: components["schemas"]["DueLocation"][];
+        };
         /** @description Serializer for JobRole — the HR/organizational role competency hangs off. */
         JobRole: {
             /** Format: uuid */
@@ -47728,6 +47758,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DueForCount"][];
+                };
+            };
+        };
+    };
+    api_CycleCounts_item_status_retrieve: {
+        parameters: {
+            query?: {
+                material?: string;
+                part_type?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemCountStatus"];
                 };
             };
         };

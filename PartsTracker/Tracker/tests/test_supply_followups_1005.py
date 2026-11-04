@@ -294,6 +294,34 @@ class CountCadenceTests(_Fixture):
         [row] = [r for r in self.client.get("/api/CycleCounts/due/").json() if r["name"] == "Bar stock 4140"]
         self.assertEqual((row["abc_class"], row["days_overdue"]), ("A", 10))
 
+    def test_the_items_form_reads_last_counted_and_next_due_on_the_same_terms(self):
+        from datetime import date, timedelta
+        from django.utils import timezone
+        from Tracker.models import CycleCount
+        from Tracker.services.core.clock import tenant_today
+        url = f"/api/CycleCounts/item-status/?material={self.bar.id}"
+        st = self.client.get(url).json()
+        self.assertEqual((st["on_hand"], st["next_due"], st["abc_class"]), (False, None, "C"),
+                         "no stock in a location: nothing due")
+
+        self._lot("CT-F", qty="10", where="Rack 12")
+        st = self.client.get(url).json()
+        self.assertTrue(st["on_hand"] and st["never_counted"])
+        self.assertIsNone(st["last_counted"])
+        today = tenant_today(self.tenant)
+        self.assertEqual(st["next_due"], today.isoformat(), "never counted: due now")
+
+        sub = self._counted("Rack 12", [])
+        self.client.post(f"/api/CycleCounts/{sub['id']}/apply/", format="json")
+        CycleCount.objects.filter(pk=sub["id"]).update(applied_at=timezone.now() - timedelta(days=40))
+        st = self.client.get(url).json()
+        self.assertFalse(st["never_counted"])
+        self.assertIsNotNone(st["last_counted"])
+        self.assertGreater(date.fromisoformat(st["next_due"]), today, "C: a year from the count")
+        self.assertEqual(st["interval_days"], 365)
+
+        self.assertEqual(self.client.get("/api/CycleCounts/item-status/").status_code, 400)
+
     def test_accuracy_counts_hits_per_class(self):
         a = self._lot("CT-D", qty="100", where="Rack 11")
         b = self._lot("CT-E", qty="100", where="Rack 11")

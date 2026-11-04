@@ -98,6 +98,15 @@ export const dueForCountOptions = () =>
         queryFn: () => api.api_CycleCounts_due_list() as Promise<DueForCount[]>,
     });
 
+export type ItemCountStatus = Schema<"ItemCountStatus">;
+
+/** When one material or part type was last counted and is next due — for its form. */
+export const itemCountStatusOptions = (item: { material: string } | { part_type: string }) =>
+    queryOptions({
+        queryKey: ["cycle-counts", "item-status", item],
+        queryFn: () => api.api_CycleCounts_item_status_retrieve({ queries: item }) as Promise<ItemCountStatus>,
+    });
+
 /** Inventory record accuracy per ABC class over the last `days`. */
 export const countAccuracyOptions = (days = 90) =>
     queryOptions({

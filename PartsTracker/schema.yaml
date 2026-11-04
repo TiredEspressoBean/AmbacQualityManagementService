@@ -7847,6 +7847,34 @@ paths:
                 items:
                   $ref: '#/components/schemas/DueForCount'
           description: ''
+  /api/CycleCounts/item-status/:
+    get:
+      operationId: api_CycleCounts_item_status_retrieve
+      description: When one material or part type (exactly one) was last counted and
+        is next due, on the same terms as the due list — for its form.
+      parameters:
+      - in: query
+        name: material
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemCountStatus'
+          description: ''
   /api/CycleCounts/mark-keyed/:
     post:
       operationId: api_CycleCounts_mark_keyed_create
@@ -61476,6 +61504,40 @@ components:
       - invitation_id
       - status
       - user_created
+    ItemCountStatus:
+      type: object
+      description: When one item was last counted and is next due, on the due list's
+        terms.
+      properties:
+        abc_class:
+          $ref: '#/components/schemas/AbcClassEnum'
+        interval_days:
+          type: integer
+        on_hand:
+          type: boolean
+          description: 'False: no stock in a location, so nothing is due.'
+        last_counted:
+          type: string
+          format: date-time
+          nullable: true
+        next_due:
+          type: string
+          format: date
+          nullable: true
+        never_counted:
+          type: boolean
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/DueLocation'
+      required:
+      - abc_class
+      - interval_days
+      - last_counted
+      - locations
+      - never_counted
+      - next_due
+      - on_hand
     JobRole:
       type: object
       description: Serializer for JobRole — the HR/organizational role competency

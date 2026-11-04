@@ -104,6 +104,17 @@ class DueForCountSerializer(serializers.Serializer):
     locations = DueLocationSerializer(many=True)
 
 
+class ItemCountStatusSerializer(serializers.Serializer):
+    """When one item was last counted and is next due, on the due list's terms."""
+    abc_class = serializers.ChoiceField(choices=ABC)
+    interval_days = serializers.IntegerField()
+    on_hand = serializers.BooleanField(help_text="False: no stock in a location, so nothing is due.")
+    last_counted = serializers.DateTimeField(allow_null=True)
+    next_due = serializers.DateField(allow_null=True)
+    never_counted = serializers.BooleanField()
+    locations = DueLocationSerializer(many=True)
+
+
 class ClassAccuracySerializer(serializers.Serializer):
     counted = serializers.IntegerField()
     hits = serializers.IntegerField()

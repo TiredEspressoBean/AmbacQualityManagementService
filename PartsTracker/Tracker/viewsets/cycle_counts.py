@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from Tracker.models import CycleCount
 from Tracker.serializers.cycle_counts import (
     ApplyCountSerializer, CountAccuracySerializer, CycleCountSerializer, DueForCountSerializer,
-    MarkKeyedSerializer, MissingUnitSerializer, RecordCountSerializer, ResolveMissingSerializer,
+    ItemCountStatusSerializer, MarkKeyedSerializer, MissingUnitSerializer, RecordCountSerializer, ResolveMissingSerializer,
     SendBackCountSerializer, StartCycleCountSerializer,
 )
 from Tracker.services.mes import cycle_count
@@ -175,6 +175,30 @@ class CycleCountViewSet(TenantScopedMixin, mixins.ListModelMixin, mixins.Retriev
         from Tracker.services.mes.count_cadence import due_for_count
         return Response(DueForCountSerializer([asdict(r) for r in due_for_count(request.tenant)],
                                               many=True).data)
+
+    @extend_schema(parameters=[OpenApiParameter('material', OpenApiTypes.UUID, required=False),
+                               OpenApiParameter('part_type', OpenApiTypes.UUID, required=False)],
+                   responses=ItemCountStatusSerializer,
+                   description="When one material or part type (exactly one) was last counted and "
+                               "is next due, on the same terms as the due list — for its form.")
+    @action(detail=False, methods=['get'], url_path='item-status', pagination_class=None)
+    def item_status(self, request):
+        from dataclasses import asdict
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.models import Material, PartTypes
+        from Tracker.services.mes.count_cadence import count_status
+        material, part_type = request.query_params.get('material'), request.query_params.get('part_type')
+        if bool(material) == bool(part_type):
+            return Response({'detail': "Give a material or a part type."}, status=status.HTTP_400_BAD_REQUEST)
+        model, kind, pk = (Material, 'MATERIAL', material) if material else (PartTypes, 'PART_TYPE', part_type)
+        try:
+            item = model.objects.filter(pk=pk).first()
+        except DjangoValidationError:
+            item = None
+        if item is None:
+            return Response({'detail': "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        st = count_status(request.tenant, kind, item.pk, abc_class=item.abc_class)
+        return Response(ItemCountStatusSerializer(asdict(st)).data)
 
     @extend_schema(parameters=[OpenApiParameter('days', OpenApiTypes.INT, required=False,
                                                 description="Window in days (default 90).")],

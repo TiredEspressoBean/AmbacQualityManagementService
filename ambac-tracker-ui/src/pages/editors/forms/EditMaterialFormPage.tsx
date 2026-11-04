@@ -36,7 +36,7 @@ import type { Schema } from "@/lib/api/types";
 import {
     DEFAULT_RECEIVING_CONTROLS, ReceivingControlsFields, receivingControlsOf, type ReceivingControls,
 } from "@/components/receiving/ReceivingControlsFields";
-import { ABC_HINT, AbcClassSelect, type AbcClass } from "@/components/inventory/AbcClassSelect";
+import { ABC_HINT, AbcClassSelect, CountStatusLine, type AbcClass } from "@/components/inventory/AbcClassSelect";
 
 const formSchema = schemas.MaterialRequest.pick({
   name: true,
@@ -280,6 +280,7 @@ export default function EditMaterialFormPage() {
                               <AbcClassSelect value={field.value as AbcClass | undefined} onChange={field.onChange} />
                           </FormControl>
                           <FormDescription>{ABC_HINT}</FormDescription>
+                          {mode === "edit" && materialId && <CountStatusLine item={{ material: materialId }} />}
                           <FormMessage />
                       </FormItem>
                   )}
