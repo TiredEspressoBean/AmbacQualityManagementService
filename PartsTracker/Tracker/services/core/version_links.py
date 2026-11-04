@@ -125,6 +125,7 @@ LINKS = {
     'BOM.part_type': FOLLOWS,
     'BOMLine.component_type': FOLLOWS,
     'Core.core_type': FOLLOWS,
+    'CycleCount.part_type': FOLLOWS,  # an item count is of the item, whichever version
     'DisassemblyBOMLine.component_type': FOLLOWS,
     'DisassemblyBOMLine.core_type': FOLLOWS,
     'FPIRecord.part_type': FOLLOWS,
