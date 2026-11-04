@@ -149,7 +149,7 @@ The Wash cleans a whole basket at once, so it's recorded once for the load, not 
 body. Dave loaded `WO-OPS-02`'s four bodies and was moved to the flow bench.
 
 1. Scan `WO-OPS-02`, **Start Work**, select all four, and **Start**. The parts are
-   Dave's: *Assigned to someone else — currently assigned to Dave Wilson*.
+   Dave's: *Assigned to someone else*, and *Currently assigned to Dave Wilson.*
 2. Taking over another operator's work needs a supervisor. Casey signs in on your
    screen with their own email and password, and gives the reason.
 3. The **Batch step** panel shows Dave's load, *Loading*. Under **Loading checks**,
@@ -208,16 +208,16 @@ from now until it's back. Then tell your lead.
 `WO-OPS-02`'s bodies are now at Body Inspection, and you're the only operator free.
 
 1. Open `WO-OPS-02`, **Start Work**, tick `INJ-OPS-011`, and **Start**. You're
-   refused: *Not qualified for this step — Dimensional Inspection Certification,
-   level 1, needs level 2*.
+   refused: *Not qualified for this step*, and under **Missing training**,
+   *Dimensional Inspection Certification* — *Level 1, needs Level 2*.
 2. Casey signs in on your screen and authorises it, with the reason. The record keeps
    who worked it, who authorised it, why, and what training was missing.
 
 Body Inspection holds the run for a **first piece** check: the first body's
 inspection is bought off by an inspector before the rest go through. That's the
 inspector's job, in the [QA Inspector](qa-inspector.md) track. Your home page shows
-where it stands: finish `INJ-OPS-011`'s inspection and its first piece reads *Not
-seen yet*, beside `WO-OPS-03`'s, already *Passed by Sarah Chen*.
+where it stands: finish `INJ-OPS-011`'s inspection and its first piece shows above
+the tiles, *Not seen yet* until an inspector picks it up.
 
 ---
 
@@ -318,8 +318,8 @@ moments](../shop-day.md#if-your-shop-remanufactures).
 
 **You will:** take a used injector apart and grade each component as it comes out.
 
-`CORE-240220-0003` and `CORE-240220-0004` are used injectors Dave received this
-morning, checked in and signed off. They wait at Disassembly.
+`CORE-240220-0003` and `CORE-240220-0004` are used injectors, received and checked
+in. They wait at Disassembly.
 
 1. Scan `CORE-240220-0003` and **Start**.
 2. Scan the core's identity band, and photograph the teardown layout if your bench

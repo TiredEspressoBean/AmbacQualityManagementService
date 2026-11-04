@@ -86,7 +86,8 @@ soon: hover it for the date (*Dimensional Inspection Certification: Trainee — 
 &lt;date&gt;*). After that date the plan won't give that person the step.
 
 **Scheduling** > **Schedule (Gantt)**, then **People**: one row per operator, with
-the work the plan gives them, and **— Unassigned —** for work nobody could be given.
+the work the plan gives them. Work that needs an operator and has none, when there is
+any, sits in a row of its own, **— Unassigned —**.
 
 1. Open a single task (a part at one step). The panel shows the work order, machine,
    operator, times and fence zone.
@@ -94,7 +95,7 @@ the work the plan gives them, and **— Unassigned —** for work nobody could b
    list is the shop-floor crew who are qualified for the step. If it's empty, that's
    a training problem, not a scheduling one.
 
-The toolbar has **Dispatch**, **New WO** and **Undo**, but no **Solve** or
+The toolbar has **Pull in work**, **Undo** and **Dispatch**, but no **Solve** or
 **What-if**: re-planning the shop is your planner's or production manager's. When
 the board says *stale — re-solve*, tell them.
 
@@ -310,7 +311,7 @@ replacement isn't pre-approved at that check, so his finding waits for you, and 
 unit holds there until you decide.
 
 1. Your home page's **Needs attention** has *Finding to decide: CORE-240214-0010*.
-   It opens the unit's rebuild plan: **1 finding to decide**: *Injector Nozzle Assembly · Grade B → SCRAP*,
+   It opens the unit's rebuild plan: **1 finding to decide**: *Injector Nozzle Assembly*, *Grade B → SCRAP*,
    with Ken's words and the time.
 2. **Apply** re-grades the component and the plan re-resolves from it; a scrap grade
    also scraps the component, so you're asked to confirm. **Dismiss** keeps the

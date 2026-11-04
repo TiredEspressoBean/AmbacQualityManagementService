@@ -128,7 +128,8 @@ schedule (module 5) is the answer once the work is real.
 
 **Exercise 3.1.** On the **Capacity heatmap** tab, find the busiest month in the
 Labor row. Open **Volume Forecast** from the *Includes … unclaimed forecast* link and
-find the forecast's peak month. Say why the busiest month sits before the peak.
+find its highest month within the heatmap's twelve. Say why the busiest month sits
+before it.
 (Load lands where the work starts, in the run-up to each due date.)
 
 ---
@@ -288,8 +289,8 @@ Two pages answer two different questions.
 the month?* The headline says it, one of *Crew: enough for the planned work ·
 busiest &lt;month&gt; at &lt;n&gt;%*, *Crew: tight in &lt;month&gt; (&lt;n&gt;%)*
 or *Crew: short in &lt;months&gt; (over 100%)*. In the training shop the crew is
-enough: the busiest month, in the run-up to the forecast's peak, is about two-thirds
-full (the demo's months move with the day it was set up). The **Labor** row compares the operator hours the work needs (setup and the hands-on
+enough: the busiest month, in the run-up to the forecast's highest month in the
+window, is about two-thirds full (the demo's months move with the day it was set up). The **Labor** row compares the operator hours the work needs (setup and the hands-on
 part of each operation, not a machine's whole run) with your crew's working hours
 left in each month. Under about 85% is comfortable; over 100% you're short.
 
