@@ -87,8 +87,8 @@ GAP_MINUTES = 10
 FAILED_GAUGE = 'Micrometer MIC-2'
 
 # QA Manager, module 2: a disposition that is the QA Manager's to decide. A body's bore
-# is 0.002 mm over its 4.005 mm maximum; Sarah fails it, contains it, and leaves the
-# decision (a Use As Is needs a concession, and the QA Manager's authority) to Maria.
+# is 0.002 mm over its 4.005 mm maximum; the walk's operator (Ken) fails it, Sarah
+# contains it and leaves the decision (a Use As Is needs a concession, and the QA Manager's authority) to Maria.
 MANAGER_WO = 'WO-QA-MANAGE-01'
 MANAGER_PARTS = ['INJ-QA-MANAGE-001', 'INJ-QA-MANAGE-002']
 OVERSIZE_BORE = 4.007
@@ -270,8 +270,9 @@ class DemoQaWalkSeeder(BaseSeeder):
         self._raise_fpi(wo, 'Body Inspection', first)
 
     def _walk_manager_disposition(self, wo, parts, result):
-        """The first piece bought off; the second body's bore measures oversize. Sarah
-        fails it with the defect, contains it, and assigns the decision to Maria."""
+        """The first piece bought off; the second body's bore measures oversize. The
+        walk's operator fails it with the defect; Sarah contains it and assigns the
+        decision to Maria."""
         from Tracker.services.qms.disposition import record_containment_complete
         first, oversize = parts
         self._make_bodies(wo, parts, result)
