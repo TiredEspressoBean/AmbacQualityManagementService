@@ -439,6 +439,13 @@ class DemoCapaSeeder(BaseSeeder):
             capa_number=capa_data['capa_number'],
             defaults=defaults
         )
+        # Raised when the story says (initiated_days_ago), not at the seed's run time. A
+        # queryset update sets what auto_now_add won't take on create.
+        raised = self.today - timedelta(days=capa_data.get('initiated_days_ago', 0))
+        field = CAPA._meta.get_field('initiated_date')
+        CAPA.objects.filter(pk=capa.pk).update(
+            created_at=raised,
+            initiated_date=raised.date() if field.get_internal_type() == 'DateField' else raised)
 
         return capa
 

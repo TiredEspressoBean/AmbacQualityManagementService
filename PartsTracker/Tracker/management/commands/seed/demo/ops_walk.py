@@ -382,6 +382,15 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
             p.refresh_from_db()
             if p.step and p.step.name == 'Core Receiving':
                 self._advance(p, 'PASS')
+        # Checked in on the day they were received (the core's own date), not at the
+        # seed's run time.
+        received = getattr(cores[0], 'received_date', None)
+        if received is not None:
+            from datetime import datetime
+            from Tracker.services.core.clock import plant_tz
+            day = received if not hasattr(received, 'hour') else timezone.localtime(received).date()
+            self._space_out(wo, timezone.make_aware(
+                datetime(day.year, day.month, day.day, 10, 30), plant_tz(self.tenant)))
         for p in parts:
             p.refresh_from_db()
         self.log(f"  Cores waiting to be torn down and graded: "
@@ -452,5 +461,11 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
                 effective_from=written,
                 effective_until=now + timedelta(hours=spec['hours']))
             type(note).objects.filter(pk=note.pk).update(created_at=written)
+            if spec['acknowledgment_required']:
+                # Ken is clocked in today, and a must-acknowledge note is read at clock-in.
+                from Tracker.services.mes.shift_notes import acknowledge_shift_note
+                ack = acknowledge_shift_note(note, user=self.ken)
+                read = written + timedelta(minutes=15)
+                type(ack).objects.filter(pk=ack.pk).update(created_at=read, acknowledged_at=read)
             notes.append(note)
         return notes
