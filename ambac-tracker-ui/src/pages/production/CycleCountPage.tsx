@@ -30,6 +30,10 @@ const WHAT: Record<string, { label: string; tone: string }> = {
     FOUND_HERE: { label: "Found here", tone: "text-emerald-700" },
 };
 
+/** A line's allowed difference for its class, in its unit ("0" for units: any miss). */
+const fmtTol = (v: { tolerance: number; unit: string }) =>
+    `${Number.isInteger(v.tolerance) ? v.tolerance : v.tolerance.toFixed(2)} ${v.unit}`;
+
 /**
  * Counting one location, on a tablet. Enter what's there for each lot, say of each unit
  * whether it's here (a blank line is left uncounted, never taken as missing), and scan anything here that isn't on the list. Save as you go; submit
@@ -42,6 +46,8 @@ export function CycleCountPage() {
     const record = useRecordCount();
     const submit = useSubmitCount();
     const apply = useApplyCount();
+    // A lead applying lines outside their class's tolerance says why (warned, not blocked).
+    const [applyNote, setApplyNote] = useState("");
     const sendBack = useSendBackCount();
     const [recountOpen, setRecountOpen] = useState(false);
     const [recountReason, setRecountReason] = useState("");
@@ -102,6 +108,7 @@ export function CycleCountPage() {
     };
 
     const uncounted = c.lines.filter((l) => (draft[`${l.kind}:${l.id}`] ?? "") === "").length;
+    const misses = c.variances.filter((v) => !v.within_tolerance).length;
 
     return (
         <div className="mx-auto max-w-5xl space-y-4 p-6">
@@ -121,6 +128,11 @@ export function CycleCountPage() {
                         {c.submitted_by_name ? ` · submitted by ${c.submitted_by_name}` : ""}
                         {c.applied_by_name ? ` · applied by ${c.applied_by_name}` : ""}
                     </p>
+                    {c.apply_note && (
+                        <p className="text-sm text-muted-foreground">
+                            Applied with lines outside tolerance: &ldquo;{c.apply_note}&rdquo;
+                        </p>
+                    )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" onClick={() => void downloadReport("cycle_count_sheet", { count_id: c.id })}>
@@ -256,7 +268,8 @@ export function CycleCountPage() {
                                 <thead><tr className="border-b text-left text-muted-foreground">
                                     <th className="py-2 pr-3 font-medium">Lot / serial</th><th className="py-2 pr-3 font-medium">Item</th>
                                     <th className="py-2 pr-3 text-right font-medium">Expected</th><th className="py-2 pr-3 text-right font-medium">Counted</th>
-                                    <th className="py-2 pr-3 text-right font-medium">Difference</th><th className="py-2 font-medium">What</th>
+                                    <th className="py-2 pr-3 text-right font-medium">Difference</th><th className="py-2 pr-3 font-medium">What</th>
+                                    <th className="py-2 font-medium">Tolerance</th>
                                 </tr></thead>
                                 <tbody>
                                     {c.variances.map((v) => (
@@ -268,20 +281,39 @@ export function CycleCountPage() {
                                             <td className="py-2 pr-3 text-right tabular-nums">{v.expected} {v.unit}</td>
                                             <td className="py-2 pr-3 text-right tabular-nums">{v.counted} {v.unit}</td>
                                             <td className="py-2 pr-3 text-right tabular-nums">{v.difference > 0 ? `+${v.difference}` : v.difference}</td>
-                                            <td className={`py-2 ${WHAT[v.variance]?.tone ?? ""}`}>
+                                            <td className={`py-2 pr-3 ${WHAT[v.variance]?.tone ?? ""}`}>
                                                 {WHAT[v.variance]?.label ?? v.variance}
                                                 {v.variance === "FOUND_HERE" && v.system_location ? <span className="text-xs text-muted-foreground"> · UQMES had it at {v.system_location}</span> : null}
+                                            </td>
+                                            {/* Within its ABC class's tolerance, or a miss to recount. */}
+                                            <td className="py-2 text-xs">
+                                                {v.within_tolerance
+                                                    ? <span className="text-muted-foreground">Class {v.abc_class} · within ±{fmtTol(v)}</span>
+                                                    : <span className="font-medium text-amber-700 dark:text-amber-400">Class {v.abc_class} · outside{v.kind === "LOT" ? ` ±${fmtTol(v)}` : ""}</span>}
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         )}
+                        {c.status === "SUBMITTED" && perms.has("apply_cyclecount") && misses > 0 && (
+                            <div className="space-y-1.5 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/30">
+                                <p className="font-medium text-amber-800 dark:text-amber-300">
+                                    {misses} {misses === 1 ? "line is" : "lines are"} outside tolerance for {misses === 1 ? "its" : "their"} class.
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Usually that&rsquo;s a recount: send it back. If you&rsquo;ve checked and the difference is real, say why to apply it.
+                                </p>
+                                <Input value={applyNote} onChange={(e) => setApplyNote(e.target.value)}
+                                    placeholder="Why it's real — e.g. checked the shelf: 5 seals scrapped and not booked"
+                                    aria-label="Why the difference is real" />
+                            </div>
+                        )}
                         {c.status === "SUBMITTED" && (perms.has("apply_cyclecount") ? (
                             <div className="flex flex-wrap items-center gap-2">
-                                <Button disabled={apply.isPending}
-                                    onClick={() => apply.mutate(c.id, {
-                                        onSuccess: () => toast.success("Count applied — UQMES's quantities and locations are corrected."),
+                                <Button disabled={apply.isPending || (misses > 0 && !applyNote.trim())}
+                                    onClick={() => apply.mutate({ id: c.id, note: applyNote.trim() }, {
+                                        onSuccess: () => { setApplyNote(""); toast.success("Count applied — UQMES's quantities and locations are corrected."); },
                                         onError: (e) => toast.error(errorOf(e, "Could not apply the count")),
                                     })}>
                                     {apply.isPending ? "Applying…" : "Apply to UQMES"}

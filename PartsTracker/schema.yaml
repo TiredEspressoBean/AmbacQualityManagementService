@@ -7560,7 +7560,8 @@ paths:
       operationId: api_CycleCounts_apply_create
       description: 'Correct UQMES from the count: quantity differences as recorded
         adjustments, things found here moved here. Units not found are reported, not
-        changed.'
+        changed. Lines outside their class''s tolerance need a note saying why the
+        difference is real.'
       parameters:
       - in: path
         name: id
@@ -7571,6 +7572,17 @@ paths:
         required: true
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyCountRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ApplyCountRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ApplyCountRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -7704,6 +7716,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CycleCount'
+          description: ''
+  /api/CycleCounts/accuracy/:
+    get:
+      operationId: api_CycleCounts_accuracy_retrieve
+      description: 'Inventory record accuracy per ABC class: counted lines within
+        their class''s tolerance, over counts applied in the window.'
+      parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+        description: Window in days (default 90).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountAccuracy'
+          description: ''
+  /api/CycleCounts/due/:
+    get:
+      operationId: api_CycleCounts_due_list
+      description: 'Items due for counting under their ABC class: stock in a location
+        not counted within the class''s interval (never counted first, then most overdue),
+        with the locations to count.'
+      parameters:
+      - in: query
+        name: location
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPLIED
+          - OPEN
+          - SUBMITTED
+        description: |-
+          * `OPEN` - Counting
+          * `SUBMITTED` - Submitted
+          * `APPLIED` - Applied
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DueForCount'
           description: ''
   /api/DisassemblyBOMLines/:
     get:
@@ -50615,6 +50700,16 @@ paths:
           description: ''
 components:
   schemas:
+    AbcClassEnum:
+      enum:
+      - A
+      - B
+      - C
+      type: string
+      description: |-
+        * `A` - A
+        * `B` - B
+        * `C` - C
     AcceptInvitationInputRequest:
       type: object
       properties:
@@ -50886,6 +50981,13 @@ components:
         * `eligible` - Eligible
         * `preferred` - Preferred
         * `dialed_in` - Dialed in (proven best)
+    ApplyCountRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          description: 'Required when lines are outside tolerance: why the difference
+            is real rather than recounted.'
     ApprovalFlowTypeEnum:
       enum:
       - ALL_REQUIRED
@@ -54084,6 +54186,21 @@ components:
           type: string
           minLength: 1
           description: Required when overriding. Logged on the execution.
+    ClassAccuracy:
+      type: object
+      properties:
+        counted:
+          type: integer
+        hits:
+          type: integer
+        pct:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - counted
+      - hits
+      - pct
     ClassificationEnum:
       enum:
       - PUBLIC
@@ -55352,6 +55469,24 @@ components:
       required:
       - lot
       - reason
+    CountAccuracy:
+      type: object
+      description: 'Inventory record accuracy per ABC class: counted lines within
+        tolerance.'
+      properties:
+        days:
+          type: integer
+        A:
+          $ref: '#/components/schemas/ClassAccuracy'
+        B:
+          $ref: '#/components/schemas/ClassAccuracy'
+        C:
+          $ref: '#/components/schemas/ClassAccuracy'
+      required:
+      - A
+      - B
+      - C
+      - days
     CountEntryRequest:
       type: object
       properties:
@@ -56195,6 +56330,11 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        apply_note:
+          type: string
+          readOnly: true
+          description: 'The lead''s note when applying a count with lines outside
+            their class''s tolerance: why the difference is real rather than recounted.'
         created_at:
           type: string
           format: date-time
@@ -56208,6 +56348,7 @@ components:
       required:
       - applied_at
       - applied_by_name
+      - apply_note
       - count_number
       - created_at
       - id
@@ -56313,7 +56454,18 @@ components:
           format: double
         variance:
           $ref: '#/components/schemas/CycleCountVarianceEnum'
+        abc_class:
+          $ref: '#/components/schemas/AbcClassEnum'
+        tolerance:
+          type: number
+          format: double
+          description: The difference allowed for its class, in units.
+        within_tolerance:
+          type: boolean
+          description: 'False: a miss — usually recounted; applying it anyway needs
+            a note.'
       required:
+      - abc_class
       - counted
       - difference
       - expected
@@ -56324,8 +56476,10 @@ components:
       - label
       - note
       - system_location
+      - tolerance
       - unit
       - variance
+      - within_tolerance
     CycleCountVarianceEnum:
       enum:
       - SHORT
@@ -57672,6 +57826,71 @@ components:
       required:
       - copied
       - step
+    DueForCount:
+      type: object
+      description: An item whose stock somewhere is due for counting under its ABC
+        class.
+      properties:
+        kind:
+          $ref: '#/components/schemas/DueForCountKindEnum'
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        abc_class:
+          $ref: '#/components/schemas/AbcClassEnum'
+        interval_days:
+          type: integer
+        due_on:
+          type: string
+          format: date
+        days_overdue:
+          type: integer
+        never_counted:
+          type: boolean
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/DueLocation'
+      required:
+      - abc_class
+      - days_overdue
+      - due_on
+      - id
+      - interval_days
+      - kind
+      - locations
+      - name
+      - never_counted
+    DueForCountKindEnum:
+      enum:
+      - MATERIAL
+      - PART_TYPE
+      type: string
+      description: |-
+        * `MATERIAL` - Material
+        * `PART_TYPE` - Part type
+    DueLocation:
+      type: object
+      properties:
+        location_id:
+          type: string
+          format: uuid
+        location:
+          type: string
+        last_counted:
+          type: string
+          format: date-time
+          nullable: true
+        due_on:
+          type: string
+          format: date
+      required:
+      - due_on
+      - last_counted
+      - location
+      - location_id
     DueToneEnum:
       enum:
       - red
@@ -62400,6 +62619,15 @@ components:
             MINUS this, so the material lane warns while there is still stock to react
             with instead of at the last unit. Does not block issuing — a picker can
             always draw the physical stock.
+        abc_class:
+          allOf:
+          - $ref: '#/components/schemas/AbcClassEnum'
+          description: |-
+            Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+
+            * `A` - A
+            * `B` - B
+            * `C` - C
         preferred_supplier:
           type: string
           format: uuid
@@ -63181,6 +63409,15 @@ components:
             MINUS this, so the material lane warns while there is still stock to react
             with instead of at the last unit. Does not block issuing — a picker can
             always draw the physical stock.
+        abc_class:
+          allOf:
+          - $ref: '#/components/schemas/AbcClassEnum'
+          description: |-
+            Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+
+            * `A` - A
+            * `B` - B
+            * `C` - C
         preferred_supplier:
           type: string
           format: uuid
@@ -68712,6 +68949,15 @@ components:
           description: 'Buffer held back from planning, as on Material: coverage nets
             against on-hand MINUS this, so the sourcing report warns while there is
             still stock to react with. Does not block issuing.'
+        abc_class:
+          allOf:
+          - $ref: '#/components/schemas/AbcClassEnum'
+          description: |-
+            Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+
+            * `A` - A
+            * `B` - B
+            * `C` - C
         purchase_unit:
           allOf:
           - $ref: '#/components/schemas/PurchaseUnitEnum'
@@ -68850,6 +69096,15 @@ components:
           description: 'Buffer held back from planning, as on Material: coverage nets
             against on-hand MINUS this, so the sourcing report warns while there is
             still stock to react with. Does not block issuing.'
+        abc_class:
+          allOf:
+          - $ref: '#/components/schemas/AbcClassEnum'
+          description: |-
+            Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+
+            * `A` - A
+            * `B` - B
+            * `C` - C
         purchase_unit:
           allOf:
           - $ref: '#/components/schemas/PurchaseUnitEnum'
@@ -70966,6 +71221,15 @@ components:
             MINUS this, so the material lane warns while there is still stock to react
             with instead of at the last unit. Does not block issuing — a picker can
             always draw the physical stock.
+        abc_class:
+          allOf:
+          - $ref: '#/components/schemas/AbcClassEnum'
+          description: |-
+            Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+
+            * `A` - A
+            * `B` - B
+            * `C` - C
         preferred_supplier:
           type: string
           format: uuid
@@ -71535,6 +71799,15 @@ components:
           description: 'Buffer held back from planning, as on Material: coverage nets
             against on-hand MINUS this, so the sourcing report warns while there is
             still stock to react with. Does not block issuing.'
+        abc_class:
+          allOf:
+          - $ref: '#/components/schemas/AbcClassEnum'
+          description: |-
+            Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+
+            * `A` - A
+            * `B` - B
+            * `C` - C
     PatchedPartTypesRequest:
       type: object
       description: |-
@@ -71611,6 +71884,15 @@ components:
           description: 'Buffer held back from planning, as on Material: coverage nets
             against on-hand MINUS this, so the sourcing report warns while there is
             still stock to react with. Does not block issuing.'
+        abc_class:
+          allOf:
+          - $ref: '#/components/schemas/AbcClassEnum'
+          description: |-
+            Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+
+            * `A` - A
+            * `B` - B
+            * `C` - C
         purchase_unit:
           allOf:
           - $ref: '#/components/schemas/PurchaseUnitEnum'

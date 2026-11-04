@@ -3,7 +3,7 @@ services/mes/cycle_count.py."""
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
@@ -11,7 +11,8 @@ from rest_framework.response import Response
 
 from Tracker.models import CycleCount
 from Tracker.serializers.cycle_counts import (
-    CycleCountSerializer, RecordCountSerializer, SendBackCountSerializer, StartCycleCountSerializer,
+    ApplyCountSerializer, CountAccuracySerializer, CycleCountSerializer, DueForCountSerializer,
+    RecordCountSerializer, SendBackCountSerializer, StartCycleCountSerializer,
 )
 from Tracker.services.mes import cycle_count
 from Tracker.viewsets.base import TenantScopedMixin
@@ -93,17 +94,44 @@ class CycleCountViewSet(TenantScopedMixin, mixins.ListModelMixin, mixins.Retriev
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return self._respond(count)
 
-    @extend_schema(request=None, responses=CycleCountSerializer,
+    @extend_schema(request=ApplyCountSerializer, responses=CycleCountSerializer,
                    description="Correct UQMES from the count: quantity differences as recorded "
                                "adjustments, things found here moved here. Units not found are "
-                               "reported, not changed.")
+                               "reported, not changed. Lines outside their class's tolerance "
+                               "need a note saying why the difference is real.")
     @action(detail=True, methods=['post'], url_path='apply')
     def apply(self, request, pk=None):
         try:
-            count = cycle_count.apply_count(self.get_object(), request.user)
+            count = cycle_count.apply_count(self.get_object(), request.user,
+                                            note=request.data.get('note', ''))
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return self._respond(count)
+
+    @extend_schema(responses=DueForCountSerializer(many=True),
+                   description="Items due for counting under their ABC class: stock in a "
+                               "location not counted within the class's interval (never "
+                               "counted first, then most overdue), with the locations to count.")
+    @action(detail=False, methods=['get'], url_path='due', pagination_class=None)
+    def due(self, request):
+        from dataclasses import asdict
+        from Tracker.services.mes.count_cadence import due_for_count
+        return Response(DueForCountSerializer([asdict(r) for r in due_for_count(request.tenant)],
+                                              many=True).data)
+
+    @extend_schema(parameters=[OpenApiParameter('days', OpenApiTypes.INT, required=False,
+                                                description="Window in days (default 90).")],
+                   responses=CountAccuracySerializer,
+                   description="Inventory record accuracy per ABC class: counted lines within "
+                               "their class's tolerance, over counts applied in the window.")
+    @action(detail=False, methods=['get'], url_path='accuracy', pagination_class=None)
+    def accuracy(self, request):
+        from Tracker.services.mes.count_cadence import accuracy
+        try:
+            days = max(1, min(int(request.query_params.get('days') or 90), 3650))
+        except ValueError:
+            days = 90
+        return Response(CountAccuracySerializer({'days': days, **accuracy(request.tenant, days=days)}).data)
 
     @extend_schema(responses={(200, XLSX): OpenApiTypes.BINARY},
                    description="The count's differences as a spreadsheet, for keying into the ERP.")

@@ -68,9 +68,33 @@ const formSchema = z.object({
     // System-use notice shown at sign-in; blank shows nothing. Kept in Tenant.settings.
     sign_in_notice: z.string().max(4000),
     sign_in_notice_requires_ack: z.boolean(),
+    // ABC cycle counting (services/mes/count_cadence): how often each class is counted,
+    // and how far a count may differ and still count as accurate. Kept in
+    // Tenant.settings.cycle_count.
+    cc_interval_A: z.string().regex(/^\d+$/, "Whole days"), cc_interval_B: z.string().regex(/^\d+$/, "Whole days"), cc_interval_C: z.string().regex(/^\d+$/, "Whole days"),
+    cc_tolerance_A: z.string().regex(/^\d+(\.\d+)?$/, "A number"), cc_tolerance_B: z.string().regex(/^\d+(\.\d+)?$/, "A number"), cc_tolerance_C: z.string().regex(/^\d+(\.\d+)?$/, "A number"),
+    cc_tolerance_units: z.string().regex(/^\d+(\.\d+)?$/, "A number"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+type CycleCountSettings = {
+    interval_days?: Partial<Record<"A" | "B" | "C", number>>;
+    tolerance_pct?: Partial<Record<"A" | "B" | "C", number>>;
+    tolerance_units?: number;
+};
+
+/** The form's cycle-count fields from what's saved, the common defaults filling gaps
+ *  (A monthly, B quarterly, C yearly; ±1 / 3 / 5 %) — the same the server falls back to. */
+function cycleCountDefaults(cc: CycleCountSettings | undefined) {
+    const i = { A: 30, B: 90, C: 365, ...(cc?.interval_days ?? {}) };
+    const t = { A: 1, B: 3, C: 5, ...(cc?.tolerance_pct ?? {}) };
+    return {
+        cc_interval_A: String(i.A), cc_interval_B: String(i.B), cc_interval_C: String(i.C),
+        cc_tolerance_A: String(t.A), cc_tolerance_B: String(t.B), cc_tolerance_C: String(t.C),
+        cc_tolerance_units: String(cc?.tolerance_units ?? 0),
+    };
+}
 
 export function OrganizationSettingsPage() {
     const { data: settings, isLoading, isError } = useTenantSettings();
@@ -109,12 +133,17 @@ export function OrganizationSettingsPage() {
             })(),
             sign_in_notice: (settings.settings as { sign_in_notice?: string } | undefined)?.sign_in_notice ?? "",
             sign_in_notice_requires_ack: !!(settings.settings as { sign_in_notice_requires_ack?: boolean } | undefined)?.sign_in_notice_requires_ack,
+            ...cycleCountDefaults((settings.settings as { cycle_count?: CycleCountSettings } | undefined)?.cycle_count),
         } : undefined,
     });
 
     const onSubmit = async (values: FormValues) => {
         try {
-            const { over_receipt_tolerance_pct, sign_in_notice, sign_in_notice_requires_ack, ...rest } = values;
+            const {
+                over_receipt_tolerance_pct, sign_in_notice, sign_in_notice_requires_ack,
+                cc_interval_A, cc_interval_B, cc_interval_C, cc_tolerance_A, cc_tolerance_B, cc_tolerance_C,
+                cc_tolerance_units, ...rest
+            } = values;
             await updateSettings.mutateAsync({
                 ...rest,
                 // Blank → null: the generated body schema validates these as email/URL,
@@ -127,6 +156,11 @@ export function OrganizationSettingsPage() {
                     over_receipt_tolerance_pct: over_receipt_tolerance_pct === "" ? null : Number(over_receipt_tolerance_pct),
                     sign_in_notice: sign_in_notice.trim(),
                     sign_in_notice_requires_ack,
+                    cycle_count: {
+                        interval_days: { A: Number(cc_interval_A), B: Number(cc_interval_B), C: Number(cc_interval_C) },
+                        tolerance_pct: { A: Number(cc_tolerance_A), B: Number(cc_tolerance_B), C: Number(cc_tolerance_C) },
+                        tolerance_units: Number(cc_tolerance_units),
+                    },
                 },
             });
             toast.success("Organization settings updated");
@@ -539,6 +573,51 @@ export function OrganizationSettingsPage() {
                                         </FormItem>
                                     )}
                                 />
+
+                                <div className="space-y-2 rounded-md border p-3">
+                                    <div>
+                                        <div className="text-sm font-medium">Cycle counting (ABC)</div>
+                                        <p className="text-xs text-muted-foreground">
+                                            How often each class of item is counted, and how far a count may
+                                            differ from the record and still count as accurate (the larger of the
+                                            percentage and the units). A count outside tolerance is flagged for a
+                                            recount; applying it anyway needs a note. Materials and part types
+                                            carry their class; everything starts as C.
+                                        </p>
+                                    </div>
+                                    <div className="grid grid-cols-[auto_repeat(3,minmax(0,6rem))] items-center gap-2 text-sm">
+                                        <span />
+                                        <span className="text-xs font-medium text-muted-foreground">A</span>
+                                        <span className="text-xs font-medium text-muted-foreground">B</span>
+                                        <span className="text-xs font-medium text-muted-foreground">C</span>
+                                        <span className="text-xs">Count every (days)</span>
+                                        {(["A", "B", "C"] as const).map((c) => (
+                                            <FormField key={`i${c}`} control={form.control} name={`cc_interval_${c}` as const}
+                                                render={({ field }) => (
+                                                    <FormItem><FormControl><Input inputMode="numeric" aria-label={`Class ${c} interval in days`} {...field} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                        ))}
+                                        <span className="text-xs">Tolerance (%)</span>
+                                        {(["A", "B", "C"] as const).map((c) => (
+                                            <FormField key={`t${c}`} control={form.control} name={`cc_tolerance_${c}` as const}
+                                                render={({ field }) => (
+                                                    <FormItem><FormControl><Input inputMode="decimal" aria-label={`Class ${c} tolerance percent`} {...field} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                        ))}
+                                    </div>
+                                    <FormField control={form.control} name="cc_tolerance_units"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs">At least (units)</FormLabel>
+                                                <FormControl><Input className="w-32" inputMode="decimal" {...field} /></FormControl>
+                                                <FormDescription>
+                                                    A difference this small is always within tolerance — so a bin of
+                                                    three isn&rsquo;t failed for being one out. 0: percentage only.
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                </div>
 
                                 <FormField
                                     control={form.control}

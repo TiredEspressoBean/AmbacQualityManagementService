@@ -62,10 +62,30 @@ export function useSendBackCount() {
     });
 }
 
+/** A lead applies a submitted count. Lines outside their class's tolerance need a note
+ *  saying why the difference is real (the server refuses without one). */
 export function useApplyCount() {
     const invalidate = useInvalidate();
     return useMutation({
-        mutationFn: (id: string) => api.api_CycleCounts_apply_create(undefined, { params: { id } }) as Promise<CycleCount>,
+        mutationFn: ({ id, note }: { id: string; note?: string }) =>
+            api.api_CycleCounts_apply_create({ note: note ?? "" }, { params: { id } }) as Promise<CycleCount>,
         onSuccess: invalidate,
     });
 }
+
+export type DueForCount = Schema<"DueForCount">;
+export type CountAccuracy = Schema<"CountAccuracy">;
+
+/** Items due for counting under their ABC class, with the locations that cover them. */
+export const dueForCountOptions = () =>
+    queryOptions({
+        queryKey: ["cycle-counts", "due"],
+        queryFn: () => api.api_CycleCounts_due_list() as Promise<DueForCount[]>,
+    });
+
+/** Inventory record accuracy per ABC class over the last `days`. */
+export const countAccuracyOptions = (days = 90) =>
+    queryOptions({
+        queryKey: ["cycle-counts", "accuracy", days],
+        queryFn: () => api.api_CycleCounts_accuracy_retrieve({ queries: { days } }) as Promise<CountAccuracy>,
+    });

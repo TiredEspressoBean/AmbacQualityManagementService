@@ -131,7 +131,11 @@ def send_back(count, user, reason: str):
 
 
 def variances(count) -> list[dict]:
-    """Every line that doesn't match, with what kind of difference it is."""
+    """Every line that doesn't match, with what kind of difference it is — and, by its
+    item's ABC class, whether that's still within tolerance (services/mes/count_cadence)."""
+    from Tracker.services.mes.count_cadence import count_policy, judge, line_classes
+    policy = count_policy(count.tenant)
+    classes = line_classes(count.tenant, count.lines)
     out = []
     for line in count.lines:
         expected = float(line.get("expected") or 0)
@@ -148,20 +152,38 @@ def variances(count) -> list[dict]:
         else:
             kind = "SHORT" if counted < expected else "OVER"
         if kind:
-            out.append({**line, "difference": counted - expected, "variance": kind})
+            cls = classes.get((line.get("kind"), str(line.get("id"))), "C")
+            within, tol = judge(line, cls, policy)
+            out.append({**line, "difference": counted - expected, "variance": kind,
+                        "abc_class": cls, "tolerance": tol, "within_tolerance": within})
     return out
 
 
-def apply_count(count, user):
+def outside_tolerance(count) -> list[dict]:
+    """The differences beyond their class's tolerance — the ones a recount is for."""
+    return [v for v in variances(count) if not v["within_tolerance"]]
+
+
+def apply_count(count, user, note: str = ""):
     """Correct UQMES from a submitted count. Lots: quantity moved by the difference
     counted — applied to what's left *now*, so anything drawn while the count was open
     isn't undone — and anything found here is moved here. Units: found here are moved
-    here; missing ones are only reported."""
+    here; missing ones are only reported.
+
+    Lines outside their class's tolerance are usually sent back for a recount; a lead
+    applying them anyway says why (`note`, kept on the count) — warned, not blocked
+    (user decision 2026-11-04)."""
     from Tracker.models import MaterialLot, Parts
     from Tracker.services.mes.locations import move_lot, move_parts
     from Tracker.services.mes.material_lot import adjust_quantity
     if count.status != "SUBMITTED":
         raise ValueError(f"{count.count_number} has to be submitted before it's applied.")
+    note = (note or "").strip()
+    misses = outside_tolerance(count)
+    if misses and not note:
+        raise ValueError(
+            f"{len(misses)} line{'s are' if len(misses) != 1 else ' is'} outside tolerance — "
+            "send the count back for a recount, or say why the difference is real.")
     reason = f"Cycle count {count.count_number} at {count.location.name}"
     with transaction.atomic():
         for v in variances(count):
@@ -184,7 +206,8 @@ def apply_count(count, user):
         count.status = "APPLIED"
         count.applied_by = user if getattr(user, "is_authenticated", False) else None
         count.applied_at = timezone.now()
-        count.save(update_fields=["status", "applied_by", "applied_at", "updated_at"])
+        count.apply_note = note
+        count.save(update_fields=["status", "applied_by", "applied_at", "apply_note", "updated_at"])
     return count
 
 

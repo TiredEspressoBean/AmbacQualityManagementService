@@ -2599,7 +2599,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Correct UQMES from the count: quantity differences as recorded adjustments, things found here moved here. Units not found are reported, not changed. */
+        /** @description Correct UQMES from the count: quantity differences as recorded adjustments, things found here moved here. Units not found are reported, not changed. Lines outside their class's tolerance need a note saying why the difference is real. */
         post: operations["api_CycleCounts_apply_create"];
         delete?: never;
         options?: never;
@@ -2669,6 +2669,40 @@ export interface paths {
         put?: never;
         /** @description Finish counting. A line left blank stays uncounted: it is left out of the differences and never applied. */
         post: operations["api_CycleCounts_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/accuracy/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Inventory record accuracy per ABC class: counted lines within their class's tolerance, over counts applied in the window. */
+        get: operations["api_CycleCounts_accuracy_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/due/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Items due for counting under their ABC class: stock in a location not counted within the class's interval (never counted first, then most overdue), with the locations to count. */
+        get: operations["api_CycleCounts_due_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -21469,6 +21503,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `A` - A
+         *     * `B` - B
+         *     * `C` - C
+         * @enum {string}
+         */
+        AbcClassEnum: "A" | "B" | "C";
         AcceptInvitationInputRequest: {
             token: string;
             password: string;
@@ -21585,6 +21626,10 @@ export interface components {
          * @enum {string}
          */
         AffinityEnum: "eligible" | "preferred" | "dialed_in";
+        ApplyCountRequest: {
+            /** @description Required when lines are outside tolerance: why the difference is real rather than recounted. */
+            note?: string;
+        };
         /**
          * @description * `ALL_REQUIRED` - All Required
          *     * `THRESHOLD` - Threshold
@@ -23064,6 +23109,12 @@ export interface components {
             /** @description Required when overriding. Logged on the execution. */
             override_reason?: string;
         };
+        ClassAccuracy: {
+            counted: number;
+            hits: number;
+            /** Format: double */
+            pct: number | null;
+        };
         /**
          * @description * `PUBLIC` - Public
          *     * `INTERNAL` - Internal Use
@@ -23670,6 +23721,13 @@ export interface components {
             lot: string;
             reason: string;
         };
+        /** @description Inventory record accuracy per ABC class: counted lines within tolerance. */
+        CountAccuracy: {
+            days: number;
+            A: components["schemas"]["ClassAccuracy"];
+            B: components["schemas"]["ClassAccuracy"];
+            C: components["schemas"]["ClassAccuracy"];
+        };
         CountEntryRequest: {
             kind: components["schemas"]["CycleCountLineKindEnum"];
             /** Format: uuid */
@@ -24027,6 +24085,8 @@ export interface components {
             readonly applied_by_name: string | null;
             /** Format: date-time */
             readonly applied_at: string | null;
+            /** @description The lead's note when applying a count with lines outside their class's tolerance: why the difference is real rather than recounted. */
+            readonly apply_note: string;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -24076,6 +24136,14 @@ export interface components {
             /** Format: double */
             difference: number;
             variance: components["schemas"]["CycleCountVarianceEnum"];
+            abc_class: components["schemas"]["AbcClassEnum"];
+            /**
+             * Format: double
+             * @description The difference allowed for its class, in units.
+             */
+            tolerance: number;
+            /** @description False: a miss — usually recounted; applying it anyway needs a note. */
+            within_tolerance: boolean;
         };
         /**
          * @description * `SHORT` - Short
@@ -24747,6 +24815,35 @@ export interface components {
             /** Format: uuid */
             step: string;
             copied: boolean;
+        };
+        /** @description An item whose stock somewhere is due for counting under its ABC class. */
+        DueForCount: {
+            kind: components["schemas"]["DueForCountKindEnum"];
+            /** Format: uuid */
+            id: string;
+            name: string;
+            abc_class: components["schemas"]["AbcClassEnum"];
+            interval_days: number;
+            /** Format: date */
+            due_on: string;
+            days_overdue: number;
+            never_counted: boolean;
+            locations: components["schemas"]["DueLocation"][];
+        };
+        /**
+         * @description * `MATERIAL` - Material
+         *     * `PART_TYPE` - Part type
+         * @enum {string}
+         */
+        DueForCountKindEnum: "MATERIAL" | "PART_TYPE";
+        DueLocation: {
+            /** Format: uuid */
+            location_id: string;
+            location: string;
+            /** Format: date-time */
+            last_counted: string | null;
+            /** Format: date */
+            due_on: string;
         };
         /**
          * @description * `red` - red
@@ -26943,6 +27040,14 @@ export interface components {
              * @description Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
              */
             safety_stock?: string | null;
+            /**
+             * @description Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+             *
+             *     * `A` - A
+             *     * `B` - B
+             *     * `C` - C
+             */
+            abc_class?: components["schemas"]["AbcClassEnum"];
             /** Format: uuid */
             preferred_supplier?: string | null;
             readonly preferred_supplier_name: string | null;
@@ -27300,6 +27405,14 @@ export interface components {
              * @description Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
              */
             safety_stock?: string | null;
+            /**
+             * @description Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+             *
+             *     * `A` - A
+             *     * `B` - B
+             *     * `C` - C
+             */
+            abc_class?: components["schemas"]["AbcClassEnum"];
             /** Format: uuid */
             preferred_supplier?: string | null;
             /**
@@ -30346,6 +30459,14 @@ export interface components {
              */
             safety_stock?: string | null;
             /**
+             * @description Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+             *
+             *     * `A` - A
+             *     * `B` - B
+             *     * `C` - C
+             */
+            abc_class?: components["schemas"]["AbcClassEnum"];
+            /**
              * @description How this part is bought and counted at receiving.
              *
              *     * `STOCK` - Stock unit
@@ -30419,6 +30540,14 @@ export interface components {
              * @description Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
              */
             safety_stock?: string | null;
+            /**
+             * @description Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+             *
+             *     * `A` - A
+             *     * `B` - B
+             *     * `C` - C
+             */
+            abc_class?: components["schemas"]["AbcClassEnum"];
             /**
              * @description How this part is bought and counted at receiving.
              *
@@ -31552,6 +31681,14 @@ export interface components {
              * @description Buffer held back from planning. Coverage nets against on-hand MINUS this, so the material lane warns while there is still stock to react with instead of at the last unit. Does not block issuing — a picker can always draw the physical stock.
              */
             safety_stock?: string | null;
+            /**
+             * @description Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+             *
+             *     * `A` - A
+             *     * `B` - B
+             *     * `C` - C
+             */
+            abc_class?: components["schemas"]["AbcClassEnum"];
             /** Format: uuid */
             preferred_supplier?: string | null;
             /**
@@ -31878,6 +32015,14 @@ export interface components {
              * @description Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
              */
             safety_stock?: string | null;
+            /**
+             * @description Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+             *
+             *     * `A` - A
+             *     * `B` - B
+             *     * `C` - C
+             */
+            abc_class?: components["schemas"]["AbcClassEnum"];
         };
         /**
          * @description Part types serializer with versioning support.
@@ -31920,6 +32065,14 @@ export interface components {
              * @description Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
              */
             safety_stock?: string | null;
+            /**
+             * @description Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+             *
+             *     * `A` - A
+             *     * `B` - B
+             *     * `C` - C
+             */
+            abc_class?: components["schemas"]["AbcClassEnum"];
             /**
              * @description How this part is bought and counted at receiving.
              *
@@ -47188,7 +47341,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApplyCountRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ApplyCountRequest"];
+                "multipart/form-data": components["schemas"]["ApplyCountRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -47296,6 +47455,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CycleCount"];
+                };
+            };
+        };
+    };
+    api_CycleCounts_accuracy_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Window in days (default 90). */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountAccuracy"];
+                };
+            };
+        };
+    };
+    api_CycleCounts_due_list: {
+        parameters: {
+            query?: {
+                location?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `OPEN` - Counting
+                 *     * `SUBMITTED` - Submitted
+                 *     * `APPLIED` - Applied
+                 */
+                status?: "APPLIED" | "OPEN" | "SUBMITTED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DueForCount"][];
                 };
             };
         };

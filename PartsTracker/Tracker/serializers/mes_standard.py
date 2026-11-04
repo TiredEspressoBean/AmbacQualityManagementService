@@ -308,7 +308,7 @@ class MaterialSerializer(SecureModelMixin):
         model = Material
         fields = (
             'id', 'name', 'part_number', 'description', 'unit_of_measure',
-            'purchase_lead_time_days', 'safety_stock',
+            'purchase_lead_time_days', 'safety_stock', 'abc_class',
             'preferred_supplier', 'preferred_supplier_name',
             'purchase_unit', 'units_per_purchase_unit', 'requires_coc', 'requires_heat_number',
             'requires_supplier_qualification', 'commodity',

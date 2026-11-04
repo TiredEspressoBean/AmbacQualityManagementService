@@ -2029,7 +2029,9 @@ class PartTypesSerializer(SecureModelMixin):
     # the part's definition.
     _NON_VERSIONING_FIELDS = frozenset({
         'archived', 'preferred_supplier', 'purchase_lead_time_days', 'safety_stock',
-        'default_disassembly_process'})
+        'default_disassembly_process',
+        # The cycle-count class says how often its stock is counted, not what the part is.
+        'abc_class'})
 
     preferred_supplier_name = serializers.CharField(
         source='preferred_supplier.name', read_only=True, allow_null=True)
@@ -2041,7 +2043,7 @@ class PartTypesSerializer(SecureModelMixin):
             'name', 'ID_prefix', 'ERP_id',
             'requires_supplier_qualification', 'requires_part_approval',
             'can_make', 'can_buy', 'can_recover', 'purchase_lead_time_days',
-            'preferred_supplier', 'preferred_supplier_name', 'safety_stock',
+            'preferred_supplier', 'preferred_supplier_name', 'safety_stock', 'abc_class',
             'purchase_unit', 'units_per_purchase_unit', 'requires_coc', 'requires_heat_number',
             'itar_controlled', 'eccn', 'usml_category',
             'default_disassembly_process',
@@ -2073,7 +2075,7 @@ class PartTypeSourcingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PartTypes
-        fields = ['preferred_supplier', 'purchase_lead_time_days', 'safety_stock']
+        fields = ['preferred_supplier', 'purchase_lead_time_days', 'safety_stock', 'abc_class']
 
     def validate_preferred_supplier(self, value):
         if value is not None and not value.is_supplier:

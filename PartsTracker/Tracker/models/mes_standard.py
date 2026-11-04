@@ -1451,6 +1451,11 @@ class Material(SecureModel):
                   "this, so the material lane warns while there is still stock to react "
                   "with instead of at the last unit. Does not block issuing — a picker "
                   "can always draw the physical stock.")
+    abc_class = models.CharField(
+        max_length=1, choices=[('A', 'A'), ('B', 'B'), ('C', 'C')], default='C',
+        help_text="Cycle-count class (ABC): how often it's counted — A most often, C least "
+                  "(intervals are a tenant setting). Everything starts as C; promote the "
+                  "items that matter most.")
     is_active = models.BooleanField(default=True)
     # Supplier control for bulk stock. Part types qualify a supplier for that part; a
     # raw material qualifies by commodity ("elastomer seals", "4140 bar") — a
@@ -1586,6 +1591,10 @@ class CycleCount(SecureModel):
     applied_by = models.ForeignKey(
         'Tracker.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     applied_at = models.DateTimeField(null=True, blank=True)
+    apply_note = models.TextField(
+        blank=True,
+        help_text="The lead's note when applying a count with lines outside their class's "
+                  "tolerance: why the difference is real rather than recounted.")
 
     class Meta:
         verbose_name = 'Cycle Count'

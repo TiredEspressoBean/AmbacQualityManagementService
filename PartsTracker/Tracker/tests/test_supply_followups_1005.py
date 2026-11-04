@@ -170,8 +170,15 @@ class CycleCountTests(_Fixture):
         # A draw while the count waited isn't undone: the difference is applied to what's left now.
         short.quantity_remaining = Decimal(90)
         short.save(update_fields=["quantity_remaining"])
-        done = self.client.post(f"/api/CycleCounts/{c['id']}/apply/", format="json")
+        # Both differences are outside class C's ±5 % (and a lot found here always is): a
+        # lead applying them says why (ABC cadence, 2026-11-04).
+        bare = self.client.post(f"/api/CycleCounts/{c['id']}/apply/", format="json")
+        self.assertEqual(bare.status_code, 400, bare.content)
+        done = self.client.post(f"/api/CycleCounts/{c['id']}/apply/",
+                                {"note": "Checked the rack: 6 drawn unbooked; CC-C moved here"},
+                                format="json")
         self.assertEqual((done.status_code, done.json()["status"]), (200, "APPLIED"))
+        self.assertEqual(done.json()["apply_note"], "Checked the rack: 6 drawn unbooked; CC-C moved here")
         short.refresh_from_db()
         stray.refresh_from_db()
         self.assertEqual(short.quantity_remaining, Decimal(84))
@@ -201,7 +208,7 @@ class CycleCountTests(_Fixture):
         sub = self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json").json()
         self.assertEqual({v["label"]: v["variance"] for v in sub["variances"]}, {"CC-F": "MISSING"})
         self.assertEqual(sub["not_counted"], 1)
-        self.client.post(f"/api/CycleCounts/{c['id']}/apply/", format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/apply/", {"note": "Spot is empty"}, format="json")
         skipped.refresh_from_db()
         empty.refresh_from_db()
         self.assertEqual((skipped.quantity_remaining, empty.quantity_remaining), (Decimal(40), Decimal(0)))
@@ -222,5 +229,70 @@ class CycleCountTests(_Fixture):
         self.assertEqual(back.json()["lines"][0]["counted"], 3)
         self.assertTrue(RecordEdit.objects.filter(object_id=c["id"], reason="30 keyed as 3").exists())
         self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json")
-        self.client.post(f"/api/CycleCounts/{c['id']}/apply/", format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/apply/", {"note": "Recounted: 3 it is"}, format="json")
         self.assertEqual(self.client.post(url, {"reason": "again"}, format="json").status_code, 400)
+
+
+class CountCadenceTests(_Fixture):
+    """ABC cycle-count cadence (user decision 2026-11-04): schedule by item, walk by
+    location; tolerance per class, warned with a note; accuracy per class."""
+
+    def _counted(self, where, entries):
+        c = self.client.post("/api/CycleCounts/", {"location": where}, format="json").json()
+        self.client.post(f"/api/CycleCounts/{c['id']}/record/", {"entries": entries}, format="json")
+        return self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json").json()
+
+    def test_tolerance_follows_the_items_class(self):
+        lot = self._lot("CT-A", qty="100", where="Rack 8")
+        sub = self._counted("Rack 8", [{"kind": "LOT", "id": str(lot.id), "counted": "97"}])
+        [v] = sub["variances"]
+        self.assertEqual((v["abc_class"], v["within_tolerance"]), ("C", True), "3 of 100 is inside C's 5 %")
+        self.assertEqual(self.client.post(f"/api/CycleCounts/{sub['id']}/apply/", format="json").status_code, 200)
+
+        self.bar.abc_class = "A"
+        self.bar.save(update_fields=["abc_class"])
+        lot2 = self._lot("CT-B", qty="100", where="Rack 9")
+        sub = self._counted("Rack 9", [{"kind": "LOT", "id": str(lot2.id), "counted": "97"}])
+        self.assertFalse(sub["variances"][0]["within_tolerance"], "outside A's 1 %")
+        refused = self.client.post(f"/api/CycleCounts/{sub['id']}/apply/", format="json")
+        self.assertEqual(refused.status_code, 400)
+        self.assertIn("outside tolerance", refused.json()["detail"])
+
+        # A minimum in units widens it: three off is now within.
+        self.tenant.settings = {"cycle_count": {"tolerance_units": 5}}
+        self.tenant.save(update_fields=["settings"])
+        sub = self.client.get(f"/api/CycleCounts/{sub['id']}/").json()
+        self.assertTrue(sub["variances"][0]["within_tolerance"])
+
+    def test_due_follows_the_class_interval_and_the_last_applied_count(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from Tracker.models import CycleCount
+        self._lot("CT-C", qty="10", where="Rack 10")
+        due = self.client.get("/api/CycleCounts/due/").json()
+        [row] = [r for r in due if r["name"] == "Bar stock 4140"]
+        self.assertTrue(row["never_counted"])
+        self.assertEqual([l["location"] for l in row["locations"]], ["Rack 10"])
+
+        sub = self._counted("Rack 10", [])
+        self.client.post(f"/api/CycleCounts/{sub['id']}/apply/", format="json")
+        self.assertFalse([r for r in self.client.get("/api/CycleCounts/due/").json()
+                          if r["name"] == "Bar stock 4140"], "just counted")
+
+        CycleCount.objects.filter(pk=sub["id"]).update(applied_at=timezone.now() - timedelta(days=40))
+        self.assertFalse([r for r in self.client.get("/api/CycleCounts/due/").json()
+                          if r["name"] == "Bar stock 4140"], "C: counted yearly")
+        self.bar.abc_class = "A"
+        self.bar.save(update_fields=["abc_class"])
+        [row] = [r for r in self.client.get("/api/CycleCounts/due/").json() if r["name"] == "Bar stock 4140"]
+        self.assertEqual((row["abc_class"], row["days_overdue"]), ("A", 10))
+
+    def test_accuracy_counts_hits_per_class(self):
+        a = self._lot("CT-D", qty="100", where="Rack 11")
+        b = self._lot("CT-E", qty="100", where="Rack 11")
+        sub = self._counted("Rack 11", [{"kind": "LOT", "id": str(a.id), "counted": "100"},
+                                        {"kind": "LOT", "id": str(b.id), "counted": "50"}])
+        self.client.post(f"/api/CycleCounts/{sub['id']}/apply/", {"note": "Half went to scrap"}, format="json")
+        acc = self.client.get("/api/CycleCounts/accuracy/").json()
+        self.assertEqual((acc["C"]["counted"], acc["C"]["hits"], acc["C"]["pct"]), (2, 1, 50.0))
+        self.assertIsNone(acc["A"]["pct"])

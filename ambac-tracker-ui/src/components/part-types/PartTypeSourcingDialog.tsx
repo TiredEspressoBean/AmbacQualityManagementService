@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ABC_HINT, AbcClassSelect, type AbcClass } from "@/components/inventory/AbcClassSelect";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -35,12 +36,14 @@ export function PartTypeSourcingDialog({ partTypeId, open, onOpenChange }: Props
     const [supplier, setSupplier] = useState<string | null>(null);
     const [leadTime, setLeadTime] = useState("");
     const [safety, setSafety] = useState("");
+    const [abc, setAbc] = useState<AbcClass>("C");
 
     useEffect(() => {
         if (!partType) return;
         setSupplier(partType.preferred_supplier ? String(partType.preferred_supplier) : null);
         setLeadTime(partType.purchase_lead_time_days != null ? String(partType.purchase_lead_time_days) : "");
         setSafety(partType.safety_stock ?? "");
+        setAbc(((partType as { abc_class?: AbcClass }).abc_class) ?? "C");
     }, [partType]);
 
     const save = useMutation({
@@ -49,6 +52,7 @@ export function PartTypeSourcingDialog({ partTypeId, open, onOpenChange }: Props
                 preferred_supplier: supplier,
                 purchase_lead_time_days: leadTime === "" ? null : Number(leadTime),
                 safety_stock: safety === "" ? null : safety,
+                abc_class: abc,
             },
             { params: { id: partTypeId }, headers: { "X-CSRFToken": getCookie("csrftoken") } },
         ),
@@ -98,6 +102,11 @@ export function PartTypeSourcingDialog({ partTypeId, open, onOpenChange }: Props
                             <Input id="src-safety" type="number" min={0} step="any" value={safety}
                                 onChange={(e) => setSafety(e.target.value)} placeholder="None" />
                         </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="src-abc">Cycle-count class</Label>
+                        <AbcClassSelect id="src-abc" value={abc} onChange={setAbc} />
+                        <p className="text-xs text-muted-foreground">{ABC_HINT}</p>
                     </div>
                 </div>
                 <DialogFooter>

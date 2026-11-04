@@ -26,6 +26,53 @@ class CycleCountLineSerializer(serializers.Serializer):
 class CycleCountVarianceSerializer(CycleCountLineSerializer):
     difference = serializers.FloatField()
     variance = serializers.ChoiceField(choices=VARIANCES)
+    abc_class = serializers.ChoiceField(choices=[('A', 'A'), ('B', 'B'), ('C', 'C')])
+    tolerance = serializers.FloatField(help_text="The difference allowed for its class, in units.")
+    within_tolerance = serializers.BooleanField(
+        help_text="False: a miss — usually recounted; applying it anyway needs a note.")
+
+
+class ApplyCountSerializer(serializers.Serializer):
+    note = serializers.CharField(required=False, allow_blank=True,
+                                 help_text="Required when lines are outside tolerance: why the "
+                                           "difference is real rather than recounted.")
+
+
+ABC = [('A', 'A'), ('B', 'B'), ('C', 'C')]
+
+
+class DueLocationSerializer(serializers.Serializer):
+    location_id = serializers.UUIDField()
+    location = serializers.CharField()
+    last_counted = serializers.DateTimeField(allow_null=True)
+    due_on = serializers.DateField()
+
+
+class DueForCountSerializer(serializers.Serializer):
+    """An item whose stock somewhere is due for counting under its ABC class."""
+    kind = serializers.ChoiceField(choices=[('MATERIAL', 'Material'), ('PART_TYPE', 'Part type')])
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    abc_class = serializers.ChoiceField(choices=ABC)
+    interval_days = serializers.IntegerField()
+    due_on = serializers.DateField()
+    days_overdue = serializers.IntegerField()
+    never_counted = serializers.BooleanField()
+    locations = DueLocationSerializer(many=True)
+
+
+class ClassAccuracySerializer(serializers.Serializer):
+    counted = serializers.IntegerField()
+    hits = serializers.IntegerField()
+    pct = serializers.FloatField(allow_null=True)
+
+
+class CountAccuracySerializer(serializers.Serializer):
+    """Inventory record accuracy per ABC class: counted lines within tolerance."""
+    days = serializers.IntegerField()
+    A = ClassAccuracySerializer()
+    B = ClassAccuracySerializer()
+    C = ClassAccuracySerializer()
 
 
 def _name(u):
@@ -50,9 +97,10 @@ class CycleCountSerializer(SecureModelMixin):
             'id', 'count_number', 'location', 'location_name', 'blind', 'status', 'status_display',
             'lines', 'variances', 'not_counted',
             'started_by', 'started_by_name', 'submitted_by_name', 'submitted_at',
-            'applied_by_name', 'applied_at', 'created_at', 'updated_at', 'archived',
+            'applied_by_name', 'applied_at', 'apply_note', 'created_at', 'updated_at', 'archived',
         )
         read_only_fields = ('count_number', 'location', 'status', 'started_by', 'submitted_at', 'applied_at',
+                            'apply_note',
                             'created_at', 'updated_at')
 
     @extend_schema_field(CycleCountLineSerializer(many=True))

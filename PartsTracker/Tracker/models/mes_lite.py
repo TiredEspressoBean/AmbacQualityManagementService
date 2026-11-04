@@ -208,6 +208,12 @@ class PartTypes(SecureModel):
                   "stock to react with. Does not block issuing.")
     """Planning buffer for the buy path (a quantity; blank = none)."""
 
+    abc_class = models.CharField(
+        max_length=1, choices=[('A', 'A'), ('B', 'B'), ('C', 'C')], default='C',
+        help_text="Cycle-count class (ABC): how often it's counted — A most often, C least "
+                  "(intervals are a tenant setting). Everything starts as C; promote the "
+                  "items that matter most.")
+
     # Receiving controls — the same four on Material (see PURCHASE_UNIT_CHOICES there).
     purchase_unit = models.CharField(
         max_length=10, choices=PURCHASE_UNIT_CHOICES, default="STOCK",

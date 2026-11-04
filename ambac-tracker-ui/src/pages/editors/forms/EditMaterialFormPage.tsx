@@ -36,6 +36,7 @@ import type { Schema } from "@/lib/api/types";
 import {
     DEFAULT_RECEIVING_CONTROLS, ReceivingControlsFields, receivingControlsOf, type ReceivingControls,
 } from "@/components/receiving/ReceivingControlsFields";
+import { ABC_HINT, AbcClassSelect, type AbcClass } from "@/components/inventory/AbcClassSelect";
 
 const formSchema = schemas.MaterialRequest.pick({
   name: true,
@@ -44,6 +45,7 @@ const formSchema = schemas.MaterialRequest.pick({
   unit_of_measure: true,
   purchase_lead_time_days: true,
   safety_stock: true,
+  abc_class: true,
   requires_supplier_qualification: true,
   commodity: true,
   is_active: true,
@@ -86,6 +88,7 @@ export default function EditMaterialFormPage() {
         unit_of_measure: m.unit_of_measure ?? "EA",
         purchase_lead_time_days: m.purchase_lead_time_days ?? null,
         safety_stock: m.safety_stock ?? null,
+        abc_class: m.abc_class ?? "C",
         requires_supplier_qualification: m.requires_supplier_qualification ?? false,
         commodity: m.commodity ?? "",
         is_active: m.is_active ?? true,
@@ -103,6 +106,7 @@ export default function EditMaterialFormPage() {
       unit_of_measure: "EA",
       purchase_lead_time_days: null,
       safety_stock: null,
+      abc_class: "C",
       requires_supplier_qualification: false,
       commodity: "",
       is_active: true,
@@ -264,6 +268,21 @@ export default function EditMaterialFormPage() {
                     <FormMessage />
                   </FormItem>
                 )}
+              />
+
+              <FormField
+                  control={form.control}
+                  name="abc_class"
+                  render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>Cycle-count class</FormLabel>
+                          <FormControl>
+                              <AbcClassSelect value={field.value as AbcClass | undefined} onChange={field.onChange} />
+                          </FormControl>
+                          <FormDescription>{ABC_HINT}</FormDescription>
+                          <FormMessage />
+                      </FormItem>
+                  )}
               />
 
               {/* Preferred supplier combobox (optional) */}

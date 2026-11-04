@@ -54,6 +54,7 @@ import { RebuildLevelsPanel } from "@/components/reman/RebuildLevelsPanel";
 import {
     DEFAULT_RECEIVING_CONTROLS, ReceivingControlsFields, receivingControlsOf, type ReceivingControls,
 } from "@/components/receiving/ReceivingControlsFields";
+import { ABC_HINT, AbcClassSelect, type AbcClass } from "@/components/inventory/AbcClassSelect";
 
 const supplierPickerOptions = () =>
     queryOptions({
@@ -93,6 +94,7 @@ const formSchema = schemas.PartTypesRequest.pick({
     default_disassembly_process: true,
     purchase_lead_time_days: true,
     safety_stock: true,
+    abc_class: true,
     itar_controlled: true,
     eccn: true,
     usml_category: true,
@@ -132,6 +134,7 @@ export default function PartTypeFormPage() {
             default_disassembly_process: null,
             purchase_lead_time_days: null,
             safety_stock: null,
+            abc_class: "C",
             itar_controlled: false,
             eccn: "",
             usml_category: "",
@@ -161,6 +164,7 @@ export default function PartTypeFormPage() {
                 purchase_lead_time_days:
                     (partType as { purchase_lead_time_days?: number | null }).purchase_lead_time_days ?? null,
                 safety_stock: partType.safety_stock ?? null,
+                abc_class: (partType as { abc_class?: AbcClass }).abc_class ?? "C",
                 itar_controlled: partType.itar_controlled ?? false,
                 eccn: partType.eccn ?? "",
                 usml_category: partType.usml_category ?? "",
@@ -366,6 +370,20 @@ export default function PartTypeFormPage() {
                                             Held back from planning, so the sourcing report warns while there&rsquo;s still stock to react with
                                         </FormDescription>
                                         <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="abc_class"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Cycle-count class</FormLabel>
+                                        <FormControl>
+                                            <AbcClassSelect value={field.value as AbcClass | undefined} onChange={field.onChange} />
+                                        </FormControl>
+                                        <FormDescription>{ABC_HINT}</FormDescription>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />

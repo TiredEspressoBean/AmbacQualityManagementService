@@ -2224,6 +2224,17 @@ export type CoreRequestAuthorisation = {
   core: Core;
   over_and_above: Array<string>;
 };
+export type CountAccuracy = {
+  days: number;
+  A: ClassAccuracy;
+  B: ClassAccuracy;
+  C: ClassAccuracy;
+};
+export type ClassAccuracy = {
+  counted: number;
+  hits: number;
+  pct: number | null;
+};
 export type CountEntryRequest = {
   kind: CycleCountLineKindEnum;
   id: string;
@@ -2732,6 +2743,10 @@ export type CycleCount = {
   submitted_at: string | null;
   applied_by_name: string | null;
   applied_at: string | null;
+  /**
+   * The lead's note when applying a count with lines outside their class's tolerance: why the difference is real rather than recounted.
+   */
+  apply_note: string;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -2770,6 +2785,15 @@ export type CycleCountVariance = {
   note: string;
   difference: number;
   variance: CycleCountVarianceEnum;
+  abc_class: AbcClassEnum;
+  /**
+   * The difference allowed for its class, in units.
+   */
+  tolerance: number;
+  /**
+   * False: a miss — usually recounted; applying it anyway needs a note.
+   */
+  within_tolerance: boolean;
 };
 export type CycleCountVarianceEnum =
   /**
@@ -2781,6 +2805,15 @@ export type CycleCountVarianceEnum =
    * @enum SHORT, OVER, MISSING, FOUND_HERE
    */
   "SHORT" | "OVER" | "MISSING" | "FOUND_HERE";
+export type AbcClassEnum =
+  /**
+   * * `A` - A
+   * `B` - B
+   * `C` - C
+   *
+   * @enum A, B, C
+   */
+  "A" | "B" | "C";
 export type DecisionOptionsResponse = {
   is_decision_point: boolean;
   decision_type?: string | undefined;
@@ -3144,6 +3177,31 @@ export type DowntimeBucket = {
   label: string;
   hours: number;
   events: number;
+};
+export type DueForCount = {
+  kind: DueForCountKindEnum;
+  id: string;
+  name: string;
+  abc_class: AbcClassEnum;
+  interval_days: number;
+  due_on: string;
+  days_overdue: number;
+  never_counted: boolean;
+  locations: Array<DueLocation>;
+};
+export type DueForCountKindEnum =
+  /**
+   * * `MATERIAL` - Material
+   * `PART_TYPE` - Part type
+   *
+   * @enum MATERIAL, PART_TYPE
+   */
+  "MATERIAL" | "PART_TYPE";
+export type DueLocation = {
+  location_id: string;
+  location: string;
+  last_counted: string | null;
+  due_on: string;
 };
 export type Equipments = {
   id: string;
@@ -4591,6 +4649,14 @@ export type Material = {
      */
     (string | null)
     | undefined;
+  abc_class?: /**
+     * Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+    
+    * `A` - A
+    * `B` - B
+    * `C` - C
+     */
+  AbcClassEnum | undefined;
   preferred_supplier?: (string | null) | undefined;
   preferred_supplier_name: string | null;
   purchase_unit?: /**
@@ -5015,6 +5081,14 @@ export type MaterialRequest = {
      */
     (string | null)
     | undefined;
+  abc_class?: /**
+     * Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+    
+    * `A` - A
+    * `B` - B
+    * `C` - C
+     */
+  AbcClassEnum | undefined;
   preferred_supplier?: (string | null) | undefined;
   purchase_unit?: /**
      * How this item is bought and counted at receiving.
@@ -7452,6 +7526,14 @@ export type PartTypes = {
      */
     (string | null)
     | undefined;
+  abc_class?: /**
+     * Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+    
+    * `A` - A
+    * `B` - B
+    * `C` - C
+     */
+  AbcClassEnum | undefined;
   purchase_unit?: /**
      * How this part is bought and counted at receiving.
     
@@ -12808,6 +12890,14 @@ export type PartTypesRequest = {
      */
     (string | null)
     | undefined;
+  abc_class?: /**
+     * Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+    
+    * `A` - A
+    * `B` - B
+    * `C` - C
+     */
+  AbcClassEnum | undefined;
   purchase_unit?: /**
      * How this part is bought and counted at receiving.
     
@@ -13793,6 +13883,14 @@ export type PatchedMaterialRequest = Partial<{
    * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
    */
   safety_stock: string | null;
+  /**
+     * Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+    
+    * `A` - A
+    * `B` - B
+    * `C` - C
+     */
+  abc_class: AbcClassEnum;
   preferred_supplier: string | null;
   /**
      * How this item is bought and counted at receiving.
@@ -14121,6 +14219,30 @@ export type PatchedPartApprovalRequest = Partial<{
   notes: string;
   archived: boolean;
 }>;
+export type PatchedPartTypeSourcingRequest = Partial<{
+  preferred_supplier: string | null;
+  /**
+   * Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time).
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  purchase_lead_time_days: number | null;
+  /**
+   * Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  safety_stock: string | null;
+  /**
+     * Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+    
+    * `A` - A
+    * `B` - B
+    * `C` - C
+     */
+  abc_class: AbcClassEnum;
+}>;
 export type PatchedPartTypesRequest = Partial<{
   /**
    * Tenant this record belongs to
@@ -14183,6 +14305,14 @@ export type PatchedPartTypesRequest = Partial<{
    * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
    */
   safety_stock: string | null;
+  /**
+     * Cycle-count class (ABC): how often it's counted — A most often, C least (intervals are a tenant setting). Everything starts as C; promote the items that matter most.
+    
+    * `A` - A
+    * `B` - B
+    * `C` - C
+     */
+  abc_class: AbcClassEnum;
   /**
      * How this part is bought and counted at receiving.
     
@@ -20980,6 +21110,7 @@ const CycleCountVarianceEnum = z.enum([
   "MISSING",
   "FOUND_HERE",
 ]);
+const AbcClassEnum = z.enum(["A", "B", "C"]);
 const CycleCountVariance = z.object({
   kind: CycleCountLineKindEnum,
   id: z.string(),
@@ -20993,6 +21124,9 @@ const CycleCountVariance = z.object({
   note: z.string(),
   difference: z.number(),
   variance: CycleCountVarianceEnum,
+  abc_class: AbcClassEnum,
+  tolerance: z.number(),
+  within_tolerance: z.boolean(),
 });
 const CycleCount = z.object({
   id: z.string().uuid(),
@@ -21011,6 +21145,7 @@ const CycleCount = z.object({
   submitted_at: z.string().datetime({ offset: true }).nullable(),
   applied_by_name: z.string().nullable(),
   applied_at: z.string().datetime({ offset: true }).nullable(),
+  apply_note: z.string(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -21025,6 +21160,7 @@ const StartCycleCountRequest = z.object({
   location: z.string().min(1),
   blind: z.boolean().optional().default(false),
 });
+const ApplyCountRequest = z.object({ note: z.string() }).partial();
 const CountEntryRequest = z.object({
   kind: CycleCountLineKindEnum,
   id: z.string().uuid(),
@@ -21036,6 +21172,35 @@ const CountEntryRequest = z.object({
 });
 const RecordCountRequest = z.object({ entries: z.array(CountEntryRequest) });
 const SendBackCountRequest = z.object({ reason: z.string().min(1) });
+const ClassAccuracy = z.object({
+  counted: z.number().int(),
+  hits: z.number().int(),
+  pct: z.number().nullable(),
+});
+const CountAccuracy = z.object({
+  days: z.number().int(),
+  A: ClassAccuracy,
+  B: ClassAccuracy,
+  C: ClassAccuracy,
+});
+const DueForCountKindEnum = z.enum(["MATERIAL", "PART_TYPE"]);
+const DueLocation = z.object({
+  location_id: z.string().uuid(),
+  location: z.string(),
+  last_counted: z.string().datetime({ offset: true }).nullable(),
+  due_on: z.string(),
+});
+const DueForCount = z.object({
+  kind: DueForCountKindEnum,
+  id: z.string().uuid(),
+  name: z.string(),
+  abc_class: AbcClassEnum,
+  interval_days: z.number().int(),
+  due_on: z.string(),
+  days_overdue: z.number().int(),
+  never_counted: z.boolean(),
+  locations: z.array(DueLocation),
+});
 const DisassemblyBOMLine = z.object({
   id: z.string().uuid(),
   core_type: z.string().uuid(),
@@ -22905,6 +23070,7 @@ const Material = z.object({
     .string()
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
+  abc_class: AbcClassEnum.optional(),
   preferred_supplier: z.string().uuid().nullish(),
   preferred_supplier_name: z.string().nullable(),
   purchase_unit: PurchaseUnitEnum.optional(),
@@ -22937,6 +23103,7 @@ const MaterialRequest = z.object({
     .string()
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
+  abc_class: AbcClassEnum.optional(),
   preferred_supplier: z.string().uuid().nullish(),
   purchase_unit: PurchaseUnitEnum.optional(),
   units_per_purchase_unit: z
@@ -22961,6 +23128,7 @@ const PatchedMaterialRequest = z
       .string()
       .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
       .nullable(),
+    abc_class: AbcClassEnum,
     preferred_supplier: z.string().uuid().nullable(),
     purchase_unit: PurchaseUnitEnum,
     units_per_purchase_unit: z
@@ -23676,6 +23844,7 @@ const PartTypes = z.object({
     .string()
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
+  abc_class: AbcClassEnum.optional(),
   purchase_unit: PurchaseUnitEnum.optional(),
   units_per_purchase_unit: z
     .string()
@@ -23715,6 +23884,7 @@ const PartTypesRequest = z.object({
     .string()
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
+  abc_class: AbcClassEnum.optional(),
   purchase_unit: PurchaseUnitEnum.optional(),
   units_per_purchase_unit: z
     .string()
@@ -23746,6 +23916,7 @@ const PatchedPartTypesRequest = z
       .string()
       .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
       .nullable(),
+    abc_class: AbcClassEnum,
     purchase_unit: PurchaseUnitEnum,
     units_per_purchase_unit: z
       .string()
@@ -23776,6 +23947,7 @@ const PatchedPartTypeSourcingRequest = z
       .string()
       .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
       .nullable(),
+    abc_class: AbcClassEnum,
   })
   .partial();
 const PartTypeSelect = z.object({
@@ -30483,13 +30655,20 @@ export const schemas = {
   CycleCountLineKindEnum,
   CycleCountLine,
   CycleCountVarianceEnum,
+  AbcClassEnum,
   CycleCountVariance,
   CycleCount,
   PaginatedCycleCountList,
   StartCycleCountRequest,
+  ApplyCountRequest,
   CountEntryRequest,
   RecordCountRequest,
   SendBackCountRequest,
+  ClassAccuracy,
+  CountAccuracy,
+  DueForCountKindEnum,
+  DueLocation,
+  DueForCount,
   DisassemblyBOMLine,
   PaginatedDisassemblyBOMLineList,
   DisassemblyBOMLineRequest,
@@ -36615,9 +36794,14 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
     method: "post",
     path: "/api/CycleCounts/:id/apply/",
     alias: "api_CycleCounts_apply_create",
-    description: `Correct UQMES from the count: quantity differences as recorded adjustments, things found here moved here. Units not found are reported, not changed.`,
+    description: `Correct UQMES from the count: quantity differences as recorded adjustments, things found here moved here. Units not found are reported, not changed. Lines outside their class&#x27;s tolerance need a note saying why the difference is real.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ note: z.string() }).partial(),
+      },
       {
         name: "id",
         type: "Path",
@@ -36695,6 +36879,51 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
       },
     ],
     response: CycleCount,
+  },
+  {
+    method: "get",
+    path: "/api/CycleCounts/accuracy/",
+    alias: "api_CycleCounts_accuracy_retrieve",
+    description: `Inventory record accuracy per ABC class: counted lines within their class&#x27;s tolerance, over counts applied in the window.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "days",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: CountAccuracy,
+  },
+  {
+    method: "get",
+    path: "/api/CycleCounts/due/",
+    alias: "api_CycleCounts_due_list",
+    description: `Items due for counting under their ABC class: stock in a location not counted within the class&#x27;s interval (never counted first, then most overdue), with the locations to count.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "location",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["APPLIED", "OPEN", "SUBMITTED"]).optional(),
+      },
+    ],
+    response: z.array(DueForCount),
   },
   {
     method: "get",
@@ -41538,7 +41767,10 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: z.array(IntegrationSyncLog),
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "post",
     path: "/api/integrations/:id/test_connection/",
@@ -41568,10 +41800,7 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: z.object({ status: z.string() }),
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/integrations/catalog/",
@@ -45799,7 +46028,10 @@ field metadata).`,
       },
     ],
     response: TenantSchedule,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "patch",
     path: "/api/notifications/schedules/tenant/:id/",
@@ -45834,10 +46066,7 @@ field metadata).`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/OrderBook/:id/",
@@ -51214,7 +51443,10 @@ Usage:
       },
     ],
     response: PaginatedQualityReportsList,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/QualityReports/",
@@ -51292,10 +51524,7 @@ Usage:
       },
     ],
     response: QualityReports,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "put",
     path: "/api/QualityReports/:id/",
@@ -56308,7 +56537,10 @@ Used by the workflow engine for tracking part progression through steps.`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutions/:id/capture-state/",
@@ -56359,10 +56591,7 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
       },
     ],
     response: StepExecution,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepExecutions/:id/flag-override/",
@@ -62071,7 +62300,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: PaginatedTrainingRequirementList,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/TrainingRequirements/import-preview/",
@@ -62107,10 +62339,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: ImportStatusResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingRequirements/import-template/:template_format/",
