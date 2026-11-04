@@ -61,7 +61,7 @@ class DemoPlanWalkSeeder(DemoQaWalkSeeder):
         result = {'work_orders': [], 'outcomes': {}, 'dated_back': None}
         by_email = (users or {}).get('by_email', {})
         self.dave = by_email.get('dave.wilson@demo.ambac.com')
-        self.mike = self.dave           # the walk helpers default to self.mike
+        self.operator = self.dave       # the walk helpers default to self.operator
         self.casey = by_email.get('casey.dual@demo.ambac.com')
         if not (self.dave and self.casey):
             self.log("  Warning: Dave or Casey missing; skipping.", warning=True)

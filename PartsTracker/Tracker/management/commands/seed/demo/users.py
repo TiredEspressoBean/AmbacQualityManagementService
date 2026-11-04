@@ -221,6 +221,26 @@ DEMO_USERS = [
         'purpose': 'Auditor training - records, traceability, read-only review',
     },
     # === OPERATORS ===
+    # Ken is first on purpose: seeders that want "an operator" take operators[0], and
+    # the work they leave open (the first-piece runs, the base demo's loads) is Ken's.
+    # Mike's open work is only the Operator track's, so that track has one operator.
+    {
+        'email': 'ken.ops@demo.ambac.com',
+        'password': 'demo123',
+        'first_name': 'Ken',
+        'last_name': 'Adebayo',
+        'role': 'Operator',
+        'user_type': 'INTERNAL',  # UPPERCASE enum value
+        'is_staff': False,
+        'is_active': True,
+        'is_superuser': False,
+        'citizenship': 'USA',
+        'us_person': True,
+        'eu_authorized': False,
+        'uk_authorized': False,
+        'export_control_verified': True,
+        'purpose': 'The QA and lead tracks\' operator - first pieces, training override',
+    },
     {
         'email': 'mike.ops@demo.ambac.com',
         'password': 'demo123',

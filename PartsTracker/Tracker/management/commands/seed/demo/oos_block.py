@@ -12,7 +12,7 @@ out-of-spec value writes no failed report and opens no disposition: the step's s
 is the only thing that holds the part.
 
 WO-QA-OOS-01, two nozzle tips:
-  NOZ-OOS-001: Mike started the check and recorded 26.5 MPa against 28.0 +/- 1.0. The
+  NOZ-OOS-001: Ken started the check and recorded 26.5 MPa against 28.0 +/- 1.0. The
                advance is refused ("One or more measurements are out of
                specification"), so it waits at the check, in progress.
   NOZ-OOS-002: waiting at the check, untouched, to run in spec and see it move.
@@ -55,12 +55,12 @@ class DemoOutOfSpecBlockSeeder(DemoQaWalkSeeder):
         result = {'work_order': None, 'held': None, 'override_count': 0}
 
         by_email = (users or {}).get('by_email', {})
-        self.mike = by_email.get('mike.ops@demo.ambac.com')
+        self.operator = by_email.get('ken.ops@demo.ambac.com')
         self.casey = by_email.get('casey.dual@demo.ambac.com')
         self.sarah = by_email.get('sarah.qa@demo.ambac.com')
         self.maria = by_email.get('maria.qa@demo.ambac.com')
         customer = next((c for c in (companies or []) if c.name == CUSTOMER_NAME), None)
-        if not all((self.mike, self.casey, customer)):
+        if not all((self.operator, self.casey, customer)):
             self.log("  Warning: a user or the customer is missing; skipping.", warning=True)
             return result
         self.equipment = self._operational_equipment()

@@ -94,14 +94,16 @@ class DemoTimeEntrySeeder(BaseSeeder):
         """Who is on the floor right now — so a supervisor's Work in progress shows the
         difference between work whose holder is here and work left by someone who isn't
         ("Off the clock"). Casey (the shift lead) is on shift and on a break: a break
-        still counts as on the clock, so her own open work isn't flagged. Mike and Dave
+        still counts as on the clock, so her own open work isn't flagged. Ken is on
+        shift: the first pieces and the base demo's open work are his. Mike and Dave
         are deliberately NOT clocked in: the Operator track starts with Mike clocking
         in, and the Shift Lead track has Dave off sick — his unfinished work is the
         off-the-clock case. Open entries only; today otherwise stays clean."""
         now = timezone.now()
         shift_start = min(at(today, 7, 0), now - timedelta(hours=1))
         live = 0
-        for email, on_break in (("casey.dual@demo.ambac.com", True),):
+        for email, on_break in (("casey.dual@demo.ambac.com", True),
+                                ("ken.ops@demo.ambac.com", False)):
             user = User.objects.filter(tenant=self.tenant, email=email).first()
             if user is None:
                 continue

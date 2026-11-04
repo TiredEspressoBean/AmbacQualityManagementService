@@ -567,6 +567,11 @@ class DemoOrdersSeeder(BaseSeeder):
         # Pick an operator (deterministic based on part serial and step)
         # (crc32, not hash(): str hashing is salted per process, so hash() reassigned
         # every reseed.)
+        # Work left running is never Mike's: his open steps are only the Operator
+        # track's (ops_walk), so that track's trainee sees one story.
+        if not completed:
+            operators = [u for u in operators
+                         if getattr(u, 'email', None) != 'mike.ops@demo.ambac.com'] or operators
         operator_idx = zlib.crc32(f"{part.ERP_id}-{step.name}-{visit_number}".encode()) % len(operators)
         operator = operators[operator_idx]
 

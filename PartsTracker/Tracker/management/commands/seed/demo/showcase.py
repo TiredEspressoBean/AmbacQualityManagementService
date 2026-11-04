@@ -66,7 +66,7 @@ class DemoShowcaseSeeder(BaseSeeder):
 
         part_type = self._part_type(manufacturing)
         admin_user = self._user(users, ["admin@demo.ambac.com"], roles=["managers", "employees"])
-        operator_user = self._user(users, ["mike.ops@demo.ambac.com", "dave.wilson@demo.ambac.com"],
+        operator_user = self._user(users, ["ken.ops@demo.ambac.com", "dave.wilson@demo.ambac.com"],
                                    roles=["employees"])
         inspector_user = self._user(users, ["sarah.qa@demo.ambac.com", "maria.qa@demo.ambac.com"],
                                     roles=["qa_staff", "employees"])

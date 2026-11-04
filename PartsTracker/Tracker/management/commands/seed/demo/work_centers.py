@@ -109,6 +109,14 @@ _PRIMARY_BY_ROLE = {
     'QA Inspector':       'INSPECTION',
 }
 
+# Home cells the training tracks name, pinned so adding a user can't move them: the
+# Operator track's Mike works the Wash Line; Ken runs the first pieces off Machining.
+# A pinned user doesn't advance the round-robin, so everyone else keeps theirs.
+_PRIMARY_BY_EMAIL = {
+    'mike.ops@demo.ambac.com': 'WASH-01',
+    'ken.ops@demo.ambac.com': 'MACH-01',
+}
+
 
 class DemoWorkCenterSeeder(BaseSeeder):
     """Creates the station-level demo layout: work-centers, step mapping,
@@ -209,7 +217,9 @@ class DemoWorkCenterSeeder(BaseSeeder):
                     primary_kind = _PRIMARY_BY_ROLE[role]
                     break
             primary_wc = None
-            if primary_kind == 'PRODUCTION' and prod_stations:
+            if user.email in _PRIMARY_BY_EMAIL:
+                primary_wc = wcs.get(_PRIMARY_BY_EMAIL[user.email])
+            elif primary_kind == 'PRODUCTION' and prod_stations:
                 primary_wc = prod_stations[rr % len(prod_stations)]
                 rr += 1
             elif primary_kind:

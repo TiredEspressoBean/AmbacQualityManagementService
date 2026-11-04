@@ -8,9 +8,9 @@ sampling decisions, training override and first-piece readings are the ones the
 product writes, not a picture of them.
 
 WO-QA-INSPECT-01, today (the shop day's 08:00-09:00):
-  Mike runs four bodies through Machining, Precision Grinding and Wash to Body
-  Inspection. The training gate refuses Mike at Body Inspection and Casey (Shift Lead)
-  authorises each start with a reason. Mike completes the first piece's inspection,
+  Ken runs four bodies through Machining, Precision Grinding and Wash to Body
+  Inspection. The training gate refuses Ken at Body Inspection and Casey (Shift Lead)
+  authorises each start with a reason. Ken completes the first piece's inspection,
   INJ-QA-INSPECT-001, and the run holds for its buy-off (PENDING FPI). The other
   three wait behind it; the Body Inspection sampling rule (every 4th part) flags one.
 
@@ -119,11 +119,15 @@ class DemoQaWalkSeeder(BaseSeeder):
                   'fail_report': None, 'rework_disposition': None, 'override_count': 0}
 
         by_email = (users or {}).get('by_email', {})
+        # The walk's operator: Ken, not Mike, so the work these exhibits leave open
+        # isn't on the Operator track's operator. Mike runs yesterday's Assembly and
+        # Flow Calibration (closed history; he holds those certifications).
+        self.operator = by_email.get('ken.ops@demo.ambac.com')
         self.mike = by_email.get('mike.ops@demo.ambac.com')
         self.casey = by_email.get('casey.dual@demo.ambac.com')
         self.sarah = by_email.get('sarah.qa@demo.ambac.com')
         self.maria = by_email.get('maria.qa@demo.ambac.com')
-        if not all((self.mike, self.casey, self.sarah, self.maria)):
+        if not all((self.operator, self.mike, self.casey, self.sarah, self.maria)):
             self.log("  Warning: a QA walk user is missing; skipping.", warning=True)
             return result
 
@@ -163,7 +167,7 @@ class DemoQaWalkSeeder(BaseSeeder):
             with transaction.atomic():
                 wo = self._work_order(order, process, erp_id, len(serials))
                 parts = self._parts(wo, part_type, serials)
-                runner = self.sarah if erp_id == SELF_BUYOFF_WO else self.mike
+                runner = self.sarah if erp_id == SELF_BUYOFF_WO else self.operator
                 self._walk_drill(wo, parts, runner, result)
             self._space_out(wo, self.today - timedelta(minutes=50 + 15 * i))
             drills.append(wo)
@@ -231,16 +235,17 @@ class DemoQaWalkSeeder(BaseSeeder):
         parts = [first, fresh, failing, spare]
 
         self._nitride(parts)
-        self._run_step_for(parts, 'Assembly', result)
+        self._run_step_for(parts, 'Assembly', result, operator=self.mike)
 
         # Flow Calibration: first piece bought off; the failing part fails for real.
-        self._run_step_for([first], 'Flow Calibration', result, advance=False)
+        self._run_step_for([first], 'Flow Calibration', result, advance=False,
+                           operator=self.mike)
         self._buy_off(wo, 'Flow Calibration', first)
         self._advance(first, 'PASS')
         # 012 and 014 wait at Flow Calibration unclaimed (PENDING, nobody assigned), so
         # the operator who runs 012 live at 10:00 picks it up without a reassignment.
         report = self._run_step_for([failing], 'Flow Calibration', result, advance=False,
-                                    out_of_spec='Flow Rate')
+                                    out_of_spec='Flow Rate', operator=self.mike)
         result['fail_report'] = report
         result['rework_disposition'] = self._rework(failing, report)
 
@@ -256,7 +261,7 @@ class DemoQaWalkSeeder(BaseSeeder):
             p.refresh_from_db()
 
     def _walk_drill(self, wo, parts, runner, result):
-        """The bodies made by Mike, then the first piece's inspection by `runner`,
+        """The bodies made by Ken, then the first piece's inspection by `runner`,
         holding for its buy-off (PENDING FPI); the second part waits."""
         first = parts[0]
         self._make_bodies(wo, parts, result)
@@ -323,7 +328,7 @@ class DemoQaWalkSeeder(BaseSeeder):
         Assembly through the outside-process service."""
         from Tracker.services.mes import outside_process
         step = self.step['Nitride Coating']
-        shipment = outside_process.send_parts_out(step=step, parts=parts, user=self.mike,
+        shipment = outside_process.send_parts_out(step=step, parts=parts, user=self.operator,
                                                   reference=f"{parts[0].work_order.ERP_id}-NITRIDE")
         report = outside_process.receive_parts_back(shipment, user=self.sarah)
         # The return inspection is the shipment's, done once for the parts that rode it.
@@ -375,10 +380,10 @@ class DemoQaWalkSeeder(BaseSeeder):
         return None
 
     def _start(self, part, result, operator=None):
-        """Start the part's current step as `operator` (Mike unless told) — through the
+        """Start the part's current step as `operator` (the walk's operator unless told) — through the
         competence gate, with Casey's override where the gate refuses them."""
         from Tracker.services.mes.lifecycle import NotQualified, start_execution
-        operator = operator or self.mike
+        operator = operator or self.operator
         part.refresh_from_db()
         se = StepExecution.get_current_execution(part)
         if se is None:
@@ -427,12 +432,12 @@ class DemoQaWalkSeeder(BaseSeeder):
                 self._submit(ss, step_execution=se)
         step = self.step[step_name]
         batch = BatchExecution.objects.create(tenant=self.tenant, work_order=wo, step=step,
-                                              started_by=self.mike, started_at=timezone.now())
+                                              started_by=self.operator, started_at=timezone.now())
         batch.parts.set(parts)
         for ss in self._substeps(step, scope='batch'):
             self._submit(ss, batch_execution=batch)
-        seal_batch(batch=batch, user=self.mike)
-        complete_batch(batch=batch, user=self.mike)
+        seal_batch(batch=batch, user=self.operator)
+        complete_batch(batch=batch, user=self.operator)
         # The walk does load, seal and complete in one instant; a real load takes
         # time — loading, then the run. Left at zero, every walked load reads as a
         # 0-minute run on Step Timings and drags the measured cycle far below the
@@ -451,7 +456,7 @@ class DemoQaWalkSeeder(BaseSeeder):
     def _advance(self, part, decision):
         from Tracker.services.mes.parts import advance_part_step
         part.refresh_from_db()
-        advance_part_step(part, operator=self.mike, decision_result=decision)
+        advance_part_step(part, operator=self.operator, decision_result=decision)
         part.refresh_from_db()
 
     def _raise_fpi(self, wo, step_name, first_piece):
@@ -465,7 +470,7 @@ class DemoQaWalkSeeder(BaseSeeder):
         return fpi
 
     def _buy_off(self, wo, step_name, first_piece):
-        """Sarah buys off the first piece. She signed none of its substeps (Mike did),
+        """Sarah buys off the first piece. She signed none of its substeps (the operator did),
         so segregation of duties holds; identity is taken as verified for seeded
         history, the way submit_substep takes `preverified`."""
         from Tracker.services.qms.fpi import pass_fpi
@@ -523,7 +528,7 @@ class DemoQaWalkSeeder(BaseSeeder):
         from Tracker.models import EquipmentRole
         from Tracker.services.dwi.operator_capture import submit_substep
 
-        signer = signer or self.mike
+        signer = signer or self.operator
         stamp = timezone.now().isoformat()
         nodes = _capture_nodes(substep.body_blocks)
         # A result field on the same substep as the failing reading says FAIL too.

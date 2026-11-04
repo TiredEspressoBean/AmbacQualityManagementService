@@ -72,11 +72,13 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
 
         by_email = (users or {}).get('by_email', {})
         self.mike = by_email.get('mike.ops@demo.ambac.com')
+        self.operator = self.mike       # the walk helpers default to self.operator
+        self.ken = by_email.get('ken.ops@demo.ambac.com')
         self.dave = by_email.get('dave.wilson@demo.ambac.com')
         self.casey = by_email.get('casey.dual@demo.ambac.com')
         self.sarah = by_email.get('sarah.qa@demo.ambac.com')
         self.maria = by_email.get('maria.qa@demo.ambac.com')
-        if not all((self.mike, self.dave, self.casey, self.sarah, self.maria)):
+        if not all((self.mike, self.ken, self.dave, self.casey, self.sarah, self.maria)):
             self.log("  Warning: an Operator walk user is missing; skipping.", warning=True)
             return result
 
@@ -187,7 +189,7 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
 
     def _finding_for_the_lead(self, walk):
         """The Shift Lead's pending finding. The repair unit is cleaned in its own load,
-        then at Nozzle Inspection Mike records its nozzle beyond repair through the
+        then at Nozzle Inspection Ken records its nozzle beyond repair through the
         capture's service (record_findings_from_capture). A replacement isn't
         pre-approved at that check, so the finding waits for the lead and the unit
         holds there until it's applied or dismissed."""
@@ -213,13 +215,13 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
                              f"{part.step.name if part.step else 'no step'}, not Nozzle "
                              "Inspection; lead finding skipped.", warning=True)
                     return None
-                se = self._start(part, walk)
+                se = self._start(part, walk, operator=self.ken)
                 component_name, grade, finding = LEAD_FINDING
                 nozzle = core.harvested_components.filter(
                     component_type__name=component_name, is_scrapped=False).first()
                 record_findings_from_capture(
                     se, [{'harvested_id': str(nozzle.id), 'grade': grade, 'finding': finding}],
-                    self.mike)
+                    self.ken)
         finally:
             self.step = build_steps
         self._space_out(wo, self.today - timedelta(minutes=50))

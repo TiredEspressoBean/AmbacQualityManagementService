@@ -43,8 +43,8 @@ DEMO_TRAINING_TYPES = [
 # Operation/equipment-scoped requirements (authorization gate).
 DEMO_TRAINING_REQUIREMENTS = [
     # ---- New manufacture ----
-    # Level 2, so the training gate has something to refuse: mike.ops holds DIM-CERT at
-    # level 1 (refused -> second-person override by a shift lead); dave.wilson holds
+    # Level 2, so the training gate has something to refuse: mike.ops and ken.ops hold
+    # DIM-CERT at level 1 (refused -> second-person override by a shift lead); dave.wilson holds
     # level 2, so the solver still has a qualified operator.
     {'training_key': 'DIM-CERT', 'step_name': 'Body Inspection', 'notes': 'Required per WI-2004',
      'min_level': 2},
@@ -54,7 +54,7 @@ DEMO_TRAINING_REQUIREMENTS = [
     {'training_key': 'GRADING-CERT', 'step_name': 'Component Grading', 'notes': 'Required per WI-1006'},
     {'training_key': 'FLOW-CERT', 'step_name': 'Flow Testing', 'notes': 'Required per WI-1003'},
     # Level 2, not the usual 1, so the training gate has something to refuse in the
-    # demo: mike.ops holds NOZ-CERT at level 1 (refused -> second-person override by a
+    # demo: mike.ops and ken.ops hold NOZ-CERT at level 1 (refused -> second-person override by a
     # shift lead); dave.wilson holds level 2, so the solver still has a qualified operator.
     {'training_key': 'NOZ-CERT', 'step_name': 'Nozzle Inspection', 'notes': 'Required per WI-1002',
      'min_level': 2},
@@ -99,6 +99,12 @@ DEMO_TRAINING_RECORDS = [
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'GRADING-CERT', 'level': 2, 'expires_days': 300, 'completed_days_ago': 65},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 1, 'expires_days': 7, 'completed_days_ago': 358},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'DIM-CERT', 'level': 1, 'expires_days': 7, 'completed_days_ago': 358},
+    # Ken Okafor — the first-piece operator: DIM-CERT and NOZ-CERT at level 1 (refused at
+    # Body and Nozzle Inspection, the shift lead's override), both expiring, the record
+    # the QA Manager writes. No Flow, so Flow stays Mike's single-person skill.
+    {'user': 'ken.ops@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 2, 'expires_days': 280, 'completed_days_ago': 85},
+    {'user': 'ken.ops@demo.ambac.com', 'training_type': 'DIM-CERT', 'level': 1, 'expires_days': 9, 'completed_days_ago': 356},
+    {'user': 'ken.ops@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 1, 'expires_days': 9, 'completed_days_ago': 356},
     # Dave Wilson (Flow Test Technician) — FLOW expired => role gap (and keeps Flow
     # as Mike's single-person skill). Cross-trained on Assembly + Torque so the
     # assembler pool isn't a single-point bottleneck.
