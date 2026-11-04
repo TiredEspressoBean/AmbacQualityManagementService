@@ -59,8 +59,8 @@ jobs going late, work orders on hold, and **Late deliveries**, inbound material 
 supplier is late with, with **Chase…** to record when you chased it and what they
 said.
 
-**Exercise 1.1.** Say which inbound delivery is late, and what the supplier said
-when it was last chased.
+**Exercise 1.1.** Say which inbound delivery is late, which one has already been
+chased, and what the supplier said then.
 
 **Requirements** lists what open work is short of, with need-by and order-by dates:
 *Control Valve Assembly · short 8 · order now*. Ordering it is Purchasing's; your
@@ -205,15 +205,16 @@ anything is broken.
 
 ## 9. Did the floor follow the plan?
 
-**You will:** read how this morning went against the plan it was given.
+**You will:** read how the last shift went against the plan it was given.
 
-This morning's plan had five urgent bodies on **CNC Lathe HL-1**, `WO-PLAN-01` to
+The last shift's plan had five urgent bodies on **CNC Lathe HL-1**, `WO-PLAN-01` to
 `WO-PLAN-05`, each one Machining slot. The floor ran four of them, not all to plan,
 and never got to the fifth.
 
 1. On the schedule, **Plan vs actual** (at the end of Machines / People / Work
-   orders). It opens on the hour scale, on now. Finished work is drawn **where it
-   actually ran**, not where it was planned.
+   orders). It opens around today, a column per day; the four runs are on the last
+   working day. Finished work is drawn **where it actually ran**, not where it was
+   planned.
 2. Find the five on the lathe's row and read their colours:
 
     | Colour | Means | Here |

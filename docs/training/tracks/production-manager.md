@@ -58,9 +58,9 @@ at in module 7.
 
 **You will:** read your home page and say what's at risk.
 
-Log in as Jennifer. Your home page opens on **Needs attention**: a core awaiting the
-customer's authorisation, the parts in quarantine, and the CAPAs waiting for
-verification. Below it are quality figures, the work orders (most urgent first), the
+Log in as Jennifer. Your home page opens on **Needs attention**: a finding on a
+repair unit waiting for a decision, a core awaiting the customer's authorisation, the
+parts in quarantine, and the CAPAs waiting for verification. Below it are quality figures, the work orders (most urgent first), the
 outside processing, supplier qualifications that are expiring, and your own quality
 actions and approvals.
 
@@ -128,8 +128,8 @@ schedule (module 5) is the answer once the work is real.
 
 **Exercise 3.1.** On the **Capacity heatmap** tab, find the busiest month in the
 Labor row. Open **Volume Forecast** from the *Includes … unclaimed forecast* link and
-find its highest month within the heatmap's twelve. Say why the busiest month sits
-before it.
+find its highest month within the heatmap's twelve. Say whether the busiest month is
+the same one or earlier, and why.
 (Load lands where the work starts, in the run-up to each due date.)
 
 ---
@@ -289,8 +289,7 @@ Two pages answer two different questions.
 the month?* The headline says it, one of *Crew: enough for the planned work ·
 busiest &lt;month&gt; at &lt;n&gt;%*, *Crew: tight in &lt;month&gt; (&lt;n&gt;%)*
 or *Crew: short in &lt;months&gt; (over 100%)*. In the training shop the crew is
-enough: the busiest month, in the run-up to the forecast's highest month in the
-window, is about two-thirds full (the demo's months move with the day it was set up). The **Labor** row compares the operator hours the work needs (setup and the hands-on
+enough: the busiest month is about two-thirds full (the demo's months move with the day it was set up). The **Labor** row compares the operator hours the work needs (setup and the hands-on
 part of each operation, not a machine's whole run) with your crew's working hours
 left in each month. Under about 85% is comfortable; over 100% you're short.
 

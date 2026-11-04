@@ -287,8 +287,9 @@ it, not when you did the work, so say on the traveler when the work was done.
 ## 12. Your training
 
 **Quality** > **Training** > **My Training** lists your qualifications, their levels
-and when each expires. Mike's Dimensional Inspection and Nozzle Inspection
-certifications are level 1, and both expire within the month.
+and when each expires; **+N more records** opens the rest. Mike's Dimensional
+Inspection and Nozzle Inspection certifications are level 1, and both expire within
+the month.
 
 ---
 

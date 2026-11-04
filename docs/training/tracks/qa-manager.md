@@ -59,9 +59,9 @@ you.
 
 Log in as Maria. The home page is a list of decisions waiting on you:
 
-- **Needs attention**: a whole-lot reject an inspector has asked for, a repair unit
-  waiting on its customer's answer, parts in quarantine, CAPAs waiting for their
-  effectiveness check.
+- **Needs attention**: a whole-lot reject an inspector has asked for, a finding on a
+  repair unit waiting for a decision, a repair unit waiting on its customer's answer,
+  parts in quarantine, CAPAs waiting for their effectiveness check.
 - **Quality**: open NCRs, parts under disposition, active and overdue CAPAs, first
   pass yield.
 - **Overdue calibrations**: every gauge past its due date, shop-wide.
@@ -278,9 +278,9 @@ control chart.
 inspected at Body Inspection and `INJ-QA-INSPECT-002` wasn't.
 
 1. On the work order, open each part's history (**Show history** on its row).
-   Under its traveler, **Sampling decisions** say why: 004 was
-   *selected by every 4th part*; 002 was *not selected: no rule in Standard
-   Inspection - Body chose it*. That is the answer an auditor wants for an
+   Under its traveler, **Sampling decisions** say why: 004 reads *Selected by every
+   4th part*; 002 reads *Not selected — no rule in Standard Inspection - Body chose
+   it*. That is the answer an auditor wants for an
    uninspected part.
 
 **Tighten a plan:** after the burr found at Body Inspection, you want every second

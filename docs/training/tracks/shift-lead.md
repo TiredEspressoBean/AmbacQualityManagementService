@@ -61,7 +61,8 @@ The Shift Lead home:
 - **Biggest fire**: the job most needing you, with its due date and a link to its
   control center.
 - **Work orders**, **Jobs going late**, **Work orders on hold**.
-- **Needs attention**: parts in quarantine, CAPAs pending verification.
+- **Needs attention**: a finding to decide on a repair unit, a repair unit awaiting
+  its customer's authorisation, parts in quarantine, CAPAs pending verification.
 - **Outside processing**, and **Training**: current, expiring soon, expired.
 
 **Exercise 1.1.** Say what the biggest fire is, when it's due, and which work order is
