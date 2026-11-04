@@ -140,10 +140,14 @@ export function InFlightPicker({ open, onOpenChange, workOrderId, title = "Pick 
                 </DialogHeader>
                 {supervisor && (
                     <div className="flex flex-wrap items-center gap-2">
-                        <Button size="sm" variant={everyone ? "outline" : "secondary"} onClick={() => setEveryone(false)}>
+                        {/* One choice of three: Mine, Everyone's, or Everyone's off the clock —
+                            picking Mine or Everyone's clears the narrowing. */}
+                        <Button size="sm" variant={everyone ? "outline" : "secondary"}
+                            onClick={() => { setEveryone(false); setOffClock(false); }}>
                             Mine
                         </Button>
-                        <Button size="sm" variant={everyone ? "secondary" : "outline"} onClick={() => setEveryone(true)}>
+                        <Button size="sm" variant={everyone && !offClock ? "secondary" : "outline"}
+                            onClick={() => { setEveryone(true); setOffClock(false); }}>
                             Everyone's
                         </Button>
                         {everyone && (
