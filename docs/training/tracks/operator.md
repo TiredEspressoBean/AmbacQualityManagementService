@@ -84,9 +84,11 @@ Your home page is your queue, for the stations you work at. The station box at t
 top chooses which: **Wash Line** is your usual station, and **All my stations**
 shows everything.
 
-- **Up next**: the job to do now, ranked by priority, then due date, then how long
-  it has waited.
-- **Then**: the jobs behind it.
+- **Up next**: the job to do now. Your own work in progress comes first (its button
+  reads **Finish**, not **Start**, with *N pcs you started*); then what the plan has
+  next, by planned start; then anything unplanned, by priority, due date and how
+  long it has waited. Work someone else is holding is never offered to you.
+- **Then**: the jobs behind it; one with your work in it reads *N yours in progress*.
 - **In progress**: a job you started and haven't finished. **Resume** takes you back;
   with more than one open, it asks which — **Pick up where you left off**.
 - **Scan**: type or scan a work order, serial, lot or location.
@@ -206,7 +208,7 @@ from now until it's back. Then tell your lead.
 
 **You will:** meet the training gate, and the supervisor who can authorise past it.
 
-`WO-OPS-02`'s bodies are now at Body Inspection, and you're the only operator free.
+`WO-OPS-02`'s bodies are now at Body Inspection, and you're free to take them.
 
 1. Open `WO-OPS-02`, **Start Work**, tick `INJ-OPS-011`, and **Start**. You're
    refused: *Not qualified for this step*, and under **Missing training**,

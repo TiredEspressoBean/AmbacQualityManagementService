@@ -44,7 +44,7 @@ hasn't finished by then, reload the page later rather than pressing it again.
 
 Every password is `demo123`. Casey is an inspector by day and covers as shift lead,
 so the account holds both roles. Mike Rodriguez, Ken Adebayo and Dave Wilson are the
-operators on the shift.
+shop's operators.
 
 ---
 
@@ -154,8 +154,9 @@ A quarantine or a CAPA is raised on its own form, not here.
 1. Open it from **Work orders on hold** on your home page: it opens the work order's
    control page. The banner says why it's held, who placed the hold and when: *On
    hold · Quality hold*.
-2. **Start Work** is disabled while it's held, and says why.
-3. **Clear hold**: *Clear the hold and resume?* restates the hold. A quality or
+2. On the work order's own page, **Start Work** is disabled while it's held, and says
+   why: *clear the hold before starting work*.
+3. Back on the control page, **Clear hold**: *Clear the hold and resume?* restates the hold. A quality or
    tooling hold needs **What resolved it**; **Clear hold** in the dialog stays
    disabled until you say.
 4. Write what resolved it and **Clear hold**. The order goes back to where it was,
@@ -231,9 +232,9 @@ overnight isn't charged to the next shift.
 or **Approve all**. Your own entries read *Your time*: someone else approves those.
 
 In the demo week, each operator has some **Unallocated** time — on shift, but not at a
-step — and Dave and you show a little **Rework**: Dave's from taking failed units back
-through (INJ-0042-016 at Flow Calibration, among others), yours from INJ-0042-019, in
-Rework under your name. Rework is part of direct time, not extra to it.
+step — and a few show a little **Rework**: a unit taken back through a step after it
+failed, or, for you, INJ-0042-019, in Rework under your name now. **By work order**
+says which job each hour was on. Rework is part of direct time, not extra to it.
 
 Someone clocked out late, or forgot to clock in on time? **Correct times** on their
 entry, before you approve it. Change the clock-in or clock-out, say why, and the hours

@@ -38,7 +38,8 @@ As an Operator, you:
 
 **Home is your queue.** It shows **Up next**, **Then** and **In progress**, plus
 *See everything ready* — you do not have to be told what to work on, and you do
-not start from the Work Orders page.
+not start from the Work Orders page. Your own unfinished work leads **Up next**
+(**Finish**), then the plan's order; work someone else is holding isn't offered.
 
 Shift notes and notifications land here too. A note marked **MUST ACKNOWLEDGE**
 wants a **Got it** before you start; it is how the last shift talks to you.
