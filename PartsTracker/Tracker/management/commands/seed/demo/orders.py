@@ -76,7 +76,9 @@ DEMO_ORDERS = [
             # 1 scrapped
             {'serial': 'INJ-0042-023', 'step': None, 'part_status': PartsStatus.SCRAPPED},
             # 1 early stage
-            {'serial': 'INJ-0042-024', 'step': 'Machining', 'part_status': PartsStatus.IN_PROGRESS},
+            # QA Inspector exercise 7.1: Casey is running its Machining.
+            {'serial': 'INJ-0042-024', 'step': 'Machining', 'part_status': PartsStatus.IN_PROGRESS,
+             'holder': 'casey.dual@demo.ambac.com'},
         ],
     },
     {
@@ -427,6 +429,12 @@ class DemoOrdersSeeder(BaseSeeder):
         operators = users.get('operators') or users.get('employees', [])
         if not operators:
             operators = [None]
+        # The Ship step is the shipping clerk's, not a floor operator's.
+        by_email = users.get('by_email', {})
+        self._shipper = by_email.get('rosa.ship@demo.ambac.com')
+        # A part's open step can be pinned to a person a track names ('holder').
+        self._holders = {p['serial']: by_email.get(p['holder'])
+                         for o in DEMO_ORDERS for p in o.get('parts', []) if p.get('holder')}
 
         for part in parts:
             ordered_steps = route_of(part.work_order.process) if part.work_order_id else []
@@ -567,13 +575,21 @@ class DemoOrdersSeeder(BaseSeeder):
         # Pick an operator (deterministic based on part serial and step)
         # (crc32, not hash(): str hashing is salted per process, so hash() reassigned
         # every reseed.)
-        # Work left running is never Mike's: his open steps are only the Operator
-        # track's (ops_walk), so that track's trainee sees one story.
-        if not completed:
-            operators = [u for u in operators
-                         if getattr(u, 'email', None) != 'mike.ops@demo.ambac.com'] or operators
+        # Work today — left running, or started today — is never Mike's or Dave's: Mike
+        # starts his shift in the Operator track (not clocked in yet), and Dave is off
+        # sick in the Shift Lead track. Their work is the history before today.
+        from Tracker.services.core.clock import plant_tz, tenant_today
+        works_today = (not completed or timezone.localtime(entry_time, plant_tz(self.tenant)).date()
+                       == tenant_today(self.tenant))
+        if works_today:
+            away = ('mike.ops@demo.ambac.com', 'dave.wilson@demo.ambac.com')
+            operators = [u for u in operators if getattr(u, 'email', None) not in away] or operators
         operator_idx = zlib.crc32(f"{part.ERP_id}-{step.name}-{visit_number}".encode()) % len(operators)
         operator = operators[operator_idx]
+        if not completed and getattr(self, '_holders', {}).get(part.ERP_id):
+            operator = self._holders[part.ERP_id]
+        if step.name == 'Ship' and getattr(self, '_shipper', None):
+            operator = self._shipper
 
         # Calculate timing
         step_duration = timedelta(hours=0.5, minutes=45)  # ~45 min per step
@@ -699,7 +715,8 @@ class DemoOrdersSeeder(BaseSeeder):
         from Tracker.services.mes.shipping import ship
 
         self.log("Shipping finished units...")
-        clerk = (users.get('managers') or users.get('employees') or [None])[0]
+        clerk = (users.get('by_email', {}).get('rosa.ship@demo.ambac.com')
+                 or (users.get('managers') or users.get('employees') or [None])[0])
         shipped = 0
         for order_data in DEMO_ORDERS:
             serials = [p['serial'] for p in order_data.get('parts', []) if p.get('ship')]

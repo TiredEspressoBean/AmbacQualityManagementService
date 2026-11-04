@@ -563,8 +563,18 @@ class DemoQualitySeeder(BaseSeeder):
                 quality_report=qr, equipment=production_equipment, role=EquipmentRole.PRODUCTION,
             )
 
-        # Backdate created_at for historical data (FPY trend needs dated records)
-        if qr_data.get('days_ago'):
+        # A report belongs to the visit it inspected: dated when that visit ended, naming
+        # who ran it. A FAIL is the first visit (it's what sent the part round again);
+        # a PASS the last. Parts with no seeded visit at the step keep the authored
+        # days_ago (FPY trend needs dated records).
+        from Tracker.models import StepExecution
+        visits = StepExecution.objects.filter(part=part, step=step).order_by('visit_number')
+        visit = visits.first() if status == 'FAIL' else visits.last()
+        if visit is not None and (visit.exited_at or visit.started_at):
+            QualityReports.objects.filter(pk=qr.pk).update(
+                created_at=visit.exited_at or visit.started_at)
+            operators = [visit.assigned_to] if visit.assigned_to_id else operators
+        elif qr_data.get('days_ago'):
             backdate = self.today - timedelta(days=qr_data['days_ago'])
             QualityReports.objects.filter(pk=qr.pk).update(created_at=backdate)
 
@@ -620,10 +630,21 @@ class DemoQualitySeeder(BaseSeeder):
             # Use the step from the quality report for rework
             rework_step = quality_report.step
 
-        # Calculate timestamps for completed dispositions
-        created_at = self.today - timedelta(days=disp_data.get('days_ago', 0))
-        resolution_completed_at = created_at + timedelta(days=1) if resolution_completed else None
-        containment_completed_at = created_at + timedelta(hours=2) if current_state != 'OPEN' else None
+        # Calculate timestamps for completed dispositions: opened with the report that
+        # raised it (dated at its visit), not before it.
+        quality_report.refresh_from_db(fields=['created_at'])
+        created_at = quality_report.created_at or (
+            self.today - timedelta(days=disp_data.get('days_ago', 0)))
+        # Resolved when the part's last visit at the step ended (a rework's re-test), or
+        # a couple of hours on where there's no later visit; never after now.
+        from Tracker.models import StepExecution
+        retest = (StepExecution.objects.filter(part=part, step=quality_report.step,
+                                               exited_at__gt=created_at)
+                  .order_by('-exited_at').values_list('exited_at', flat=True).first())
+        resolution_completed_at = (min(retest or created_at + timedelta(hours=2), self.today)
+                                   if resolution_completed else None)
+        containment_completed_at = (created_at + timedelta(minutes=10)
+                                    if current_state != 'OPEN' else None)
         customer_approval_date_val = (created_at + timedelta(hours=4)).date() if customer_approval_received else None
         scrap_verified_at = created_at + timedelta(hours=3) if scrap_verified else None
 
@@ -663,6 +684,7 @@ class DemoQualitySeeder(BaseSeeder):
 
         # Link to quality report via M2M (always ensure it's linked)
         disp.quality_reports.add(quality_report)
+        QuarantineDisposition.objects.filter(pk=disp.pk).update(created_at=created_at)
 
         return disp
 

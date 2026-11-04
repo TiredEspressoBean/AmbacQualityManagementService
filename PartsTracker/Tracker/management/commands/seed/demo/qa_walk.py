@@ -664,6 +664,7 @@ class DemoQaWalkSeeder(BaseSeeder):
             visits = list(StepExecution.objects.filter(part=part).order_by('entered_at', 'id'))
             span = sum((STEP_MINUTES.get(v.step.name, 20) + GAP_MINUTES) for v in visits)
             cursor = end_at - timedelta(minutes=span)
+            placed = []  # (visit's walk-time entry, its new capture time), in order
             for v in visits:
                 minutes = STEP_MINUTES.get(v.step.name, 20)
                 fields = {'entered_at': cursor}
@@ -691,10 +692,29 @@ class DemoQaWalkSeeder(BaseSeeder):
                     recorded_at=captured_at)
                 SubstepResponse.objects.filter(step_execution=v).update(responded_at=captured_at)
                 SubstepCompletion.objects.filter(step_execution=v).update(completed_at=captured_at)
-                QualityReports.objects.filter(part=part, step=v.step,
-                                              created_at__gte=v.entered_at).update(
-                    created_at=captured_at)
+                # The visit's own reports; one with no visit recorded goes by time.
+                reports = list(QualityReports.objects.filter(step_execution=v)
+                               .values_list('pk', flat=True)) or list(
+                    QualityReports.objects.filter(part=part, step=v.step, step_execution__isnull=True,
+                                                  created_at__gte=v.entered_at)
+                    .values_list('pk', flat=True))
+                QualityReports.objects.filter(pk__in=reports).update(created_at=captured_at)
+                placed.append((v.entered_at, captured_at))
                 cursor += timedelta(minutes=minutes + GAP_MINUTES)
+            # A disposition moves with the visit it was opened during — the last one
+            # entered before it in the walk's own order (a failure's, or an MRB hold's
+            # after the rework that hit the cap) — contained and decided shortly after,
+            # not at the seed's run time.
+            for d in QuarantineDisposition.objects.filter(part=part):
+                at = next((cap for entered, cap in reversed(placed) if entered <= d.created_at),
+                          None)
+                if at is None:
+                    continue
+                fields = {'created_at': at}
+                for stamp in ('containment_completed_at', 'decision_authorized_at'):
+                    if getattr(d, stamp) is not None:
+                        fields[stamp] = at + timedelta(minutes=10)
+                QuarantineDisposition.objects.filter(pk=d.pk).update(**fields)
 
     def _shift_back(self, wo, delta):
         """Move a work order's walked history back in time. The services stamp now();

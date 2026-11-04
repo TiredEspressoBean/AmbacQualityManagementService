@@ -102,7 +102,7 @@ DEMO_TRAINING_RECORDS = [
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'GRADING-CERT', 'level': 2, 'expires_days': 300, 'completed_days_ago': 65},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 1, 'expires_days': 7, 'completed_days_ago': 358},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'DIM-CERT', 'level': 1, 'expires_days': 7, 'completed_days_ago': 358},
-    # Ken Okafor — the first-piece operator: DIM-CERT and NOZ-CERT at level 1 (refused at
+    # Ken Adebayo — the first-piece operator: DIM-CERT and NOZ-CERT at level 1 (refused at
     # Body and Nozzle Inspection, the shift lead's override), both expiring, the record
     # the QA Manager writes. No Flow, so Flow stays Mike's single-person skill.
     {'user': 'ken.ops@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 2, 'expires_days': 280, 'completed_days_ago': 85},

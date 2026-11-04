@@ -110,7 +110,9 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
             self._run_step_for(parts, 'Precision Grinding', walk, operator=self.dave)
             self._load_wash(wo, parts)
             result['work_orders'].append(wo)
-        self._space_out(wo, self.today - timedelta(minutes=30))
+        # Yesterday's: Dave left the load when he went home, and is off sick today.
+        self._space_out(wo, self._last_shift_end())
+        self._load_starts_with_its_visits(wo)
 
         with transaction.atomic():
             wo = self._work_order(order, process, ASSEMBLY_WO, len(ASSEMBLY_PARTS))
@@ -126,7 +128,7 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
             self._run_step_for(parts[1:], 'Body Inspection', walk, operator=self.dave)
             self._nitride(parts)
             result['work_orders'].append(wo)
-        self._space_out(wo, self.today - timedelta(hours=2))
+        self._space_out(wo, self._last_shift_end(hours=2))
 
         result['makeup'] = self._makeup_short_job(order, process, part_type, walk)
 
@@ -184,7 +186,7 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
                 notes='Turned undersize; no material left to recover the diameter.')
             record_scrap_verification(disposition, self.sarah, verified=True)
             self._run_step_for(good, 'Machining', walk, operator=self.dave)
-        self._space_out(wo, self.today - timedelta(hours=3))
+        self._space_out(wo, self._last_shift_end(hours=3))
         return wo
 
     def _finding_for_the_lead(self, walk):
@@ -208,7 +210,10 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
                      ProcessStep.objects.filter(process=wo.process).select_related('step')}
         try:
             with transaction.atomic():
+                # Ken, on shift, cleans it too: Mike hasn't clocked in yet today.
+                self.operator = self.ken
                 self._run_batch_step(wo, [part], 'Cleaning', walk)
+                self.operator = self.mike
                 part.refresh_from_db()
                 if part.step is None or part.step.name != 'Nozzle Inspection':
                     self.log(f"  Warning: {LEAD_FINDING_CORE} is at "
@@ -224,6 +229,7 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
                     self.ken)
         finally:
             self.step = build_steps
+            self.operator = self.mike
         self._space_out(wo, self.today - timedelta(minutes=50))
         return core
 
@@ -280,7 +286,7 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
                         return core
         finally:
             self.step = build_steps
-        self._space_out(wo, self.today - timedelta(hours=1))
+        self._space_out(wo, self._last_shift_end(hours=1))
         core.refresh_from_db()
         self.log(f"  {REBUILT_CORE}: rebuild walked to {core.get_status_display()}")
         return core
@@ -328,7 +334,7 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
                 part.refresh_from_db()
         finally:
             self.step = build_steps
-        self._space_out(wo, self.today - timedelta(minutes=40))
+        self._space_out(wo, self._last_shift_end(minutes=40))
         self.log(f"  {CAPPED_CORE}: at {part.step.name if part.step else 'no step'}, "
                  f"{part.get_part_status_display()}")
         return core
@@ -349,8 +355,9 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
         return parts
 
     def _cores_to_teardown(self):
-        """The reman addition's exhibit: two cores Dave received, signed off at Core
-        Receiving by Sarah (an inspector who didn't do the work), waiting at Disassembly
+        """The reman addition's exhibit: two cores Casey received (the core records' own
+        Received By), signed off at Core Receiving by Sarah (an inspector who didn't do
+        the work), waiting at Disassembly
         for Mike to tear down. Teardown grades each component it takes out."""
         from Tracker.models import Core
         from Tracker.services.qms.step_signoff import sign_off_step
@@ -362,7 +369,7 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
             return []
         walk = {'override_count': 0}
         wo = parts[0].work_order
-        self._run_step_for(parts, 'Core Receiving', walk, advance=False, operator=self.dave)
+        self._run_step_for(parts, 'Core Receiving', walk, advance=False, operator=self.casey)
         sign_off_step(wo, parts[0].step, self.sarah, password='demo123')
         for p in parts:
             p.refresh_from_db()
@@ -373,6 +380,30 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
         self.log(f"  Cores waiting to be torn down and graded: "
                  f"{', '.join(f'{c.core_number}@{c.part.step.name}' for c in cores)}")
         return cores
+
+    def _last_shift_end(self, hours=0, minutes=0):
+        """The close of the last shift before today (15:00 plant time on the previous
+        weekday), less the given time: where the work Mike and Dave did before today
+        ends. Today Mike hasn't clocked in yet and Dave is off sick."""
+        from datetime import datetime
+        from Tracker.services.core.clock import plant_tz, tenant_today
+        day = tenant_today(self.tenant) - timedelta(days=1)
+        while day.weekday() >= 5:
+            day -= timedelta(days=1)
+        close = timezone.make_aware(datetime(day.year, day.month, day.day, 15, 0),
+                                    plant_tz(self.tenant))
+        return close - timedelta(hours=hours, minutes=minutes)
+
+    def _load_starts_with_its_visits(self, wo):
+        """An open load began when its parts went in: start it at its visits' latest
+        start, not the seed's run time."""
+        from django.db.models import Max
+        from Tracker.models import StepExecution
+        for batch in BatchExecution.objects.filter(work_order=wo, completed_at__isnull=True):
+            began = (StepExecution.objects.filter(part__in=batch.parts.all(), step=batch.step)
+                     .aggregate(m=Max('started_at'))['m'])
+            if began is not None:
+                BatchExecution.objects.filter(pk=batch.pk).update(started_at=began)
 
     def _ops_order(self, customer):
         return Orders.objects.update_or_create(
