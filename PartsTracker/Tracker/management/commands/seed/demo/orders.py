@@ -490,7 +490,9 @@ class DemoOrdersSeeder(BaseSeeder):
                     datetime.combine(due, time(17, 0)))
                 if due_at < history_end:
                     history_end = due_at - timedelta(days=1)
-            reworked_steps = ('Flow Calibration', 'Flow Testing', 'Assembly', 'Reassembly')
+            # Reworked at the test it failed (nozzle reseated, retested): a second visit
+            # there, right after the failed one.
+            reworked_steps = ('Flow Calibration', 'Flow Testing')
             visits = sum(2 if part_reworked and ordered_steps[i].name in reworked_steps else 1
                          for i in range(current_step_idx + 1))
             slots = iter(self._shift_slots_before(history_end, visits))
@@ -592,7 +594,9 @@ class DemoOrdersSeeder(BaseSeeder):
             operator = self._shipper
 
         # Calculate timing
-        step_duration = timedelta(hours=0.5, minutes=45)  # ~45 min per step
+        # ~45 min per step, so a run ends before the next shift slot starts (the
+        # slots sit 65–135 min apart).
+        step_duration = timedelta(minutes=45)
         started_at = entry_time + timedelta(minutes=5)
         exited_at = started_at + step_duration if completed else None
         if not completed:
@@ -817,6 +821,19 @@ class DemoOrdersSeeder(BaseSeeder):
                         'inspected_at': inspected_at,
                     }
                 )
+
+                # Raised when the first piece finished the step, bought off a little
+                # after — dated with its visit, not the seed's run time.
+                visit = (StepExecution.objects.filter(part=first_part, step=step,
+                                                      exited_at__isnull=False)
+                         .order_by('visit_number').first())
+                if visit is not None:
+                    dated = {'created_at': visit.exited_at,
+                             'shift_date': timezone.localtime(visit.exited_at).date()}
+                    if inspected_at is not None:
+                        dated['inspected_at'] = min(visit.exited_at + timedelta(minutes=15),
+                                                    self.today)
+                    FPIRecord.objects.filter(pk=fpi.pk).update(**dated)
 
                 if created:
                     fpi_count += 1

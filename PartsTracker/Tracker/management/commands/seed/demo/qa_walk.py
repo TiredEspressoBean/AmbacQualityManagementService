@@ -699,6 +699,11 @@ class DemoQaWalkSeeder(BaseSeeder):
                                                   created_at__gte=v.entered_at)
                     .values_list('pk', flat=True))
                 QualityReports.objects.filter(pk__in=reports).update(created_at=captured_at)
+                # A first piece is raised at its inspection and bought off after it.
+                fpis = FPIRecord.objects.filter(designated_part=part, step=v.step)
+                fpis.update(created_at=captured_at)
+                fpis.filter(inspected_at__isnull=False).update(
+                    inspected_at=captured_at + timedelta(minutes=15))
                 placed.append((v.entered_at, captured_at))
                 cursor += timedelta(minutes=minutes + GAP_MINUTES)
             # A disposition moves with the visit it was opened during — the last one

@@ -231,6 +231,13 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
             self.step = build_steps
             self.operator = self.mike
         self._space_out(wo, self.today - timedelta(minutes=50))
+        # Ken's finding was made during his (dated) visit, not at the seed's run time.
+        from Tracker.models import HarvestedComponent, StepExecution
+        visit = (StepExecution.objects.filter(part=part, step__name='Nozzle Inspection')
+                 .order_by('-entered_at').first())
+        if visit is not None and visit.started_at is not None:
+            HarvestedComponent.objects.filter(core=core, proposed_by=self.ken).update(
+                proposed_at=visit.started_at + timedelta(minutes=10))
         return core
 
     def _rebuilt_unit(self, walk):
@@ -428,13 +435,22 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
 
     def _shift_notes(self):
         from Tracker.services.mes.shift_notes import publish_shift_note
+        from datetime import datetime
+        from Tracker.services.core.clock import plant_tz, tenant_today
         notes = []
         now = timezone.now()
+        # Casey writes them at the start of the shift (06:45 plant time), before the
+        # morning they talk about — not whenever the seed happens to run.
+        day = tenant_today(self.tenant)
+        written = min(timezone.make_aware(datetime(day.year, day.month, day.day, 6, 45),
+                                          plant_tz(self.tenant)), now - timedelta(hours=1))
         for spec in SHIFT_NOTES:
-            notes.append(publish_shift_note(
+            note = publish_shift_note(
                 author=self.casey, tenant=self.tenant, body=spec['body'],
                 audience_roles=['Operator'], priority=spec['priority'],
                 acknowledgment_required=spec['acknowledgment_required'],
-                effective_from=now - timedelta(hours=1),
-                effective_until=now + timedelta(hours=spec['hours'])))
+                effective_from=written,
+                effective_until=now + timedelta(hours=spec['hours']))
+            type(note).objects.filter(pk=note.pk).update(created_at=written)
+            notes.append(note)
         return notes

@@ -571,9 +571,12 @@ class DemoQualitySeeder(BaseSeeder):
         visits = StepExecution.objects.filter(part=part, step=step).order_by('visit_number')
         visit = visits.first() if status == 'FAIL' else visits.last()
         if visit is not None and (visit.exited_at or visit.started_at):
-            QualityReports.objects.filter(pk=qr.pk).update(
-                created_at=visit.exited_at or visit.started_at)
-            operators = [visit.assigned_to] if visit.assigned_to_id else operators
+            dated = {'created_at': visit.exited_at or visit.started_at}
+            if visit.assigned_to_id:
+                # Recorded by whoever ran the step, as the runtime records it.
+                dated['detected_by'] = visit.assigned_to
+                operators = [visit.assigned_to]
+            QualityReports.objects.filter(pk=qr.pk).update(**dated)
         elif qr_data.get('days_ago'):
             backdate = self.today - timedelta(days=qr_data['days_ago'])
             QualityReports.objects.filter(pk=qr.pk).update(created_at=backdate)
@@ -646,7 +649,9 @@ class DemoQualitySeeder(BaseSeeder):
         containment_completed_at = (created_at + timedelta(minutes=10)
                                     if current_state != 'OPEN' else None)
         customer_approval_date_val = (created_at + timedelta(hours=4)).date() if customer_approval_received else None
-        scrap_verified_at = created_at + timedelta(hours=3) if scrap_verified else None
+        scrap_verified_at = (min(created_at + timedelta(hours=3), self.today)
+                             if scrap_verified else None)
+        decided = bool(disposition_type) and current_state != 'OPEN'
 
         disp, created = QuarantineDisposition.objects.update_or_create(
             tenant=self.tenant,
@@ -674,6 +679,9 @@ class DemoQualitySeeder(BaseSeeder):
                 'scrap_verification_method': 'Crushed and marked' if scrap_verified else '',
                 'scrap_verified_by': approver if scrap_verified else None,
                 'scrap_verified_at': scrap_verified_at,
+                # Who decided it, and when: a decided disposition carries its authority.
+                'decision_authorized_by': approver if decided else None,
+                'decision_authorized_at': created_at + timedelta(minutes=15) if decided else None,
                 # Resolution tracking
                 'resolution_completed': resolution_completed,
                 'resolution_completed_by': approver if resolution_completed else None,

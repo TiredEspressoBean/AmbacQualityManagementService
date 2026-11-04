@@ -1,10 +1,10 @@
-"""Planner exhibit for Plan vs actual (Planner track module 8): this morning's plan,
+"""Planner exhibit for Plan vs actual (Planner track module 9): the last shift's plan,
 and how the floor ran against it.
 
 Five single-part work orders on ORD-2024-PLAN, released and urgent so the solver puts
-their Machining first on the lathe. A plan is solved, then dated to this morning (the
-whole schedule moved back as a block, as if it had been solved at the start of the
-shift). Four bodies are then run through Machining by Dave, through the services
+their Machining first on the lathe. A plan is solved, then dated back by whole days to
+the last working day (the whole schedule moved back as a block, as if it had been
+solved at the start of that shift). Four bodies are then run through Machining by Dave, through the services
 (start_execution, submit_substep, advance_part_step), each against its own slot in
 that plan:
 
@@ -174,6 +174,9 @@ class DemoPlanWalkSeeder(DemoQaWalkSeeder):
         latest_end = max(t.end_time for t in slots.values())
         needed = latest_end - timezone.now() + CLEARANCE
         delta = timedelta(days=max(1, math.ceil(needed / timedelta(days=1))))
+        # The last shift is a working day's: a Monday seed dates it to Friday.
+        while (timezone.localtime(timezone.now()) - delta).weekday() >= 5:
+            delta += timedelta(days=1)
         ScheduledTask.objects.filter(schedule=schedule).update(
             start_time=F('start_time') - delta, end_time=F('end_time') - delta)
         ScheduleResult.objects.filter(pk=schedule.pk).update(
