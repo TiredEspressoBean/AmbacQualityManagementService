@@ -301,8 +301,8 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
     def _capped_unit(self, walk):
         """The escalation exhibit. Sarah finds the spray angle out at Nozzle Inspection
         twice; each time the FAIL opens a disposition, Maria decides REWORK, and the
-        unit is reworked (by Mike, then Dave: Rework wants a different hand each
-        visit). Coming back from the second rework the check is at its visit cap, so
+        unit is reworked (by Mike, then Dave: the step is set to a different operator
+        per visit, though nothing enforces that yet). Coming back from the second rework the check is at its visit cap, so
         the route escalates to MRB Review, where the engine quarantines it and opens
         a disposition for a person to decide."""
         from Tracker.models import Core, ProcessStep
