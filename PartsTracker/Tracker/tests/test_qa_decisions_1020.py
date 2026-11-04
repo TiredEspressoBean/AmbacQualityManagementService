@@ -6,7 +6,8 @@
    and both now also refuse a held or ended work order.
 3. Every annotation carries a quality report.
 (v) Leaving the rework step (re-inspection passed) clears REWORK_NEEDED.
-(w) A captured report records the operator on the job (personnel role OPERATOR).
+(w) A captured report records the operator on the job (personnel role OPERATOR), and
+    reports read who did what from the role rows (2026-11-04).
 """
 from django.core.exceptions import ValidationError
 
@@ -226,3 +227,66 @@ class CapturedReportRecordsTheOperatorTests(_Fixture):
         report = ensure_quality_report(sub, ex, user=self.user_a)
         self.assertTrue(QualityReportPersonnel.objects.filter(
             quality_report=report, user=self.user_a, role=PersonnelRole.OPERATOR).exists())
+        # ...and the report reads it back: operators_info takes the OPERATOR link, not
+        # only the deprecated M2M (which capture never writes).
+        from Tracker.serializers.qms import QualityReportsSerializer
+        info = QualityReportsSerializer(report, context={}).data["operators_info"]
+        self.assertEqual([o["id"] for o in info], [self.user_a.id])
+
+
+class ReportPersonnelReadsOneRecordTests(_Fixture):
+    """Who did what on a report reads from the role rows (QualityReportPersonnel), the
+    deprecated detected_by / verified_by / operators columns folded in (2026-11-04)."""
+
+    def _other(self, name="qa_b"):
+        from Tracker.models import User
+        return User.objects.create_user(username=name, email=f"{name}@tenant-a.com",
+                                        password="x", tenant=self.tenant_a)
+
+    def _report(self, **kw):
+        return QualityReports.objects.create(tenant=self.tenant_a, part=self.part, step=self.step,
+                                             status="FAIL", **kw)
+
+    def test_an_inspector_is_the_detector_when_no_one_else_is(self):
+        from Tracker.serializers.qms import QualityReportsSerializer
+        report = self._report()  # e.g. a receiving inspection opened before the column was set
+        QualityReportPersonnel.objects.create(quality_report=report, user=self.user_a,
+                                              role=PersonnelRole.INSPECTOR)
+        self.assertEqual(report.primary_detector, self.user_a)
+        self.assertEqual(QualityReportsSerializer(report, context={}).data["detected_by_info"]["id"],
+                         self.user_a.id)
+
+    def test_a_signed_second_signature_reads_as_the_verifier(self):
+        from django.utils import timezone
+        from Tracker.serializers.qms import QualityReportsSerializer
+        verifier = self._other()
+        report = self._report(detected_by=self.user_a)
+        QualityReportPersonnel.objects.create(quality_report=report, user=verifier,
+                                              role=PersonnelRole.VERIFIED_BY, signed_at=timezone.now())
+        self.assertEqual(QualityReportsSerializer(report, context={}).data["verified_by_info"]["id"],
+                         verifier.id, "the column is empty; the signature is the record")
+
+    def test_changing_the_detector_moves_the_role_but_keeps_a_signature(self):
+        from django.utils import timezone
+        from Tracker.services.qms.quality_report import sync_personnel
+        other = self._other()
+        report = self._report(detected_by=self.user_a)
+        sync_personnel(report)
+        signer = self._other("signer")
+        QualityReportPersonnel.objects.create(quality_report=report, user=signer,
+                                              role=PersonnelRole.DETECTED_BY, signed_at=timezone.now())
+        report.detected_by = other
+        report.save(update_fields=["detected_by"])
+        sync_personnel(report)
+        rows = set(QualityReportPersonnel.objects.filter(quality_report=report, role=PersonnelRole.DETECTED_BY)
+                   .values_list("user_id", flat=True))
+        self.assertEqual(rows, {other.id, signer.id}, "the old unsigned row goes; the signed one stays")
+        self.assertEqual(report.primary_detector, signer, "a signed detection reads first")
+
+    def test_filters_find_what_an_inspector_detected(self):
+        from Tracker.services.qms.quality_report import detected_by_q
+        report = self._report()
+        QualityReportPersonnel.objects.create(quality_report=report, user=self.user_a,
+                                              role=PersonnelRole.INSPECTOR)
+        self._report(detected_by=self.user_a)
+        self.assertEqual(QualityReports.objects.filter(detected_by_q(self.user_a)).distinct().count(), 2)

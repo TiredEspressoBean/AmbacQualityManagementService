@@ -225,8 +225,12 @@ def receive_parts_back(shipment, user=None):
             subject_content_type=ContentType.objects.get_for_model(shipment.__class__),
             subject_id=shipment.id,
             status="IN_PROGRESS",
-            assigned_to=user if (user and user.is_authenticated) else None,
+            # Nobody holds it yet: whoever received the shipment back isn't its inspector.
+            assigned_to=None,
         )
+        # Unattributed, like a receiving inspection routed at receipt: the first person
+        # to record on it or accept / reject it is its inspector and detector
+        # (quality_report.claim_inspection).
         report = QualityReports.objects.create(
             tenant=shipment.tenant,
             osp_shipment=shipment,
@@ -238,11 +242,7 @@ def receive_parts_back(shipment, user=None):
             reject_number=sp.reject_number,
             acceptability_constant_k=sp.k,
             variables_characteristic=variables_char,
-            # The inspector is who detects, as on a receiving inspection.
-            detected_by=user if (user is not None and user.is_authenticated) else None,
         )
-        if user is not None and user.is_authenticated:
-            report.personnel_links.create(user=user, role="INSPECTOR")
 
     return report
 
@@ -300,7 +300,9 @@ def accept_return(report, user=None):
         raise ValueError("Report is not an outside-process return inspection.")
 
     held = []
+    from Tracker.services.qms.quality_report import claim_inspection
     with transaction.atomic():
+        claim_inspection(report, user)
         # The verdict first: the step's own gate reads the inspection.
         if report.status == "PENDING":
             report.status = "PASS"
@@ -337,7 +339,9 @@ def reject_return(report, user=None):
     if shipment is None:
         raise ValueError("Report is not an outside-process return inspection.")
 
+    from Tracker.services.qms.quality_report import claim_inspection
     with transaction.atomic():
+        claim_inspection(report, user)
         for ex in shipment.step_executions.select_related("part"):
             if ex.part_id:
                 ex.part.part_status = PartsStatus.QUARANTINED

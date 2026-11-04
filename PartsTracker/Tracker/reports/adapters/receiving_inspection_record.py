@@ -236,7 +236,8 @@ def build_receiving_inspection_record_context(lot, tenant) -> ReceivingInspectio
         k=report.acceptability_constant_k if report is not None else None,
         defectives_found=report.defectives_found if report is not None else None,
         verdict=report.status if report is not None else None,
-        inspected_by=_name(report.detected_by) if report is not None else None,
+        # The detector, which on a receiving inspection is the inspector who opened it.
+        inspected_by=_name(report.primary_detector) if report is not None else None,
         measurements=measurements,
         checklist=checklist,
         events=events,

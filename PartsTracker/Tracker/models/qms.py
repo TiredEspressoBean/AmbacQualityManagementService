@@ -631,29 +631,45 @@ class QualityReports(SecureModel):
         prod_link = self.equipment_links.filter(role=EquipmentRole.PRODUCTION).first()
         return prod_link.equipment if prod_link else None
 
+    def _role_users(self, role):
+        """Users in `role` from `personnel_links` — signed first, then by when added.
+        Iterates `.all()` so a `prefetch_related('personnel_links__user')` serves it."""
+        rows = [l for l in self.personnel_links.all() if l.role == role]
+        rows.sort(key=lambda l: (l.signed_at is None, l.pk))
+        return [l.user for l in rows]
+
     @property
     def primary_detector(self):
         """Canonical read for "who detected the defect."
 
-        Reads role=DETECTED_BY from `personnel_links`, falling back to the
-        deprecated `detected_by` FK. Prefer this over `.detected_by`.
+        The DETECTED_BY role (a signed detection first), else the deprecated
+        `detected_by` FK, else the INSPECTOR — the inspector who opened a receiving or
+        OSP inspection is its detector (user decision 2026-11-04). Prefer this over
+        `.detected_by`.
         """
-        link = self.personnel_links.filter(role=PersonnelRole.DETECTED_BY).first()
-        if link:
-            return link.user
-        return self.detected_by
+        return ((self._role_users(PersonnelRole.DETECTED_BY) or [None])[0]
+                or self.detected_by
+                or (self._role_users(PersonnelRole.INSPECTOR) or [None])[0])
 
     @property
     def primary_verifier(self):
         """Canonical read for "who verified the inspection (second sig)."
 
-        Reads role=VERIFIED_BY from `personnel_links`, falling back to the
-        deprecated `verified_by` FK.
+        The VERIFIED_BY role (signed first), falling back to the deprecated
+        `verified_by` FK.
         """
-        link = self.personnel_links.filter(role=PersonnelRole.VERIFIED_BY).first()
-        if link:
-            return link.user
-        return self.verified_by
+        return (self._role_users(PersonnelRole.VERIFIED_BY) or [None])[0] or self.verified_by
+
+    @property
+    def operator_list(self):
+        """Canonical read for "who was on the job": OPERATOR roles plus the deprecated
+        `operators` M2M, once each — from prefetched rows when they're there."""
+        seen, out = set(), []
+        for u in self._role_users(PersonnelRole.OPERATOR) + list(self.operators.all()):
+            if u.pk not in seen:
+                seen.add(u.pk)
+                out.append(u)
+        return out
 
     @property
     def operator_users(self):

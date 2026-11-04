@@ -194,7 +194,8 @@ def route_received_lot(lot, user, *, waive=()):
         inventory.mark_dock_to_stock(lot)
         return None
     try:
-        return open_inspection(lot, user)
+        # Routed at receipt: whoever received the lot isn't its inspector.
+        return open_inspection(lot, user, attribute=False)
     except ValueError:
         return None  # leave RECEIVED → visible in the queue
 
@@ -516,14 +517,19 @@ def _held_for_expired_shelf_life(lot) -> bool:
     return True
 
 
-def open_inspection(lot, user):
+def open_inspection(lot, user, *, attribute: bool = True):
     """Open a receiving inspection for ``lot`` against its part type's RECEIVING step.
 
     Creates a ``StepExecution`` whose polymorphic subject is the lot (the carrier for
     the receiving DWI / substep runtime), a PENDING ``QualityReports`` keyed to the lot
-    + step (snapshotting the sample plan), links ``user`` as INSPECTOR, and moves the
-    lot to AWAITING_INSPECTION. The same report is appended to by either the bespoke
-    capture flow or DWI inline capture.
+    + step (snapshotting the sample plan), and moves the lot to AWAITING_INSPECTION.
+    The same report is appended to by either the bespoke capture flow or DWI inline
+    capture.
+
+    ``attribute``: an inspector opening it themselves is its inspector and detector
+    (and holds the execution). Opened at receipt (``route_received_lot``, a hold
+    release) it names nobody — whoever received the lot isn't who inspects it — and
+    the first person to record claims it (``quality_report.claim_inspection``).
     """
     from django.contrib.contenttypes.models import ContentType
     from Tracker.models import QualityReports, StepExecution
@@ -543,6 +549,8 @@ def open_inspection(lot, user):
     rs = resolve_sampling_ruleset(step, lot.supplier) if sp.method else None
     variables_char = rs.variables_characteristic if rs else None
 
+    from Tracker.services.qms.quality_report import claim_inspection
+    inspector = user if (attribute and user is not None and user.is_authenticated) else None
     with transaction.atomic():
         StepExecution.objects.create(
             tenant=lot.tenant,
@@ -550,7 +558,7 @@ def open_inspection(lot, user):
             subject_content_type=ContentType.objects.get_for_model(lot.__class__),
             subject_id=lot.id,
             status="IN_PROGRESS",
-            assigned_to=user if (user and user.is_authenticated) else None,
+            assigned_to=inspector,
         )
         report = QualityReports.objects.create(
             tenant=lot.tenant,
@@ -563,12 +571,10 @@ def open_inspection(lot, user):
             reject_number=sp.reject_number,
             acceptability_constant_k=sp.k,
             variables_characteristic=variables_char,
-            # The inspector is who detects: lists reading detected_by (a receiving FAIL's
-            # detector, the inspector's day) see them as for any other report.
-            detected_by=user if (user is not None and user.is_authenticated) else None,
         )
-        if user is not None and user.is_authenticated:
-            report.personnel_links.create(user=user, role="INSPECTOR")
+        # The inspector is who detects: lists reading the detector (a receiving FAIL's,
+        # the inspector's day) see them as for any other report.
+        claim_inspection(report, inspector)
         inventory.mark_awaiting_inspection(lot)
 
     return report
@@ -580,10 +586,9 @@ def receiving_characteristics(step):
 
 
 def _detected_by(report, user):
-    """An inspection opened without a person (system, import) takes whoever records it."""
-    if report.detected_by_id is None and user is not None and user.is_authenticated:
-        report.detected_by = user
-        report.save(update_fields=["detected_by"])
+    """An inspection opened at receipt names nobody; whoever records first claims it."""
+    from Tracker.services.qms.quality_report import claim_inspection
+    claim_inspection(report, user)
 
 
 def record_inspection(report, measurements, user):

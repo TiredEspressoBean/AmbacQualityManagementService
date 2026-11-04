@@ -90,6 +90,7 @@ def exposure_for(record) -> CalibrationExposure:
                .filter(archived=False, equipment_links__equipment_id__in=chain,
                        created_at__lt=end)
                .select_related('part', 'material_lot', 'step', 'detected_by')
+               .prefetch_related('personnel_links__user')
                .order_by('created_at'))
     if last_good:
         start = datetime.combine(last_good.calibration_date, time.min, tzinfo=tz)
@@ -113,6 +114,7 @@ def exposure_for(record) -> CalibrationExposure:
             part = qr.material_lot.lot_number
         else:
             part = ''
+        who = qr.primary_detector  # the detector, or a receiving lot's inspector
         rows.append(ExposedReport(
             id=str(qr.pk),
             report_number=qr.report_number or '',
@@ -121,7 +123,7 @@ def exposure_for(record) -> CalibrationExposure:
             material_lot_id=str(qr.material_lot_id) if qr.material_lot_id else None,
             step=qr.step.name if qr.step_id else '',
             created_at=qr.created_at,
-            inspector=(qr.detected_by.get_full_name() or qr.detected_by.email) if qr.detected_by_id else '',
+            inspector=(who.get_full_name() or who.email) if who else '',
             status=qr.status,
             role=roles.get(qr.pk, ''),
         ))

@@ -692,8 +692,10 @@ def ensure_quality_report(substep, step_execution=None, user=None, *, batch_exec
             },
         )
         if created:
+            from Tracker.services.qms.quality_report import sync_personnel
             from Tracker.services.qms.report_supersede import link_replacement
             link_replacement(report)
+            sync_personnel(report)
         return report
 
     if step_execution is None:
@@ -718,8 +720,10 @@ def ensure_quality_report(substep, step_execution=None, user=None, *, batch_exec
         # recorded only who detected, so "operator on the job" was blank on every
         # captured report.
         if created:
+            from Tracker.services.qms.quality_report import sync_personnel
             from Tracker.services.qms.report_supersede import link_replacement
             link_replacement(report)
+            sync_personnel(report)
         if created and step_execution.assigned_to_id:
             QualityReportPersonnel.objects.get_or_create(
                 quality_report=report, user_id=step_execution.assigned_to_id,
@@ -751,6 +755,13 @@ def ensure_quality_report(substep, step_execution=None, user=None, *, batch_exec
             sampling_method="dwi_substep_submit", status="PENDING",
             **subject_filter,
         )
+        from Tracker.services.qms.quality_report import sync_personnel
+        sync_personnel(report)
+    else:
+        # Opened at receipt, it names nobody: the first person to capture on it is
+        # its inspector and detector.
+        from Tracker.services.qms.quality_report import claim_inspection
+        claim_inspection(report, user)
     return report
 
 

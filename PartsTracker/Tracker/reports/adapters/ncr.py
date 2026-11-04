@@ -194,6 +194,7 @@ class NcrAdapter(ReportAdapter):
             .prefetch_related(
                 "quality_reports__defects__error_type",
                 "quality_reports__detected_by",
+                "quality_reports__personnel_links__user",
             )
             .get(id=validated_params["id"])
         )
@@ -206,7 +207,7 @@ class NcrAdapter(ReportAdapter):
             QualityReportRef(
                 report_number=qr.report_number or f"QR-{qr.id}",
                 status=qr.status,
-                detected_by=_user_name(qr.detected_by),
+                detected_by=_user_name(qr.primary_detector),
                 detected_at=qr.created_at,
                 description=qr.description or "",
                 defects=[

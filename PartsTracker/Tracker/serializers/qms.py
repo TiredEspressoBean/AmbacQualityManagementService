@@ -201,6 +201,11 @@ class CapaDecisionRequestSerializer(serializers.Serializer):
     note = serializers.CharField(help_text="Why — required; it's what an auditor reads.")
 
 
+def _user_info(u) -> dict:
+    """The {id, username, full_name} shape the report's person fields read as."""
+    return {'id': u.id, 'username': u.username, 'full_name': u.get_full_name().strip() or u.username}
+
+
 class QualityReportsSerializer(SecureModelMixin):
     """Quality reports serializer"""
     measurements = MeasurementResultSerializer(many=True, required=False)
@@ -316,14 +321,9 @@ class QualityReportsSerializer(SecureModelMixin):
 
     @extend_schema_field(serializers.ListField())
     def get_operators_info(self, obj):
-        return [
-            {
-                'id': op.id,
-                'username': op.username,
-                'full_name': op.get_full_name().strip() or op.username,
-            }
-            for op in obj.operators.all()
-        ]
+        # Who was on the job: the OPERATOR roles (what capture records) and the
+        # deprecated `operators` M2M, once each.
+        return [_user_info(op) for op in obj.operator_list]
 
     @extend_schema_field(serializers.ListField())
     def get_errors_info(self, obj):
@@ -347,23 +347,15 @@ class QualityReportsSerializer(SecureModelMixin):
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_detected_by_info(self, obj):
-        if obj.detected_by:
-            return {
-                'id': obj.detected_by.id,
-                'username': obj.detected_by.username,
-                'full_name': obj.detected_by.get_full_name().strip() or obj.detected_by.username,
-            }
-        return None
+        # The detector role, else the column, else the inspector (QualityReports.primary_detector).
+        u = obj.primary_detector
+        return _user_info(u) if u else None
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_verified_by_info(self, obj):
-        if obj.verified_by:
-            return {
-                'id': obj.verified_by.id,
-                'username': obj.verified_by.username,
-                'full_name': obj.verified_by.get_full_name().strip() or obj.verified_by.username,
-            }
-        return None
+        # A signed second signature is a VERIFIED_BY role; the column is its older form.
+        u = obj.primary_verifier
+        return _user_info(u) if u else None
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -385,6 +377,9 @@ class QualityReportsSerializer(SecureModelMixin):
         report = super().create(validated_data)
 
         self._set_production_equipment(report, production_equipment)
+        # The form writes the person columns; the role record follows them.
+        from Tracker.services.qms.quality_report import sync_personnel
+        sync_personnel(report)
 
         for m in measurements_data:
             MeasurementResult.objects.create(report=report, definition_id=m['definition'].id,
@@ -406,9 +401,13 @@ class QualityReportsSerializer(SecureModelMixin):
         # linked MeasurementResult rows by sending an empty array.
         validated_data.pop("measurements", None)
         prior_status = instance.status
+        people_changed = bool({"detected_by", "verified_by"} & set(validated_data))
         instance = super().update(instance, validated_data)
         if has_equipment:
             self._set_production_equipment(instance, production_equipment)
+        if people_changed:
+            from Tracker.services.qms.quality_report import sync_personnel
+            sync_personnel(instance)
         # Edited to FAIL: the save above opened the disposition (signal); quarantine and
         # the rest follow on the same transition, as they do for a report created FAIL.
         from Tracker.services.qms.quality_report import on_report_failed

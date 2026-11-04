@@ -81,6 +81,7 @@ def _emit_batch_ncr_opened(report, batch, *, held_count: int, load_size: int) ->
 
     work_order = batch.work_order
     step = batch.step
+    opener = report.primary_detector
     payload = NCROpenedPayload(
         id=str(report.id),
         tenant_id=str(report.tenant_id) if report.tenant_id else "",
@@ -95,11 +96,8 @@ def _emit_batch_ncr_opened(report, batch, *, held_count: int, load_size: int) ->
             report.description
             or f"Batch cycle failure - {held_count} of {load_size} parts held"
         ),
-        opened_by_id=report.detected_by_id,
-        opened_by_name=(
-            (report.detected_by.get_full_name() or report.detected_by.username)
-            if report.detected_by else ""
-        ),
+        opened_by_id=opener.pk if opener else None,
+        opened_by_name=(opener.get_full_name() or opener.username) if opener else "",
         opened_at=report.created_at,
     )
     emit(

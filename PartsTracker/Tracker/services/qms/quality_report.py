@@ -22,6 +22,69 @@ from __future__ import annotations
 from Tracker.models import PartsStatus, SamplingTriggerManager
 
 
+# --- who did what: the role-tagged personnel record ---------------------------------
+#
+# `QualityReportPersonnel` (role per user) is the record of who detected, operated,
+# verified, inspected or witnessed. The flat `detected_by` / `verified_by` / `operators`
+# columns are deprecated but still written by the paths that create reports;
+# `sync_personnel` carries the detector and verifier into role rows (migration 0291 did
+# the same for existing reports). Readers go through `QualityReports.primary_detector` /
+# `primary_verifier` / `operator_list` (and `detected_by_q` for filters), so they see
+# one record whichever path wrote it.
+
+def sync_personnel(report) -> None:
+    """Make the report's DETECTED_BY / VERIFIED_BY rows agree with its deprecated
+    `detected_by` / `verified_by` columns: the column's user gets a row, and an
+    *unsigned* row for anyone else is dropped (a signed one is an attestation and
+    stays).
+
+    Operators aren't synced: the manual form edits the deprecated `operators` list,
+    which is empty on a captured report, so pruning OPERATOR rows from it would delete
+    the operator capture recorded. `operator_list` reads both instead."""
+    from Tracker.models.qms import PersonnelRole, QualityReportPersonnel
+
+    links = QualityReportPersonnel.objects.filter(quality_report=report)
+    for role, user_id in ((PersonnelRole.DETECTED_BY, report.detected_by_id),
+                          (PersonnelRole.VERIFIED_BY, report.verified_by_id)):
+        stale = links.filter(role=role, signed_at__isnull=True)
+        if user_id:
+            stale = stale.exclude(user_id=user_id)
+            QualityReportPersonnel.objects.get_or_create(quality_report=report, user_id=user_id, role=role)
+        stale.delete()
+    # Drop any prefetched rows so accessors read what's now stored.
+    getattr(report, "_prefetched_objects_cache", {}).pop("personnel_links", None)
+
+
+def claim_inspection(report, user) -> None:
+    """The first person to record on an unattributed inspection becomes its inspector
+    and detector. A receiving / OSP-return inspection opened at receipt names nobody —
+    whoever received the goods isn't who inspects them — so attribution waits for the
+    first reading or verdict. No-op once anyone is named, or without a signed-in user."""
+    from Tracker.models.qms import PersonnelRole, QualityReportPersonnel
+
+    if user is None or not getattr(user, "is_authenticated", False) or report.detected_by_id:
+        return
+    if QualityReportPersonnel.objects.filter(
+            quality_report=report,
+            role__in=(PersonnelRole.DETECTED_BY, PersonnelRole.INSPECTOR)).exists():
+        return
+    report.detected_by = user
+    report.save(update_fields=["detected_by"])
+    QualityReportPersonnel.objects.get_or_create(quality_report=report, user=user,
+                                                 role=PersonnelRole.INSPECTOR)
+    sync_personnel(report)
+
+
+def detected_by_q(user):
+    """Q for reports `user` detected — the detector role, the inspector who opened a
+    receiving / OSP inspection, or (older rows) the deprecated column. Use .distinct()."""
+    from django.db.models import Q
+    from Tracker.models.qms import PersonnelRole
+    return (Q(personnel_links__user=user,
+              personnel_links__role__in=(PersonnelRole.DETECTED_BY, PersonnelRole.INSPECTOR))
+            | Q(detected_by=user))
+
+
 def record_quality_report_side_effects(report) -> None:
     """Run all create-time side effects for a newly created QualityReports row.
 
@@ -137,6 +200,7 @@ def _emit_ncr_opened(report) -> None:
     part = report.part
     work_order = part.work_order if part else None
     step = report.step
+    opener = report.primary_detector
 
     payload = NCROpenedPayload(
         id=str(report.id),
@@ -149,11 +213,8 @@ def _emit_ncr_opened(report) -> None:
         step_name=step.name if step else '',
         severity=report.status,
         description=report.description or '',
-        opened_by_id=report.detected_by_id,
-        opened_by_name=(
-            (report.detected_by.get_full_name() or report.detected_by.username)
-            if report.detected_by else ''
-        ),
+        opened_by_id=opener.pk if opener else None,
+        opened_by_name=(opener.get_full_name() or opener.username) if opener else '',
         opened_at=report.created_at,
     )
 
@@ -207,7 +268,7 @@ def _trigger_sampling_fallback(report) -> None:
         work_order=part.work_order,
         trigger=report,
         triggering_part=part,
-        user=getattr(report, "detected_by", None),
+        user=report.primary_detector,
     )
 
 

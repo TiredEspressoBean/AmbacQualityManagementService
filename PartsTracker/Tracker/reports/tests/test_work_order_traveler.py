@@ -121,8 +121,9 @@ class WorkOrderTravelerAsBuiltUnitTests(SimpleTestCase):
             exited_at=None, started_at=SimpleNamespace(month=7, day=14), entered_at=None,
         )
         long_desc = "Nozzle tip scoring found during visual inspection - annotate required"
+        # A report stand-in carries the canonical reads (QualityReports.primary_*).
         qr_fail = SimpleNamespace(
-            verified_by=None, detected_by=U(),
+            primary_verifier=None, primary_detector=U(),
             created_at=SimpleNamespace(month=7, day=15), status="FAIL", description=long_desc,
         )
         operator, inspector, acc_rej, remarks = adapter._step_actuals(ex, qr_fail)
@@ -134,7 +135,7 @@ class WorkOrderTravelerAsBuiltUnitTests(SimpleTestCase):
         self.assertEqual(remarks, long_desc)
 
         qr_pass = SimpleNamespace(
-            verified_by=None, detected_by=U(),
+            primary_verifier=None, primary_detector=U(),
             created_at=SimpleNamespace(month=7, day=15), status="PASS", description="ok",
         )
         _, _, acc_rej_pass, remarks_pass = adapter._step_actuals(None, qr_pass)

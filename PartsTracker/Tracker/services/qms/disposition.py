@@ -152,6 +152,8 @@ def record_operator_rework(part, user, reason: str):
         report = QualityReports.objects.create(
             tenant=part.tenant, part=part, step=part.step, status="PENDING",
             description=f"Sent to rework: {reason}", detected_by=user)
+        from Tracker.services.qms.quality_report import sync_personnel
+        sync_personnel(report)
         existing = (QuarantineDisposition.objects  # tenant-safe: scoped by the part FK
                     .filter(part=part, archived=False, current_state__in=["OPEN", "IN_PROGRESS"])
                     .order_by("created_at").first())
@@ -402,8 +404,13 @@ def decide_disposition(
                 "The finding still stands: its inspection report hasn't been superseded. "
                 "If the result was wrong, void the capture first; the re-capture records "
                 "a new report.")
+        # Who recorded it: the column and every detector / inspector role (a signed
+        # detection, a receiving inspector), not only the first.
+        from Tracker.models.qms import PersonnelRole
+        recorders = (PersonnelRole.DETECTED_BY, PersonnelRole.INSPECTOR)
         involved = ({r.superseded_by_id for r in reports}
-                    | {r.detected_by_id for r in reports}) - {None}
+                    | {r.detected_by_id for r in reports}
+                    | {l.user_id for r in reports for l in r.personnel_links.all() if l.role in recorders}) - {None}
         if authorized_by is not None and authorized_by.pk in involved:
             raise ValueError(
                 "You recorded or voided this finding, so someone else must close it as "

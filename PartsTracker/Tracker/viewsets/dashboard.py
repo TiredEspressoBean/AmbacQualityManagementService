@@ -487,9 +487,10 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         ).select_related(
             'part',
             'step',
+            'detected_by',
         ).prefetch_related(
             'errors',
-            'operators',
+            'personnel_links__user',
         ).order_by('-created_at')[:limit]
 
         data = []
@@ -498,8 +499,9 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             error_types = [err.error_name for err in report.errors.all()]
             error_type = error_types[0] if error_types else 'Unknown'
 
-            # Get first operator (M2M field)
-            first_operator = report.operators.first()
+            # The inspector is who detected it (or a receiving lot's inspector) — not
+            # the first operator, which is who ran the job.
+            inspector = report.primary_detector
 
             data.append({
                 'id': report.id,
@@ -507,7 +509,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'part_id': report.part.id if report.part else None,
                 'step': report.step.name if report.step else 'N/A',
                 'error_type': error_type,
-                'inspector': first_operator.get_short_name() if first_operator else 'N/A',
+                'inspector': inspector.get_short_name() if inspector else 'N/A',
                 'date': report.created_at.strftime('%b %d'),
             })
 
@@ -1404,9 +1406,10 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             'part__order',
             'part__work_order',
             'step',
+            'detected_by',
         ).prefetch_related(
             'errors',
-            'operators',
+            'personnel_links__user',
             'dispositions',
         ).order_by('-created_at')
 
@@ -1426,7 +1429,8 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
     def _defect_record_row(report) -> dict:
         """One Defect Records row for a failed quality report."""
         error_types = [err.error_name for err in report.errors.all() if err.error_name]
-        first_operator = report.operators.first()
+        # The inspector is who detected it, not the first operator (who ran the job).
+        inspector = report.primary_detector
 
         # Get disposition info if exists
         disposition = report.dispositions.first()
@@ -1442,7 +1446,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'step': report.step.name if report.step else 'N/A',
                 'step_id': report.step.id if report.step else None,
                 'error_types': error_types,
-                'inspector': first_operator.get_full_name() if first_operator else 'N/A',
+                'inspector': inspector.get_full_name() if inspector else 'N/A',
                 'date': report.created_at.date().isoformat(),
                 'date_formatted': report.created_at.strftime('%b %d'),
                 'order': report.part.order.name if report.part and report.part.order else 'N/A',

@@ -305,6 +305,30 @@ class ReceivingFlowTests(_ReceivingFixtureMixin, TenantTestCase):
         self.assertEqual(lot.status, "AWAITING_INSPECTION")
         self.assertIsNotNone(receiving_inspection.receiving_execution(lot))
 
+    def test_routed_at_receipt_the_inspector_is_who_records_not_who_received(self):
+        """Routed at receipt by the clerk, the inspection names nobody; the inspector who
+        records on it is its inspector and detector (docs-session review 2026-11-04)."""
+        from Tracker.models import User
+        inspector = User.objects.create_user(username="insp_a", email="insp_a@tenant-a.com",
+                                             password="x", tenant=self.tenant_a)
+        lot = self._make_lot()
+        report = receiving_inspection.route_received_lot(lot, self.user_a)  # the clerk
+        self.assertIsNone(report.detected_by_id)
+        self.assertFalse(report.personnel_links.exists())
+        self.assertIsNone(receiving_inspection.receiving_execution(lot).assigned_to_id)
+
+        receiving_inspection.record_inspection(
+            report, [{"definition": str(self.char.id), "value_pass_fail": "FAIL"}], inspector)
+        report.refresh_from_db()
+        self.assertEqual(report.detected_by_id, inspector.id)
+        self.assertEqual(report.primary_detector, inspector)
+        self.assertEqual(report.personnel_links.get(role="INSPECTOR").user_id, inspector.id)
+        # A second recorder doesn't take it over.
+        receiving_inspection.record_inspection(
+            report, [{"definition": str(self.char.id), "value_pass_fail": "FAIL"}], self.user_a)
+        report.refresh_from_db()
+        self.assertEqual(report.detected_by_id, inspector.id)
+
     def test_per_unit_all_pass_accepts(self):
         lot = self._make_lot(qty="3")  # small sample
         report = receiving_inspection.open_inspection(lot, self.user_a)

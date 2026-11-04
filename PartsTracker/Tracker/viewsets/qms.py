@@ -79,8 +79,8 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin
         return qs.select_related(
             'part', 'part__part_type', 'part__work_order', 'part__work_order__process',
             'step', 'step__part_type',
-            'file',
-        ).prefetch_related('operators', 'errors', 'equipment_links__equipment')
+            'file', 'detected_by', 'verified_by',
+        ).prefetch_related('operators', 'errors', 'equipment_links__equipment', 'personnel_links__user')
 
     @extend_schema(request=CapaDecisionRequestSerializer, responses={200: QualityReportsSerializer},
                    description="Record that a failed report needs no CAPA, or that the decision "

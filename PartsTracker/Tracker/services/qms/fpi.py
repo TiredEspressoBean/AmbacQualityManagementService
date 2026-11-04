@@ -193,6 +193,8 @@ def _record_first_piece_failure(fpi: FPIRecord, user) -> None:
             tenant=fpi.tenant, part=fpi.designated_part, step=fpi.step,
             status="FAIL", detected_by=user, description=description,
             sampling_method="fpi_fail")
+        from Tracker.services.qms.quality_report import sync_personnel
+        sync_personnel(report)
         prior = None
         fpi.quality_report = report
         fpi.save(update_fields=["quality_report", "updated_at"])

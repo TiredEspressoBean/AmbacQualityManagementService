@@ -256,8 +256,15 @@ def _promote_to_inspection_record(
             status="PENDING",  # set properly after the MeasurementResult is in
             **report_fields,
         )
+        from Tracker.services.qms.quality_report import sync_personnel
         from Tracker.services.qms.report_supersede import link_replacement
         link_replacement(report)
+        sync_personnel(report)
+    elif 'material_lot' in report_fields or 'osp_shipment' in report_fields:
+        # A receiving / OSP-return inspection opened at receipt names nobody: the first
+        # person to record on it is its inspector and detector.
+        from Tracker.services.qms.quality_report import claim_inspection
+        claim_inspection(report, recorded_by)
 
     # Capture the report's status BEFORE adding the new measurement so we
     # can detect a PASS/PENDING → FAIL transition.

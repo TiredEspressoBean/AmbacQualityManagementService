@@ -661,6 +661,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
             QualityReports.objects
             .filter(tenant=tenant, part=part)
             .select_related("detected_by", "verified_by")
+            .prefetch_related("personnel_links__user")
             .order_by("created_at")
         ):
             if qr.step_id is None:
@@ -694,6 +695,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
                 .filter(tenant=tenant, osp_shipment_id=ex.outside_process_shipment_id,
                         step_id=step_id, archived=False)
                 .select_related("detected_by", "verified_by")
+                .prefetch_related("personnel_links__user")
                 .order_by("created_at")
             ):
                 current = qr_by_step.get(step_id)
@@ -741,7 +743,9 @@ class WorkOrderTravelerAdapter(ReportAdapter):
             operator = _join_person_date(who, when) if who is not None else None
 
         if quality_report is not None:
-            who = quality_report.verified_by or quality_report.detected_by or inspected_by
+            # A signed second signature is a VERIFIED_BY role; the detector falls back to
+            # the inspector (QualityReports.primary_verifier / primary_detector).
+            who = quality_report.primary_verifier or quality_report.primary_detector or inspected_by
             # A date with no name reads as a sign-off by nobody; print neither.
             inspector = _join_person_date(who, quality_report.created_at) if who is not None else None
             status = getattr(quality_report, "status", None)

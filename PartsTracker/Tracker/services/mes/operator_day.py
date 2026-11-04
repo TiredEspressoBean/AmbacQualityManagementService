@@ -63,9 +63,11 @@ def my_day(tenant, user) -> dict:
     mine = StepExecution.objects.filter(tenant=tenant, completed_by=user, status='COMPLETED',
                                         exited_at__isnull=False)
     completed = mine.filter(exited_at__gte=start, exited_at__lt=end).count()
-    flagged = QualityReports.objects.filter(tenant=tenant, detected_by=user, archived=False,
-                                            status__in=('FAIL', 'REPAIR'),
-                                            created_at__gte=start, created_at__lt=end).count()
+    from Tracker.services.qms.quality_report import detected_by_q
+    flagged = (QualityReports.objects.filter(detected_by_q(user), tenant=tenant, archived=False,  # tenant-safe: explicit tenant filter
+                                             status__in=('FAIL', 'REPAIR'),
+                                             created_at__gte=start, created_at__lt=end)
+               .distinct().count())
     last = (mine.select_related('step', 'part').order_by('-exited_at').first())
     undoable, needs_approval = _undo_state(last, user)
     return {
