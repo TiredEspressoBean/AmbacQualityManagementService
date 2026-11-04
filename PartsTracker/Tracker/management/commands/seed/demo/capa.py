@@ -227,7 +227,7 @@ DEMO_CAPAS = [
         'immediate_action': 'Increased cleaning solution filtration and monitoring',
         # No RCA yet - investigation pending
         'tasks': [
-            {'description': 'Review cleaning process parameters', 'assignee': 'mike.ops@demo.ambac.com', 'status': CapaTaskStatus.IN_PROGRESS, 'due_days': 5, 'task_type': CapaTaskType.CONTAINMENT},
+            {'description': 'Review cleaning process parameters', 'assignee': 'ken.ops@demo.ambac.com', 'status': CapaTaskStatus.IN_PROGRESS, 'due_days': 5, 'task_type': CapaTaskType.CONTAINMENT},
             {'description': 'Conduct contamination analysis', 'assignee': 'sarah.qa@demo.ambac.com', 'status': CapaTaskStatus.NOT_STARTED, 'due_days': 7, 'task_type': CapaTaskType.CORRECTIVE},
         ],
     },
@@ -246,7 +246,7 @@ DEMO_CAPAS = [
         'immediate_action': 'Quarantine returned unit for failure analysis',
         # No RCA yet - just initiated
         'tasks': [
-            {'description': 'Receive and document returned unit', 'assignee': 'mike.ops@demo.ambac.com', 'status': CapaTaskStatus.NOT_STARTED, 'due_days': 2, 'task_type': CapaTaskType.CONTAINMENT},
+            {'description': 'Receive and document returned unit', 'assignee': 'ken.ops@demo.ambac.com', 'status': CapaTaskStatus.NOT_STARTED, 'due_days': 2, 'task_type': CapaTaskType.CONTAINMENT},
             {'description': 'Perform failure analysis', 'assignee': 'sarah.qa@demo.ambac.com', 'status': CapaTaskStatus.NOT_STARTED, 'due_days': 5, 'task_type': CapaTaskType.CORRECTIVE},
         ],
     },

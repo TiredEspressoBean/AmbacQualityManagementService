@@ -82,6 +82,9 @@ DEMO_JOB_ROLES = [
 DEMO_USER_ROLES = {
     'mike.ops@demo.ambac.com': 'ASSEMBLER',
     'dave.wilson@demo.ambac.com': 'FLOW_TECH',
+    # The inspection trainee: assigned the role he's working towards, so the matrix
+    # shows his gap rather than no role at all.
+    'ken.ops@demo.ambac.com': 'NOZ_INSPECTOR',
     'sarah.qa@demo.ambac.com': 'NOZ_INSPECTOR',
     'maria.qa@demo.ambac.com': 'QUALITY_ENG',
     'jennifer.mgr@demo.ambac.com': 'ASSEMBLER',

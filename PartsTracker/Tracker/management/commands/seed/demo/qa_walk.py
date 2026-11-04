@@ -100,7 +100,14 @@ OVERSIZE_BORE = 4.007
 FALSE_FAIL_WO = 'WO-QA-INSPECT-06'
 FALSE_FAIL_PARTS = ['INJ-QA-INSPECT-051', 'INJ-QA-INSPECT-052']
 
-OVERRIDE_REASON = 'Only operator free for the cell; first-piece run on my authority pending nozzle re-certification.'
+# Casey's reason names the certification the gate found missing at that step.
+OVERRIDE_REASONS = {
+    'Body Inspection': 'Only operator free for the cell; run on my authority pending '
+                       'dimensional re-certification.',
+    'Nozzle Inspection': 'Only operator free for the cell; inspection run on my authority '
+                         'pending nozzle re-certification.',
+}
+OVERRIDE_REASON = 'Only operator free for the cell; run on my authority pending re-certification.'
 
 
 class DemoQaWalkSeeder(BaseSeeder):
@@ -241,7 +248,7 @@ class DemoQaWalkSeeder(BaseSeeder):
         self._run_step_for([first], 'Flow Calibration', result, advance=False,
                            operator=self.mike)
         self._buy_off(wo, 'Flow Calibration', first)
-        self._advance(first, 'PASS')
+        self._advance(first, 'PASS', self.mike)
         # 012 and 014 wait at Flow Calibration unclaimed (PENDING, nobody assigned), so
         # the operator who runs 012 live at 10:00 picks it up without a reassignment.
         report = self._run_step_for([failing], 'Flow Calibration', result, advance=False,
@@ -396,7 +403,8 @@ class DemoQaWalkSeeder(BaseSeeder):
         try:
             start_execution(se, operator)
         except NotQualified:
-            start_execution(se, operator, authorizer=self.casey, reason=OVERRIDE_REASON)
+            start_execution(se, operator, authorizer=self.casey,
+                            reason=OVERRIDE_REASONS.get(se.step.name, OVERRIDE_REASON))
             result['override_count'] += 1
         return se
 
@@ -420,7 +428,8 @@ class DemoQaWalkSeeder(BaseSeeder):
             report = (QualityReports.objects.filter(part=part, step=part.step)
                       .order_by('-created_at').first()) or report
             if advance:
-                self._advance(part, 'PASS' if part.step.is_decision_point else None)
+                self._advance(part, 'PASS' if part.step.is_decision_point else None,
+                              operator)
         return report
 
     def _run_batch_step(self, wo, parts, step_name, result):
@@ -454,10 +463,12 @@ class DemoQaWalkSeeder(BaseSeeder):
         for part in parts:
             part.refresh_from_db()
 
-    def _advance(self, part, decision):
+    def _advance(self, part, decision, operator=None):
+        """Advance as whoever ran the step (the walk's operator unless told), so the
+        step's completed_by matches its assignee."""
         from Tracker.services.mes.parts import advance_part_step
         part.refresh_from_db()
-        advance_part_step(part, operator=self.operator, decision_result=decision)
+        advance_part_step(part, operator=operator or self.operator, decision_result=decision)
         part.refresh_from_db()
 
     def _raise_fpi(self, wo, step_name, first_piece):
@@ -661,6 +672,15 @@ class DemoQaWalkSeeder(BaseSeeder):
                 # where the walk captured without pressing Start Work.
                 if v.started_at is not None or v.status != 'PENDING':
                     fields['started_at'] = cursor + timedelta(minutes=2)
+                    # A supervisor's override or reassignment is given at the start,
+                    # so it moves with it; left alone it reads as given at seed time.
+                    snap = v.training_authorization or {}
+                    signed = [k for k in ('override', 'reassignment')
+                              if isinstance(snap.get(k), dict)]
+                    for k in signed:
+                        snap[k]['at'] = fields['started_at'].isoformat()
+                    if signed:
+                        fields['training_authorization'] = snap
                 if v.exited_at is not None:
                     fields['exited_at'] = cursor + timedelta(minutes=minutes)
                 StepExecution.objects.filter(pk=v.pk).update(**fields)

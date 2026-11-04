@@ -122,7 +122,7 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
             self._run_step_for([first], 'Body Inspection', walk, advance=False,
                                operator=self.dave)
             self._buy_off(wo, 'Body Inspection', first)
-            self._advance(first, 'PASS')
+            self._advance(first, 'PASS', self.dave)
             self._run_step_for(parts[1:], 'Body Inspection', walk, operator=self.dave)
             self._nitride(parts)
             result['work_orders'].append(wo)
