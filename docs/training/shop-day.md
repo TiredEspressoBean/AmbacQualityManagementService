@@ -101,7 +101,7 @@ the first piece, `INJ-QA-INSPECT-001`, and the run holds for a first-piece buy-o
 
 Sarah reads the first piece's readings (Bore Diameter inside 3.995–4.005, taken
 by Ken) and signs it off. The run moves. Two other runs are waiting on first
-pieces too: one to fail, and one that repeats yesterday's setup and is waived. A
+pieces too: one to fail, and one that repeats an earlier run's setup and is waived. A
 third first piece's inspection was Sarah's own, so Casey signs it at Sarah's
 screen.
 

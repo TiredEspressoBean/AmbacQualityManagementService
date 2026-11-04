@@ -26,7 +26,7 @@ All demo accounts use password: `demo123`
 | QA Inspector | sarah.qa@demo.ambac.com | Sarah Chen | [QA Inspector Guide](../tracks/qa-inspector.md) |
 | Production Manager | jennifer.mgr@demo.ambac.com | Jennifer Walsh | [Production Manager Guide](../tracks/production-manager.md) |
 | Operator | mike.ops@demo.ambac.com | Mike Rodriguez | [Operator Guide](../tracks/operator.md) |
-| Operator (Inspection Trainee) | ken.ops@demo.ambac.com | Ken Adebayo | The QA and Shift Lead tracks' operator |
+| Operator (Inspection Trainee) | ken.ops@demo.ambac.com | Ken Adebayo | The operator in the shop day and the QA Inspector, QA Manager and Shift Lead tracks |
 | Operator (Expired Training) | dave.wilson@demo.ambac.com | Dave Wilson | Training compliance demo |
 | Document Controller | lisa.docs@demo.ambac.com | Lisa Park | [Document Controller Guide](../tracks/document-controller.md) |
 | Customer Portal | tom.bradley@midwestfleet.com | Tom Bradley | [Customer Guide](../../roles/customer.md) |

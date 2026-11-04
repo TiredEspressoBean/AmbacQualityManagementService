@@ -205,16 +205,15 @@ anything is broken.
 
 ## 9. Did the floor follow the plan?
 
-**You will:** read how the last shift went against the plan it was given.
+**You will:** read how the floor went against the plan it was given.
 
-The last shift's plan had five urgent bodies on **CNC Lathe HL-1**, `WO-PLAN-01` to
+An earlier plan had five urgent bodies on **CNC Lathe HL-1**, `WO-PLAN-01` to
 `WO-PLAN-05`, each one Machining slot. The floor ran four of them, not all to plan,
 and never got to the fifth.
 
 1. On the schedule, **Plan vs actual** (at the end of Machines / People / Work
-   orders). It opens around today, a column per day; the four runs are on the last
-   working day. Finished work is drawn **where it actually ran**, not where it was
-   planned.
+   orders). It opens on now; the four runs are in the days before today, so scroll
+   back to them. Finished work is drawn **where it actually ran**, not where it was planned.
 2. Find the five on the lathe's row and read their colours:
 
     | Colour | Means | Here |

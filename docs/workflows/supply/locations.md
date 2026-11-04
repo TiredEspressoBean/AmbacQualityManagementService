@@ -183,6 +183,12 @@ counted lines that were within tolerance; hover one for *N of M counted lines wi
 tolerance*. A class with nothing counted shows **—**. Under it, *Off because:* names
 the three commonest reasons records were off, with how many of each.
 
+**12-month trend** opens a chart of that accuracy month by month, a line per class;
+a month with nothing counted is a gap. Hover a month for *Class A: N% (H of M lines)*.
+Each count is judged as it was when applied, so promoting an item to a stricter class
+later doesn't rewrite its past. With nothing applied in a year it reads *No counts
+applied in the last 12 months.* **Hide trend** closes it.
+
 ### Counting
 
 On the count screen (`/production/cycle-counts/$countId`):

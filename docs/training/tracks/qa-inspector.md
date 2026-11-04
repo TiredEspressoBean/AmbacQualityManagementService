@@ -107,8 +107,8 @@ Inspection.
 **Waive one:** `WO-QA-INSPECT-05`, first piece `INJ-QA-INSPECT-041`.
 
 A waive releases the run with no buy-off, so the reason stays on the record. Waive
-it as an identical setup re-run of yesterday's `WO-QA-INSPECT-02`, whose first piece
-was bought off, and say so in the reason.
+it as an identical setup re-run of an earlier run, `WO-QA-INSPECT-02`, whose first
+piece was bought off, and say so in the reason.
 
 **Try to break it:** `WO-QA-INSPECT-03`, first piece `INJ-QA-INSPECT-021`. Sarah ran
 this first piece's inspection. Open **Sign off**: before you can confirm, the dialog

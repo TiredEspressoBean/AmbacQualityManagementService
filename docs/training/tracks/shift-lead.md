@@ -151,15 +151,17 @@ A quarantine or a CAPA is raised on its own form, not here.
 
 `WO-TRAIN-HOLD` was put on hold by the production manager for a quality concern.
 
-1. Open it from **Work orders on hold** on your home page. The banner says why it's
-   held, who placed the hold and when: *On hold · Quality hold*.
+1. Open it from **Work orders on hold** on your home page: it opens the work order's
+   control page. The banner says why it's held, who placed the hold and when: *On
+   hold · Quality hold*.
 2. **Start Work** is disabled while it's held, and says why.
-3. **Resume**: *Clear the hold and resume?* restates the hold. A quality or tooling
-   hold needs **What resolved it**; **Clear hold** stays disabled until you say.
+3. **Clear hold**: *Clear the hold and resume?* restates the hold. A quality or
+   tooling hold needs **What resolved it**; **Clear hold** in the dialog stays
+   disabled until you say.
 4. Write what resolved it and **Clear hold**. The order goes back to where it was,
    and **Hold history** keeps the hold, who cleared it and your note.
 
-A hold put on the wrong order comes off the same way: **Resume**, and say it was
+A hold put on the wrong order comes off the same way: **Clear hold**, and say it was
 placed in error. The history keeps both.
 
 ---
@@ -229,9 +231,9 @@ overnight isn't charged to the next shift.
 or **Approve all**. Your own entries read *Your time*: someone else approves those.
 
 In the demo week, each operator has some **Unallocated** time — on shift, but not at a
-step — and Dave and you show a little **Rework**: INJ-0042-016 failed Flow
-Calibration and Dave took it back through, and INJ-0042-019 is in Rework under your
-name. Rework is part of direct time, not extra to it.
+step — and Dave and you show a little **Rework**: Dave's from taking failed units back
+through (INJ-0042-016 at Flow Calibration, among others), yours from INJ-0042-019, in
+Rework under your name. Rework is part of direct time, not extra to it.
 
 Someone clocked out late, or forgot to clock in on time? **Correct times** on their
 entry, before you approve it. Change the clock-in or clock-out, say why, and the hours
