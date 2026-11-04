@@ -78,7 +78,8 @@ preview: it shows you the operator's home, not the operator's permissions.
 
 Dave Wilson has called in sick. Before you move his work, find out who can do it.
 
-**Quality** > **Training** > **Matrix**: one row per person, one column per skill.
+**Quality** > **Training** > **Training Matrix**: one row per person, one column per
+skill.
 Hover a cell to read it: on Dave Wilson's row, *Assembly Certification: Qualified*.
 The footer counts how many people are qualified (L3 and up) for each skill, so a
 column with one is a single point of failure. A cell with the **Expiring** dot lapses
@@ -106,15 +107,17 @@ started stays his until someone moves it.
    across the plant and not yet finished.* **Off the clock (N)** counts what's held
    by someone who isn't clocked in. You're on a break, which still counts as on the
    clock, so your own work isn't in it. Click it.
-4. **Wash · Load · 4 parts · WO-OPS-02 · Loading … · Dave Wilson**, marked *Off the
-   clock*: the basket he was loading when he went home. Click **Hand off…** under
-   it. The dialog says *load of 4 parts, all moving together*: a load moves as one.
-5. **Hand to**: **Mike Rodriguez** (*trained · at this station*). **Why**: *Dave is
-   out sick; Mike finishing his wash load*. **Hand off**.
+4. **Wash**, *Load · 4 parts · WO-OPS-02*, *Loading · started … · Dave Wilson*,
+   marked *Off the clock*: the basket he was loading when his last shift ended.
+   Click **Hand off…** under it. The dialog says *load of 4 parts, all moving
+   together*: a load moves as one.
+5. **Hand to**: **Ken Adebayo** (*trained · at this station*), who is on shift.
+   **Why**: *Dave is out sick; Ken finishing his wash load*. **Hand off**.
 
-*Wash handed off*, and the row now reads **Mike Rodriguez**. All four bodies are
-his, and the load is in his own **Resume**. The hand-off is on the record: from
-whom, to whom, by you, why, and when.
+*Wash handed off*, and the row now reads **Ken Adebayo**. All four bodies are his,
+and the load is in his own **Resume**. Hand work to someone on shift: given to someone
+who isn't clocked in, it would still be off the clock. The hand-off is on the record:
+from whom, to whom, by you, why, and when.
 
 ---
 
@@ -225,8 +228,9 @@ overnight isn't charged to the next shift.
 or **Approve all**. Your own entries read *Your time*: someone else approves those.
 
 In the demo week, each operator has some **Unallocated** time — on shift, but not at a
-step — and Dave shows a little **Rework**: INJ-0042-016 failed Flow Calibration and
-Dave took it back through. Rework is part of direct time, not extra to it.
+step — and Dave and you show a little **Rework**: INJ-0042-016 failed Flow
+Calibration and Dave took it back through, and INJ-0042-019 is in Rework under your
+name. Rework is part of direct time, not extra to it.
 
 Someone clocked out late, or forgot to clock in on time? **Correct times** on their
 entry, before you approve it. Change the clock-in or clock-out, say why, and the hours

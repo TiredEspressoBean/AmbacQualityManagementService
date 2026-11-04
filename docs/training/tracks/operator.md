@@ -146,7 +146,8 @@ together, so 001 waits for 002 to 004. The message says so.
 **You will:** finish a batch step another operator started.
 
 The Wash cleans a whole basket at once, so it's recorded once for the load, not per
-body. Dave loaded `WO-OPS-02`'s four bodies and was moved to the flow bench.
+body. Dave loaded `WO-OPS-02`'s four bodies at the end of his last shift and didn't
+start the cycle.
 
 1. Scan `WO-OPS-02`, **Start Work**, select all four, and **Start**. The parts are
    Dave's: *Assigned to someone else*, and *Currently assigned to Dave Wilson.*
