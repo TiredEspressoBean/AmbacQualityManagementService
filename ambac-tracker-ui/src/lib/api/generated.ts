@@ -2229,6 +2229,7 @@ export type CountAccuracy = {
   A: ClassAccuracy;
   B: ClassAccuracy;
   C: ClassAccuracy;
+  by_reason: {};
 };
 export type ClassAccuracy = {
   counted: number;
@@ -2245,6 +2246,10 @@ export type CountEntryRequest = {
     (string | null)
     | undefined;
   note?: string | undefined;
+  found_at?: /**
+   * An item count's found item: where it was (location id, code or name).
+   */
+  string | undefined;
 };
 export type CycleCountLineKindEnum =
   /**
@@ -2726,8 +2731,24 @@ export type ShipmentLot = {
 export type CycleCount = {
   id: string;
   count_number: string;
-  location: string;
-  location_name: string;
+  /**
+   * A location count: everything kept here.
+   */
+  location: string | null;
+  location_name: string | null;
+  /**
+   * An item count: this material, wherever it's kept.
+   */
+  material: string | null;
+  /**
+   * An item count: this part type, wherever it's kept.
+   */
+  part_type: string | null;
+  scope: CycleCountScopeEnum;
+  /**
+   * What's counted: the location or the item.
+   */
+  scope_name: string;
   blind?: boolean | undefined;
   status: CycleCountStatusEnum;
   status_display: string;
@@ -2747,10 +2768,24 @@ export type CycleCount = {
    * The lead's note when applying a count with lines outside their class's tolerance: why the difference is real rather than recounted.
    */
   apply_note: string;
+  /**
+   * When its differences were keyed into the ERP (Glovia) — a person carries them over; this closes the count's loop.
+   */
+  erp_keyed_at: string | null;
+  erp_keyed_by_name: string | null;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
 };
+export type CycleCountScopeEnum =
+  /**
+   * * `LOCATION` - Location
+   * `MATERIAL` - Material
+   * `PART_TYPE` - Part type
+   *
+   * @enum LOCATION, MATERIAL, PART_TYPE
+   */
+  "LOCATION" | "MATERIAL" | "PART_TYPE";
 export type CycleCountStatusEnum =
   /**
    * * `OPEN` - Counting
@@ -2770,6 +2805,18 @@ export type CycleCountLine = {
   counted: number | null;
   found_here: boolean;
   system_location: string | null;
+  location_id?:
+    | /**
+     * Where UQMES had it.
+     */
+    (string | null)
+    | undefined;
+  found_at?:
+    | /**
+     * Where a found item was (an item count spans locations).
+     */
+    (string | null)
+    | undefined;
   note: string;
 };
 export type CycleCountVariance = {
@@ -2782,6 +2829,18 @@ export type CycleCountVariance = {
   counted: number | null;
   found_here: boolean;
   system_location: string | null;
+  location_id?:
+    | /**
+     * Where UQMES had it.
+     */
+    (string | null)
+    | undefined;
+  found_at?:
+    | /**
+     * Where a found item was (an item count spans locations).
+     */
+    (string | null)
+    | undefined;
   note: string;
   difference: number;
   variance: CycleCountVarianceEnum;
@@ -2794,6 +2853,18 @@ export type CycleCountVariance = {
    * False: a miss — usually recounted; applying it anyway needs a note.
    */
   within_tolerance: boolean;
+  /**
+     * Why the record was off, given when applied.
+    
+    * `` - —
+    * `NOT_BOOKED` - Used or moved without being booked
+    * `SCRAPPED` - Damaged or scrapped, not booked
+    * `MISPLACED` - Kept in the wrong place
+    * `RECEIVED_WRONG` - Received wrong
+    * `COUNT_ERROR` - An earlier count was wrong
+    * `UNKNOWN` - Not known
+     */
+  reason: CycleCountVarianceReasonEnum | BlankEnum;
 };
 export type CycleCountVarianceEnum =
   /**
@@ -2814,6 +2885,24 @@ export type AbcClassEnum =
    * @enum A, B, C
    */
   "A" | "B" | "C";
+export type CycleCountVarianceReasonEnum =
+  /**
+   * * `` - —
+   * `NOT_BOOKED` - Used or moved without being booked
+   * `SCRAPPED` - Damaged or scrapped, not booked
+   * `MISPLACED` - Kept in the wrong place
+   * `RECEIVED_WRONG` - Received wrong
+   * `COUNT_ERROR` - An earlier count was wrong
+   * `UNKNOWN` - Not known
+   *
+   * @enum NOT_BOOKED, SCRAPPED, MISPLACED, RECEIVED_WRONG, COUNT_ERROR, UNKNOWN
+   */
+  | "NOT_BOOKED"
+  | "SCRAPPED"
+  | "MISPLACED"
+  | "RECEIVED_WRONG"
+  | "COUNT_ERROR"
+  | "UNKNOWN";
 export type DecisionOptionsResponse = {
   is_decision_point: boolean;
   decision_type?: string | undefined;
@@ -11076,7 +11165,7 @@ export type Substep = {
     * `sampled` - Per part (sampling)
     * `batch` - Per batch
      */
-  ScopeEnum | undefined;
+  SubstepScopeEnum | undefined;
   sampling_rule?:
     | /**
      * Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
@@ -11107,7 +11196,7 @@ export type Substep = {
   updated_at: string;
   archived?: boolean | undefined;
 };
-export type ScopeEnum =
+export type SubstepScopeEnum =
   /**
    * * `sampled` - Per part (sampling)
    * `batch` - Per batch
@@ -12967,11 +13056,11 @@ export type PartsRequest = {
   archived?: boolean | undefined;
 };
 export type PartsSplitFromLotInputRequest = {
-  reason: ReasonEnum;
+  reason: PartsSplitFromLotInputReasonEnum;
   rework_target_step_id?: (string | null) | undefined;
   notes?: string | undefined;
 };
-export type ReasonEnum =
+export type PartsSplitFromLotInputReasonEnum =
   /**
    * * `quarantine` - Quarantine
    * `rework` - Rework
@@ -15344,7 +15433,7 @@ export type PatchedSubstepRequest = Partial<{
     * `sampled` - Per part (sampling)
     * `batch` - Per batch
      */
-  scope: ScopeEnum;
+  scope: SubstepScopeEnum;
   /**
    * Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
    */
@@ -18261,7 +18350,7 @@ export type SubstepRequest = {
     * `sampled` - Per part (sampling)
     * `batch` - Per batch
      */
-  ScopeEnum | undefined;
+  SubstepScopeEnum | undefined;
   sampling_rule?:
     | /**
      * Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
@@ -21090,6 +21179,7 @@ const PatchedUserDetailRequest = z
     parent_company_id: z.string().uuid(),
   })
   .partial();
+const CycleCountScopeEnum = z.enum(["LOCATION", "MATERIAL", "PART_TYPE"]);
 const CycleCountStatusEnum = z.enum(["OPEN", "SUBMITTED", "APPLIED"]);
 const CycleCountLineKindEnum = z.enum(["LOT", "PART"]);
 const CycleCountLine = z.object({
@@ -21102,6 +21192,8 @@ const CycleCountLine = z.object({
   counted: z.number().nullable(),
   found_here: z.boolean(),
   system_location: z.string().nullable(),
+  location_id: z.string().nullish(),
+  found_at: z.string().nullish(),
   note: z.string(),
 });
 const CycleCountVarianceEnum = z.enum([
@@ -21111,6 +21203,14 @@ const CycleCountVarianceEnum = z.enum([
   "FOUND_HERE",
 ]);
 const AbcClassEnum = z.enum(["A", "B", "C"]);
+const CycleCountVarianceReasonEnum = z.enum([
+  "NOT_BOOKED",
+  "SCRAPPED",
+  "MISPLACED",
+  "RECEIVED_WRONG",
+  "COUNT_ERROR",
+  "UNKNOWN",
+]);
 const CycleCountVariance = z.object({
   kind: CycleCountLineKindEnum,
   id: z.string(),
@@ -21121,18 +21221,25 @@ const CycleCountVariance = z.object({
   counted: z.number().nullable(),
   found_here: z.boolean(),
   system_location: z.string().nullable(),
+  location_id: z.string().nullish(),
+  found_at: z.string().nullish(),
   note: z.string(),
   difference: z.number(),
   variance: CycleCountVarianceEnum,
   abc_class: AbcClassEnum,
   tolerance: z.number(),
   within_tolerance: z.boolean(),
+  reason: z.union([CycleCountVarianceReasonEnum, BlankEnum]),
 });
 const CycleCount = z.object({
   id: z.string().uuid(),
   count_number: z.string(),
-  location: z.string().uuid(),
-  location_name: z.string(),
+  location: z.string().uuid().nullable(),
+  location_name: z.string().nullable(),
+  material: z.string().uuid().nullable(),
+  part_type: z.string().uuid().nullable(),
+  scope: CycleCountScopeEnum,
+  scope_name: z.string(),
   blind: z.boolean().optional(),
   status: CycleCountStatusEnum,
   status_display: z.string(),
@@ -21146,6 +21253,8 @@ const CycleCount = z.object({
   applied_by_name: z.string().nullable(),
   applied_at: z.string().datetime({ offset: true }).nullable(),
   apply_note: z.string(),
+  erp_keyed_at: z.string().datetime({ offset: true }).nullable(),
+  erp_keyed_by_name: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -21156,11 +21265,29 @@ const PaginatedCycleCountList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(CycleCount),
 });
-const StartCycleCountRequest = z.object({
-  location: z.string().min(1),
-  blind: z.boolean().optional().default(false),
-});
-const ApplyCountRequest = z.object({ note: z.string() }).partial();
+const StartCycleCountRequest = z
+  .object({
+    location: z.string(),
+    material: z.string().uuid().nullable(),
+    part_type: z.string().uuid().nullable(),
+    blind: z.boolean().default(false),
+  })
+  .partial();
+const ApplyCountRequest = z
+  .object({
+    note: z.string(),
+    reasons: z.record(
+      z.enum([
+        "NOT_BOOKED",
+        "SCRAPPED",
+        "MISPLACED",
+        "RECEIVED_WRONG",
+        "COUNT_ERROR",
+        "UNKNOWN",
+      ])
+    ),
+  })
+  .partial();
 const CountEntryRequest = z.object({
   kind: CycleCountLineKindEnum,
   id: z.string().uuid(),
@@ -21169,8 +21296,13 @@ const CountEntryRequest = z.object({
     .regex(/^-?\d{0,10}(?:\.\d{0,4})?$/)
     .nullish(),
   note: z.string().optional(),
+  found_at: z.string().optional(),
 });
 const RecordCountRequest = z.object({ entries: z.array(CountEntryRequest) });
+const ResolveMissingRequest = z.object({
+  part: z.string().uuid(),
+  note: z.string().min(1),
+});
 const SendBackCountRequest = z.object({ reason: z.string().min(1) });
 const ClassAccuracy = z.object({
   counted: z.number().int(),
@@ -21182,6 +21314,7 @@ const CountAccuracy = z.object({
   A: ClassAccuracy,
   B: ClassAccuracy,
   C: ClassAccuracy,
+  by_reason: z.record(z.number().int()),
 });
 const DueForCountKindEnum = z.enum(["MATERIAL", "PART_TYPE"]);
 const DueLocation = z.object({
@@ -21200,6 +21333,19 @@ const DueForCount = z.object({
   days_overdue: z.number().int(),
   never_counted: z.boolean(),
   locations: z.array(DueLocation),
+});
+const MarkKeyedRequest = z.object({ counts: z.array(z.string().uuid()) });
+const MissingUnit = z.object({
+  count_id: z.string().uuid(),
+  count_number: z.string(),
+  scope: z.string(),
+  applied_at: z.string().datetime({ offset: true }),
+  part_id: z.string().uuid(),
+  serial: z.string(),
+  item: z.string(),
+  expected_at: z.string(),
+  reason: z.string(),
+  status: z.string(),
 });
 const DisassemblyBOMLine = z.object({
   id: z.string().uuid(),
@@ -24178,9 +24324,13 @@ const PartSamplingDecision = z.object({
   ruleset_name: z.string().nullable(),
   rule_type: z.string().nullable(),
 });
-const ReasonEnum = z.enum(["quarantine", "rework", "scrap"]);
+const PartsSplitFromLotInputReasonEnum = z.enum([
+  "quarantine",
+  "rework",
+  "scrap",
+]);
 const PartsSplitFromLotInputRequest = z.object({
-  reason: ReasonEnum,
+  reason: PartsSplitFromLotInputReasonEnum,
   rework_target_step_id: z.string().uuid().nullish(),
   notes: z.string().optional(),
 });
@@ -27151,7 +27301,7 @@ const PatchedSubstepTranslationRequest = z
     archived: z.boolean(),
   })
   .partial();
-const ScopeEnum = z.enum(["sampled", "batch"]);
+const SubstepScopeEnum = z.enum(["sampled", "batch"]);
 const Substep = z.object({
   id: z.string().uuid(),
   step: z.string().uuid(),
@@ -27177,7 +27327,7 @@ const Substep = z.object({
   once_per_lot: z.boolean().optional(),
   seals_load: z.boolean().optional(),
   expected_duration: z.string().nullish(),
-  scope: ScopeEnum.optional(),
+  scope: SubstepScopeEnum.optional(),
   sampling_rule: z.string().uuid().nullish(),
   sampling_rule_info: z.object({}).partial().passthrough().nullable(),
   source_library_substep_id: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -27215,7 +27365,7 @@ const SubstepRequest = z.object({
   once_per_lot: z.boolean().optional(),
   seals_load: z.boolean().optional(),
   expected_duration: z.string().nullish(),
-  scope: ScopeEnum.optional(),
+  scope: SubstepScopeEnum.optional(),
   sampling_rule: z.string().uuid().nullish(),
   source_library_substep_id: z.number().int().gte(0).lte(2147483647).nullish(),
   source_library_version: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -27242,7 +27392,7 @@ const PatchedSubstepRequest = z
     once_per_lot: z.boolean(),
     seals_load: z.boolean(),
     expected_duration: z.string().nullable(),
-    scope: ScopeEnum,
+    scope: SubstepScopeEnum,
     sampling_rule: z.string().uuid().nullable(),
     source_library_substep_id: z
       .number()
@@ -30651,11 +30801,13 @@ export const schemas = {
   UserDetail,
   UserDetailRequest,
   PatchedUserDetailRequest,
+  CycleCountScopeEnum,
   CycleCountStatusEnum,
   CycleCountLineKindEnum,
   CycleCountLine,
   CycleCountVarianceEnum,
   AbcClassEnum,
+  CycleCountVarianceReasonEnum,
   CycleCountVariance,
   CycleCount,
   PaginatedCycleCountList,
@@ -30663,12 +30815,15 @@ export const schemas = {
   ApplyCountRequest,
   CountEntryRequest,
   RecordCountRequest,
+  ResolveMissingRequest,
   SendBackCountRequest,
   ClassAccuracy,
   CountAccuracy,
   DueForCountKindEnum,
   DueLocation,
   DueForCount,
+  MarkKeyedRequest,
+  MissingUnit,
   DisassemblyBOMLine,
   PaginatedDisassemblyBOMLineList,
   DisassemblyBOMLineRequest,
@@ -30977,7 +31132,7 @@ export const schemas = {
   PartRollbackDone,
   PartRollbackPendingApproval,
   PartSamplingDecision,
-  ReasonEnum,
+  PartsSplitFromLotInputReasonEnum,
   PartsSplitFromLotInputRequest,
   PartsSplitFromLotResponse,
   TravelerStepStatusEnum,
@@ -31283,7 +31438,7 @@ export const schemas = {
   PaginatedSubstepTranslationList,
   SubstepTranslationRequest,
   PatchedSubstepTranslationRequest,
-  ScopeEnum,
+  SubstepScopeEnum,
   Substep,
   PaginatedSubstepList,
   SubstepRequest,
@@ -36722,8 +36877,8 @@ const endpoints1 = makeApi([
     method: "get",
     path: "/api/CycleCounts/",
     alias: "api_CycleCounts_list",
-    description: `Counts of locations. POST starts one; &#x60;record&#x60;, &#x60;submit&#x60; and &#x60;apply&#x60; move it on.
-Never edited or deleted otherwise — a count is a record of what was found.`,
+    description: `Counts of a location or an item. POST starts one; &#x60;record&#x60;, &#x60;submit&#x60; and &#x60;apply&#x60;
+move it on. Never edited or deleted otherwise — a count is a record of what was found.`,
     requestFormat: "json",
     parameters: [
       {
@@ -36737,6 +36892,11 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "material",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "offset",
         type: "Query",
         schema: z.number().int().optional(),
@@ -36745,6 +36905,11 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
         name: "ordering",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
       },
       {
         name: "search",
@@ -36763,7 +36928,7 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
     method: "post",
     path: "/api/CycleCounts/",
     alias: "api_CycleCounts_create",
-    description: `Start a count of a location: snapshots what UQMES expects there.`,
+    description: `Start a count of a location, or of a material or part type wherever it&#x27;s kept: snapshots what UQMES expects.`,
     requestFormat: "json",
     parameters: [
       {
@@ -36778,8 +36943,8 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
     method: "get",
     path: "/api/CycleCounts/:id/",
     alias: "api_CycleCounts_retrieve",
-    description: `Counts of locations. POST starts one; &#x60;record&#x60;, &#x60;submit&#x60; and &#x60;apply&#x60; move it on.
-Never edited or deleted otherwise — a count is a record of what was found.`,
+    description: `Counts of a location or an item. POST starts one; &#x60;record&#x60;, &#x60;submit&#x60; and &#x60;apply&#x60;
+move it on. Never edited or deleted otherwise — a count is a record of what was found.`,
     requestFormat: "json",
     parameters: [
       {
@@ -36800,7 +36965,7 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ note: z.string() }).partial(),
+        schema: ApplyCountRequest,
       },
       {
         name: "id",
@@ -36836,6 +37001,26 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
         name: "body",
         type: "Body",
         schema: RecordCountRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CycleCount,
+  },
+  {
+    method: "post",
+    path: "/api/CycleCounts/:id/resolve-missing/",
+    alias: "api_CycleCounts_resolve_missing_create",
+    description: `Say what became of a unit this count didn&#x27;t find, taking it off the missing list.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ResolveMissingRequest,
       },
       {
         name: "id",
@@ -36908,9 +37093,19 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "material",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "ordering",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
       },
       {
         name: "search",
@@ -36924,6 +37119,109 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
       },
     ],
     response: z.array(DueForCount),
+  },
+  {
+    method: "post",
+    path: "/api/CycleCounts/mark-keyed/",
+    alias: "api_CycleCounts_mark_keyed_create",
+    description: `Mark counts&#x27; differences as keyed into the ERP.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MarkKeyedRequest,
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/CycleCounts/missing/",
+    alias: "api_CycleCounts_missing_list",
+    description: `Units a count didn&#x27;t find, still unresolved: not seen since, not left for good, and nobody has said what became of them.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "location",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "material",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["APPLIED", "OPEN", "SUBMITTED"]).optional(),
+      },
+    ],
+    response: z.array(MissingUnit),
+  },
+  {
+    method: "get",
+    path: "/api/CycleCounts/to-key-xlsx/",
+    alias: "api_CycleCounts_to_key_xlsx_retrieve",
+    description: `Every difference not yet keyed into the ERP, across counts, as one sheet.`,
+    requestFormat: "json",
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/CycleCounts/to-key/",
+    alias: "api_CycleCounts_to_key_list",
+    description: `Applied counts whose differences haven&#x27;t been keyed into the ERP yet.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "location",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "material",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["APPLIED", "OPEN", "SUBMITTED"]).optional(),
+      },
+    ],
+    response: z.array(CycleCount),
   },
   {
     method: "get",
@@ -41674,7 +41972,10 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: IntegrationConfig,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "put",
     path: "/api/integrations/:id/",
@@ -41767,10 +42068,7 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: z.array(IntegrationSyncLog),
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "post",
     path: "/api/integrations/:id/test_connection/",
@@ -45936,7 +46234,10 @@ let customers self-manage their digest cadence.`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/notifications/schedules/providers/",
@@ -46028,10 +46329,7 @@ field metadata).`,
       },
     ],
     response: TenantSchedule,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/notifications/schedules/tenant/:id/",
@@ -51252,7 +51550,10 @@ Usage:
       },
     ],
     response: Processes,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "delete",
     path: "/api/Processes/:id/",
@@ -51443,10 +51744,7 @@ Usage:
       },
     ],
     response: PaginatedQualityReportsList,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/QualityReports/",
@@ -56412,7 +56710,10 @@ Used by the workflow engine for tracking part progression through steps.`,
       },
     ],
     response: PaginatedStepExecutionListList,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepExecutions/",
@@ -56537,10 +56838,7 @@ Used by the workflow engine for tracking part progression through steps.`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutions/:id/capture-state/",
@@ -62101,7 +62399,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: TrainingRequirement,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "patch",
     path: "/api/TrainingRequirements/:id/",
@@ -62300,10 +62601,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: PaginatedTrainingRequirementList,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/TrainingRequirements/import-preview/",

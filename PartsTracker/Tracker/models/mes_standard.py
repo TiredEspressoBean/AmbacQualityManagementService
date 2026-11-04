@@ -1560,15 +1560,20 @@ class StorageLocation(SecureModel):
 
 
 class CycleCount(SecureModel):
-    """One count of one location: what UQMES expected there, what the counter found,
-    and — once applied — the corrections made (services/mes/cycle_count.py).
+    """One count of one location — or of one item (a material or a part type) wherever
+    it's kept: what UQMES expected, what the counter found, and — once applied — the
+    corrections made (services/mes/cycle_count.py). Exactly one of `location`,
+    `material`, `part_type` is set: the count's scope.
 
     Glovia is the stock register, so the discrepancy report goes there to be keyed; the
     count also brings UQMES's own lots back in line (recorded adjustments and moves), since
     nothing else re-aligns them. ``lines`` is the snapshot plus what was found — one row
     per lot or unit: ``{kind, id, label, item, unit, expected, counted, found_here,
-    system_location, note}``. A JSON list rather than a table: a count is one document,
-    read and written whole.
+    system_location, location_id, found_at, note, reason, chase}`` — `location_id` where
+    UQMES had it; `found_at` where a found item was (an item count spans locations);
+    `reason` the lead's reason code for a difference; `chase` the resolution of a unit
+    not found. A JSON list rather than a table: a count is one document, read and
+    written whole.
     """
     STATUS_CHOICES = [
         ('OPEN', 'Counting'),
@@ -1577,7 +1582,15 @@ class CycleCount(SecureModel):
     ]
 
     count_number = models.CharField(max_length=40, blank=True)
-    location = models.ForeignKey('StorageLocation', on_delete=models.PROTECT, related_name='cycle_counts')
+    location = models.ForeignKey('StorageLocation', on_delete=models.PROTECT, related_name='cycle_counts',
+                                 null=True, blank=True,
+                                 help_text="A location count: everything kept here.")
+    material = models.ForeignKey('Material', on_delete=models.PROTECT, related_name='cycle_counts',
+                                 null=True, blank=True,
+                                 help_text="An item count: this material, wherever it's kept.")
+    part_type = models.ForeignKey('PartTypes', on_delete=models.PROTECT, related_name='cycle_counts',
+                                  null=True, blank=True,
+                                  help_text="An item count: this part type, wherever it's kept.")
     # The counter doesn't see expected quantities while counting — counts what's there
     # rather than confirming the number on the sheet.
     blind = models.BooleanField(default=False)
@@ -1591,6 +1604,12 @@ class CycleCount(SecureModel):
     applied_by = models.ForeignKey(
         'Tracker.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     applied_at = models.DateTimeField(null=True, blank=True)
+    erp_keyed_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When its differences were keyed into the ERP (Glovia) — a person "
+                  "carries them over; this closes the count's loop.")
+    erp_keyed_by = models.ForeignKey(
+        'Tracker.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     apply_note = models.TextField(
         blank=True,
         help_text="The lead's note when applying a count with lines outside their class's "
@@ -1604,6 +1623,11 @@ class CycleCount(SecureModel):
             ('apply_cyclecount', 'Can apply a submitted cycle count to stock'),
         ]
         constraints = [
+            models.CheckConstraint(
+                name='cycle_count_one_scope',
+                condition=(models.Q(location__isnull=False, material__isnull=True, part_type__isnull=True)
+                           | models.Q(location__isnull=True, material__isnull=False, part_type__isnull=True)
+                           | models.Q(location__isnull=True, material__isnull=True, part_type__isnull=False))),
             models.UniqueConstraint(
                 fields=['tenant', 'count_number'],
                 condition=models.Q(count_number__isnull=False) & ~models.Q(count_number=''),
@@ -1620,8 +1644,17 @@ class CycleCount(SecureModel):
                 prefix=f"CC-{timezone.now().year}-", padding=4, tenant=self.tenant)
         super().save(*args, **kwargs)
 
+    @property
+    def scope_name(self) -> str:
+        """What's being counted: the location, or the item."""
+        if self.location_id:
+            return self.location.name
+        if self.material_id:
+            return self.material.name
+        return self.part_type.name if self.part_type_id else "—"
+
     def __str__(self):
-        return f"{self.count_number or 'CC'} · {self.location.name if self.location_id else ''}"
+        return f"{self.count_number or 'CC'} · {self.scope_name}"
 
 
 # A short delivery's outcome, from the packing slip (see MaterialLot.short_receipt).

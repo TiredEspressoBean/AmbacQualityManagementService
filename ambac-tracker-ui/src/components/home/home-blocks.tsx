@@ -1448,7 +1448,7 @@ const LAUNCHPADS: Record<string, { title: string; links: LaunchLink[] }> = {
             { to: "/production/incoming", label: "Incoming", hint: "What is expected and what has arrived", icon: Truck },
             { to: "/production/receiving-inspection", label: "Receiving inspection", hint: "Lots waiting to be checked", icon: ClipboardCheck },
             { to: "/production/material-lots", label: "Material lots", hint: "Stock, holds and returns", icon: Boxes },
-            { to: "/production/cycle-counts", label: "Cycle counts", hint: "Count a location", icon: ListChecks },
+            { to: "/production/cycle-counts", label: "Cycle counts", hint: "What's due, and counts to finish", icon: ListChecks },
         ],
     },
     Shipping: {

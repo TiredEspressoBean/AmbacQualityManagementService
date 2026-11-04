@@ -175,7 +175,8 @@ class CycleCountTests(_Fixture):
         bare = self.client.post(f"/api/CycleCounts/{c['id']}/apply/", format="json")
         self.assertEqual(bare.status_code, 400, bare.content)
         done = self.client.post(f"/api/CycleCounts/{c['id']}/apply/",
-                                {"note": "Checked the rack: 6 drawn unbooked; CC-C moved here"},
+                                {"note": "Checked the rack: 6 drawn unbooked; CC-C moved here",
+                                 "reasons": {f"LOT:{short.id}": "NOT_BOOKED", f"LOT:{stray.id}": "MISPLACED"}},
                                 format="json")
         self.assertEqual((done.status_code, done.json()["status"]), (200, "APPLIED"))
         self.assertEqual(done.json()["apply_note"], "Checked the rack: 6 drawn unbooked; CC-C moved here")
@@ -208,7 +209,8 @@ class CycleCountTests(_Fixture):
         sub = self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json").json()
         self.assertEqual({v["label"]: v["variance"] for v in sub["variances"]}, {"CC-F": "MISSING"})
         self.assertEqual(sub["not_counted"], 1)
-        self.client.post(f"/api/CycleCounts/{c['id']}/apply/", {"note": "Spot is empty"}, format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/apply/",
+                         {"note": "Spot is empty", "reasons": {f"LOT:{empty.id}": "NOT_BOOKED"}}, format="json")
         skipped.refresh_from_db()
         empty.refresh_from_db()
         self.assertEqual((skipped.quantity_remaining, empty.quantity_remaining), (Decimal(40), Decimal(0)))
@@ -229,7 +231,8 @@ class CycleCountTests(_Fixture):
         self.assertEqual(back.json()["lines"][0]["counted"], 3)
         self.assertTrue(RecordEdit.objects.filter(object_id=c["id"], reason="30 keyed as 3").exists())
         self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json")
-        self.client.post(f"/api/CycleCounts/{c['id']}/apply/", {"note": "Recounted: 3 it is"}, format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/apply/",
+                         {"note": "Recounted: 3 it is", "reasons": {f"LOT:{lot.id}": "SCRAPPED"}}, format="json")
         self.assertEqual(self.client.post(url, {"reason": "again"}, format="json").status_code, 400)
 
 
@@ -247,14 +250,18 @@ class CountCadenceTests(_Fixture):
         sub = self._counted("Rack 8", [{"kind": "LOT", "id": str(lot.id), "counted": "97"}])
         [v] = sub["variances"]
         self.assertEqual((v["abc_class"], v["within_tolerance"]), ("C", True), "3 of 100 is inside C's 5 %")
-        self.assertEqual(self.client.post(f"/api/CycleCounts/{sub['id']}/apply/", format="json").status_code, 200)
+        url = f"/api/CycleCounts/{sub['id']}/apply/"
+        self.assertEqual(self.client.post(url, format="json").status_code, 400, "every difference needs a reason")
+        self.assertEqual(self.client.post(url, {"reasons": {f"LOT:{lot.id}": "NOT_BOOKED"}},
+                                          format="json").status_code, 200)
 
         self.bar.abc_class = "A"
         self.bar.save(update_fields=["abc_class"])
         lot2 = self._lot("CT-B", qty="100", where="Rack 9")
         sub = self._counted("Rack 9", [{"kind": "LOT", "id": str(lot2.id), "counted": "97"}])
         self.assertFalse(sub["variances"][0]["within_tolerance"], "outside A's 1 %")
-        refused = self.client.post(f"/api/CycleCounts/{sub['id']}/apply/", format="json")
+        refused = self.client.post(f"/api/CycleCounts/{sub['id']}/apply/",
+                                   {"reasons": {f"LOT:{lot2.id}": "NOT_BOOKED"}}, format="json")
         self.assertEqual(refused.status_code, 400)
         self.assertIn("outside tolerance", refused.json()["detail"])
 
@@ -292,7 +299,82 @@ class CountCadenceTests(_Fixture):
         b = self._lot("CT-E", qty="100", where="Rack 11")
         sub = self._counted("Rack 11", [{"kind": "LOT", "id": str(a.id), "counted": "100"},
                                         {"kind": "LOT", "id": str(b.id), "counted": "50"}])
-        self.client.post(f"/api/CycleCounts/{sub['id']}/apply/", {"note": "Half went to scrap"}, format="json")
+        self.client.post(f"/api/CycleCounts/{sub['id']}/apply/",
+                         {"note": "Half went to scrap", "reasons": {f"LOT:{b.id}": "SCRAPPED"}}, format="json")
         acc = self.client.get("/api/CycleCounts/accuracy/").json()
         self.assertEqual((acc["C"]["counted"], acc["C"]["hits"], acc["C"]["pct"]), (2, 1, 50.0))
+        self.assertEqual(acc["by_reason"], {"SCRAPPED": 1})
         self.assertIsNone(acc["A"]["pct"])
+
+
+class CountScopeAndFollowUpTests(_Fixture):
+    """Counting by item, and what follows a count (user decision 2026-11-04): units not
+    found are chased until resolved; differences wait to be keyed into the ERP."""
+
+    def test_an_item_count_spans_its_locations_and_moves_what_it_finds(self):
+        from Tracker.models import MaterialLot
+        a = self._lot("IT-A", qty="10", where="Rack 20")
+        b = self._lot("IT-B", qty="10", where="Rack 21")
+        loose = self._lot("IT-C", qty="5", where=None)  # nowhere on record: found on Rack 22
+        from Tracker.services.mes.locations import seed_location
+        seed_location(self.tenant, "Rack 22")
+        start = self.client.post("/api/CycleCounts/", {"material": str(self.bar.id)}, format="json")
+        self.assertEqual(start.status_code, 201, start.content)
+        c = start.json()
+        self.assertEqual((c["scope"], c["scope_name"]), ("MATERIAL", "Bar stock 4140"))
+        self.assertEqual({l["label"]: l["system_location"] for l in c["lines"]},
+                         {"IT-A": "Rack 20", "IT-B": "Rack 21"})
+        url = f"/api/CycleCounts/{c['id']}/record/"
+        bad = self.client.post(url, {"entries": [{"kind": "LOT", "id": str(loose.id), "counted": "5"}]},
+                               format="json")
+        self.assertEqual(bad.status_code, 400, "an item count needs to know where it was found")
+        self.client.post(url, {"entries": [
+            {"kind": "LOT", "id": str(a.id), "counted": "10"},
+            {"kind": "LOT", "id": str(b.id), "counted": "10"},
+            {"kind": "LOT", "id": str(loose.id), "counted": "5", "found_at": "Rack 22"}]}, format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json")
+        done = self.client.post(f"/api/CycleCounts/{c['id']}/apply/",
+                                {"note": "Loose lot on Rack 22", "reasons": {f"LOT:{loose.id}": "MISPLACED"}},
+                                format="json")
+        self.assertEqual(done.status_code, 200, done.content)
+        loose.refresh_from_db()
+        self.assertEqual(loose.storage_location, "Rack 22")
+        # It credits the item at the places it counted.
+        self.assertFalse([r for r in self.client.get("/api/CycleCounts/due/").json()
+                          if r["name"] == "Bar stock 4140"])
+        self.assertEqual(MaterialLot.objects.get(pk=a.pk).quantity_remaining, 10)
+
+    def test_a_unit_not_found_is_chased_until_resolved(self):
+        from Tracker.models import Parts, PartTypes
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Nozzle")
+        from Tracker.services.mes.locations import seed_location
+        unit = Parts.objects.create(tenant=self.tenant, ERP_id="NZ-1", part_type=pt,
+                                    location=seed_location(self.tenant, "Rack 30"), part_status="IN_STOCK")
+        c = self.client.post("/api/CycleCounts/", {"location": "Rack 30"}, format="json").json()
+        self.client.post(f"/api/CycleCounts/{c['id']}/record/",
+                         {"entries": [{"kind": "PART", "id": str(unit.id), "counted": "0"}]}, format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/apply/",
+                         {"note": "Not on the rack", "reasons": {f"PART:{unit.id}": "UNKNOWN"}}, format="json")
+        missing = self.client.get("/api/CycleCounts/missing/").json()
+        self.assertEqual([m["serial"] for m in missing], ["NZ-1"])
+        self.assertEqual(self.client.post(f"/api/CycleCounts/{c['id']}/resolve-missing/",
+                                          {"part": str(unit.id), "note": ""}, format="json").status_code, 400)
+        self.client.post(f"/api/CycleCounts/{c['id']}/resolve-missing/",
+                         {"part": str(unit.id), "note": "Shipped on a rush order, not booked"}, format="json")
+        self.assertEqual(self.client.get("/api/CycleCounts/missing/").json(), [])
+
+    def test_differences_wait_to_be_keyed_into_the_erp(self):
+        lot = self._lot("KY-A", qty="20", where="Rack 40")
+        c = self.client.post("/api/CycleCounts/", {"location": "Rack 40"}, format="json").json()
+        self.client.post(f"/api/CycleCounts/{c['id']}/record/",
+                         {"entries": [{"kind": "LOT", "id": str(lot.id), "counted": "19"}]}, format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/apply/",
+                         {"note": "x", "reasons": {f"LOT:{lot.id}": "NOT_BOOKED"}}, format="json")
+        self.assertEqual([k["id"] for k in self.client.get("/api/CycleCounts/to-key/").json()], [c["id"]])
+        xlsx = self.client.get("/api/CycleCounts/to-key-xlsx/")
+        self.assertEqual(xlsx.status_code, 200)
+        r = self.client.post("/api/CycleCounts/mark-keyed/", {"counts": [c["id"]]}, format="json")
+        self.assertEqual(r.json(), {"marked": 1})
+        self.assertEqual(self.client.get("/api/CycleCounts/to-key/").json(), [])

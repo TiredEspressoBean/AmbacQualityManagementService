@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FileSpreadsheet, FileText, ScanLine } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,8 @@ import { resolveScan } from "@/lib/scan";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import {
-    cycleCountOptions, useApplyCount, useRecordCount, useSendBackCount, useSubmitCount, type CountEntry,
+    COUNT_REASONS, REASON_LABEL, cycleCountOptions, useApplyCount, useRecordCount, useSendBackCount, useSubmitCount,
+    type CountEntry,
 } from "@/hooks/useCycleCounts";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 
@@ -35,10 +37,12 @@ const fmtTol = (v: { tolerance: number; unit: string }) =>
     `${Number.isInteger(v.tolerance) ? v.tolerance : v.tolerance.toFixed(2)} ${v.unit}`;
 
 /**
- * Counting one location, on a tablet. Enter what's there for each lot, say of each unit
- * whether it's here (a blank line is left uncounted, never taken as missing), and scan anything here that isn't on the list. Save as you go; submit
- * when the location is done. A lead then applies the count — UQMES's quantities and
- * locations are corrected — and the differences go to the ERP to be keyed.
+ * Counting one location — or one item wherever it's kept — on a tablet. Enter what's
+ * there for each lot, say of each unit whether it's there (a blank line is left
+ * uncounted, never taken as missing), and scan anything found that isn't on the list (in
+ * an item count, saying where). Save as you go; submit when done. A lead then gives each
+ * difference a reason and applies the count — UQMES's quantities and locations are
+ * corrected — and the differences wait to be keyed into the ERP.
  */
 export function CycleCountPage() {
     const { countId } = useParams({ strict: false }) as { countId: string };
@@ -48,6 +52,10 @@ export function CycleCountPage() {
     const apply = useApplyCount();
     // A lead applying lines outside their class's tolerance says why (warned, not blocked).
     const [applyNote, setApplyNote] = useState("");
+    // The lead's reason per difference, keyed "LOT:<id>" / "PART:<id>" — every one needs one.
+    const [reasons, setReasons] = useState<Record<string, string>>({});
+    // An item count spans locations: where something found was.
+    const [foundAt, setFoundAt] = useState("");
     const sendBack = useSendBackCount();
     const [recountOpen, setRecountOpen] = useState(false);
     const [recountReason, setRecountReason] = useState("");
@@ -93,15 +101,25 @@ export function CycleCountPage() {
             else document.getElementById(`count-${hit.id}`)?.focus();
             return;
         }
-        // Not on the list: something found here. Saved at once, so it joins the count.
+        // Not on the list: something found. Saved at once, so it joins the count — in an
+        // item count, at the location the counter named.
         const kind = hit.kind as "LOT" | "PART";
+        const itemCount = !c.location;
+        if (itemCount && !foundAt.trim()) {
+            toast.error("Say where you found it first (the location box).");
+            return;
+        }
         let counted: string | null = kind === "PART" ? "1" : null;
         if (kind === "LOT") {
             const lot = await api.api_MaterialLots_retrieve({ params: { id: hit.id } });
             counted = String(lot.quantity_remaining ?? "");
         }
-        record.mutate({ id: c.id, entries: [...entries(), { kind, id: hit.id, counted }] }, {
-            onSuccess: () => toast.success(`${hit.label} found here — added to the count.`),
+        record.mutate({ id: c.id, entries: [...entries(), {
+            kind, id: hit.id, counted, ...(itemCount ? { found_at: foundAt.trim() } : {}),
+        }] }, {
+            onSuccess: () => toast.success(itemCount
+                ? `${hit.label} found at ${foundAt.trim()} — added to the count.`
+                : `${hit.label} found here — added to the count.`),
             onError: (e) => toast.error(errorOf(e, "Could not add it")),
         });
         scanRef.current?.focus();
@@ -109,13 +127,18 @@ export function CycleCountPage() {
 
     const uncounted = c.lines.filter((l) => (draft[`${l.kind}:${l.id}`] ?? "") === "").length;
     const misses = c.variances.filter((v) => !v.within_tolerance).length;
+    const unreasoned = c.variances.filter((v) => !reasons[`${v.kind}:${v.id}`]).length;
+    // An item count lists where each line was kept; a location count is one place.
+    const showWhere = !c.location;
 
     return (
         <div className="mx-auto max-w-5xl space-y-4 p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <div className="text-sm text-muted-foreground">
-                        <Link to="/production/locations/$locationId" params={{ locationId: c.location }} className="hover:underline">{c.location_name}</Link>
+                        {c.location
+                            ? <Link to="/production/locations/$locationId" params={{ locationId: c.location }} className="hover:underline">{c.location_name}</Link>
+                            : <span>{c.scope_name} <span className="text-xs">(every location it&rsquo;s kept)</span></span>}
                         {" / "}<Link to="/production/cycle-counts" className="hover:underline">counts</Link>
                     </div>
                     <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold">
@@ -166,6 +189,11 @@ export function CycleCountPage() {
                         onKeyDown={(e) => { if (e.key === "Enter") void onScan(); }}
                         placeholder="Scan a lot or unit — on the list it's found, off it it's added"
                         className="border-0 text-base shadow-none focus-visible:ring-0" />
+                    {!c.location && (
+                        <Input value={foundAt} onChange={(e) => setFoundAt(e.target.value)}
+                            placeholder="Found at (location)" aria-label="Where it was found"
+                            className="w-48 shrink-0" />
+                    )}
                 </div>
             )}
 
@@ -178,6 +206,7 @@ export function CycleCountPage() {
                                 <table className="w-full text-sm">
                                     <thead><tr className="border-b text-left text-muted-foreground">
                                         <th className="py-2 pr-3 font-medium">Lot</th><th className="py-2 pr-3 font-medium">Item</th>
+                                        {showWhere && <th className="py-2 pr-3 font-medium">Kept at</th>}
                                         {!c.blind && <th className="py-2 pr-3 text-right font-medium">Expected</th>}
                                         <th className="py-2 font-medium">Counted</th>
                                     </tr></thead>
@@ -186,6 +215,7 @@ export function CycleCountPage() {
                                             <tr key={l.id} className="border-b last:border-0">
                                                 <td className="py-2 pr-3 font-mono">{l.label}{l.found_here && <Badge variant="outline" className="ml-2">found here</Badge>}</td>
                                                 <td className="py-2 pr-3">{l.item || "—"}</td>
+                                                {showWhere && <td className="py-2 pr-3">{l.found_here ? "found" : (l.system_location || "—")}</td>}
                                                 {!c.blind && <td className="py-2 pr-3 text-right tabular-nums">{l.expected} {l.unit}</td>}
                                                 <td className="py-2">
                                                     <div className="flex items-center gap-1.5">
@@ -228,6 +258,7 @@ export function CycleCountPage() {
                                                 </td>
                                                 <td className="py-2 pr-3 font-mono">{u.label}{u.found_here && <Badge variant="outline" className="ml-2">found here</Badge>}</td>
                                                 <td className="py-2">{u.item || "—"}</td>
+                                                {showWhere && <td className="py-2 pl-3 text-muted-foreground">{u.found_here ? "found" : (u.system_location || "—")}</td>}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -269,7 +300,8 @@ export function CycleCountPage() {
                                     <th className="py-2 pr-3 font-medium">Lot / serial</th><th className="py-2 pr-3 font-medium">Item</th>
                                     <th className="py-2 pr-3 text-right font-medium">Expected</th><th className="py-2 pr-3 text-right font-medium">Counted</th>
                                     <th className="py-2 pr-3 text-right font-medium">Difference</th><th className="py-2 pr-3 font-medium">What</th>
-                                    <th className="py-2 font-medium">Tolerance</th>
+                                    <th className="py-2 pr-3 font-medium">Tolerance</th>
+                                    <th className="py-2 font-medium">Why</th>
                                 </tr></thead>
                                 <tbody>
                                     {c.variances.map((v) => (
@@ -291,6 +323,20 @@ export function CycleCountPage() {
                                                     ? <span className="text-muted-foreground">Class {v.abc_class} · within ±{fmtTol(v)}</span>
                                                     : <span className="font-medium text-amber-700 dark:text-amber-400">Class {v.abc_class} · outside{v.kind === "LOT" ? ` ±${fmtTol(v)}` : ""}</span>}
                                             </td>
+                                            {/* Why the record was off: picked when applying, shown after. */}
+                                            <td className="py-2 pl-3 text-xs">
+                                                {c.status === "SUBMITTED" && perms.has("apply_cyclecount") ? (
+                                                    <Select value={reasons[`${v.kind}:${v.id}`] ?? ""}
+                                                        onValueChange={(val) => val && setReasons((r) => ({ ...r, [`${v.kind}:${v.id}`]: val }))}>
+                                                        <SelectTrigger className="h-8 w-56" aria-label={`Why, ${v.label}`}>
+                                                            <SelectValue placeholder="Pick a reason" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {COUNT_REASONS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                ) : (REASON_LABEL[v.reason ?? ""] ?? "—")}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -311,8 +357,9 @@ export function CycleCountPage() {
                         )}
                         {c.status === "SUBMITTED" && (perms.has("apply_cyclecount") ? (
                             <div className="flex flex-wrap items-center gap-2">
-                                <Button disabled={apply.isPending || (misses > 0 && !applyNote.trim())}
-                                    onClick={() => apply.mutate({ id: c.id, note: applyNote.trim() }, {
+                                <Button disabled={apply.isPending || unreasoned > 0 || (misses > 0 && !applyNote.trim())}
+                                    title={unreasoned > 0 ? "Give each difference a reason first" : undefined}
+                                    onClick={() => apply.mutate({ id: c.id, note: applyNote.trim(), reasons }, {
                                         onSuccess: () => { setApplyNote(""); toast.success("Count applied — UQMES's quantities and locations are corrected."); },
                                         onError: (e) => toast.error(errorOf(e, "Could not apply the count")),
                                     })}>

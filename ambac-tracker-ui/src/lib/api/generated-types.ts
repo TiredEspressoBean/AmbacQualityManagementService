@@ -2557,12 +2557,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Counts of locations. POST starts one; `record`, `submit` and `apply` move it on.
-         *     Never edited or deleted otherwise — a count is a record of what was found.
+         * @description Counts of a location or an item. POST starts one; `record`, `submit` and `apply`
+         *     move it on. Never edited or deleted otherwise — a count is a record of what was found.
          */
         get: operations["api_CycleCounts_list"];
         put?: never;
-        /** @description Start a count of a location: snapshots what UQMES expects there. */
+        /** @description Start a count of a location, or of a material or part type wherever it's kept: snapshots what UQMES expects. */
         post: operations["api_CycleCounts_create"];
         delete?: never;
         options?: never;
@@ -2578,8 +2578,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Counts of locations. POST starts one; `record`, `submit` and `apply` move it on.
-         *     Never edited or deleted otherwise — a count is a record of what was found.
+         * @description Counts of a location or an item. POST starts one; `record`, `submit` and `apply`
+         *     move it on. Never edited or deleted otherwise — a count is a record of what was found.
          */
         get: operations["api_CycleCounts_retrieve"];
         put?: never;
@@ -2635,6 +2635,23 @@ export interface paths {
         put?: never;
         /** @description Save what was counted; an entry not on the list is something found here. */
         post: operations["api_CycleCounts_record_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/{id}/resolve-missing/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Say what became of a unit this count didn't find, taking it off the missing list. */
+        post: operations["api_CycleCounts_resolve_missing_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2701,6 +2718,74 @@ export interface paths {
         };
         /** @description Items due for counting under their ABC class: stock in a location not counted within the class's interval (never counted first, then most overdue), with the locations to count. */
         get: operations["api_CycleCounts_due_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/mark-keyed/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Mark counts' differences as keyed into the ERP. */
+        post: operations["api_CycleCounts_mark_keyed_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/missing/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Units a count didn't find, still unresolved: not seen since, not left for good, and nobody has said what became of them. */
+        get: operations["api_CycleCounts_missing_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/to-key/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Applied counts whose differences haven't been keyed into the ERP yet. */
+        get: operations["api_CycleCounts_to_key_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/to-key-xlsx/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every difference not yet keyed into the ERP, across counts, as one sheet. */
+        get: operations["api_CycleCounts_to_key_xlsx_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -21629,6 +21714,10 @@ export interface components {
         ApplyCountRequest: {
             /** @description Required when lines are outside tolerance: why the difference is real rather than recounted. */
             note?: string;
+            /** @description A reason code per difference, keyed "LOT:<id>" / "PART:<id>". Every difference needs one. */
+            reasons?: {
+                [key: string]: "NOT_BOOKED" | "SCRAPPED" | "MISPLACED" | "RECEIVED_WRONG" | "COUNT_ERROR" | "UNKNOWN";
+            };
         };
         /**
          * @description * `ALL_REQUIRED` - All Required
@@ -23721,12 +23810,18 @@ export interface components {
             lot: string;
             reason: string;
         };
-        /** @description Inventory record accuracy per ABC class: counted lines within tolerance. */
+        /**
+         * @description Inventory record accuracy per ABC class: counted lines within tolerance; and the
+         *     differences by the reason the lead gave.
+         */
         CountAccuracy: {
             days: number;
             A: components["schemas"]["ClassAccuracy"];
             B: components["schemas"]["ClassAccuracy"];
             C: components["schemas"]["ClassAccuracy"];
+            by_reason: {
+                [key: string]: number;
+            };
         };
         CountEntryRequest: {
             kind: components["schemas"]["CycleCountLineKindEnum"];
@@ -23735,6 +23830,8 @@ export interface components {
             /** Format: decimal */
             counted?: string | null;
             note?: string;
+            /** @description An item count's found item: where it was (location id, code or name). */
+            found_at?: string;
         };
         CreateBOMRevisionInputRequest: {
             change_description: string;
@@ -24067,9 +24164,25 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly count_number: string;
-            /** Format: uuid */
-            readonly location: string;
-            readonly location_name: string;
+            /**
+             * Format: uuid
+             * @description A location count: everything kept here.
+             */
+            readonly location: string | null;
+            readonly location_name: string | null;
+            /**
+             * Format: uuid
+             * @description An item count: this material, wherever it's kept.
+             */
+            readonly material: string | null;
+            /**
+             * Format: uuid
+             * @description An item count: this part type, wherever it's kept.
+             */
+            readonly part_type: string | null;
+            readonly scope: components["schemas"]["CycleCountScopeEnum"];
+            /** @description What's counted: the location or the item. */
+            readonly scope_name: string;
             blind?: boolean;
             readonly status: components["schemas"]["CycleCountStatusEnum"];
             readonly status_display: string;
@@ -24087,6 +24200,12 @@ export interface components {
             readonly applied_at: string | null;
             /** @description The lead's note when applying a count with lines outside their class's tolerance: why the difference is real rather than recounted. */
             readonly apply_note: string;
+            /**
+             * Format: date-time
+             * @description When its differences were keyed into the ERP (Glovia) — a person carries them over; this closes the count's loop.
+             */
+            readonly erp_keyed_at: string | null;
+            readonly erp_keyed_by_name: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -24105,6 +24224,10 @@ export interface components {
             counted: number | null;
             found_here: boolean;
             system_location: string | null;
+            /** @description Where UQMES had it. */
+            location_id?: string | null;
+            /** @description Where a found item was (an item count spans locations). */
+            found_at?: string | null;
             note: string;
         };
         /**
@@ -24113,6 +24236,13 @@ export interface components {
          * @enum {string}
          */
         CycleCountLineKindEnum: "LOT" | "PART";
+        /**
+         * @description * `LOCATION` - Location
+         *     * `MATERIAL` - Material
+         *     * `PART_TYPE` - Part type
+         * @enum {string}
+         */
+        CycleCountScopeEnum: "LOCATION" | "MATERIAL" | "PART_TYPE";
         /**
          * @description * `OPEN` - Counting
          *     * `SUBMITTED` - Submitted
@@ -24132,6 +24262,10 @@ export interface components {
             counted: number | null;
             found_here: boolean;
             system_location: string | null;
+            /** @description Where UQMES had it. */
+            location_id?: string | null;
+            /** @description Where a found item was (an item count spans locations). */
+            found_at?: string | null;
             note: string;
             /** Format: double */
             difference: number;
@@ -24144,6 +24278,18 @@ export interface components {
             tolerance: number;
             /** @description False: a miss — usually recounted; applying it anyway needs a note. */
             within_tolerance: boolean;
+            /**
+             * @description Why the record was off, given when applied.
+             *
+             *     * `` - —
+             *     * `NOT_BOOKED` - Used or moved without being booked
+             *     * `SCRAPPED` - Damaged or scrapped, not booked
+             *     * `MISPLACED` - Kept in the wrong place
+             *     * `RECEIVED_WRONG` - Received wrong
+             *     * `COUNT_ERROR` - An earlier count was wrong
+             *     * `UNKNOWN` - Not known
+             */
+            reason: components["schemas"]["CycleCountVarianceReasonEnum"] | components["schemas"]["BlankEnum"];
         };
         /**
          * @description * `SHORT` - Short
@@ -24153,6 +24299,17 @@ export interface components {
          * @enum {string}
          */
         CycleCountVarianceEnum: "SHORT" | "OVER" | "MISSING" | "FOUND_HERE";
+        /**
+         * @description * `` - —
+         *     * `NOT_BOOKED` - Used or moved without being booked
+         *     * `SCRAPPED` - Damaged or scrapped, not booked
+         *     * `MISPLACED` - Kept in the wrong place
+         *     * `RECEIVED_WRONG` - Received wrong
+         *     * `COUNT_ERROR` - An earlier count was wrong
+         *     * `UNKNOWN` - Not known
+         * @enum {string}
+         */
+        CycleCountVarianceReasonEnum: "NOT_BOOKED" | "SCRAPPED" | "MISPLACED" | "RECEIVED_WRONG" | "COUNT_ERROR" | "UNKNOWN";
         DashboardKPIsResponse: {
             active_capas: number;
             open_ncrs: number;
@@ -26933,6 +27090,10 @@ export interface components {
             forward: components["schemas"]["TraceUse"][];
             customers: string[];
         };
+        MarkKeyedRequest: {
+            /** @description The applied counts whose differences were keyed into the ERP. */
+            counts: string[];
+        };
         MarkReceiptsPostedRequest: {
             lot_ids: string[];
         };
@@ -27746,6 +27907,22 @@ export interface components {
             archived?: boolean;
             /** @description Reason for this revision, recorded on the new version. */
             change_description?: string;
+        };
+        /** @description A unit a count didn't find, still unresolved. */
+        MissingUnit: {
+            /** Format: uuid */
+            count_id: string;
+            count_number: string;
+            scope: string;
+            /** Format: date-time */
+            applied_at: string;
+            /** Format: uuid */
+            part_id: string;
+            serial: string;
+            item: string;
+            expected_at: string;
+            reason: string;
+            status: string;
         };
         /**
          * @description * `saas` - saas
@@ -30702,8 +30879,15 @@ export interface components {
             sampling_context?: unknown;
             archived?: boolean;
         };
+        /**
+         * @description * `quarantine` - Quarantine
+         *     * `rework` - Rework
+         *     * `scrap` - Scrap
+         * @enum {string}
+         */
+        PartsSplitFromLotInputReasonEnum: "quarantine" | "rework" | "scrap";
         PartsSplitFromLotInputRequest: {
-            reason: components["schemas"]["ReasonEnum"];
+            reason: components["schemas"]["PartsSplitFromLotInputReasonEnum"];
             /** Format: uuid */
             rework_target_step_id?: string | null;
             notes?: string;
@@ -32976,7 +33160,7 @@ export interface components {
              *     * `sampled` - Per part (sampling)
              *     * `batch` - Per batch
              */
-            scope?: components["schemas"]["ScopeEnum"];
+            scope?: components["schemas"]["SubstepScopeEnum"];
             /**
              * Format: uuid
              * @description Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
@@ -35142,13 +35326,6 @@ export interface components {
             work_order: string | null;
             status: string;
         };
-        /**
-         * @description * `quarantine` - Quarantine
-         *     * `rework` - Rework
-         *     * `scrap` - Scrap
-         * @enum {string}
-         */
-        ReasonEnum: "quarantine" | "rework" | "scrap";
         ReassignMachineOption: {
             id: string;
             name: string;
@@ -35812,6 +35989,12 @@ export interface components {
             cosign_email?: string;
             /** @description That person's password. Verified inline; they are never logged in, and the routing choice is attributed to them. */
             cosign_password?: string;
+        };
+        ResolveMissingRequest: {
+            /** Format: uuid */
+            part: string;
+            /** @description What became of it. */
+            note: string;
         };
         RestAuthDetail: {
             readonly detail: string;
@@ -36698,12 +36881,6 @@ export interface components {
             readonly outside_supplier: string | null;
         };
         /**
-         * @description * `sampled` - Per part (sampling)
-         *     * `batch` - Per batch
-         * @enum {string}
-         */
-        ScopeEnum: "sampled" | "batch";
-        /**
          * @description * `PART_TYPE` - Part Type
          *     * `COMMODITY` - Commodity
          *     * `SPECIAL_PROCESS` - Special Process
@@ -37113,9 +37290,14 @@ export interface components {
          * @enum {string}
          */
         SplitReasonEnum: "QUANTITY" | "OPERATION" | "REWORK";
+        /** @description What to count: one location, or one material or part type wherever it's kept. */
         StartCycleCountRequest: {
             /** @description The location's id, code or name (a scanned LOC: label is fine). */
-            location: string;
+            location?: string;
+            /** Format: uuid */
+            material?: string | null;
+            /** Format: uuid */
+            part_type?: string | null;
             /** @default false */
             blind: boolean;
         };
@@ -38469,7 +38651,7 @@ export interface components {
              *     * `sampled` - Per part (sampling)
              *     * `batch` - Per batch
              */
-            scope?: components["schemas"]["ScopeEnum"];
+            scope?: components["schemas"]["SubstepScopeEnum"];
             /**
              * Format: uuid
              * @description Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
@@ -38693,7 +38875,7 @@ export interface components {
              *     * `sampled` - Per part (sampling)
              *     * `batch` - Per batch
              */
-            scope?: components["schemas"]["ScopeEnum"];
+            scope?: components["schemas"]["SubstepScopeEnum"];
             /**
              * Format: uuid
              * @description Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
@@ -38908,6 +39090,12 @@ export interface components {
             rule_type: string;
             value: number;
         };
+        /**
+         * @description * `sampled` - Per part (sampling)
+         *     * `batch` - Per batch
+         * @enum {string}
+         */
+        SubstepScopeEnum: "sampled" | "batch";
         SubstepSubmitRequestRequest: {
             /** Format: uuid */
             step_execution?: string;
@@ -47255,10 +47443,12 @@ export interface operations {
                 /** @description Number of results to return per page. */
                 limit?: number;
                 location?: string;
+                material?: string;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
+                part_type?: string;
                 /** @description A search term. */
                 search?: string;
                 /**
@@ -47291,7 +47481,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["StartCycleCountRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["StartCycleCountRequest"];
@@ -47409,6 +47599,34 @@ export interface operations {
             };
         };
     };
+    api_CycleCounts_resolve_missing_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Cycle Count. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveMissingRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ResolveMissingRequest"];
+                "multipart/form-data": components["schemas"]["ResolveMissingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleCount"];
+                };
+            };
+        };
+    };
     api_CycleCounts_send_back_create: {
         parameters: {
             query?: never;
@@ -47485,8 +47703,10 @@ export interface operations {
         parameters: {
             query?: {
                 location?: string;
+                material?: string;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
+                part_type?: string;
                 /** @description A search term. */
                 search?: string;
                 /**
@@ -47508,6 +47728,118 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DueForCount"][];
+                };
+            };
+        };
+    };
+    api_CycleCounts_mark_keyed_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkKeyedRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MarkKeyedRequest"];
+                "multipart/form-data": components["schemas"]["MarkKeyedRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_CycleCounts_missing_list: {
+        parameters: {
+            query?: {
+                location?: string;
+                material?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `OPEN` - Counting
+                 *     * `SUBMITTED` - Submitted
+                 *     * `APPLIED` - Applied
+                 */
+                status?: "APPLIED" | "OPEN" | "SUBMITTED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissingUnit"][];
+                };
+            };
+        };
+    };
+    api_CycleCounts_to_key_list: {
+        parameters: {
+            query?: {
+                location?: string;
+                material?: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `OPEN` - Counting
+                 *     * `SUBMITTED` - Submitted
+                 *     * `APPLIED` - Applied
+                 */
+                status?: "APPLIED" | "OPEN" | "SUBMITTED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleCount"][];
+                };
+            };
+        };
+    };
+    api_CycleCounts_to_key_xlsx_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
         };

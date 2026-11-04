@@ -292,7 +292,7 @@ class DemoDarkExhibitSeeder(BaseSeeder):
         if loc is None or counter is None:
             return None
 
-        count = cc.start_count(self.tenant, loc.name, counter, blind=True)
+        count = cc.start_count(self.tenant, counter, location=loc.name, blind=True)
         entries = self._count_entries(count)
         if entries:
             cc.record_count(count, entries)

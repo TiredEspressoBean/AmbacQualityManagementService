@@ -3,7 +3,21 @@ import { api } from "@/lib/api/generated";
 import type { Schema } from "@/lib/api/types";
 
 export type CycleCount = Schema<"CycleCount">;
-export type CountEntry = { kind: "LOT" | "PART"; id: string; counted?: string | null; note?: string };
+/** One entry while counting. `found_at` (a location) is needed for something found in an
+ *  item count, which spans locations. */
+export type CountEntry = { kind: "LOT" | "PART"; id: string; counted?: string | null; note?: string; found_at?: string };
+export type MissingUnit = Schema<"MissingUnit">;
+
+/** Why the record was off — the lead's reason on each difference (services cycle_count.REASONS). */
+export const COUNT_REASONS: { value: string; label: string }[] = [
+    { value: "NOT_BOOKED", label: "Used or moved without being booked" },
+    { value: "SCRAPPED", label: "Damaged or scrapped, not booked" },
+    { value: "MISPLACED", label: "Kept in the wrong place" },
+    { value: "RECEIVED_WRONG", label: "Received wrong" },
+    { value: "COUNT_ERROR", label: "An earlier count was wrong" },
+    { value: "UNKNOWN", label: "Not known" },
+];
+export const REASON_LABEL: Record<string, string> = Object.fromEntries(COUNT_REASONS.map((r) => [r.value, r.label]));
 
 export const cycleCountsOptions = (location?: string) =>
     queryOptions({
@@ -29,7 +43,8 @@ function useInvalidate() {
 export function useStartCount() {
     const invalidate = useInvalidate();
     return useMutation({
-        mutationFn: (body: { location: string; blind: boolean }) =>
+        // One scope: a location, or a material or part type wherever it's kept.
+        mutationFn: (body: { location?: string; material?: string; part_type?: string; blind: boolean }) =>
             api.api_CycleCounts_create(body) as Promise<CycleCount>,
         onSuccess: invalidate,
     });
@@ -67,8 +82,8 @@ export function useSendBackCount() {
 export function useApplyCount() {
     const invalidate = useInvalidate();
     return useMutation({
-        mutationFn: ({ id, note }: { id: string; note?: string }) =>
-            api.api_CycleCounts_apply_create({ note: note ?? "" }, { params: { id } }) as Promise<CycleCount>,
+        mutationFn: ({ id, note, reasons }: { id: string; note?: string; reasons: Record<string, string> }) =>
+            api.api_CycleCounts_apply_create({ note: note ?? "", reasons } as never, { params: { id } }) as Promise<CycleCount>,
         onSuccess: invalidate,
     });
 }
@@ -89,3 +104,37 @@ export const countAccuracyOptions = (days = 90) =>
         queryKey: ["cycle-counts", "accuracy", days],
         queryFn: () => api.api_CycleCounts_accuracy_retrieve({ queries: { days } }) as Promise<CountAccuracy>,
     });
+
+
+/** Units a count didn't find, still unresolved. */
+export const missingUnitsOptions = () =>
+    queryOptions({
+        queryKey: ["cycle-counts", "missing"],
+        queryFn: () => api.api_CycleCounts_missing_list() as Promise<MissingUnit[]>,
+    });
+
+/** Applied counts whose differences haven't been keyed into the ERP yet. */
+export const toKeyOptions = () =>
+    queryOptions({
+        queryKey: ["cycle-counts", "to-key"],
+        queryFn: () => api.api_CycleCounts_to_key_list() as Promise<CycleCount[]>,
+    });
+
+/** Say what became of a unit a count didn't find. */
+export function useResolveMissing() {
+    const invalidate = useInvalidate();
+    return useMutation({
+        mutationFn: ({ countId, part, note }: { countId: string; part: string; note: string }) =>
+            api.api_CycleCounts_resolve_missing_create({ part, note }, { params: { id: countId } }),
+        onSuccess: invalidate,
+    });
+}
+
+/** Mark counts' differences as keyed into the ERP. */
+export function useMarkKeyed() {
+    const invalidate = useInvalidate();
+    return useMutation({
+        mutationFn: (counts: string[]) => api.api_CycleCounts_mark_keyed_create({ counts }),
+        onSuccess: invalidate,
+    });
+}

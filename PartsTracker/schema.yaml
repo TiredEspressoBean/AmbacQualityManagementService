@@ -7446,8 +7446,8 @@ paths:
     get:
       operationId: api_CycleCounts_list
       description: |-
-        Counts of locations. POST starts one; `record`, `submit` and `apply` move it on.
-        Never edited or deleted otherwise — a count is a record of what was found.
+        Counts of a location or an item. POST starts one; `record`, `submit` and `apply`
+        move it on. Never edited or deleted otherwise — a count is a record of what was found.
       parameters:
       - name: limit
         required: false
@@ -7457,6 +7457,11 @@ paths:
           type: integer
       - in: query
         name: location
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: material
         schema:
           type: string
           format: uuid
@@ -7472,6 +7477,11 @@ paths:
         description: Which field to use when ordering the results.
         schema:
           type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
       - name: search
         required: false
         in: query
@@ -7504,7 +7514,8 @@ paths:
           description: ''
     post:
       operationId: api_CycleCounts_create
-      description: 'Start a count of a location: snapshots what UQMES expects there.'
+      description: 'Start a count of a location, or of a material or part type wherever
+        it''s kept: snapshots what UQMES expects.'
       tags:
       - api
       requestBody:
@@ -7518,7 +7529,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/StartCycleCountRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -7533,8 +7543,8 @@ paths:
     get:
       operationId: api_CycleCounts_retrieve
       description: |-
-        Counts of locations. POST starts one; `record`, `submit` and `apply` move it on.
-        Never edited or deleted otherwise — a count is a record of what was found.
+        Counts of a location or an item. POST starts one; `record`, `submit` and `apply`
+        move it on. Never edited or deleted otherwise — a count is a record of what was found.
       parameters:
       - in: path
         name: id
@@ -7655,6 +7665,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/CycleCount'
           description: ''
+  /api/CycleCounts/{id}/resolve-missing/:
+    post:
+      operationId: api_CycleCounts_resolve_missing_create
+      description: Say what became of a unit this count didn't find, taking it off
+        the missing list.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Cycle Count.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveMissingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResolveMissingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResolveMissingRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CycleCount'
+          description: ''
   /api/CycleCounts/{id}/send-back/:
     post:
       operationId: api_CycleCounts_send_back_create
@@ -7752,12 +7799,22 @@ paths:
         schema:
           type: string
           format: uuid
+      - in: query
+        name: material
+        schema:
+          type: string
+          format: uuid
       - name: ordering
         required: false
         in: query
         description: Which field to use when ordering the results.
         schema:
           type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
       - name: search
         required: false
         in: query
@@ -7789,6 +7846,171 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DueForCount'
+          description: ''
+  /api/CycleCounts/mark-keyed/:
+    post:
+      operationId: api_CycleCounts_mark_keyed_create
+      description: Mark counts' differences as keyed into the ERP.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkKeyedRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MarkKeyedRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MarkKeyedRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/CycleCounts/missing/:
+    get:
+      operationId: api_CycleCounts_missing_list
+      description: 'Units a count didn''t find, still unresolved: not seen since,
+        not left for good, and nobody has said what became of them.'
+      parameters:
+      - in: query
+        name: location
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: material
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPLIED
+          - OPEN
+          - SUBMITTED
+        description: |-
+          * `OPEN` - Counting
+          * `SUBMITTED` - Submitted
+          * `APPLIED` - Applied
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MissingUnit'
+          description: ''
+  /api/CycleCounts/to-key/:
+    get:
+      operationId: api_CycleCounts_to_key_list
+      description: Applied counts whose differences haven't been keyed into the ERP
+        yet.
+      parameters:
+      - in: query
+        name: location
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: material
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPLIED
+          - OPEN
+          - SUBMITTED
+        description: |-
+          * `OPEN` - Counting
+          * `SUBMITTED` - Submitted
+          * `APPLIED` - Applied
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CycleCount'
+          description: ''
+  /api/CycleCounts/to-key-xlsx/:
+    get:
+      operationId: api_CycleCounts_to_key_xlsx_retrieve
+      description: Every difference not yet keyed into the ERP, across counts, as
+        one sheet.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/DisassemblyBOMLines/:
     get:
@@ -50988,6 +51210,26 @@ components:
           type: string
           description: 'Required when lines are outside tolerance: why the difference
             is real rather than recounted.'
+        reasons:
+          type: object
+          additionalProperties:
+            enum:
+            - NOT_BOOKED
+            - SCRAPPED
+            - MISPLACED
+            - RECEIVED_WRONG
+            - COUNT_ERROR
+            - UNKNOWN
+            type: string
+            description: |-
+              * `NOT_BOOKED` - Used or moved without being booked
+              * `SCRAPPED` - Damaged or scrapped, not booked
+              * `MISPLACED` - Kept in the wrong place
+              * `RECEIVED_WRONG` - Received wrong
+              * `COUNT_ERROR` - An earlier count was wrong
+              * `UNKNOWN` - Not known
+          description: A reason code per difference, keyed "LOT:<id>" / "PART:<id>".
+            Every difference needs one.
     ApprovalFlowTypeEnum:
       enum:
       - ALL_REQUIRED
@@ -55471,8 +55713,9 @@ components:
       - reason
     CountAccuracy:
       type: object
-      description: 'Inventory record accuracy per ABC class: counted lines within
-        tolerance.'
+      description: |-
+        Inventory record accuracy per ABC class: counted lines within tolerance; and the
+        differences by the reason the lead gave.
       properties:
         days:
           type: integer
@@ -55482,10 +55725,15 @@ components:
           $ref: '#/components/schemas/ClassAccuracy'
         C:
           $ref: '#/components/schemas/ClassAccuracy'
+        by_reason:
+          type: object
+          additionalProperties:
+            type: integer
       required:
       - A
       - B
       - C
+      - by_reason
       - days
     CountEntryRequest:
       type: object
@@ -55502,6 +55750,10 @@ components:
           nullable: true
         note:
           type: string
+        found_at:
+          type: string
+          description: 'An item count''s found item: where it was (location id, code
+            or name).'
       required:
       - id
       - kind
@@ -56277,9 +56529,32 @@ components:
           type: string
           format: uuid
           readOnly: true
+          nullable: true
+          description: 'A location count: everything kept here.'
         location_name:
           type: string
           readOnly: true
+          nullable: true
+        material:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: 'An item count: this material, wherever it''s kept.'
+        part_type:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: 'An item count: this part type, wherever it''s kept.'
+        scope:
+          allOf:
+          - $ref: '#/components/schemas/CycleCountScopeEnum'
+          readOnly: true
+        scope_name:
+          type: string
+          readOnly: true
+          description: 'What''s counted: the location or the item.'
         blind:
           type: boolean
         status:
@@ -56335,6 +56610,17 @@ components:
           readOnly: true
           description: 'The lead''s note when applying a count with lines outside
             their class''s tolerance: why the difference is real rather than recounted.'
+        erp_keyed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When its differences were keyed into the ERP (Glovia) — a person
+            carries them over; this closes the count's loop.
+        erp_keyed_by_name:
+          type: string
+          nullable: true
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -56351,11 +56637,17 @@ components:
       - apply_note
       - count_number
       - created_at
+      - erp_keyed_at
+      - erp_keyed_by_name
       - id
       - lines
       - location
       - location_name
+      - material
       - not_counted
+      - part_type
+      - scope
+      - scope_name
       - started_by
       - started_by_name
       - status
@@ -56390,6 +56682,14 @@ components:
         system_location:
           type: string
           nullable: true
+        location_id:
+          type: string
+          nullable: true
+          description: Where UQMES had it.
+        found_at:
+          type: string
+          nullable: true
+          description: Where a found item was (an item count spans locations).
         note:
           type: string
       required:
@@ -56411,6 +56711,16 @@ components:
       description: |-
         * `LOT` - Lot
         * `PART` - Unit
+    CycleCountScopeEnum:
+      enum:
+      - LOCATION
+      - MATERIAL
+      - PART_TYPE
+      type: string
+      description: |-
+        * `LOCATION` - Location
+        * `MATERIAL` - Material
+        * `PART_TYPE` - Part type
     CycleCountStatusEnum:
       enum:
       - OPEN
@@ -56447,6 +56757,14 @@ components:
         system_location:
           type: string
           nullable: true
+        location_id:
+          type: string
+          nullable: true
+          description: Where UQMES had it.
+        found_at:
+          type: string
+          nullable: true
+          description: Where a found item was (an item count spans locations).
         note:
           type: string
         difference:
@@ -56464,6 +56782,20 @@ components:
           type: boolean
           description: 'False: a miss — usually recounted; applying it anyway needs
             a note.'
+        reason:
+          description: |-
+            Why the record was off, given when applied.
+
+            * `` - —
+            * `NOT_BOOKED` - Used or moved without being booked
+            * `SCRAPPED` - Damaged or scrapped, not booked
+            * `MISPLACED` - Kept in the wrong place
+            * `RECEIVED_WRONG` - Received wrong
+            * `COUNT_ERROR` - An earlier count was wrong
+            * `UNKNOWN` - Not known
+          oneOf:
+          - $ref: '#/components/schemas/CycleCountVarianceReasonEnum'
+          - $ref: '#/components/schemas/BlankEnum'
       required:
       - abc_class
       - counted
@@ -56475,6 +56807,7 @@ components:
       - kind
       - label
       - note
+      - reason
       - system_location
       - tolerance
       - unit
@@ -56492,6 +56825,23 @@ components:
         * `OVER` - Over
         * `MISSING` - Not found
         * `FOUND_HERE` - Found here
+    CycleCountVarianceReasonEnum:
+      enum:
+      - NOT_BOOKED
+      - SCRAPPED
+      - MISPLACED
+      - RECEIVED_WRONG
+      - COUNT_ERROR
+      - UNKNOWN
+      type: string
+      description: |-
+        * `` - —
+        * `NOT_BOOKED` - Used or moved without being booked
+        * `SCRAPPED` - Damaged or scrapped, not booked
+        * `MISPLACED` - Kept in the wrong place
+        * `RECEIVED_WRONG` - Received wrong
+        * `COUNT_ERROR` - An earlier count was wrong
+        * `UNKNOWN` - Not known
     DashboardKPIsResponse:
       type: object
       properties:
@@ -62370,6 +62720,17 @@ components:
       - backward
       - customers
       - forward
+    MarkKeyedRequest:
+      type: object
+      properties:
+        counts:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: The applied counts whose differences were keyed into the ERP.
+      required:
+      - counts
     MarkReceiptsPostedRequest:
       type: object
       properties:
@@ -64097,6 +64458,44 @@ components:
           description: Reason for this revision, recorded on the new version.
       required:
       - name
+    MissingUnit:
+      type: object
+      description: A unit a count didn't find, still unresolved.
+      properties:
+        count_id:
+          type: string
+          format: uuid
+        count_number:
+          type: string
+        scope:
+          type: string
+        applied_at:
+          type: string
+          format: date-time
+        part_id:
+          type: string
+          format: uuid
+        serial:
+          type: string
+        item:
+          type: string
+        expected_at:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+      required:
+      - applied_at
+      - count_id
+      - count_number
+      - expected_at
+      - item
+      - part_id
+      - reason
+      - scope
+      - serial
+      - status
     ModeEnum:
       enum:
       - saas
@@ -69485,11 +69884,21 @@ components:
       required:
       - ERP_id
       - part_type
+    PartsSplitFromLotInputReasonEnum:
+      enum:
+      - quarantine
+      - rework
+      - scrap
+      type: string
+      description: |-
+        * `quarantine` - Quarantine
+        * `rework` - Rework
+        * `scrap` - Scrap
     PartsSplitFromLotInputRequest:
       type: object
       properties:
         reason:
-          $ref: '#/components/schemas/ReasonEnum'
+          $ref: '#/components/schemas/PartsSplitFromLotInputReasonEnum'
         rework_target_step_id:
           type: string
           format: uuid
@@ -73363,7 +73772,7 @@ components:
           description: Estimated time the substep typically takes. Informational.
         scope:
           allOf:
-          - $ref: '#/components/schemas/ScopeEnum'
+          - $ref: '#/components/schemas/SubstepScopeEnum'
           description: |-
             Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
 
@@ -77581,16 +77990,6 @@ components:
       - id
       - status
       - work_order
-    ReasonEnum:
-      enum:
-      - quarantine
-      - rework
-      - scrap
-      type: string
-      description: |-
-        * `quarantine` - Quarantine
-        * `rework` - Rework
-        * `scrap` - Scrap
     ReassignMachineOption:
       type: object
       properties:
@@ -79011,6 +79410,19 @@ components:
             in, and the routing choice is attributed to them.
       required:
       - decision
+    ResolveMissingRequest:
+      type: object
+      properties:
+        part:
+          type: string
+          format: uuid
+        note:
+          type: string
+          minLength: 1
+          description: What became of it.
+      required:
+      - note
+      - part
     RestAuthDetail:
       type: object
       properties:
@@ -80838,14 +81250,6 @@ components:
       - work_center
       - work_order
       - work_order_id
-    ScopeEnum:
-      enum:
-      - sampled
-      - batch
-      type: string
-      description: |-
-        * `sampled` - Per part (sampling)
-        * `batch` - Per batch
     ScopeTypeEnum:
       enum:
       - PART_TYPE
@@ -81726,17 +82130,24 @@ components:
         * `REWORK` - Rework
     StartCycleCountRequest:
       type: object
+      description: 'What to count: one location, or one material or part type wherever
+        it''s kept.'
       properties:
         location:
           type: string
-          minLength: 1
           description: 'The location''s id, code or name (a scanned LOC: label is
             fine).'
+        material:
+          type: string
+          format: uuid
+          nullable: true
+        part_type:
+          type: string
+          format: uuid
+          nullable: true
         blind:
           type: boolean
           default: false
-      required:
-      - location
     Step:
       type: object
       description: Step serializer - just the node properties (no process/order/branching)
@@ -84184,7 +84595,7 @@ components:
           description: Estimated time the substep typically takes. Informational.
         scope:
           allOf:
-          - $ref: '#/components/schemas/ScopeEnum'
+          - $ref: '#/components/schemas/SubstepScopeEnum'
           description: |-
             Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
 
@@ -84624,7 +85035,7 @@ components:
           description: Estimated time the substep typically takes. Informational.
         scope:
           allOf:
-          - $ref: '#/components/schemas/ScopeEnum'
+          - $ref: '#/components/schemas/SubstepScopeEnum'
           description: |-
             Whether the substep runs per part (SAMPLED, default - uses sampling_rule for cadence, null rule = 100%) or once for the whole batch (BATCH - oven cycles, wash tanks, plating baths). BATCH substeps write captures against a `BatchExecution` shared by every part in the batch, instead of per-part `StepExecution`.
 
@@ -84968,6 +85379,14 @@ components:
       - rule_type
       - step
       - value
+    SubstepScopeEnum:
+      enum:
+      - sampled
+      - batch
+      type: string
+      description: |-
+        * `sampled` - Per part (sampling)
+        * `batch` - Per batch
     SubstepSubmitRequestRequest:
       type: object
       properties:

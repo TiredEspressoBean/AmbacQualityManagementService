@@ -1,5 +1,6 @@
-"""Cycle counts — count a location, see the differences, apply them. Logic lives in
-services/mes/cycle_count.py."""
+"""Cycle counts — count a location or an item, see the differences, apply them, chase
+what wasn't found, and key the differences into the ERP. Logic lives in
+services/mes/cycle_count.py (and the cadence in services/mes/count_cadence.py)."""
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
@@ -12,7 +13,8 @@ from rest_framework.response import Response
 from Tracker.models import CycleCount
 from Tracker.serializers.cycle_counts import (
     ApplyCountSerializer, CountAccuracySerializer, CycleCountSerializer, DueForCountSerializer,
-    RecordCountSerializer, SendBackCountSerializer, StartCycleCountSerializer,
+    MarkKeyedSerializer, MissingUnitSerializer, RecordCountSerializer, ResolveMissingSerializer,
+    SendBackCountSerializer, StartCycleCountSerializer,
 )
 from Tracker.services.mes import cycle_count
 from Tracker.viewsets.base import TenantScopedMixin
@@ -22,13 +24,14 @@ XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 class CycleCountViewSet(TenantScopedMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin,
                         viewsets.GenericViewSet):
-    """Counts of locations. POST starts one; `record`, `submit` and `apply` move it on.
-    Never edited or deleted otherwise — a count is a record of what was found."""
-    queryset = CycleCount.unscoped.select_related('location', 'started_by', 'submitted_by', 'applied_by')
+    """Counts of a location or an item. POST starts one; `record`, `submit` and `apply`
+    move it on. Never edited or deleted otherwise — a count is a record of what was found."""
+    queryset = CycleCount.unscoped.select_related('location', 'material', 'part_type', 'started_by',
+                                                  'submitted_by', 'applied_by', 'erp_keyed_by')
     serializer_class = CycleCountSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, filters.SearchFilter]
-    search_fields = ['count_number', 'location__name']
-    filterset_fields = ['status', 'location']
+    search_fields = ['count_number', 'location__name', 'material__name', 'part_type__name']
+    filterset_fields = ['status', 'location', 'material', 'part_type']
     ordering = ['-created_at']
 
     action_permissions = {
@@ -38,20 +41,27 @@ class CycleCountViewSet(TenantScopedMixin, mixins.ListModelMixin, mixins.Retriev
         'apply': ['apply_cyclecount'],
         # Sending it back is the same lead's call, made instead of applying.
         'send_back': ['apply_cyclecount'],
+        # Closing out a unit not found, and the ERP keying, follow from applying.
+        'resolve_missing': ['apply_cyclecount'],
+        'mark_keyed': ['apply_cyclecount'],
     }
-    crud_exempt_actions = {'record', 'submit', 'apply', 'send_back'}
+    crud_exempt_actions = {'record', 'submit', 'apply', 'send_back', 'resolve_missing', 'mark_keyed'}
 
     def _respond(self, count, code=status.HTTP_200_OK):
         return Response(CycleCountSerializer(count, context={'request': self.request}).data, status=code)
 
     @extend_schema(request=StartCycleCountSerializer, responses={201: CycleCountSerializer},
-                   description="Start a count of a location: snapshots what UQMES expects there.")
+                   description="Start a count of a location, or of a material or part type wherever "
+                               "it's kept: snapshots what UQMES expects.")
     def create(self, request):
         req = StartCycleCountSerializer(data=request.data)
         req.is_valid(raise_exception=True)
+        d = req.validated_data
         try:
-            count = cycle_count.start_count(request.tenant, req.validated_data['location'], request.user,
-                                            blind=req.validated_data['blind'])
+            count = cycle_count.start_count(request.tenant, request.user,
+                                            location=d.get('location') or None,
+                                            material=d.get('material'), part_type=d.get('part_type'),
+                                            blind=d['blind'])
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return self._respond(count, status.HTTP_201_CREATED)
@@ -103,10 +113,57 @@ class CycleCountViewSet(TenantScopedMixin, mixins.ListModelMixin, mixins.Retriev
     def apply(self, request, pk=None):
         try:
             count = cycle_count.apply_count(self.get_object(), request.user,
-                                            note=request.data.get('note', ''))
+                                            note=request.data.get('note', ''),
+                                            reasons=request.data.get('reasons') or {})
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return self._respond(count)
+
+    @extend_schema(responses=MissingUnitSerializer(many=True),
+                   description="Units a count didn't find, still unresolved: not seen since, not "
+                               "left for good, and nobody has said what became of them.")
+    @action(detail=False, methods=['get'], url_path='missing', pagination_class=None)
+    def missing(self, request):
+        return Response(MissingUnitSerializer(cycle_count.missing_units(request.tenant), many=True).data)
+
+    @extend_schema(request=ResolveMissingSerializer, responses=CycleCountSerializer,
+                   description="Say what became of a unit this count didn't find, taking it off "
+                               "the missing list.")
+    @action(detail=True, methods=['post'], url_path='resolve-missing')
+    def resolve_missing(self, request, pk=None):
+        req = ResolveMissingSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        try:
+            count = cycle_count.resolve_missing(self.get_object(), req.validated_data['part'],
+                                                request.user, req.validated_data['note'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._respond(count)
+
+    @extend_schema(responses=CycleCountSerializer(many=True),
+                   description="Applied counts whose differences haven't been keyed into the ERP yet.")
+    @action(detail=False, methods=['get'], url_path='to-key', pagination_class=None)
+    def to_key(self, request):
+        return Response(CycleCountSerializer(cycle_count.to_key(request.tenant), many=True,
+                                             context={'request': request}).data)
+
+    @extend_schema(responses={(200, XLSX): OpenApiTypes.BINARY},
+                   description="Every difference not yet keyed into the ERP, across counts, as one sheet.")
+    @action(detail=False, methods=['get'], url_path='to-key-xlsx')
+    def to_key_xlsx(self, request):
+        resp = HttpResponse(cycle_count.discrepancy_workbook(cycle_count.to_key(request.tenant)),
+                            content_type=XLSX)
+        resp['Content-Disposition'] = 'attachment; filename="count_differences_to_key.xlsx"'
+        return resp
+
+    @extend_schema(request=MarkKeyedSerializer, responses={200: OpenApiTypes.OBJECT},
+                   description="Mark counts' differences as keyed into the ERP.")
+    @action(detail=False, methods=['post'], url_path='mark-keyed')
+    def mark_keyed(self, request):
+        req = MarkKeyedSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        counts = list(self.get_queryset().filter(pk__in=req.validated_data['counts']))
+        return Response({'marked': cycle_count.mark_keyed(counts, request.user)})
 
     @extend_schema(responses=DueForCountSerializer(many=True),
                    description="Items due for counting under their ABC class: stock in a "

@@ -1,5 +1,6 @@
 import * as React from "react"
 import { useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
     BookOpen,
     Bot,
@@ -39,10 +40,12 @@ import {
     Wrench,
     Workflow,
     BarChart3,
+    ListChecks,
 } from "lucide-react"
 
 import { NavPages, NavPagesCollapsible, type Page } from "@/components/nav-pages"
 import { NavUser } from "@/components/nav-user"
+import { dueForCountOptions } from "@/hooks/useCycleCounts"
 import { AppSidebarHeader } from "@/components/app-sidebar-header"
 import {
     Sidebar,
@@ -96,6 +99,9 @@ const inventoryPages = [
     { name: "Incoming Inspection", url: "/production/incoming", icon: PackageSearch },
     { name: "Outside Processing", url: "/production/outside-processing", icon: Truck },
     { name: "Materials", url: "/production/material-lots", icon: Package },
+    // Counting stock is an inventory operation, so it sits with Materials (2026-11-04);
+    // the badge (what's due under each item's count class) is added below.
+    { name: "Cycle Counts", url: "/production/cycle-counts", icon: ListChecks },
     { name: "Receiving Metrics", url: "/production/receiving-metrics", icon: BarChart3 },
     { name: "Shipping", url: "/production/shipments", icon: Send },
     { name: "Locations", url: "/production/locations", icon: MapPin },
@@ -210,6 +216,15 @@ export function AppSidebar({
         { name: "Inbox", url: "/inbox", icon: CheckSquare, badge: inboxCount || undefined },
     ], [inboxCount])
 
+    // Supply, with what's due for counting on Cycle Counts.
+    const { data: dueForCount } = useQuery({
+        ...dueForCountOptions(),
+        enabled: isAuthenticated && !permissionsLoading && hasAny('view_cyclecount'),
+    })
+    const inventoryPagesWithBadge: Page[] = useMemo(() => inventoryPages.map((p) =>
+        p.url === "/production/cycle-counts" ? { ...p, badge: dueForCount?.length || undefined } : p,
+    ), [dueForCount])
+
     // Build approvals pages with dynamic badge
     const approvalCount = myApprovals?.length ?? 0
     const approvalsPagesWithBadge: Page[] = useMemo(() => [
@@ -265,7 +280,7 @@ export function AppSidebar({
                             {showInventory && (
                                 <NavPagesCollapsible
                                     title="Supply"
-                                    pages={inventoryPages}
+                                    pages={inventoryPagesWithBadge}
                                     defaultOpen={false}
                                 />
                             )}

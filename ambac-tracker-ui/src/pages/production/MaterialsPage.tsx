@@ -3,7 +3,9 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileDown, FileUp, MoreHorizontal, PackagePlus, Truck } from "lucide-react";
+import { FileDown, FileUp, ListChecks, MoreHorizontal, PackagePlus, Truck } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { dueForCountOptions } from "@/hooks/useCycleCounts";
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -124,6 +126,9 @@ export function MaterialsPage() {
         return useListMaterialLots(q);
     };
 
+    const canCount = usePermissionSet().has("view_cyclecount");
+    const { data: dueForCount } = useQuery({ ...dueForCountOptions(), enabled: canCount });
+
     return (
         <>
         <ModelEditorPage
@@ -155,6 +160,14 @@ export function MaterialsPage() {
             }
             extraToolbarContent={
                 <div className="flex items-center gap-2">
+                    {/* Counting stock: what's due under each item's count class. */}
+                    <Button size="sm" variant="outline" onClick={() => navigate({ to: "/production/cycle-counts" })}
+                        title="Cycle counts: what's due for counting, counts to finish">
+                        <ListChecks className="h-4 w-4 mr-1" /> Cycle counts
+                        {(dueForCount?.length ?? 0) > 0 && (
+                            <Badge variant="secondary" className="ml-1.5 tabular-nums">{dueForCount!.length} due</Badge>
+                        )}
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
                         <FileUp className="h-4 w-4 mr-1" /> Import expected deliveries
                     </Button>

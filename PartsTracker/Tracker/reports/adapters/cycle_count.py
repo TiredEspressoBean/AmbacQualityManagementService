@@ -30,12 +30,16 @@ class CountLine(BaseModel):
     difference: Optional[float] = None
     what: str = ""
     elsewhere: Optional[str] = None
+    # An item count spans locations: where this line was kept (or, if found, found).
+    where: Optional[str] = None
     note: str = ""
 
 
 class CycleCountContext(BaseModel):
     our_org: str
     count_number: str
+    # What was counted: a location, or an item wherever it's kept.
+    scope_label: str = "Location"
     location: str
     status: str
     blind: bool
@@ -72,19 +76,32 @@ def _name(u):
 
 def build_cycle_count_context(count, tenant, *, differences_only: bool) -> CycleCountContext:
     """Caller is responsible for tenant filtering on the count query."""
+    from Tracker.models import StorageLocation
     from Tracker.services.mes.cycle_count import variances
+    item_count = count.location_id is None
+    # found_at holds a location id; name it for the item-count "where".
+    found = {str(l.pk): l.name for l in StorageLocation.unscoped.filter(
+        tenant=count.tenant, pk__in={l["found_at"] for l in count.lines if l.get("found_at")})}
+
+    def where(l):
+        if not item_count:
+            return None
+        return (found.get(l.get("found_at") or "") if l.get("found_here")
+                else l.get("system_location")) or None
+
     if differences_only:
         lines = [CountLine(label=v["label"], item=v.get("item", ""), unit=v.get("unit", ""),
                            expected=v.get("expected"), counted=v.get("counted"),
                            difference=v.get("difference"), what=_WHAT[v["variance"]],
                            elsewhere=v.get("system_location") if v["variance"] == "FOUND_HERE" else None,
-                           note=v.get("note", "")) for v in variances(count)]
+                           where=where(v), note=v.get("note", "")) for v in variances(count)]
     else:
         lines = [CountLine(label=l["label"], item=l.get("item", ""), unit=l.get("unit", ""),
-                           expected=None if count.blind else l.get("expected"))
+                           expected=None if count.blind else l.get("expected"), where=where(l))
                  for l in sorted(count.lines, key=lambda l: (l["kind"], l["label"]))]
     return CycleCountContext(
-        our_org=tenant.name, count_number=count.count_number, location=count.location.name,
+        our_org=tenant.name, count_number=count.count_number,
+        scope_label="Item, every location" if item_count else "Location", location=count.scope_name,
         status=count.get_status_display(), blind=count.blind,
         started_by=_name(count.started_by), submitted_by=_name(count.submitted_by),
         lines=lines, issued_date=tenant_today(tenant))

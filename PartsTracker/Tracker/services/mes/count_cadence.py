@@ -164,6 +164,17 @@ def due_for_count(tenant, *, today: date | None = None) -> list[DueItem]:
     last = dict(CycleCount.objects.filter(tenant=tenant, status='APPLIED',  # tenant-safe: explicit tenant filter
                                           location_id__in=loc_ids)
                 .values('location_id').annotate(at=Max('applied_at')).values_list('location_id', 'at'))
+    # An item count counted that item wherever its lines were (and wherever something was
+    # found): it credits those (item, location) pairs as a location count credits a place.
+    credit = {}
+    for c in (CycleCount.objects.filter(tenant=tenant, status='APPLIED', location__isnull=True)  # tenant-safe: explicit tenant filter
+              .only('material_id', 'part_type_id', 'applied_at', 'lines')):
+        key = ('MATERIAL', c.material_id) if c.material_id else ('PART_TYPE', c.part_type_id)
+        for line in c.lines or []:
+            for where in (line.get('location_id'), line.get('found_at')):
+                if where:
+                    pair = (key, str(where))
+                    credit[pair] = max(credit.get(pair, c.applied_at), c.applied_at)
     locs = {l.id: l for l in StorageLocation.objects.filter(tenant=tenant, pk__in=loc_ids)}  # tenant-safe: explicit tenant filter
 
     rows = []
@@ -172,7 +183,7 @@ def due_for_count(tenant, *, today: date | None = None) -> list[DueItem]:
         interval = policy.interval_days[cls]
         due = []
         for loc in loc_set:
-            at = last.get(loc)
+            at = max((t for t in (last.get(loc), credit.get((key, str(loc)))) if t), default=None)
             due_on = today if at is None else at.astimezone(tz).date() + timedelta(days=interval)
             if due_on <= today:
                 due.append(DueLocation(location_id=loc, location=_place(locs.get(loc)),
@@ -198,9 +209,9 @@ def _place(loc) -> str:
 # --- accuracy -----------------------------------------------------------------------
 
 def accuracy(tenant, *, days: int = 90) -> dict:
-    """{'A': {'counted', 'hits', 'pct'}, …} over counts applied in the last `days`:
-    each counted line a hit when within its class's tolerance. pct is None with
-    nothing counted."""
+    """{'A': {'counted', 'hits', 'pct'}, …, 'by_reason': {code: n}} over counts applied in
+    the last `days`: each counted line a hit when within its class's tolerance (pct None
+    with nothing counted), and the differences by the reason the lead gave."""
     from django.utils import timezone
     from Tracker.models import CycleCount
 
@@ -214,5 +225,12 @@ def accuracy(tenant, *, days: int = 90) -> dict:
         cls = classes.get((l.get('kind'), str(l.get('id'))), 'C')
         tally[cls]['counted'] += 1
         tally[cls]['hits'] += judge(l, cls, policy)[0]
-    return {c: {**t, 'pct': round(100.0 * t['hits'] / t['counted'], 1) if t['counted'] else None}
-            for c, t in tally.items()}
+    out = {c: {**t, 'pct': round(100.0 * t['hits'] / t['counted'], 1) if t['counted'] else None}
+           for c, t in tally.items()}
+    # Why the records were off: the lead's reason on each difference applied.
+    by_reason = defaultdict(int)
+    for l in lines:
+        if l.get('reason'):
+            by_reason[l['reason']] += 1
+    out['by_reason'] = dict(by_reason)
+    return out
