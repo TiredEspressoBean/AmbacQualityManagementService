@@ -31,6 +31,7 @@ people hold more than one role.
 | Sam Okafor | Planner | `sam.plan@demo.ambac.com` |
 | Casey Cross | Shift Lead, and an inspector when covering | `casey.dual@demo.ambac.com` |
 | Mike Rodriguez | Operator | `mike.ops@demo.ambac.com` |
+| Ken Adebayo | Operator still being trained on inspection | `ken.ops@demo.ambac.com` |
 | Dave Wilson | Operator whose certification has lapsed | `dave.wilson@demo.ambac.com` |
 | Sarah Chen | QA Inspector | `sarah.qa@demo.ambac.com` |
 | Maria Santos | QA Manager | `maria.qa@demo.ambac.com` |
@@ -81,17 +82,17 @@ corrective action request. A separate late delivery gets chased.
 
 ### 07:30 — Casey starts the shift
 
-Mike is the only operator free for Body Inspection, and Mike's inspection
+Ken is the only operator free for Body Inspection, and Ken's inspection
 certification doesn't cover it. Casey decides to let the work start on Casey's
 own authority.
 
 > **Track:** Shift Lead. **Closes:** Sam's 06:00 labour gap. **Opens:** the
 > training record Maria writes at 15:30.
 
-### 08:00 — Mike runs the first piece
+### 08:00 — Ken runs the first piece
 
-Mike starts Body Inspection on `WO-QA-INSPECT-01`. The training gate refuses
-the start, and Casey authorises it at Mike's terminal with a reason. Mike runs
+Ken starts Body Inspection on `WO-QA-INSPECT-01`. The training gate refuses
+the start, and Casey authorises it at Ken's terminal with a reason. Ken runs
 the first piece, `INJ-QA-INSPECT-001`, and the run holds for a first-piece buy-off.
 
 > **Track:** Operator. **Opens:** Sarah's buy-off at 08:30.
@@ -99,12 +100,12 @@ the first piece, `INJ-QA-INSPECT-001`, and the run holds for a first-piece buy-o
 ### 08:30 — Sarah buys off the first piece
 
 Sarah reads the first piece's readings (Bore Diameter inside 3.995–4.005, taken
-by Mike) and signs it off. The run moves. Two other runs are waiting on first
+by Ken) and signs it off. The run moves. Two other runs are waiting on first
 pieces too: one to fail, and one that repeats yesterday's setup and is waived. A
 third first piece's inspection was Sarah's own, so Casey signs it at Sarah's
 screen.
 
-> **Track:** QA Inspector. **Closes:** Mike's 08:00 hold.
+> **Track:** QA Inspector. **Closes:** Ken's 08:00 hold.
 
 ### 09:00 — A sampled part comes to Sarah
 
@@ -200,11 +201,11 @@ releases it.
 
 > **Track:** Production Manager.
 
-### 15:30 — Maria writes Mike's training record
+### 15:30 — Maria writes Ken's training record
 
 Casey's override this morning was the right call, but not something to repeat
-every shift. Maria records Mike's dimensional inspection certification, and the gate stops
-refusing Mike.
+every shift. Maria records Ken's dimensional inspection certification, and the gate stops
+refusing Ken.
 
 > **Track:** QA Manager. **Closes:** Casey's 07:30 decision.
 
@@ -217,7 +218,7 @@ Finished work orders ship with their paperwork.
 ### 17:30 — Casey hands over
 
 Casey writes the shift note for the next shift: the held lot, the open CAPA and
-Mike's certification.
+Ken's certification.
 
 > **Track:** Shift Lead.
 
@@ -266,6 +267,6 @@ A rebuilt repair goes back to its owner on its own shipment.
 | 06:00 Sam's solve can't staff a step | 07:30 Casey decides, 08:00 the authorisation | The planning gap is a person without a certification |
 | 07:30 Casey's override | 15:30 Maria's training record | An override is a decision, not a fix |
 | 06:30 a lot is held | 07:00 the SCAR, 14:30 Jennifer's promise | A dock decision is a supplier fact and a planning constraint |
-| 08:00 Mike's first piece | 08:30 Sarah's buy-off | The run waits for a second person's judgement |
+| 08:00 Ken's first piece | 08:30 Sarah's buy-off | The run waits for a second person's judgement |
 | 10:00 the out-of-spec reading | 11:00 Maria's co-sign | A finding reaches the authority without a handoff |
 | 12:00 Casey's CAPA | 13:00–14:00 the change, the revision, the approval | A repeated defect is a process problem, and a process change brings its document with it |

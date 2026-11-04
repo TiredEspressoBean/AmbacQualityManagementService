@@ -308,15 +308,15 @@ capability can't be judged yet.
 **You will:** find whose qualification lapses this month, and record a renewal.
 
 1. **Quality** > **Training**. **Expiring Soon** lists qualifications expiring
-   within 30 days: Mike Rodriguez's Dimensional Inspection and Nozzle Inspection
-   certifications, both at level 1.
+   within 30 days: Ken Adebayo's and Mike Rodriguez's Dimensional Inspection and
+   Nozzle Inspection certifications, all at level 1.
 2. **Training Matrix** shows every person's level in every skill, who falls short of
    their role's requirement, and the skills only one person covers.
 
-Mike has been reassessed on the CMM and now works to level 2, with his output still
+Ken has been reassessed on the CMM and now works to level 2, with his output still
 checked.
 
-3. **Record New Training**: Mike, Dimensional Inspection Certification, today, level
+3. **Record New Training**: Ken, Dimensional Inspection Certification, today, level
    2 (Assisted), with Sarah as trainer and a note of how he was assessed. The level
    is what he showed he can do, not that he attended.
 

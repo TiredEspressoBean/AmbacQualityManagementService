@@ -43,8 +43,8 @@ hasn't finished by then, reload the page later rather than pressing it again.
 | **Casey Cross**, Shift Lead, `casey.dual@demo.ambac.com` | Every module |
 
 Every password is `demo123`. Casey is an inspector by day and covers as shift lead,
-so the account holds both roles. Mike Rodriguez and Dave Wilson are the operators on
-the shift.
+so the account holds both roles. Mike Rodriguez, Ken Adebayo and Dave Wilson are the
+operators on the shift.
 
 ---
 
@@ -187,7 +187,7 @@ and a reason, and the step is logged against your name. You did this in the
 The override is the exception. If they're genuinely trained, write the record:
 
 1. **Quality** > **Training** > **Training Records** > **New Training Records**.
-2. **Trainee**: type a name to search. Mike Rodriguez. **Training Type**: Dimensional
+2. **Trainee**: type a name to search. Ken Adebayo. **Training Type**: Dimensional
    Inspection Certification. **Completion Date**: the day they were assessed.
    **Competency Level**: what they demonstrated, not what the course was. **Trainer**:
    who assessed them.
@@ -209,7 +209,7 @@ Open `/production/shift-notes`. It isn't in the sidebar, so bookmark it.
 1. Choose the **Audience** (Operator), write what happened and what the next shift
    should do, and tick **High priority** and **Requires acknowledgment** when it
    matters. **Post note**.
-2. Your notes list below with their acknowledgement count: *Acknowledged 0 of 2*.
+2. Your notes list below with their acknowledgement count: *Acknowledged 0 of 3*.
    Operators get a must-acknowledge note at clock-in and can't dismiss it unread.
 
 A note is not a quality record: a part that looked wrong goes in a quality report.
@@ -223,8 +223,9 @@ overnight isn't charged to the next shift.
 or **Approve all**. Your own entries read *Your time*: someone else approves those.
 
 In the demo week, each operator has some **Unallocated** time — on shift, but not at a
-step — and Mike and you show a little **Rework**: INJ-0042-016 failed Flow Calibration,
-was reworked, and went back through. Rework is part of direct time, not extra to it.
+step — and Dave and you show a little **Rework**: INJ-0042-016 failed Flow Calibration
+and Dave took it back through, and INJ-0042-019 is in Rework under your name now.
+Rework is part of direct time, not extra to it.
 
 Someone clocked out late, or forgot to clock in on time? **Correct times** on their
 entry, before you approve it. Change the clock-in or clock-out, say why, and the hours
@@ -304,13 +305,13 @@ modules; a new-build-only shop skips them.
 **You will:** decide a component an operator found worse than teardown graded it.
 
 `CORE-240214-0010` is Northern Trucking's own injector, here for repair under
-`ORD-2024-0047`. At Nozzle Inspection, Mike found the nozzle beyond repair. A
+`ORD-2024-0047`. At Nozzle Inspection, Ken found the nozzle beyond repair. A
 replacement isn't pre-approved at that check, so his finding waits for you, and the
 unit holds there until you decide.
 
 1. Your home page's **Needs attention** has *Finding to decide: CORE-240214-0010*.
    It opens the unit's rebuild plan: **1 finding to decide**: *Injector Nozzle Assembly · Grade B → SCRAP*,
-   with Mike's words and the time.
+   with Ken's words and the time.
 2. **Apply** re-grades the component and the plan re-resolves from it; a scrap grade
    also scraps the component, so you're asked to confirm. **Dismiss** keeps the
    teardown grade and needs a reason. Either way the decision goes on the

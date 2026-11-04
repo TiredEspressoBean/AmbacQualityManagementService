@@ -93,7 +93,7 @@ Inspection.
    then `WO-QA-INSPECT-01`) and, on *First piece waiting on QA*, **I'm on it** (the floor sees it
    has been picked up; it decides nothing), then **Sign off**. The home page's *First piece
    waiting* rows carry **I'm on it**, and **Start check**, which opens this card.
-2. Read the readings: *Bore Diameter*, inside its limits of 3.995–4.005, taken by Mike on the CMM.
+2. Read the readings: *Bore Diameter*, inside its limits of 3.995–4.005, taken by Ken on the CMM.
 3. **Sign off** with a note of what you checked. The card clears and the run moves.
 
 **Fail one:** `WO-QA-INSPECT-04`, first piece `INJ-QA-INSPECT-031`.
@@ -305,7 +305,7 @@ disposition is open and the part is quarantined.
    reason; the re-capture writes a new report; the disposition stays open for QA.
    Give the reason. *Completion voided.*
 2. Open the work order, **Start Work**, tick `INJ-QA-INSPECT-052` (quarantined, but
-   startable for its re-capture) and **Start**. Mike recorded the inspection, so it's
+   startable for its re-capture) and **Start**. Ken recorded the inspection, so it's
    his: a supervisor signs in to give it to you, with the reason.
 3. Inspect it again: **Pass**, the equipment you used, your sign-off. **Complete
    step**: *Part held — its disposition is still open.* The part waits for QA.

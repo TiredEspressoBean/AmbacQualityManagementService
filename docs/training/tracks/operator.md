@@ -216,8 +216,8 @@ from now until it's back. Then tell your lead.
 Body Inspection holds the run for a **first piece** check: the first body's
 inspection is bought off by an inspector before the rest go through. That's the
 inspector's job, in the [QA Inspector](qa-inspector.md) track. Your home page shows
-where it stands: Mike's has first pieces *Not seen yet* and others *Passed by Sarah
-Chen*.
+where it stands: finish `INJ-OPS-011`'s inspection and its first piece reads *Not
+seen yet*, beside `WO-OPS-03`'s, already *Passed by Sarah Chen*.
 
 ---
 
