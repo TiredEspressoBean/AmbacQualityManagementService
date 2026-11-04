@@ -114,9 +114,9 @@ DEMO_CAPAS = [
         },
         # No verification yet - training scenario for pending verification
         'tasks': [
-            {'description': 'Create supplier documentation checklist', 'assignee': 'mike.ops@demo.ambac.com', 'status': CapaTaskStatus.COMPLETED, 'task_type': CapaTaskType.CORRECTIVE},
+            {'description': 'Create supplier documentation checklist', 'assignee': 'luis.recv@demo.ambac.com', 'status': CapaTaskStatus.COMPLETED, 'task_type': CapaTaskType.CORRECTIVE},
             {'description': 'Distribute checklist to all suppliers', 'assignee': 'sarah.qa@demo.ambac.com', 'status': CapaTaskStatus.COMPLETED, 'task_type': CapaTaskType.CORRECTIVE},
-            {'description': 'Train receiving staff on new requirements', 'assignee': 'mike.ops@demo.ambac.com', 'status': CapaTaskStatus.COMPLETED, 'task_type': CapaTaskType.PREVENTIVE},
+            {'description': 'Train receiving staff on new requirements', 'assignee': 'luis.recv@demo.ambac.com', 'status': CapaTaskStatus.COMPLETED, 'task_type': CapaTaskType.PREVENTIVE},
         ],
     },
     {

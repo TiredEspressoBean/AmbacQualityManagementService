@@ -711,14 +711,20 @@ class DemoQaWalkSeeder(BaseSeeder):
             # after the rework that hit the cap) — contained and decided shortly after,
             # not at the seed's run time.
             for d in QuarantineDisposition.objects.filter(part=part):
-                at = next((cap for entered, cap in reversed(placed) if entered <= d.created_at),
-                          None)
-                if at is None:
+                idx = next((i for i in range(len(placed) - 1, -1, -1)
+                            if placed[i][0] <= d.created_at), None)
+                if idx is None:
                     continue
+                at = placed[idx][1]
                 fields = {'created_at': at}
                 for stamp in ('containment_completed_at', 'decision_authorized_at'):
                     if getattr(d, stamp) is not None:
                         fields[stamp] = at + timedelta(minutes=10)
+                # Resolved by the visit that carried it out (a rework), not at seed time.
+                done = placed[idx + 1][1] if idx + 1 < len(placed) else at + timedelta(minutes=30)
+                for stamp in ('resolution_completed_at', 'scrap_verified_at'):
+                    if getattr(d, stamp) is not None:
+                        fields[stamp] = done
                 QuarantineDisposition.objects.filter(pk=d.pk).update(**fields)
 
     def _shift_back(self, wo, delta):

@@ -932,6 +932,9 @@ class DemoQualitySeeder(BaseSeeder):
                     'containment_action': 'Part quarantined and segregated pending disposition',
                     'containment_completed_at': min(created_at + timedelta(hours=3), self.today),
                     'containment_completed_by': approver,
+                    # A decided disposition carries who decided it, and when.
+                    'decision_authorized_by': approver,
+                    'decision_authorized_at': min(created_at + timedelta(hours=4), self.today),
                 })
             if outcome == 1:
                 fields['current_state'] = 'IN_PROGRESS'
