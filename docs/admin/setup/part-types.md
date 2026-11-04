@@ -79,6 +79,7 @@ Ticking **Purchased** reveals the rest, below the three checkboxes:
 | **Preferred supplier's lead time (days)** | Lead time used by sourcing requirements |
 | **Preferred supplier** | Default supplier for purchased types. Offers **suppliers only** |
 | **Safety stock** | A quantity held back from planning, so the sourcing report warns while there is still stock to react with |
+| **Cycle-count class** | **A**, **B** or **C**: how often its stock is cycle-counted, A most often. Everything starts as C — see [Locations & Cycle Counts](../../workflows/supply/locations.md#whats-due-and-how-often) |
 | Receiving controls | **Bought and counted by**, and the certificate and heat-number holds — see [Receiving and recovery](#receiving-and-recovery) |
 | **Requires supplier qualification** | *A received lot is held unless its supplier has an approved qualification* |
 | **Requires part approval** | *A received lot is held unless this part from that supplier has an active part approval (PPAP / FAI)* — see [part approvals](../../workflows/supply/part-approvals.md) |
@@ -93,12 +94,12 @@ Ticking **Purchased** reveals the rest, below the three checkboxes:
 
 These are deliberately different people.
 
-**Can change a part type's sourcing** covers just three fields — preferred
-supplier, lead time, safety stock. **Purchasing** holds it, as does anyone who
-can author part types.
+**Can change a part type's sourcing** covers just four fields — preferred
+supplier, lead time, safety stock and cycle-count class. **Purchasing** holds it,
+as does anyone who can author part types.
 
 On the part types list a holder sees a **truck** icon, **Sourcing**, which opens
-a three-field dialog. The **pencil** and **delete** icons appear only with
+a four-field dialog. The **pencil** and **delete** icons appear only with
 `change_parttypes` / `delete_parttypes`.
 
 !!! tip "A buyer can maintain sourcing without being able to edit the part"
@@ -107,8 +108,8 @@ a three-field dialog. The **pencil** and **delete** icons appear only with
     belongs to engineering.
 
 !!! important "Sourcing changes do not create a new version"
-    Supplier, lead time and safety stock are edited **in place**. They describe
-    how you buy the thing, not what the thing is — so versioning them would fill
+    Supplier, lead time, safety stock and cycle-count class are edited **in place**.
+    They describe how you buy and count the thing, not what the thing is — so versioning them would fill
     the history with commercial churn and make a real engineering change harder
     to find.
 

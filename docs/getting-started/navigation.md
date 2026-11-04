@@ -54,9 +54,10 @@ Three links sit at the top with no section header:
 - **Incoming Inspection** - Receiving inspection queue
 - **Outside Processing** - Parts out at outside vendors
 - **Materials** - Material lots by lifecycle status
+- **Cycle Counts** - What's due for counting, and the counts themselves; the badge is the number due
 - **Receiving Metrics** - Dock-to-stock time and supplier delivery
 - **Shipping** - What is ready to go out, and what has gone
-- **Locations** - Where everything is, and cycle counts
+- **Locations** - Where everything is
 - **Receiving Inspection Plans** - Inspection plans applied on receipt
 - **Supplier Quality** - Supplier performance and issues
 - **Approved Suppliers** - Supplier qualifications

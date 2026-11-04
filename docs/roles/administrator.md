@@ -210,6 +210,11 @@ Navigate to **Admin > Settings**:
 - Shop floor timezone
 - Change control mode
 - Over-receipt tolerance
+- Cycle counting (ABC): how often each class is counted, and how far a count may
+  differ and still pass — see [Locations & Cycle
+  Counts](../workflows/supply/locations.md#whats-due-and-how-often)
+- Sign-in notice, shown on the sign-in page, and whether signing in requires
+  acknowledging it
 - Logo
 
 ### Integration Settings

@@ -92,17 +92,87 @@ nothing needs one: the history keeps both moves, which is what actually happened
 
 ## Cycle counts
 
-Start one from a location page: **Count this location**, with an optional
-**Blind** switch.
+**Cycle Counts** in the sidebar, after **Materials** (`/production/cycle-counts`),
+is where counting is worked. Its badge is the number of items due. **Materials** has
+a **Cycle counts** button with the same *N due*.
 
-!!! important "A count covers exactly one location"
+A count is of one thing:
+
+- **An item** — a part type or material, in every location it's kept. This is the
+  default.
+- **A location** — everything kept there.
+
+**Start a count** asks which, with **An item** chosen; pick it (*Pick a part type or
+material*, part types listed first) or the location, and switch on **Blind — hide the
+expected quantities while counting** if you want to. A location's own page still has
+**Count this location**. One item or location can have only one count open at a time.
+
+!!! important "A location count covers exactly that location"
     Counting a rack does **not** count the bins inside it — unlike the location
     page, which includes them by default. Each location is counted on its own, so
     count the level where the stock actually sits.
 
     This is the one place in Locations where "inside" is excluded, which is
     exactly why it is worth knowing before you count a rack and find it nearly
-    empty. `/production/cycle-counts` lists them, linked from Locations.
+    empty.
+
+The page's tabs:
+
+| Tab | Holds |
+|-----|-------|
+| **Due** | What to count next — see below |
+| **Waiting for a lead** | Submitted counts, to apply or send back |
+| **In progress** | Counts still being counted |
+| **Missing units** | Units a count didn't find, until they're accounted for |
+| **To key into Glovia** | Applied counts whose differences haven't been keyed into your ERP |
+| **All counts** | Every count; one of an item reads *&lt;name&gt; item, every location* |
+
+Each tab shows how many it holds. The page opens on **Due**.
+
+### What's due, and how often
+
+How often something is counted depends on the **item**, not the location. Every
+material and part type has a **Cycle-count class**:
+
+| Class | Meaning | Counted every (default) | Tolerance (default) |
+|-------|---------|-------------------------|---------------------|
+| **A** | Counted most often | 30 days | ±1 % |
+| **B** | Counted regularly | 90 days | ±3 % |
+| **C** | Counted least often | 365 days | ±5 % |
+
+Everything starts as **C**. Set the class on the material's form, or on the part
+type's form (with **Purchased** ticked) or its **Sourcing** dialog. It can also be
+imported. UQMES doesn't
+rank items by value for you — that takes cost, which your ERP holds — so promote
+the items that matter by hand.
+
+Changing a part type's class doesn't create a new version of it: how often its stock
+is counted isn't part of what the part is.
+
+The intervals and tolerances are a Tenant Admin's, under **Settings** >
+**Organization**, **Cycle counting (ABC)**: **Count every (days)** and **Tolerance
+(%)** for each class, and **At least (units)**, a difference small enough to always
+pass (so a bin of three isn't failed for being one out; **0** means percentage only).
+
+The **Due** tab lists each item whose stock somewhere hasn't been counted within its
+class's interval:
+
+| Column | Shows |
+|--------|-------|
+| **Item** | The material or part type, and which it is |
+| **Class** | A, B or C |
+| **Due** | *Never counted*, *N days overdue* or *Due today*, and *every N days* under it |
+| **Count** | **Count this item** starts a count of it everywhere it's kept; *or a whole location:* and a button for each of its due locations starts a count of that location |
+
+An item's stock at a location counts as counted when a count covering it was
+**applied** there — a count of the item, or of the whole location. A count started or
+submitted doesn't clear it. With nothing due the tab reads *Nothing due — every item's
+stock has been counted within its class's interval.*
+
+Above the tabs, **Count accuracy, last 90 days** gives each class the share of
+counted lines that were within tolerance; hover one for *N of M counted lines within
+tolerance*. A class with nothing counted shows **—**. Under it, *Off because:* names
+the three commonest reasons records were off, with how many of each.
 
 ### Counting
 
@@ -112,7 +182,13 @@ On the count screen (`/production/cycle-counts/$countId`):
 - answer **Here** or **Not here** for each unit
 - **scan anything you find** that isn't on the list
 
-**Save** as you go, then **Submit**.
+An item count lists where each line is kept (**Kept at**), and has a **Found at
+(location)** box beside the scan field: say where you found something before you scan
+it, or it's refused (*Say where you found it first (the location box).*). Once added,
+it reads *&lt;lot&gt; found at &lt;location&gt; — added to the count.* An item count
+takes only that item; a location count, anything found there.
+
+**Save** as you go, then **Submit count**.
 
 !!! important "A blank line is not a zero"
     A line you leave blank stays **not counted**. It is left out of the
@@ -132,15 +208,40 @@ On the count screen (`/production/cycle-counts/$countId`):
 After submitting, the differences appear as **Short**, **Over**, **Not found**
 and **Found here**.
 
+Each difference also says whether it's within its item's **tolerance**, in the
+item's own unit: *Class C · within ±8.10 EA* for a lot recorded at 162 (5 % of it),
+or, in amber, *Class A · outside ±…*. A lot's tolerance is the larger of the class
+percentage of its recorded quantity and the **At least (units)** setting. A unit (serial number) is within tolerance only when it was found where
+the record says; one missing reads *outside*. Anything found here that the record
+puts elsewhere is always outside.
+
+!!! important "Outside tolerance: recount, or say why"
+    With lines outside tolerance, the count shows *N lines are outside tolerance for
+    their class*. Usually the answer is to **Send back for recount**. If you've
+    checked and the difference is real, write why in the box under it — **Apply to
+    UQMES** stays disabled until you do. The note is kept on the count, which then
+    reads *Applied with lines outside tolerance: "…"*.
+
 Nothing moves yet. Someone with **`apply_cyclecount`** — Tenant Admin, QA
-Manager, Production Manager or Shift Lead — presses **Apply to UQMES**:
+Manager, Production Manager or Shift Lead — gives **every difference a reason** under
+**Why**, then presses **Apply to UQMES**. It stays disabled until each has one (*Give
+each difference a reason first*). The reasons:
+
+- Used or moved without being booked
+- Damaged or scrapped, not booked
+- Kept in the wrong place
+- Received wrong
+- An earlier count was wrong
+- Not known
+
+The reasons stay on the count, and feed the *Off because:* line. Applying does:
 
 | Difference | Applying does |
 |------------|---------------|
-| Lot quantity differs | **Corrects the lot** by the difference — a recorded adjustment, reason *Cycle count CC-…* |
+| Lot quantity differs | **Corrects the lot** by the difference — a recorded adjustment, reason *Cycle count CC-… of &lt;what was counted&gt;* |
 | Lot counted at zero | Adjusts it to **0**, which closes it as **Consumed** |
-| Item found in this location | Moves it here |
-| Unit missing | **Reports it only** |
+| Something found | Moves it to where it was found: this location, or in an item count, the **Found at** location |
+| Unit missing | **Reports it only**, and lists it under **Missing units** |
 
 !!! important "Lots are corrected; units are never written off"
     The two halves behave differently, and the difference matters before you
@@ -162,20 +263,36 @@ apply it can choose **Send back for recount**, with a **required reason**. The
 count reopens **with what was entered**, so the counter corrects the lines in
 question rather than starting again, and the reason is kept on the count.
 
-Once applied, a count is final. A difference found later is a new count of that
-location, or an **Adjust quantity** on the lot with its reason.
+Once applied, a count is final. A difference found later is a new count, or an
+**Adjust quantity** on the lot with its reason.
 
+### Missing units
+
+A unit a count didn't find goes on **Missing units**: its serial and item, where it
+was expected, and the count (with its date and reason) that didn't find it. It comes
+off the list on its own when it turns up — moved or placed since, or found in a later
+count — or when it leaves for good (scrapped, shipped). Otherwise a lead says what
+became of it, in **What became of it**, and **Resolve**s it; the note stays on the
+count. Anyone else sees *Still missing*.
+
+### Keying the differences into your ERP
+
+**To key into Glovia** lists applied counts whose differences haven't been keyed yet,
+with *N differences from M counts to key into Glovia*. **Download the sheet** gives
+them all in one spreadsheet — Count, Location, Lot / serial, Item, Unit, Expected,
+Counted, Difference, What, Reason, UQMES had it at, Note. Once they're in the ERP, a
+lead marks them **Mark all keyed** and they leave the tab.
 
 ### Paperwork
 
 | Output | For |
 |--------|-----|
-| **Count sheet (PDF)** | Counting on paper; blind counts hide expected quantities |
+| **Count sheet (PDF)** | Counting on paper; blind counts hide expected quantities. An item count's sheet shows *Item, every location*, says where each line is, and has a box for anything found somewhere not on it |
 | **Differences (PDF)** | The result, for review or filing |
-| **For the ERP** (spreadsheet) | Keying the adjustment into the system that owns stock value |
+| **For the ERP** (spreadsheet) | One count's differences, for keying into the system that owns stock value |
 
 !!! note "uqmes does not adjust your ERP"
-    Applying a count corrects **uqmes**. The spreadsheet exists so the same
+    Applying a count corrects **uqmes**. The spreadsheets exist so the same
     correction can be made where stock is valued — see [the receipts
     export](overview.md#handing-receipts-to-the-erp), which works the same way.
 

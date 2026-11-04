@@ -464,8 +464,8 @@ and others are versioned. **An import edits them exactly as the edit form does:*
 - a change to **content** creates a **new version**
 - a change to **status or a flag** saves in place
 - on a part type, a change to **sourcing** — preferred supplier, lead time,
-  safety stock — saves in place too, since it describes how you buy the thing
-  rather than what it is
+  safety stock, cycle-count class — saves in place too, since it describes how you
+  buy and count the thing rather than what it is
 
 Shifts version on a **content** edit; turning one active or inactive saves in
 place without making a version, since availability is not a change to what the
