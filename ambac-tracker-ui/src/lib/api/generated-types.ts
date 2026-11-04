@@ -37443,6 +37443,11 @@ export interface components {
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
             revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
+            /**
+             * Format: uuid
+             * @description Required role when revisit_assignment='role'
+             */
+            revisit_role?: string | null;
         };
         StepDistributionResponse: {
             /** Format: uuid */
@@ -38053,6 +38058,11 @@ export interface components {
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
             revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
+            /**
+             * Format: uuid
+             * @description Required role when revisit_assignment='role'
+             */
+            revisit_role?: string | null;
         };
         /**
          * @description Update a step's sampling rules — plus its quality gate and acceptance plan,

@@ -10,6 +10,7 @@
     reports read who did what from the role rows (2026-11-04).
 """
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from Tracker.models import (
     Parts, PartTypes, PersonnelRole, Processes, ProcessStep, QualityReportPersonnel,
@@ -216,6 +217,63 @@ class LeavingReworkTests(_Fixture):
         self.assertEqual((self.part.step_id, self.part.part_status), (nozzle.id, "IN_PROGRESS"))
 
 
+class CompletedByIsWhoDidTheWorkTests(_Fixture):
+    """A visit is completed by whoever held it, not whoever triggered the move (a QA
+    sign-off, an override approval, a cohort's Complete step) — the traveler prints
+    completed_by as the Operator (bug hunt 2026-11-04)."""
+
+    def _two_steps(self):
+        process = Processes.objects.create(tenant=self.tenant_a, name="P2", part_type=self.pt)
+        first = Steps.objects.create(tenant=self.tenant_a, name="Inspect", part_type=self.pt)
+        second = Steps.objects.create(tenant=self.tenant_a, name="Pack", part_type=self.pt)
+        ProcessStep.objects.create(process=process, step=first, order=1)
+        ProcessStep.objects.create(process=process, step=second, order=2)
+        StepEdge.objects.create(process=process, from_step=first, to_step=second,
+                                edge_type=EdgeType.DEFAULT)
+        WorkOrder.objects.filter(pk=self.wo.pk).update(process=process)
+        Parts.objects.filter(pk=self.part.pk).update(step=first, part_status="IN_PROGRESS")
+        self.part.refresh_from_db()
+        return first
+
+    def test_the_holder_is_credited_not_the_signer(self):
+        from Tracker.models import StepTransitionLog, User
+        from Tracker.services.mes.parts import advance_part_step
+        first = self._two_steps()
+        signer = User.objects.create_user(username="maria_s", email="maria_s@tenant-a.com",
+                                          password="x", tenant=self.tenant_a)
+        ex = StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=first,
+                                          visit_number=1, status="IN_PROGRESS", assigned_to=self.user_a)
+        advance_part_step(self.part, operator=signer, skip_gate_check=True)
+        ex.refresh_from_db()
+        self.assertEqual(ex.completed_by_id, self.user_a.id)
+        self.assertTrue(StepTransitionLog.objects.filter(part=self.part, operator=signer).exists(),
+                        "who moved it stays on the transition log")
+
+    def test_a_same_revisit_goes_back_to_who_worked_the_step_before(self):
+        """revisit_assignment's choices are uppercase; this compared lowercase, so SAME
+        never took effect. A revisit under SAME is handed to the previous visit's worker;
+        a first visit, or any other rule, is unassigned."""
+        from Tracker.services.mes.parts import _get_operator_for_step
+        first = self._two_steps()
+        StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=first, visit_number=1,
+                                     status="COMPLETED", completed_by=self.user_a,
+                                     exited_at=timezone.now())
+        first.revisit_assignment = "SAME"
+        self.assertEqual(_get_operator_for_step(self.part, first, 2), self.user_a)
+        self.assertIsNone(_get_operator_for_step(self.part, first, 1), "a first visit isn't a revisit")
+        first.revisit_assignment = "ANY"
+        self.assertIsNone(_get_operator_for_step(self.part, first, 2))
+
+    def test_with_nobody_holding_it_the_mover_is_credited(self):
+        from Tracker.services.mes.parts import advance_part_step
+        first = self._two_steps()
+        ex = StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=first,
+                                          visit_number=1, status="IN_PROGRESS")
+        advance_part_step(self.part, operator=self.user_a, skip_gate_check=True)
+        ex.refresh_from_db()
+        self.assertEqual(ex.completed_by_id, self.user_a.id)
+
+
 class CapturedReportRecordsTheOperatorTests(_Fixture):
 
     def test_the_operator_on_the_job_is_on_the_report(self):
@@ -290,3 +348,63 @@ class ReportPersonnelReadsOneRecordTests(_Fixture):
                                               role=PersonnelRole.INSPECTOR)
         self._report(detected_by=self.user_a)
         self.assertEqual(QualityReports.objects.filter(detected_by_q(self.user_a)).distinct().count(), 2)
+
+
+class RevisitRuleEnforcedTests(_Fixture):
+    """A step's repeat-visit rule is enforced when the visit is started (user decisions
+    2026-11-04): a per-step option (ANY constrains nothing), DIFFERENT / ROLE refuse,
+    and a supervisor can authorize past it with a reason, on the record."""
+
+    def _visits(self, rule, *, role=None):
+        from Tracker.models import User
+        Steps.objects.filter(pk=self.step.pk).update(revisit_assignment=rule, revisit_role=role)
+        self.step.refresh_from_db()
+        StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=self.step, visit_number=1,
+                                     status="COMPLETED", completed_by=self.user_a, assigned_to=self.user_a,
+                                     exited_at=timezone.now())
+        repeat = StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=self.step,
+                                              visit_number=2, status="PENDING")
+        other = User.objects.create_user(username="op_b", email="op_b@tenant-a.com", password="x",
+                                         tenant=self.tenant_a)
+        sup = User.objects.create_user(username="sup_b", email="sup_b@tenant-a.com", password="x",
+                                       tenant=self.tenant_a)
+        return repeat, other, sup
+
+    def test_different_refuses_whoever_worked_it_before_unless_a_supervisor_authorizes(self):
+        from Tracker.services.mes.lifecycle import OverrideReasonRequired, RevisitRefused, start_execution
+        repeat, other, sup = self._visits("DIFFERENT")
+        with self.assertRaises(RevisitRefused):
+            start_execution(repeat, self.user_a)
+        with self.assertRaises(OverrideReasonRequired):
+            start_execution(repeat, self.user_a, authorizer=sup, reason="")
+        start_execution(repeat, self.user_a, authorizer=sup, reason="Only trained hand on shift")
+        repeat.refresh_from_db()
+        snap = repeat.training_authorization["revisit_override"]
+        self.assertEqual((snap["rule"], snap["authorized_by"], snap["reason"]),
+                         ("DIFFERENT", sup.id, "Only trained hand on shift"))
+        self.assertNotIn("override", repeat.training_authorization, "not a training override")
+
+    def test_different_lets_someone_else_start_it(self):
+        from Tracker.services.mes.lifecycle import start_execution
+        repeat, other, _ = self._visits("DIFFERENT")
+        start_execution(repeat, other)
+        repeat.refresh_from_db()
+        self.assertEqual((repeat.status, repeat.assigned_to_id), ("IN_PROGRESS", other.id))
+
+    def test_role_needs_the_role(self):
+        from Tracker.models import TenantGroup, UserRole
+        from Tracker.services.mes.lifecycle import RevisitRefused, start_execution
+        role = TenantGroup.objects.create(tenant=self.tenant_a, name="Rework Lead")
+        repeat, other, _ = self._visits("ROLE", role=role)
+        with self.assertRaises(RevisitRefused):
+            start_execution(repeat, other)
+        UserRole.objects.create(user=other, group=role)
+        start_execution(repeat, other)
+
+    def test_any_and_a_first_visit_are_unconstrained(self):
+        from Tracker.services.mes.lifecycle import check_revisit_rule
+        self._visits("ANY")
+        self.assertIsNone(check_revisit_rule(self.part, self.step, self.user_a, visit_number=2))
+        Steps.objects.filter(pk=self.step.pk).update(revisit_assignment="DIFFERENT")
+        self.step.refresh_from_db()
+        self.assertIsNone(check_revisit_rule(self.part, self.step, self.user_a, visit_number=1))

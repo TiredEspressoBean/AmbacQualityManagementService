@@ -8531,6 +8531,12 @@ export type Step = {
     (number | null)
     | undefined;
   revisit_assignment?: RevisitAssignmentEnum | undefined;
+  revisit_role?:
+    | /**
+     * Required role when revisit_assignment='role'
+     */
+    (string | null)
+    | undefined;
 };
 export type StepTiming = Partial<{
   /**
@@ -18035,6 +18041,12 @@ export type StepRequest = {
     (number | null)
     | undefined;
   revisit_assignment?: RevisitAssignmentEnum | undefined;
+  revisit_role?:
+    | /**
+     * Required role when revisit_assignment='role'
+     */
+    (string | null)
+    | undefined;
 };
 export type StepSamplingRulesUpdateRequest = {
   rules: Array<SamplingRuleUpdateRequest>;
@@ -24677,6 +24689,7 @@ const Step = z.object({
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
   revisit_assignment: RevisitAssignmentEnum.optional(),
+  revisit_role: z.string().uuid().nullish(),
 });
 const ProcessStep = z.object({
   id: z.number().int(),
@@ -30641,6 +30654,7 @@ const StepRequest = z.object({
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
   revisit_assignment: RevisitAssignmentEnum.optional(),
+  revisit_role: z.string().uuid().nullish(),
 });
 
 export const schemas = {

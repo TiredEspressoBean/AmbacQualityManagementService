@@ -82,6 +82,11 @@ class DispositionReworkRoutingTests(TenantContextMixin, VectorTestCase):
         self.assertTrue(self.part.split_from_lot)  # pulled off the lot
         disp.refresh_from_db()
         self.assertEqual(disp.current_state, "IN_PROGRESS")  # NOT closed by routing
+        # The rework visit waits for whoever picks it up — not the decider, who was then
+        # its holder and refused its sign-off as "you ran it" (bug hunt 2026-11-04).
+        from Tracker.models import StepExecution
+        visit = StepExecution.objects.get(part=self.part, step=self.rework_step, exited_at__isnull=True)
+        self.assertIsNone(visit.assigned_to_id)
 
     def test_the_rework_split_ends_the_failed_visit(self):
         """The visit the part failed is ROLLED_BACK *and exited*; it used to keep

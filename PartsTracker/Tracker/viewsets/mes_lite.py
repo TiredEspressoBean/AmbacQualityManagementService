@@ -3575,7 +3575,7 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
     def _start_gate_error_response(self, exc):
         """Translate a work-start domain error (`services/mes/lifecycle`) → Response."""
         from Tracker.services.mes.lifecycle import (
-            NotQualified, NeedsReassignment, OverrideReasonRequired,
+            NotQualified, NeedsReassignment, OverrideReasonRequired, RevisitRefused,
         )
         if isinstance(exc, NeedsReassignment):
             who = (exc.current_operator.get_full_name()
@@ -3591,6 +3591,10 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
                 'code': 'training_not_authorized',
                 'missing': exc.missing,
             }, status=status.HTTP_409_CONFLICT)
+        if isinstance(exc, RevisitRefused):
+            # The step's revisit rule (DIFFERENT / ROLE) on a repeat visit.
+            return Response({'detail': exc.detail, 'code': 'revisit_rule'},
+                            status=status.HTTP_409_CONFLICT)
         if isinstance(exc, OverrideReasonRequired):
             body = {'detail': exc.detail, 'code': 'override_reason_required'}
             if exc.missing is not None:
@@ -3644,14 +3648,22 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
                 assert_startable(part, part.work_order if part.work_order_id else None)
             step = Steps.objects.filter(pk=request.data.get('step')).first()
             if step is not None:
+                from Tracker.services.mes.lifecycle import check_revisit_rule
                 process = self._gate_process_for(request.data)
                 reason = request.data.get('override_reason')
-                snapshot, err = self._gated_start(
-                    request,
-                    lambda auth: authorize_start(
-                        request.user, step, process, authorizer=auth, reason=reason,
-                    ),
-                )
+                visit = StepExecution.get_visit_count(part, step) + 1 if part is not None else 1
+
+                def _gate(auth):
+                    # A fresh row can still be a repeat visit: the step's revisit rule
+                    # first, then competence — one supervisor sign-in covers both.
+                    revisit = check_revisit_rule(part, step, request.user, visit_number=visit,
+                                                 authorizer=auth, reason=reason)
+                    snap = authorize_start(request.user, step, process, authorizer=auth, reason=reason)
+                    if revisit is not None:
+                        snap['revisit_override'] = revisit
+                    return snap
+
+                snapshot, err = self._gated_start(request, _gate)
                 if err is not None:
                     return err
                 self._pending_training_snapshot = snapshot

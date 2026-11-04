@@ -199,7 +199,9 @@ export async function advanceToNextQueuedPart({
             toast.error(
                 e.gate.code === "assigned_to_other"
                     ? "Next queued part is assigned to someone else — a supervisor must reassign it."
-                    : "You're not qualified for the next queued part — use Start Work to get a supervisor override.",
+                    : e.gate.code === "revisit_rule"
+                        ? `${e.gate.detail} Use Start Work to get a supervisor override.`
+                        : "You're not qualified for the next queued part — use Start Work to get a supervisor override.",
                 { description: `${ids.length} part${ids.length === 1 ? "" : "s"} remaining.` },
             );
             return;

@@ -45,6 +45,17 @@ class NeedsReassignment(StartGateError):
         super().__init__("Step is assigned to another operator.")
 
 
+class RevisitRefused(StartGateError):
+    """A repeat visit to a step whose revisit rule this operator doesn't meet:
+    DIFFERENT (they worked an earlier visit) or ROLE (they lack the step's revisit
+    role). SAME is the assignment gate: the revisit is assigned to the previous worker
+    (`parts._get_operator_for_step`), so anyone else meets `NeedsReassignment`."""
+
+    def __init__(self, detail):
+        self.detail = detail
+        super().__init__(detail)
+
+
 class OverrideReasonRequired(StartGateError):
     """A supervisor authorization was supplied without the required reason.
 
@@ -267,6 +278,47 @@ def authorize_start(operator, step, process, *, authorizer=None, reason=None):
     return authorization_snapshot(result, override=override)
 
 
+def check_revisit_rule(part, step, operator, *, visit_number, authorizer=None,
+                       reason=None) -> dict | None:
+    """Enforce the step's revisit rule on a repeat visit (user decisions 2026-11-04).
+
+    A per-step option, never a requirement: ANY (the default) constrains nothing, and a
+    first visit is never constrained. DIFFERENT refuses whoever worked an earlier visit
+    of this step on this part; ROLE refuses anyone without the step's revisit role.
+
+    A refusal raises `RevisitRefused` — unless a supervisor (`authorizer`, verified
+    upstream) authorizes past it with a `reason`, as the training gate allows; that
+    returns the override for the execution's snapshot (`revisit_override`, kept apart
+    from the training `override` so the training-override report doesn't count it).
+    Returns None when nothing was refused."""
+    if part is None or visit_number <= 1:
+        return None
+    rule = (getattr(step, 'revisit_assignment', None) or 'ANY').upper()
+    refusal = None
+    if rule == 'DIFFERENT':
+        from Tracker.models import StepExecution
+        before = StepExecution.objects.filter(  # tenant-safe: scoped by the part FK
+            part=part, step=step, visit_number__lt=visit_number)
+        worked = (set(before.values_list('completed_by_id', flat=True))
+                  | set(before.values_list('assigned_to_id', flat=True))) - {None}
+        if operator.pk in worked:
+            refusal = (f"This is visit {visit_number} to {step.name}, and the step wants a "
+                       "different operator from whoever worked it before.")
+    elif rule == 'ROLE':
+        role = getattr(step, 'revisit_role', None)
+        if role is not None and not operator.has_group(role.name, tenant=part.tenant):
+            refusal = (f"This is visit {visit_number} to {step.name}, and a repeat visit "
+                       f"needs the {role.name} role.")
+    if refusal is None:
+        return None
+    if authorizer is None:
+        raise RevisitRefused(refusal)
+    if not (reason or '').strip():
+        raise OverrideReasonRequired(detail="A reason is required to authorize past the repeat-visit rule.")
+    return {'rule': rule, 'refused': refusal,
+            **build_supervisor_override(worker=operator, authorizer=authorizer, reason=reason).to_dict()}
+
+
 def assert_startable(part, work_order) -> None:
     """Every refusal that stands before a step is started, whoever asks — none of them
     is a start-gate refusal a supervisor can override. Both start paths call this
@@ -441,6 +493,10 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     """
     # Refusals no supervisor override reaches past (see assert_startable).
     assert_startable(execution.part if execution.part_id else None, execution.subject_work_order)
+    # The step's revisit rule on a repeat visit; a supervisor can authorize past it.
+    revisit_override = check_revisit_rule(
+        execution.part if execution.part_id else None, execution.step, operator,
+        visit_number=execution.visit_number or 1, authorizer=authorizer, reason=reason)
 
     reassignment = None
     if execution.assigned_to_id and execution.assigned_to_id != operator.id:
@@ -459,6 +515,8 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     )
     if reassignment is not None:
         snapshot['reassignment'] = reassignment.to_dict()
+    if revisit_override is not None:
+        snapshot['revisit_override'] = revisit_override
 
     execution.assigned_to = operator
     execution.status = 'IN_PROGRESS'

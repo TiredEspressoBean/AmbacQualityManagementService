@@ -1978,8 +1978,9 @@ class StepSerializer(SecureModelMixin):
             "outside_special_process", "outside_process_lead_days",
             # Workflow engine - terminal
             "is_terminal", "terminal_status",
-            # Workflow engine - cycle control
-            "max_visits", "revisit_assignment",
+            # Workflow engine - cycle control. Who may work a repeat visit
+            # (ANY / SAME / DIFFERENT / ROLE + its role) — enforced at start/claim.
+            "max_visits", "revisit_assignment", "revisit_role",
         ]
 
 

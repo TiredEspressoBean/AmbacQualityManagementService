@@ -82462,6 +82462,11 @@ components:
           description: Max times a part can visit this step. Null = unlimited.
         revisit_assignment:
           $ref: '#/components/schemas/RevisitAssignmentEnum'
+        revisit_role:
+          type: string
+          format: uuid
+          nullable: true
+          description: Required role when revisit_assignment='role'
       required:
       - id
       - name
@@ -83554,6 +83559,11 @@ components:
           description: Max times a part can visit this step. Null = unlimited.
         revisit_assignment:
           $ref: '#/components/schemas/RevisitAssignmentEnum'
+        revisit_role:
+          type: string
+          format: uuid
+          nullable: true
+          description: Required role when revisit_assignment='role'
       required:
       - name
     StepSamplingRulesUpdateRequest:

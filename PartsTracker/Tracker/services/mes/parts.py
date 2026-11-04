@@ -40,17 +40,23 @@ class BulkResult:
         return d
 
 
-def _get_operator_for_step(part: Parts, step, previous_operator):
-    """
-    Determine operator assignment based on step's revisit_assignment rule.
-    Returns User or None (unassigned, anyone can pick up).
-    """
-    if step.revisit_assignment == 'same':
-        return previous_operator
-    elif step.revisit_assignment in ('different', 'role'):
+def _get_operator_for_step(part: Parts, step, visit_number: int):
+    """Who a new visit to ``step`` is assigned to, by the step's revisit rule.
+    Returns a User, or None (unassigned: anyone can pick it up).
+
+    The rule is about a part coming *back* to a step (a rework loop): SAME hands the
+    revisit to whoever worked the step on the part's previous visit. A first visit is
+    unassigned whatever the rule. DIFFERENT / ROLE leave it unassigned — whether they
+    should be enforced at start/claim is undecided (2026-11-04).
+
+    Choices are uppercase (ANY / SAME / DIFFERENT / ROLE); this compared lowercase,
+    so SAME never took effect."""
+    if visit_number <= 1 or (step.revisit_assignment or 'ANY').upper() != 'SAME':
         return None
-    else:  # 'any'
-        return None
+    last = (StepExecution.objects.filter(part=part, step=step, status='COMPLETED')  # tenant-safe: scoped by the part FK
+            .exclude(completed_by__isnull=True)
+            .select_related('completed_by').order_by('-exited_at').first())
+    return last.completed_by if last else None
 
 
 def _stamp_production_equipment(execution) -> None:
@@ -286,7 +292,12 @@ def advance_part_step(
 
     if current_execution:
         current_execution.exited_at = timezone.now()
-        current_execution.completed_by = operator
+        # Who did the work, not who moved the part on: a QA sign-off, an override
+        # approval, a batch seal, a split, auto-advance or a cohort's Complete step all
+        # pass whoever *triggered* the move, which named the signer as operator of work
+        # someone else did (traveler, day recap). The visit's holder did it; the trigger
+        # only stands in when nobody held it. The mover is on the StepTransitionLog.
+        current_execution.completed_by = current_execution.assigned_to or operator
         current_execution.status = 'COMPLETED'
         current_execution.decision_result = str(decision_result) if decision_result else ''
 
@@ -417,7 +428,7 @@ def advance_part_step(
             # mint duplicate visit numbers. Held until the enclosing transaction
             # commits, covering the bulk_create below.
             visit_number = StepExecution.get_visit_count_for_update(p, next_step) + 1
-            assigned_operator = _get_operator_for_step(p, next_step, operator)
+            assigned_operator = _get_operator_for_step(p, next_step, visit_number)
             step_executions.append(StepExecution(
                 part=p,
                 step=next_step,
@@ -461,7 +472,7 @@ def advance_part_step(
     # part while assigning the visit number (see batch path above) so concurrent
     # advances into the same step can't mint duplicate visit numbers.
     visit_number = StepExecution.get_visit_count_for_update(part, next_step) + 1
-    assigned_operator = _get_operator_for_step(part, next_step, operator)
+    assigned_operator = _get_operator_for_step(part, next_step, visit_number)
 
     new_exec = StepExecution.objects.create(
         part=part,

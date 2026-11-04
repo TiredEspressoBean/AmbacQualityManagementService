@@ -522,12 +522,16 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
                             <ShieldAlert className="h-5 w-5 text-destructive" />
                             {gate?.code === "assigned_to_other"
                                 ? "Assigned to someone else"
-                                : "Not qualified for this step"}
+                                : gate?.code === "revisit_rule"
+                                    ? "Repeat visit rule"
+                                    : "Not qualified for this step"}
                         </DialogTitle>
                         <DialogDescription>
                             {gate?.code === "assigned_to_other"
                                 ? "This step is assigned to another operator. A supervisor must sign in below to reassign it — logged against their name."
-                                : "The operator isn't qualified. A supervisor must sign in below to authorize this work — logged against their name."}
+                                : gate?.code === "revisit_rule"
+                                    ? `${gate.detail} A supervisor can sign in below to authorize it anyway — logged against their name.`
+                                    : "The operator isn't qualified. A supervisor must sign in below to authorize this work — logged against their name."}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -580,7 +584,9 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
                             placeholder={
                                 gate?.code === "assigned_to_other"
                                     ? "Reason for reassignment (required)"
-                                    : "Reason (required — e.g. line-down, trainee under direct supervision)"
+                                    : gate?.code === "revisit_rule"
+                                        ? "Reason (required — e.g. nobody else on shift is trained)"
+                                        : "Reason (required — e.g. line-down, trainee under direct supervision)"
                             }
                             rows={2}
                         />

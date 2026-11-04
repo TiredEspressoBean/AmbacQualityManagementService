@@ -161,10 +161,16 @@ def record_operator_rework(part, user, reason: str):
             existing.quality_reports.add(report)
             disposition = existing
         else:
+            # The operator's own rework call is the decision (10/21), so the record
+            # carries them as who authorized it, as decide_disposition does (ISO 9001
+            # 8.7.2) — user decision 2026-11-04. Joining an open disposition above
+            # leaves that one's decision to QA.
             disposition = QuarantineDisposition.objects.create(
                 tenant=part.tenant, assigned_to=None, part=part, step=part.step,
                 description=f"Sent to rework at {part.step.name if part.step_id else 'its step'}: {reason}",
-                disposition_type="REWORK")
+                disposition_type="REWORK",
+                decision_authorized_by=user if getattr(user, "is_authenticated", False) else None,
+                decision_authorized_at=timezone.now() if getattr(user, "is_authenticated", False) else None)
             disposition.quality_reports.add(report)
         report.status = "FAIL"
         report.save(update_fields=["status"])
@@ -651,8 +657,12 @@ def _move_split_part_to_rework(part, target, user, disposition) -> None:
         part.step = dest
         part.save(update_fields=['step'])
         visit = StepExecution.get_visit_count_for_update(part, dest) + 1
+        # Not the decider's: the rework waits for whoever the step's revisit rule names
+        # (usually nobody — anyone can pick it up). The decider is on the transition log.
+        from Tracker.services.mes.parts import _get_operator_for_step
         new_exec = StepExecution.objects.create(
-            part=part, step=dest, visit_number=visit, assigned_to=user, status='PENDING')
+            part=part, step=dest, visit_number=visit, status='PENDING',
+            assigned_to=_get_operator_for_step(part, dest, visit))
         from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
         evaluate_substep_sampling(new_exec)
         StepTransitionLog.objects.create(part=part, step=dest, operator=user)

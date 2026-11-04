@@ -61,7 +61,9 @@ def _open_disposition(lot, *, user, disposition_type, quantity, description, rep
         disposition_type=disposition_type,
         description=description or "",
         severity=severity or "MAJOR",
-        assigned_to=_authority(user),
+        # A request waits for whoever may decide it (it's on their home), so it's
+        # unassigned — a queue QA takes from — not the requester's (decision 2026-10-20).
+        assigned_to=_authority(user) if decided else None,
         decision_authorized_by=authority,
         decision_authorized_at=timezone.now() if authority else None,
     )

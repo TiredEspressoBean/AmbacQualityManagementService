@@ -27,6 +27,9 @@ export interface StepData {
   is_entry_point?: boolean;
   description?: string;
   max_visits?: number | null;
+  /** Who may work a repeat visit (ANY / SAME / DIFFERENT / ROLE), enforced at start. */
+  revisit_assignment?: string;
+  revisit_role?: string | null;
   expected_duration?: string | null;
   scrap_rate?: number | string | null;
   /** Whether this step consumes crew, and how it's assigned. Null inherits the tenant's
@@ -179,6 +182,8 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         terminalStatus: step.terminal_status,
         description: step.description,
         maxVisits: step.max_visits,
+        revisitAssignment: step.revisit_assignment,
+        revisitRole: step.revisit_role,
         expectedDuration: step.expected_duration,
         scrapRate: step.scrap_rate != null ? Number(step.scrap_rate) : null,
         isStart: isEntryPoint,

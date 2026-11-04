@@ -28,6 +28,7 @@ import { useContentTypeMapping } from '@/hooks/useContentTypes';
 import { MeasurementsEditor } from './measurements-editor';
 import { StepSamplingEditor } from './step-sampling-editor';
 import { usePermissionSet } from '@/hooks/useMyPermissions';
+import { useTenantGroups } from '@/hooks/useTenantGroups';
 import { StepDocumentsEditor } from './step-documents-editor';
 import { StepTrainingRequirementsEditor } from './step-training-requirements-editor';
 import { StepMachinesEditor } from './step-machines-editor';
@@ -129,6 +130,9 @@ type StepNodeData = {
   isTerminal?: boolean;
   terminalStatus?: string;
   maxVisits?: number | string;
+  /** Who may work a repeat visit: ANY / SAME / DIFFERENT / ROLE (+ revisitRole). */
+  revisitAssignment?: string;
+  revisitRole?: string | null;
   // Quality gates
   requiresQaSignoff?: boolean;
   /** How sure we need to be that the inspector who signed is who they say:
@@ -715,6 +719,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                 <p className="text-sm">{data.maxVisits || 'Unlimited'}</p>
               )}
             </div>
+            <RevisitRuleField nodeId={node.id} data={data} editable={editable} onUpdate={onUpdate} />
           </>
         )}
 
@@ -1130,6 +1135,9 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                 )}
               </div>
             )}
+            {!isReworkType && (
+              <RevisitRuleField nodeId={node.id} data={data} editable={editable} onUpdate={onUpdate} />
+            )}
 
             {/* QA flags */}
             {/* One three-way control over two fields: the boolean still means "is
@@ -1402,6 +1410,61 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
       </CardContent>
     </Card>
   );
+}
+
+
+const REVISIT_RULES = [
+    { value: 'ANY', label: 'Anyone qualified' },
+    { value: 'SAME', label: 'Whoever worked the last visit' },
+    { value: 'DIFFERENT', label: 'Someone else' },
+    { value: 'ROLE', label: 'Someone with a role' },
+];
+
+/** Who may work a repeat visit to this step (a part coming back — rework, a retest).
+ *  An option, never a requirement: "Anyone qualified" constrains nothing. Enforced
+ *  when the visit is started; a supervisor can authorize past it with a reason. */
+function RevisitRuleField({ nodeId, data, editable, onUpdate }: {
+    nodeId: string;
+    data: StepNodeData;
+    editable: boolean;
+    onUpdate: (nodeId: string, data: Partial<StepData>) => void;
+}) {
+    const rule = (data.revisitAssignment || 'ANY').toUpperCase();
+    const { data: groupsResp } = useTenantGroups(undefined, undefined, { enabled: rule === 'ROLE' });
+    const groups = (groupsResp?.results ?? []) as Array<{ id: string; name: string }>;
+    const ruleLabel = REVISIT_RULES.find((r) => r.value === rule)?.label ?? rule;
+    const roleName = groups.find((g) => g.id === data.revisitRole)?.name;
+    return (
+        <div className="space-y-1.5">
+            <Label className="text-sm font-normal">Repeat visits are worked by</Label>
+            {editable ? (
+                <>
+                    <Select value={rule} onValueChange={(v) => v && onUpdate(nodeId, {
+                        revisit_assignment: v, ...(v === 'ROLE' ? {} : { revisit_role: null }),
+                    })}>
+                        <SelectTrigger aria-label="Repeat visits are worked by"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {REVISIT_RULES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    {rule === 'ROLE' && (
+                        <Select value={data.revisitRole ?? ''} onValueChange={(v) => onUpdate(nodeId, { revisit_role: v || null })}>
+                            <SelectTrigger aria-label="Role for repeat visits"><SelectValue placeholder="Pick a role" /></SelectTrigger>
+                            <SelectContent>
+                                {groups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                        When a part comes back to this step. Checked when the visit is started; a
+                        supervisor can authorize past it with a reason.
+                    </p>
+                </>
+            ) : (
+                <p className="text-sm">{ruleLabel}{rule === 'ROLE' && roleName ? ` — ${roleName}` : ''}</p>
+            )}
+        </div>
+    );
 }
 
 

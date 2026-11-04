@@ -72,6 +72,9 @@ _STEP_DIFF_FIELDS = (
     "is_decision_point",
     "is_terminal",
     "max_visits",
+    # Who may work a repeat visit — enforced at start, so a change is a process change.
+    "revisit_assignment",
+    "revisit_role_id",
     "is_critical",
     "requires_first_piece_inspection",
     "requires_qa_signoff",

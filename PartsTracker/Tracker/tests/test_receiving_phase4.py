@@ -141,6 +141,7 @@ class WholeLotTests(_Fixture):
         rejected, disposition, outcome = reject_lot(self._report(lot), self.inspector, whole_lot=True)
         self.assertEqual(outcome, "WHOLE_LOT_REQUESTED")
         self.assertIsNone(disposition.decision_authorized_by_id, "a request isn't a decision")
+        self.assertIsNone(disposition.assigned_to_id, "it waits for a decider, not on the requester")
         lot.refresh_from_db()
         self.assertEqual((lot.status, lot.hold_reason), ("QUARANTINE", "WHOLE_LOT_REJECT_REQUESTED"))
         with self.assertRaises(ValueError):

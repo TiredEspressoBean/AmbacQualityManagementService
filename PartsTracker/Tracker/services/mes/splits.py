@@ -158,11 +158,14 @@ def split_part_from_lot(
             update_fields.append('step')
 
             visit_number = StepExecution.get_visit_count_for_update(part, rework_target_step) + 1
+            # Not the splitter's: the rework waits for whoever the step's revisit rule
+            # names (usually nobody — anyone can pick it up).
+            from Tracker.services.mes.parts import _get_operator_for_step
             new_exec = StepExecution.objects.create(
                 part=part,
                 step=rework_target_step,
                 visit_number=visit_number,
-                assigned_to=user,
+                assigned_to=_get_operator_for_step(part, rework_target_step, visit_number),
                 status='PENDING',
             )
 

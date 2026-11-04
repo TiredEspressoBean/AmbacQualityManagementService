@@ -271,8 +271,14 @@ def _finalize_return_execution(shipment, user):
     if ex is not None:
         ex.status = "COMPLETED"
         ex.exited_at = timezone.now()
-        if user is not None and user.is_authenticated:
-            ex.completed_by = user
+        # Completed by who inspected the return (the traveler prints it as "inspected
+        # by") — its holder, else the report's inspector — not who pressed Accept/Reject.
+        report = shipment.quality_reports.order_by("-created_at").first()
+        who = ex.assigned_to or (report.primary_detector if report else None)
+        if who is None and user is not None and user.is_authenticated:
+            who = user
+        if who is not None:
+            ex.completed_by = who
         ex.save(update_fields=["status", "exited_at", "completed_by", "updated_at"])
 
 

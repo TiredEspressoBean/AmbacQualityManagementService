@@ -24,7 +24,7 @@ import { getCookie } from "@/lib/utils";
  */
 
 export type TrainingGateInfo = {
-    /** training_not_authorized | assigned_to_other | override_auth_failed |
+    /** training_not_authorized | assigned_to_other | revisit_rule | override_auth_failed |
      *  override_self | override_not_permitted | override_reason_required |
      *  override_throttled */
     code: string;
@@ -38,6 +38,8 @@ export type TrainingGateInfo = {
 const GATE_CODES = new Set([
     "training_not_authorized",
     "assigned_to_other",
+    // The step's repeat-visit rule (DIFFERENT / ROLE); a supervisor can authorize past it.
+    "revisit_rule",
     "override_auth_failed",
     "override_self",
     "override_not_permitted",

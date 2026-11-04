@@ -205,7 +205,10 @@ export interface StepData {
   block_on_quarantine?: boolean;
   block_on_measurement_failure?: boolean;
   pass_threshold?: number;
-  revisit_assignment?: 'any' | 'same' | 'different' | 'role';
+  /** Who may work a repeat visit (enforced at start/claim): ANY (no constraint, the
+   *  default), SAME (whoever worked the last visit), DIFFERENT, or ROLE (revisit_role). */
+  revisit_assignment?: 'ANY' | 'SAME' | 'DIFFERENT' | 'ROLE';
+  revisit_role?: string | null;
   /** Reman: the repair code this step carries, as the shop writes it (e.g. NZL-RECON).
    *  Flow validation needs it to tell a configured Repair node from an unroutable one. */
   repair_code_code?: string | null;

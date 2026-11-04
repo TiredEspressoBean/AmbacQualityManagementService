@@ -222,6 +222,9 @@ class OperatorSendToReworkTests(_Api):
         from Tracker.services.qms.disposition import record_operator_rework
         disp = record_operator_rework(self.part, self.user_a, "Burr on the seat face")
         self.assertEqual((disp.assigned_to_id, disp.disposition_type), (None, "REWORK"))
+        # Their call, so the record says who authorized it (user decision 2026-11-04).
+        self.assertEqual(disp.decision_authorized_by_id, self.user_a.id)
+        self.assertIsNotNone(disp.decision_authorized_at)
         report, = disp.quality_reports.all()
         self.assertEqual((report.status, report.step_id, report.detected_by_id),
                          ("FAIL", self.step.id, self.user_a.id))
@@ -237,6 +240,7 @@ class OperatorSendToReworkTests(_Api):
         qa_disp = QuarantineDisposition.objects.get(quality_reports=qa_report)
         disp = record_operator_rework(self.part, self.user_a, "Burr on the seat face")
         self.assertEqual(disp.pk, qa_disp.pk)
+        self.assertIsNone(disp.decision_authorized_by_id, "QA's disposition: their decision to make")
         self.assertEqual(QuarantineDisposition.objects.filter(part=self.part).count(), 1)
         self.assertEqual(disp.quality_reports.count(), 2)
 

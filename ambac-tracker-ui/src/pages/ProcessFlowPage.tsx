@@ -179,6 +179,8 @@ export default function ProcessFlowPage() {
         is_entry_point: ps.is_entry_point as boolean | undefined,
         description: step.description as string | undefined,
         max_visits: step.max_visits as number | null,
+        revisit_assignment: (step.revisit_assignment as string | undefined) ?? 'ANY',
+        revisit_role: (step.revisit_role as string | null | undefined) ?? null,
         expected_duration: step.expected_duration as string | null,
         requires_qa_signoff: step.requires_qa_signoff as boolean | undefined,
         qa_signoff_assurance: step.qa_signoff_assurance as string | undefined,
@@ -410,6 +412,8 @@ export default function ProcessFlowPage() {
           terminalStatus: updatedStep.terminal_status,
           description: updatedStep.description,
           maxVisits: updatedStep.max_visits,
+          revisitAssignment: updatedStep.revisit_assignment,
+          revisitRole: updatedStep.revisit_role,
           expectedDuration: updatedStep.expected_duration,
           scrapRate: updatedStep.scrap_rate != null ? Number(updatedStep.scrap_rate) : null,
           requiresQaSignoff: updatedStep.requires_qa_signoff,
@@ -487,6 +491,10 @@ export default function ProcessFlowPage() {
         is_terminal: step.is_terminal || false,
         terminal_status: step.terminal_status || '',
         max_visits: step.max_visits,
+        // Who may work a repeat visit (enforced at start); ANY = no constraint.
+        revisit_assignment: step.revisit_assignment || 'ANY',
+        // An FK goes as its _id, like outside_supplier_id: the save diffs and assigns ids.
+        revisit_role_id: step.revisit_assignment === 'ROLE' ? (step.revisit_role ?? null) : null,
         expected_duration: step.expected_duration,
         scrap_rate: step.scrap_rate,
         requires_qa_signoff: step.requires_qa_signoff || false,
