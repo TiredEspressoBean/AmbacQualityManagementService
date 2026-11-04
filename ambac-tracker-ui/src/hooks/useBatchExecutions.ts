@@ -94,7 +94,16 @@ export function useSealBatchExecution() {
     });
 }
 
-type CompleteResult = { batch_id: string; completed_at: string };
+export type CompleteResult = {
+    batch_id: string;
+    completed_at: string;
+    /** The load's parts that left the step, and those still at it (held by their lot,
+     *  a hold…) with the advancement's own reasons. Unknown when `queued`. */
+    moved: number;
+    waiting: number;
+    waiting_reasons: string[];
+    queued: boolean;
+};
 
 /** Complete a sealed load: its run is finished and its completion checks done. This
  *  is where the load's parts advance. */
@@ -113,11 +122,8 @@ export function useCompleteBatchExecution() {
                 predicate: (q) => q.queryKey[0] === "parts" || q.queryKey[0] === "step-executions",
             });
         },
-        // The panel says why a completion was refused (the missing checks).
-        meta: {
-            suppressGlobalError: true,
-            successMessage: "Load complete: its parts move on",
-        },
+        // The panel says what happened — moved, or waiting and why — or why it was refused.
+        meta: { suppressGlobalError: true },
     });
 }
 

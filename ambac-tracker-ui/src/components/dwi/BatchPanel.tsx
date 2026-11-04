@@ -174,7 +174,28 @@ export function BatchPanel({
             { id },
             {
                 onSettled: () => setCompletingId(null),
-                onSuccess: () => onChange?.(),
+                onSuccess: (r) => {
+                    // Say what actually happened to the load's parts: completing the load
+                    // moves them only if their lot can go (walk 2026-11-04 — the toast
+                    // said they moved while the lot held them for a part on hold).
+                    const why = r.waiting_reasons.join(" ");
+                    if (r.queued) {
+                        toast.success("Load complete: its parts move on shortly");
+                    } else if (r.waiting === 0) {
+                        toast.success("Load complete: its parts move on");
+                    } else if (r.moved === 0) {
+                        toast.warning("Load complete, but its parts didn't move", {
+                            description: why || "They're waiting on the rest of their lot.",
+                            duration: 12000,
+                        });
+                    } else {
+                        toast.warning(`Load complete: ${r.moved} moved on, ${r.waiting} waiting`, {
+                            description: why || "The rest are waiting on their lot.",
+                            duration: 12000,
+                        });
+                    }
+                    onChange?.();
+                },
                 onError: (err: unknown) => {
                     const detail = (err as {
                         response?: { data?: { problems?: string[]; detail?: string } };

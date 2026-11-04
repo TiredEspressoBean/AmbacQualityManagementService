@@ -22260,6 +22260,13 @@ export interface components {
         BatchCompleteResponse: {
             batch_id: string;
             completed_at: string;
+            /** @description The load's parts that left the step. */
+            moved: number;
+            /** @description Its parts still at the step. */
+            waiting: number;
+            waiting_reasons: string[];
+            /** @description Advancement went to the background (a large load): not known yet. */
+            queued: boolean;
         };
         /**
          * @description * `PASS` - PASS

@@ -19768,6 +19768,10 @@ const AddBatchPartsError = z.object({ detail: z.string() });
 const BatchCompleteResponse = z.object({
   batch_id: z.string(),
   completed_at: z.string(),
+  moved: z.number().int(),
+  waiting: z.number().int(),
+  waiting_reasons: z.array(z.string()),
+  queued: z.boolean(),
 });
 const BatchCompleteError = z.object({
   detail: z.string(),

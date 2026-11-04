@@ -52355,9 +52355,27 @@ components:
           type: string
         completed_at:
           type: string
+        moved:
+          type: integer
+          description: The load's parts that left the step.
+        waiting:
+          type: integer
+          description: Its parts still at the step.
+        waiting_reasons:
+          type: array
+          items:
+            type: string
+        queued:
+          type: boolean
+          description: 'Advancement went to the background (a large load): not known
+            yet.'
       required:
       - batch_id
       - completed_at
+      - moved
+      - queued
+      - waiting
+      - waiting_reasons
     BatchCycleQualityStatusEnum:
       enum:
       - PASS

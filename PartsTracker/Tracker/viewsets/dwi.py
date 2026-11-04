@@ -861,6 +861,11 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             200: inline_serializer(name='BatchCompleteResponse', fields={
                 'batch_id': drf_serializers.CharField(),
                 'completed_at': drf_serializers.CharField(),
+                'moved': drf_serializers.IntegerField(help_text="The load's parts that left the step."),
+                'waiting': drf_serializers.IntegerField(help_text="Its parts still at the step."),
+                'waiting_reasons': drf_serializers.ListField(child=drf_serializers.CharField()),
+                'queued': drf_serializers.BooleanField(
+                    help_text="Advancement went to the background (a large load): not known yet."),
             }),
             400: inline_serializer(name='BatchCompleteError', fields={
                 'detail': drf_serializers.CharField(),
@@ -887,7 +892,9 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 {'detail': 'Cannot complete the load', 'problems': list(exc.messages)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        return Response({'batch_id': result.batch_id, 'completed_at': result.completed_at})
+        return Response({'batch_id': result.batch_id, 'completed_at': result.completed_at,
+                         'moved': result.moved, 'waiting': result.waiting,
+                         'waiting_reasons': list(result.waiting_reasons), 'queued': result.queued})
 
     @extend_schema(
         request=inline_serializer(name='RemoveBatchPartRequest', fields={

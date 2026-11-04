@@ -94,6 +94,12 @@ def _missing(batch, substeps) -> list[str]:
 class CompleteResult:
     batch_id: str
     completed_at: str
+    # What happened to the load's own parts (walk 2026-11-04: "its parts move on" was
+    # said when the lot held them back). Not known when advancement went to Celery.
+    moved: int = 0
+    waiting: int = 0
+    waiting_reasons: tuple = ()  # the advancement's own words, e.g. the lot-wait text
+    queued: bool = False
 
 
 @dataclass(frozen=True)
@@ -248,16 +254,30 @@ def complete_batch(*, batch: "BatchExecution", user: "User") -> CompleteResult:
             )
             logger.info("Batch %s complete: %d-part cohort - advancement dispatched async.",
                         batch.id, len(live))
-        else:
-            from Tracker.services.mes.advancement import try_advance_lot
-            try_advance_lot(
-                work_order_id=str(batch.work_order_id),
-                step_id=str(batch.step_id),
-                tenant_id=str(batch.tenant_id),
-                operator=user,
-            )
+            return CompleteResult(batch_id=str(batch.id),
+                                  completed_at=batch.completed_at.isoformat(), queued=True)
+        from Tracker.models import Parts
+        from Tracker.services.mes.advancement import try_advance_lot
+        result = try_advance_lot(
+            work_order_id=str(batch.work_order_id),
+            step_id=str(batch.step_id),
+            tenant_id=str(batch.tenant_id),
+            operator=user,
+        )
+        # Which of the load's parts actually left the step, and why the rest didn't.
+        still = set(Parts.objects.filter(  # tenant-safe: .objects auto-scopes; pks from the load
+            pk__in=[p.pk for p in live], step_id=batch.step_id).values_list('pk', flat=True))
+        reasons = []
+        for p in live:
+            if p.pk in still:
+                for r in (result.blockers_by_part.get(str(p.id))
+                          or result.split_parts_blocked.get(str(p.id)) or []):
+                    if r not in reasons:
+                        reasons.append(r)
 
-    return CompleteResult(batch_id=str(batch.id), completed_at=batch.completed_at.isoformat())
+    return CompleteResult(batch_id=str(batch.id), completed_at=batch.completed_at.isoformat(),
+                          moved=len(live) - len(still), waiting=len(still),
+                          waiting_reasons=tuple(reasons))
 
 
 # What a membership change records when no reason is given: while a part's step is still

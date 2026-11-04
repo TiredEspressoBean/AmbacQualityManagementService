@@ -172,13 +172,28 @@ class BatchCohortIntegrityTests(TenantContextMixin, VectorTestCase):
         self._capture_batch_substep(load_a)
 
         seal_batch(batch=load_a, user=self.user)
-        complete_batch(batch=load_a, user=self.user)
+        done = complete_batch(batch=load_a, user=self.user)
+        self.assertEqual((done.moved, done.waiting), (1, 0))
 
         self.parts[0].refresh_from_db()
         self.parts[1].refresh_from_db()
         # Load A's part advanced; load B's part stays put (its load isn't completed).
         self.assertEqual(self.parts[0].step_id, next_step.id)
         self.assertEqual(self.parts[1].step_id, self.step.id)
+
+    def test_completing_a_load_says_which_parts_waited_and_why(self):
+        """Walk 2026-11-04: 'its parts move on' was said when the lot held them back.
+        The result names the parts still at the step and the advancement's reasons."""
+        from Tracker.services.mes.advancement import LotAdvanceResult
+        batch = self._open_batch([self.parts[0]])
+        self._capture_batch_substep(batch)
+        seal_batch(batch=batch, user=self.user)
+        why = "Done at the step — the lot waits for P-X (on hold)."
+        with mock.patch("Tracker.services.mes.advancement.try_advance_lot",
+                        return_value=LotAdvanceResult(status="blocked",
+                                                      blockers_by_part={str(self.parts[0].id): [why]})):
+            done = complete_batch(batch=batch, user=self.user)
+        self.assertEqual((done.moved, done.waiting, done.waiting_reasons), (0, 1, (why,)))
 
     # ----- 3d: completing a large load defers advancement to Celery -----
     def test_large_cohort_complete_dispatches_async(self):
@@ -189,7 +204,8 @@ class BatchCohortIntegrityTests(TenantContextMixin, VectorTestCase):
             "Tracker.services.dwi.batch_lifecycle.ASYNC_ADVANCE_THRESHOLD", 1
         ), mock.patch("Tracker.services.dwi.batch_lifecycle._queue_lot_advance") as delay:
             with self.captureOnCommitCallbacks(execute=True):
-                complete_batch(batch=batch, user=self.user)
+                done = complete_batch(batch=batch, user=self.user)
+        self.assertTrue(done.queued)
         delay.assert_called_once()
         _, kwargs = delay.call_args
         self.assertEqual(kwargs["work_order_id"], str(self.wo.id))
