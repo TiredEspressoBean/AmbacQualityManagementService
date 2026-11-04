@@ -353,13 +353,14 @@ needs work the customer hasn't agreed to yet.
    Tick 0007 and **Start load**.
 2. Seal it: under *Start the cleaning cycle*, tick **Cycle started** and **Confirm for
    batch**. Then finish it: under *Finish the cleaning cycle*, record the **Bath
-   Temperature** (60 °C ± 5), tick **Cycle complete**, sign the **Cycle release**,
-   **Confirm for batch**, and **Complete load**.
-3. Scan 0007 into the load and **Complete step**.
+   Temperature** (60 °C ± 5), tick **Cycle complete**, sign the **Cycle release**, and
+   **Confirm for batch**.
+3. **Complete load**.
 
-You're told *Part didn't move — see why: Done at Cleaning — the lot waits for
-CORE-240212-0009 (on hold). Split it from the lot to let the rest move.* The units at a step move on
-together, and a held unit still counts. 0007 is done; it is waiting, not stuck.
+You're told *Load complete, but its parts didn't move: Done at Cleaning — the lot
+waits for CORE-240212-0009 (on hold). Split it from the lot to let the rest move.* The
+units at a step move on together, and a held unit still counts. 0007 is done; it is
+waiting, not stuck.
 
 4. **Go to your lead.** Splitting a unit from its lot is their decision, and it is
    recorded. Casey signs in, opens the work order's control page (**View in Control

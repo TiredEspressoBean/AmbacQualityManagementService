@@ -100,6 +100,12 @@ A load has three phases:
 nothing reaches the next step mid-run. Asking for it early is refused: *"The load
 isn't complete yet"*, naming the check still missing.
 
+Completing the load finishes the step for its parts, but a part still moves on
+with the rest of its lot. If some can't yet — a lot-mate is on hold, say — you're
+told which and why: *"Load complete, but its parts didn't move: Done at Cleaning —
+the lot waits for CORE-240212-0009 (on hold). Split it from the lot to let the rest
+move."*, or *"Load complete: N moved on, M waiting"* when some did.
+
 Each check is recorded once, for the load. A confirmed check shows **Captured**
 with its value, and what you enter is kept as a draft in each phase the same way
 as part-by-part work.
