@@ -130,7 +130,8 @@ schedule (module 5) is the answer once the work is real.
 Labor row. Open **Volume Forecast** from the *Includes … unclaimed forecast* link and
 find its highest month within the heatmap's twelve. Say whether the busiest month is
 the same one or earlier, and why.
-(Load lands where the work starts, in the run-up to each due date.)
+(Load lands where the work starts, a little before each due date — so it moves a
+month earlier only when the work takes long enough to cross into it.)
 
 ---
 

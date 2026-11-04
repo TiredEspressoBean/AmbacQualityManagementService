@@ -127,7 +127,8 @@ The page's tabs:
 | **To key into Glovia** | Applied counts whose differences haven't been keyed into your ERP |
 | **All counts** | Every count; one of an item reads *&lt;name&gt; item, every location* |
 
-Each tab shows how many it holds. The page opens on **Due**.
+Each tab shows how many it holds. A lead with submitted counts waiting opens on
+**Waiting for a lead**; everyone else, on **Due**.
 
 ### What's due, and how often
 
@@ -148,6 +149,14 @@ the items that matter by hand.
 
 Changing a part type's class doesn't create a new version of it: how often its stock
 is counted isn't part of what the part is.
+
+Editing a material or part type shows, under its class, when it was last counted and
+when it's next due: *Last counted &lt;date&gt; · next due &lt;date&gt; · every N days
+as class C*. *never* means never counted; a due date of *now*, or *&lt;date&gt;
+(overdue)*, is in amber with a **Cycle counts** link. Kept in more than one location,
+it names the first one due (hover for all of them). With no stock in a location it
+reads *No stock in a location, so nothing to count.* It goes by the saved class, so
+save a change before reading it.
 
 The intervals and tolerances are a Tenant Admin's, under **Settings** >
 **Organization**, **Cycle counting (ABC)**: **Count every (days)** and **Tolerance
