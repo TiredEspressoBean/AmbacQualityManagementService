@@ -72,8 +72,8 @@ Log in as Maria. The home page is a list of decisions waiting on you:
 long, which lot is waiting on your decision and why, and how many approvals are
 waiting for you. Don't open anything yet.
 
-**Exercise 1.2.** Open **Approvals**. **Awaiting my approval** lists what you
-decide; **My submitted requests** lists what you asked others for. Find
+**Exercise 1.2.** Open **Approvals**. **Awaiting My Approval** lists what you
+decide; **My Submitted Requests** lists what you asked others for. Find
 `CAPA-2024-004` and say who raised it.
 
 ---
