@@ -246,15 +246,19 @@ export function TrainingMatrixPage() {
             <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
                 Competency of everyone with training on record or required by their role. Each cell is the current level
                 (max in-date); a red edge marks a skill below the operator's role
-                requirement. The footer shows how many people can cover each skill —
-                single-coverage is a staffing risk.
+                requirement. The footer shows how many people are qualified in each skill —
+                a skill only one person holds is a single point of failure.
             </p>
 
             {/* Summary */}
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <SummaryTile label="People" value={operators.length} />
                 <SummaryTile label="People with role gaps" value={operators.filter((o) => o.gap_count > 0).length} tone={operators.some((o) => o.gap_count > 0) ? "warn" : "ok"} />
-                <SummaryTile label="Skills at coverage risk" value={stats.spof} tone={stats.spof ? "danger" : "ok"} />
+                {/* Cross-training terms: uncovered (nobody qualified) + single point of
+                    failure (one person) — anyone in the company. The capacity heatmap's
+                    "skill bottleneck" is the schedulable-operator count, a different thing. */}
+                <SummaryTile label="Cross-training gaps" value={stats.spof} tone={stats.spof ? "danger" : "ok"}
+                    hint="Skills nobody is qualified in (uncovered) or only one person is (a single point of failure), counting everyone in the company" />
                 <SummaryTile label="Expiring soon" value={stats.expiring} tone={stats.expiring ? "warn" : "ok"} />
             </div>
 
@@ -452,14 +456,14 @@ function RoleFitCell({ op, colName }: { op: Operator; colName: Map<string, strin
     );
 }
 
-function SummaryTile({ label, value, tone = "neutral" }: { label: string; value: number; tone?: "neutral" | "ok" | "warn" | "danger" }) {
+function SummaryTile({ label, value, tone = "neutral", hint }: { label: string; value: number; tone?: "neutral" | "ok" | "warn" | "danger"; hint?: string }) {
     const toneClass =
         tone === "danger" ? "text-red-600 dark:text-red-400"
             : tone === "warn" ? "text-amber-600 dark:text-amber-400"
                 : tone === "ok" ? "text-green-600 dark:text-green-400"
                     : "text-foreground";
     return (
-        <div className="rounded-md border p-3">
+        <div className="rounded-md border p-3" title={hint}>
             <div className="text-xs text-muted-foreground">{label}</div>
             <div className={`text-2xl font-bold tabular-nums ${toneClass}`}>{value}</div>
         </div>

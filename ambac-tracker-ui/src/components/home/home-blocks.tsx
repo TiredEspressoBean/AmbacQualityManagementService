@@ -646,7 +646,7 @@ function CompetencyCoverageBlock() {
                 variant={uncovered > 0 ? "danger" : "default"}
             />
             <StatTile
-                label="Single-operator skills" value={spof} icon={Wrench}
+                label="Single points of failure" value={spof} icon={Wrench}
                 link="/quality/training/matrix"
                 variant={spof > 0 ? "warning" : "default"}
             />

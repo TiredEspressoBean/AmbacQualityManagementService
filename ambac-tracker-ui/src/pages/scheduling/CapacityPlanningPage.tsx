@@ -147,9 +147,12 @@ function CrewVerdict({ labor, pools, unplanned, forecast }: {
           {unplanned.unplaceable.length} order line{unplanned.unplaceable.length === 1 ? "" : "s"} can't be placed (no due date or no approved routing) — not in the load
         </span>
       )}
+      {/* A capacity term, not the training matrix's "single point of failure": only
+          schedulable operators with every certification the gated work needs count. */}
       {singles.length > 0 && (
-        <Link to="/quality/training/matrix" className="text-amber-700 underline underline-offset-2 dark:text-amber-400">
-          {singles.length} skill{singles.length === 1 ? "" : "s"} only one person can do
+        <Link to="/quality/training/matrix" className="text-amber-700 underline underline-offset-2 dark:text-amber-400"
+          title={`${singles.map((p) => p.name).join(", ")}: only one schedulable operator holds the certification this work needs`}>
+          {singles.length} skill bottleneck{singles.length === 1 ? "" : "s"} — one certified operator on the schedule
         </Link>
       )}
     </div>
