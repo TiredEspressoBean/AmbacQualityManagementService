@@ -148,8 +148,8 @@ def part_label_url(part) -> str:
     """What the label's QR encodes: the unit's own page in this deployment. A phone
     camera opens it, and a scan box resolves it (services/core/scan.resolve_scan), as
     the lot label's QR does. It was a placeholder domain and a path no page answers."""
-    from django.conf import settings
-    return f"{settings.FRONTEND_URL.rstrip('/')}/details/parts/{part.id}"
+    from Tracker.reports.services.barcodes import app_url
+    return app_url(f"/details/parts/{part.id}")
 
 
 def build_part_id_label_context(part, tenant) -> PartIdLabelContext:

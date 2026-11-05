@@ -15,19 +15,23 @@
 #set text(font: sans-font, size: 9pt, fill: ink)
 #set par(justify: false, leading: 0.45em)
 
+// The QR is the main code (user decision 2026-11-05): 1.3", left — the location's
+// page, read by a 2D handheld at arm's length or opened by a phone. The Code 128
+// (LOC:<code>) stays, smaller, as the 1D fallback.
 #let render-label(label) = block(width: 4in - 0.2in, height: 2in - 0.2in, breakable: false)[
   #grid(
-    columns: (1fr, 0.6in),
-    column-gutter: 4pt,
+    columns: (1.3in, 1fr),
+    column-gutter: 8pt,
+    align(left + top)[#svg-img(label.qr_svg, 1.3in)],
     [
       #text(size: 7pt, fill: muted, tracking: 1pt)[LOCATION] \
       #text(size: 20pt, weight: "bold")[#label.name]
       #if label.description != none [ \ #text(size: 7.5pt, fill: muted)[#label.description] ]
+      #v(4pt)
+      #svg-img(label.barcode_svg, 2.3in)
     ],
-    align(right + top)[#svg-img(label.qr_svg, 0.6in)],
   )
   #v(1fr)
-  #align(center)[#svg-img(label.barcode_svg, 3.5in)]
   #text(size: 6.5pt, fill: muted)[#h(1fr) #label.tenant_name · #str(label.print_date)]
 ]
 

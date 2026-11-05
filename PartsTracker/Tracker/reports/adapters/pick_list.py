@@ -123,6 +123,8 @@ class PickListContext(BaseModel):
     # ---- Document metadata ----
     # Code 128 of the work order, so the sheet can be scanned back to the job.
     barcode_svg: str = ""
+    # The work order's page: the sheet scans back to its job (the QR is the main code).
+    qr_svg: str = ""
     tenant_name: str
     generated_date: datetime.date
 
@@ -206,7 +208,7 @@ class PickListAdapter(ReportAdapter):
     def build_context(self, validated_params, user, tenant) -> PickListContext:
         from Tracker.models.mes_lite import WorkOrder
         from Tracker.models.mes_standard import BOM
-        from Tracker.reports.services.barcodes import render_barcode_svg
+        from Tracker.reports.services.barcodes import render_barcode_svg, render_qr_svg, work_order_url
         from Tracker.services.mes.bom import buy_line_item
         from Tracker.services.mes.consumption import plan_draw
         from Tracker.services.scheduling.data import process_graph
@@ -346,6 +348,7 @@ class PickListAdapter(ReportAdapter):
             total_line_count=len(items),
             short_line_count=sum(1 for i in items if i.qty_short),
             barcode_svg=render_barcode_svg(wo.ERP_id or "UNKNOWN", module_height=7.0),
+            qr_svg=render_qr_svg(work_order_url(wo)),
             tenant_name=tenant.name,
             generated_date=today,
         )

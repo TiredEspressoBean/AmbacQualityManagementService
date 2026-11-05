@@ -66,10 +66,18 @@
          label-width: 74pt),
       [],
     ),
-    if data.barcode_svg != "" [
-      #svg-img(data.barcode_svg, 1.25in)
-      #v(-3pt)
-      #align(center)[#text(size: 7.5pt, font: mono-font, fill: muted)[#data.wo_number]]
+    // The QR is the main code (user decision 2026-11-05): the work order's page — the
+    // sheet scans back to its job. The Code 128 of the number is the 1D fallback.
+    // Stacked, so the work-order facts beside them keep their width.
+    align(center)[
+      #if data.at("qr_svg", default: "") != "" [#svg-img(data.qr_svg, 1.05in)]
+      #if data.barcode_svg != "" [
+        #v(-2pt)
+        // Wide enough for a 1D scanner (1.05" didn't decode); the fallback has to work.
+        #svg-img(data.barcode_svg, 1.5in)
+        #v(-3pt)
+        #text(size: 7.5pt, font: mono-font, fill: muted)[#data.wo_number]
+      ]
     ],
   )
 ]

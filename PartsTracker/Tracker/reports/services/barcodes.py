@@ -43,6 +43,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def app_url(path: str) -> str:
+    """The full address of a page in this deployment — what a printed QR encodes, so a
+    phone camera opens it and every scan box resolves it (services/core/scan).
+
+    FRONTEND_URL set without a scheme ("localhost:5173") made scheme-less codes a phone
+    won't open: one is added (http for localhost, https otherwise). Unset, it fails
+    loudly — a silent dead link on a printed label is the thing to avoid (user
+    decision 2026-11-05)."""
+    from django.conf import settings
+    from django.core.exceptions import ImproperlyConfigured
+
+    base = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
+    if not base:
+        raise ImproperlyConfigured(
+            "FRONTEND_URL is not set, so a printed QR code would point nowhere.")
+    if "://" not in base:
+        host = base.split("/")[0].rsplit(":", 1)[0].lower()
+        base = f"{'http' if host in ('localhost', '127.0.0.1') else 'https'}://{base}"
+    return f"{base}/{path.lstrip('/')}"
+
+
+def work_order_url(wo) -> str:
+    """A work order's page — what the traveler's and the pick list's QR encode."""
+    return app_url(f"/workorder/{wo.id}")
+
+
 # ---------------------------------------------------------------------------
 # 1D barcodes (Code 128)
 # ---------------------------------------------------------------------------

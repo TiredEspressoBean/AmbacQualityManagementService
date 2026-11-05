@@ -6,7 +6,8 @@ That place is here, and every scan field asks it.
 
 A code can be:
 - one of our own URLs, from a label's QR code — the path is the answer (a lot's page,
-  a location's, or a unit's: the part ID label's QR);
+  a location's, a unit's — the part ID label — or a work order's: the traveler and the
+  pick list);
 - ``LOC:<code or name>``, from a location label;
 - a lot number, a serial (part ERP id), a work-order number, or a location code or
   name, matched exactly (case-insensitive), tried in that order.
@@ -24,6 +25,8 @@ _LOT_PATH = re.compile(r"^/production/material-lots/([0-9a-f-]{36})/?$", re.I)
 _LOCATION_PATH = re.compile(r"^/production/locations/([^/]+)/?$", re.I)
 # The part ID label's QR: the unit's own page.
 _PART_PATH = re.compile(r"^/details/parts/([0-9a-f-]{36})/?$", re.I)
+# The traveler's and the pick list's QR: the work order's page.
+_WORK_ORDER_PATH = re.compile(r"^/workorder/([0-9a-f-]{36})/?$", re.I)
 
 
 def _frontend_host() -> str:
@@ -31,6 +34,11 @@ def _frontend_host() -> str:
     from django.conf import settings
     url = (getattr(settings, "FRONTEND_URL", "") or "").strip()
     return urlparse(url if "://" in url else f"//{url}").netloc.lower()
+
+
+def _work_order(wo) -> dict:
+    return {"kind": "WORK_ORDER", "id": str(wo.id), "label": wo.ERP_id, "detail": "",
+            "path": f"/workorder/{wo.id}", "item_id": None}
 
 
 def _part(part) -> dict:
@@ -84,6 +92,10 @@ def resolve_scan(tenant, code: str) -> dict | None:
         part = (Parts.objects.filter(tenant=tenant, id=m.group(1))  # tenant-safe: explicit tenant filter
                 .select_related("part_type").first())
         return _part(part) if part is not None else None
+    m = _WORK_ORDER_PATH.match(path)
+    if m:
+        wo = WorkOrder.objects.filter(tenant=tenant, id=m.group(1)).first()  # tenant-safe: explicit tenant filter
+        return _work_order(wo) if wo is not None else None
     m = _LOCATION_PATH.match(path)
     if m:
         # By id; a label printed before locations were records carries the name.
@@ -104,8 +116,7 @@ def resolve_scan(tenant, code: str) -> dict | None:
         return _part(part)
     wo = WorkOrder.objects.filter(tenant=tenant, archived=False, ERP_id__iexact=text).first()  # tenant-safe: explicit tenant filter
     if wo is not None:
-        return {"kind": "WORK_ORDER", "id": str(wo.id), "label": wo.ERP_id, "detail": "",
-                "path": f"/workorder/{wo.id}", "item_id": None}
+        return _work_order(wo)
     loc = find_location(tenant, text)
     if loc is not None:
         return _location(loc)
@@ -113,6 +124,5 @@ def resolve_scan(tenant, code: str) -> dict | None:
     near = list(WorkOrder.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, archived=False, ERP_id__icontains=text)[:2])
     if len(near) == 1:
-        return {"kind": "WORK_ORDER", "id": str(near[0].id), "label": near[0].ERP_id, "detail": "",
-                "path": f"/workorder/{near[0].id}", "item_id": None}
+        return _work_order(near[0])
     return None

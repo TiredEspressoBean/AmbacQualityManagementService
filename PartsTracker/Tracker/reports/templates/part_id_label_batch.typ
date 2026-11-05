@@ -19,15 +19,18 @@
 #set text(font: sans-font, size: 9pt, fill: ink)
 #set par(justify: false, leading: 0.45em)
 
+// Same layout as part_id_label.typ: the QR is the main code (1.3", left), the
+// serial's Code 128 the smaller 1D fallback (user decision 2026-11-05).
 #let render-label(label) = [
   #grid(
-    columns: (1fr, 0.55in),
-    column-gutter: 4pt,
+    columns: (1.3in, 1fr),
+    column-gutter: 8pt,
+    align(left + top)[#svg-img(label.qr_svg, 1.3in)],
     [
       #text(size: 13pt, weight: "bold", font: sans-font)[#label.part_number]
       #if label.revision != none [
         #h(4pt)
-        #text(size: 9pt, fill: muted, weight: "regular")[· #label.revision]
+        #box(text(size: 9pt, fill: muted, weight: "regular")[· #label.revision])
       ]
 
       #v(1pt)
@@ -37,19 +40,12 @@
       #text(size: 7.5pt, font: sans-font)[
         #text(fill: muted)[WO:] #h(2pt) #opt(label.work_order_number)
       ]
-    ],
-    align(right + top)[
-      #svg-img(label.qr_svg, 0.55in)
+      #v(4pt)
+      #svg-img(label.barcode_svg, 2.3in)
     ],
   )
 
-  #v(2pt)
-
-  #align(center)[
-    #svg-img(label.barcode_svg, 3.5in)
-  ]
-
-  #v(1pt)
+  #v(1fr)
 
   #text(size: 6.5pt, fill: muted, font: sans-font)[
     #label.tenant_name

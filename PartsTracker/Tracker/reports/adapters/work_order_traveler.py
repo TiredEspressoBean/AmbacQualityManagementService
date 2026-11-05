@@ -43,7 +43,7 @@ from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
 from Tracker.services.core.clock import tenant_today
-from Tracker.reports.services.barcodes import render_barcode_svg, render_qr_svg
+from Tracker.reports.services.barcodes import render_barcode_svg, render_qr_svg, work_order_url
 
 
 # ---------------------------------------------------------------------------
@@ -517,10 +517,9 @@ class WorkOrderTravelerAdapter(ReportAdapter):
             operations=operations,
             total_operations=len(operations),
             barcode_svg=render_barcode_svg(wo.ERP_id or "UNKNOWN", module_height=8.0),
-            qr_svg=render_qr_svg(
-                f"https://{getattr(tenant, 'slug', None) or 'example'}"
-                f".ambactracker.example/workorder/{wo.id}"
-            ),
+            # The work order's page — it was a placeholder domain, a dead link on
+            # paper that no scan box resolved.
+            qr_svg=render_qr_svg(work_order_url(wo)),
             nonconformances=self._nonconformances(target_part, tenant),
             **self._serials(wo, tenant),
             tenant_name=tenant.name,

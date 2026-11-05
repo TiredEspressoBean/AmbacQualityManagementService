@@ -218,13 +218,42 @@ class ScanTests(_Fixture):
     def test_the_part_label_qr_scans_back_to_the_unit(self):
         """The part ID label's QR was a placeholder domain with a path nothing resolved;
         it's the unit's own page now, and a scan box reads it as the unit (2026-11-05)."""
-        from django.conf import settings
         from Tracker.reports.adapters.part_id_label import part_label_url
         url = part_label_url(self.part)
-        self.assertTrue(url.startswith(settings.FRONTEND_URL.rstrip('/')))
+        self.assertTrue(url.startswith(("http://", "https://")), url)  # a phone opens it
         hit = self._scan(url).json()
         self.assertEqual((hit["kind"], hit["id"], hit["label"]), ("PART", str(self.part.id), "INJ-9001"))
         # The whole code must be the address: junk left in a scan box before it isn't
         # read as a host (a scheme-less label address is only ever our own host).
         bare = url.split("://", 1)[-1]
         self.assertEqual(self._scan(f"NOT-A-THING-99{bare}").status_code, 404)
+
+    def test_every_label_qr_scans_back_to_its_record(self):
+        """The QR is each label's main code (2026-11-05): every one is our own page's
+        full address, and every scan box resolves it to the record it names."""
+        from Tracker.reports.adapters.location_label import location_label_url
+        from Tracker.reports.adapters.material_lot_label import lot_label_url
+        from Tracker.reports.services.barcodes import work_order_url
+        lot = self._lot(number="LOT-QR-1")
+        rack = self._loc("Rack QR", code="RQ")
+        for url, kind, rid in ((lot_label_url(lot), "LOT", lot.id),
+                               (location_label_url(rack), "LOCATION", rack.id),
+                               (work_order_url(self.wo), "WORK_ORDER", self.wo.id)):  # traveler, pick list
+            self.assertTrue(url.startswith(("http://", "https://")), url)
+            hit = self._scan(url).json()
+            self.assertEqual((hit["kind"], hit["id"]), (kind, str(rid)), url)
+
+    def test_a_label_address_always_has_a_scheme(self):
+        """FRONTEND_URL without a scheme printed codes a phone won't open; with none at
+        all it fails loudly rather than print a dead link."""
+        from django.core.exceptions import ImproperlyConfigured
+        from django.test import override_settings
+        from Tracker.reports.services.barcodes import app_url
+        with override_settings(FRONTEND_URL="localhost:5173"):
+            self.assertEqual(app_url("/workorder/x"), "http://localhost:5173/workorder/x")
+        with override_settings(FRONTEND_URL="app.uqmes.com/"):
+            self.assertEqual(app_url("/workorder/x"), "https://app.uqmes.com/workorder/x")
+        with override_settings(FRONTEND_URL="https://app.uqmes.com"):
+            self.assertEqual(app_url("workorder/x"), "https://app.uqmes.com/workorder/x")
+        with override_settings(FRONTEND_URL=""), self.assertRaises(ImproperlyConfigured):
+            app_url("/workorder/x")

@@ -29,7 +29,6 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from django.conf import settings
 from pydantic import BaseModel
 from rest_framework import serializers
 
@@ -101,6 +100,12 @@ def _qty(value) -> str:
     return text.rstrip("0").rstrip(".") if "." in text else text
 
 
+def lot_label_url(lot) -> str:
+    """What the lot label's QR encodes: the lot's page (resolve_scan reads it back)."""
+    from Tracker.reports.services.barcodes import app_url
+    return app_url(f"/production/material-lots/{lot.id}")
+
+
 def build_material_lot_label_context(lot, tenant) -> MaterialLotLabelContext:
     """One label for one lot. Caller is responsible for tenant filtering."""
     item = lot.item
@@ -110,7 +115,7 @@ def build_material_lot_label_context(lot, tenant) -> MaterialLotLabelContext:
     if lot.received_as_quantity is not None and lot.received_as_unit not in ("", "STOCK"):
         one, many = {"BOX": ("box", "boxes"), "LB": ("lb", "lb")}[lot.received_as_unit]
         received_as = f"{_qty(lot.received_as_quantity)} {one if lot.received_as_quantity == 1 else many}"
-    qr_url = f"{settings.FRONTEND_URL.rstrip('/')}/production/material-lots/{lot.id}"
+    qr_url = lot_label_url(lot)
     return MaterialLotLabelContext(
         item_name=lot.item_name or "—",
         part_number=part_number,

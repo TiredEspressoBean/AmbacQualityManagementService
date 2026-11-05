@@ -10,7 +10,6 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from django.conf import settings
 from pydantic import BaseModel
 from rest_framework import serializers
 
@@ -51,8 +50,15 @@ class LocationLabelParamsSerializer(serializers.Serializer):
         return names
 
 
+def location_label_url(loc) -> str:
+    """What the location label's QR encodes: the location's page (resolve_scan reads it
+    back, as it does the Code 128's LOC:<code>)."""
+    from Tracker.reports.services.barcodes import app_url
+    return app_url(f"/production/locations/{loc.id}")
+
+
 def build_location_label_context(loc, tenant) -> LocationLabelContext:
-    url = f"{settings.FRONTEND_URL.rstrip('/')}/production/locations/{loc.id}"
+    url = location_label_url(loc)
     parent = loc.parent.path if loc.parent_id else ""
     return LocationLabelContext(
         name=loc.name, description=loc.description or parent or None,

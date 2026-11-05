@@ -95,8 +95,11 @@
     columns: (auto, auto),
     column-gutter: 12pt,
     align: (right + horizon, center + horizon),
+    // The QR is the main code (user decision 2026-11-05): the work order's page, for a
+    // 2D handheld or a phone. The Code 128 of the number stays, smaller, as the 1D
+    // fallback, with the number in text under it.
     [
-      #svg-img(data.barcode_svg, 2.3in)
+      #svg-img(data.barcode_svg, 1.6in)
       #v(-2pt)
       #text(size: 12pt, weight: "bold", font: mono-font)[#data.wo_number]
       #if data.serial != none [
@@ -105,7 +108,7 @@
       ]
     ],
     [
-      #svg-img(data.qr_svg, 0.85in)
+      #svg-img(data.qr_svg, 1.2in)
       #v(1pt)
       #text(size: 6.5pt, fill: muted, font: sans-font)[Scan to open]
     ],

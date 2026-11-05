@@ -16,10 +16,15 @@
 #set text(font: sans-font, size: 9pt, fill: ink)
 #set par(justify: false, leading: 0.45em)
 
+// The QR is the main code (user decision 2026-11-05): 1.3" — about 6 printer dots a
+// module at 203 dpi for these addresses, read by a 2D handheld at arm's length — and
+// a phone camera opens the lot's page. The Code 128 stays, smaller, as the fallback
+// for a 1D scanner and to read the number from.
 #let render-label(label) = block(width: 4in - 0.2in, height: 2in - 0.2in, breakable: false)[
   #grid(
-    columns: (1fr, 0.6in),
-    column-gutter: 4pt,
+    columns: (1.3in, 1fr),
+    column-gutter: 8pt,
+    align(left + top)[#svg-img(label.qr_svg, 1.3in)],
     [
       #text(size: 12pt, weight: "bold")[#label.item_name]
       #if label.part_number != none [
@@ -41,11 +46,11 @@
         #if label.received_as != none [ (#label.received_as)]
         #if label.heat_number != none [ · #text(fill: muted)[Heat] #label.heat_number ]
       ]
+      #v(2pt)
+      #svg-img(label.barcode_svg, 2.3in)
     ],
-    align(right + top)[#svg-img(label.qr_svg, 0.6in)],
   )
-  #v(1pt)
-  #align(center)[#svg-img(label.barcode_svg, 3.5in)]
+  #v(1fr)
   #text(size: 6.5pt, fill: muted)[
     Recv #opt(if label.received_date != none { str(label.received_date) } else { none })
     #if label.expiration_date != none [ · #text(fill: ink, weight: "bold")[Use by #str(label.expiration_date)]]

@@ -60,17 +60,22 @@
 // Label body — everything in one flow to avoid overflow to second page
 // ----------------------------------------------------------------------------
 
-// Top section: two columns (part info | QR code)
+// The QR is the main code (user decision 2026-11-05): 1.3", left — about 6 printer
+// dots a module at 203 dpi, read by a 2D handheld at arm's length; a phone camera opens
+// the unit's page. The Code 128 of the serial stays, smaller, as the 1D fallback.
 #grid(
-  columns: (1fr, 0.55in),
-  column-gutter: 4pt,
+  columns: (1.3in, 1fr),
+  column-gutter: 8pt,
 
-  // Left cell: part number + revision + serial + WO
+  align(left + top)[#svg-img(data.qr_svg, 1.3in)],
+
+  // Part number + revision + serial + WO, then the serial's Code 128
   [
     #text(size: 13pt, weight: "bold", font: sans-font)[#data.part_number]
     #if data.revision != none [
       #h(4pt)
-      #text(size: 9pt, fill: muted, weight: "regular")[· #data.revision]
+      // One unit: a long part name pushes it to the next line whole, not "Rev" / "1".
+      #box(text(size: 9pt, fill: muted, weight: "regular")[· #data.revision])
     ]
 
     #v(1pt)
@@ -80,22 +85,12 @@
     #text(size: 7.5pt, font: sans-font)[
       #text(fill: muted)[WO:] #h(2pt) #opt(data.work_order_number)
     ]
-  ],
-
-  // Right cell: QR code
-  align(right + top)[
-    #svg-img(data.qr_svg, 0.55in)
+    #v(4pt)
+    #svg-img(data.barcode_svg, 2.3in)
   ],
 )
 
-#v(2pt)
-
-// Middle section: barcode (centered, wide)
-#align(center)[
-  #svg-img(data.barcode_svg, 3.5in)
-]
-
-#v(1pt)
+#v(1fr)
 
 // Footer: tenant + date (muted, tiny)
 #text(size: 6.5pt, fill: muted, font: sans-font)[
