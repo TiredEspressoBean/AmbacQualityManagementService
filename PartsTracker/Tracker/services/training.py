@@ -253,11 +253,14 @@ def get_required_training(step, process=None, equipment_type=None):
             if req.min_level > required.get(tt, 0):
                 required[tt] = req.min_level
 
-    _absorb(step.training_requirements.select_related('training_type').all())
+    # A deleted requirement is archived (soft delete), and a related manager doesn't
+    # leave those out: Start Work and the scheduler's qualified list kept enforcing
+    # requirements the editor showed as removed (hunt 2026-11-05).
+    _absorb(step.training_requirements.filter(archived=False).select_related('training_type'))
     if process:
-        _absorb(process.training_requirements.select_related('training_type').all())
+        _absorb(process.training_requirements.filter(archived=False).select_related('training_type'))
     if equipment_type:
-        _absorb(equipment_type.training_requirements.select_related('training_type').all())
+        _absorb(equipment_type.training_requirements.filter(archived=False).select_related('training_type'))
 
     return required
 
@@ -452,7 +455,7 @@ def get_role_requirements(job_role):
     if job_role is None:
         return {}
     required: dict = {}
-    for req in job_role.training_requirements.select_related('training_type').all():
+    for req in job_role.training_requirements.filter(archived=False).select_related('training_type'):
         tt = req.training_type
         if req.min_level > required.get(tt, 0):
             required[tt] = req.min_level
@@ -509,7 +512,8 @@ def build_training_matrix(tenant=None):
     users_qs = (User.objects.filter(user_type='INTERNAL', is_active=True)
                 .filter(Q(user_roles__group__name__in=('Operator', 'Shift Lead', 'QA Inspector'))
                         | Q(training_records__archived=False)
-                        | Q(job_role__training_requirements__isnull=False))
+                        | Q(job_role__training_requirements__isnull=False,
+                            job_role__training_requirements__archived=False))
                 .distinct())
     if tenant:
         users_qs = users_qs.filter(tenant=tenant)

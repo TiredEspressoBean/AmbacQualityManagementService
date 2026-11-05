@@ -406,6 +406,15 @@ class TrainingAuthorizationTests(TrainingModuleTestCase):
         required = get_required_training(self.inspection_step)
         self.assertEqual(required, {self.cmm_training: CompetencyLevel.EXPERT})
 
+    def test_a_deleted_requirement_isnt_enforced(self):
+        """Deleting a requirement archives it; it stops counting (hunt 2026-11-05)."""
+        req = TrainingRequirement.objects.create(
+            training_type=self.cmm_training, step=self.inspection_step,
+            min_level=CompetencyLevel.EXPERT, tenant=self.tenant,
+        )
+        req.delete()  # the API's DELETE soft-deletes
+        self.assertEqual(get_required_training(self.inspection_step), {})
+
 
 class RenewedTrainingDoesNotRemindTests(TrainingModuleTestCase):
     """A record the person has since renewed (a later one of the same type) isn't an
