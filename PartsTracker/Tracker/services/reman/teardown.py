@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 from django.db import transaction
-from django.utils import timezone
 
 from Tracker.models import Core, Processes, ProcessStatus, WorkOrder, WorkOrderStatus
 from Tracker.services.reman.core import start_core_disassembly
@@ -160,19 +159,31 @@ def _entry_step(process):
 
 def _create_teardown_work_order(tenant, core_type, process, quantity, *, status,
                                 notes, expected_start=None):
-    now = timezone.now()
-    # Microseconds as well as seconds: two batches accepted in the same second would
-    # otherwise mint the same ERP id.
-    erp_id = f"TEARDOWN-{now.strftime('%Y%m%d-%H%M%S-%f')}-{core_type.ID_prefix or 'CORE'}"
-    return WorkOrder.objects.create(
-        tenant=tenant,
-        ERP_id=erp_id,
-        workorder_status=status,
-        quantity=quantity,
-        process=process,
-        expected_start=expected_start,
-        notes=notes,
-    )
+    # A short sequential number in the house style — TD-<core prefix>-<year>-NNNN, e.g.
+    # TD-INJ-2026-0001 — not TEARDOWN-<date>-<time>-<microseconds>-INJ (35 characters:
+    # unreadable on a screen or aloud, and it widened every dispatch-list column).
+    # Work-order numbers carry no unique constraint, so locking the core type serialises
+    # its teardowns while the next number is taken (the sequence helper only locks the
+    # last row, which doesn't stop two first-of-the-year numbers racing).
+    from Tracker.models import PartTypes
+    from Tracker.services.core.clock import tenant_today
+    from Tracker.utils.sequences import generate_next_sequence
+
+    code = (core_type.ID_prefix or 'CORE').strip().strip('-').upper() or 'CORE'
+    with transaction.atomic():
+        PartTypes.objects.select_for_update().filter(pk=core_type.pk).first()  # tenant-safe: by the core type's pk
+        erp_id = generate_next_sequence(
+            queryset=WorkOrder.objects, number_field='ERP_id',
+            prefix=f"TD-{code}-{tenant_today(tenant).year}-", padding=4, tenant=tenant)
+        return WorkOrder.objects.create(
+            tenant=tenant,
+            ERP_id=erp_id,
+            workorder_status=status,
+            quantity=quantity,
+            process=process,
+            expected_start=expected_start,
+            notes=notes,
+        )
 
 
 def plan_teardown(cores: list[Core], user, *, start_by=None,
