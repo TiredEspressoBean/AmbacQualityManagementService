@@ -177,6 +177,23 @@ class ScrapRedecisionTests(FalseFailCorrectionTests):
         self.assertIn("changed from Scrap", self.ncr.resolution_notes)
         self.assertIn("cosmetic", self.ncr.resolution_notes)
 
+    def test_changing_return_to_supplier_reinstates_the_part(self):
+        """Return to Supplier cancels the part, and CANCELLED outranks the other
+        decisions' statuses — re-deciding it left the part cancelled (hunt 2026-11-05)."""
+        from Tracker.services.qms.disposition import decide_disposition
+        decide_disposition(self.ncr, disposition_type="RETURN_TO_SUPPLIER", authorized_by=self.manager,
+                           notes="Vendor defect.")
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.part_status, PartsStatus.CANCELLED)
+        with self.assertRaisesMessage(ValueError, "say why"):
+            decide_disposition(self.ncr, disposition_type="REWORK", authorized_by=self.manager)
+        decide_disposition(self.ncr, disposition_type="REWORK", authorized_by=self.manager,
+                           notes="We can dress it in house.")
+        self.part.refresh_from_db()
+        self.ncr.refresh_from_db()
+        self.assertNotEqual(self.part.part_status, PartsStatus.CANCELLED)
+        self.assertIn("changed from Return to Supplier", self.ncr.resolution_notes)
+
     def test_an_edit_adds_to_the_notes_rather_than_replacing_them(self):
         from rest_framework.request import Request
         from rest_framework.test import APIRequestFactory

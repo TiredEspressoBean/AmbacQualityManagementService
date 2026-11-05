@@ -391,7 +391,9 @@ export default function EditDispositionFormPage() {
             setDecisionGate({ values, kind: "scrap" })
             return
         }
-        if (changing && disposition?.disposition_type === "SCRAP") {
+        // Return to Supplier is undone the same way: it cancelled the part.
+        if (changing && (disposition?.disposition_type === "SCRAP"
+            || disposition?.disposition_type === "RETURN_TO_SUPPLIER")) {
             setDecisionGate({ values, kind: "unscrap" })
             return
         }
@@ -1210,13 +1212,18 @@ export default function EditDispositionFormPage() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Changing a Scrap decision un-scraps the part: the reason goes on the record. */}
+            {/* Changing a Scrap / Return to Supplier decision reinstates the part: the
+                reason goes on the record. */}
             <ReasonPromptDialog
                 open={decisionGate?.kind === "unscrap"}
                 onOpenChange={(o) => { if (!o) setDecisionGate(null) }}
-                title="Change the Scrap decision?"
-                description="The part comes back out of scrap and the new decision applies. Both decisions and your reason stay on the disposition."
-                placeholder="Why the scrap decision was wrong"
+                title={disposition?.disposition_type === "RETURN_TO_SUPPLIER"
+                    ? "Change the Return to Supplier decision?" : "Change the Scrap decision?"}
+                description={disposition?.disposition_type === "RETURN_TO_SUPPLIER"
+                    ? "The part is reinstated and the new decision applies. Both decisions and your reason stay on the disposition."
+                    : "The part comes back out of scrap and the new decision applies. Both decisions and your reason stay on the disposition."}
+                placeholder={disposition?.disposition_type === "RETURN_TO_SUPPLIER"
+                    ? "Why the return decision was wrong" : "Why the scrap decision was wrong"}
                 confirmLabel="Change decision"
                 onSubmit={(reason) => {
                     const v = decisionGate?.values

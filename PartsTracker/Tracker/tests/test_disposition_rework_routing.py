@@ -88,6 +88,18 @@ class DispositionReworkRoutingTests(TenantContextMixin, VectorTestCase):
         visit = StepExecution.objects.get(part=self.part, step=self.rework_step, exited_at__isnull=True)
         self.assertIsNone(visit.assigned_to_id)
 
+    def test_a_later_save_doesnt_route_a_part_thats_moved_on(self):
+        """A disposition left open (an operator's MAJOR rework without containment) is
+        saved again later — QA takes it, the edit form re-saves. A part that already
+        went through rework and moved on isn't dragged back (hunt 2026-11-05)."""
+        from Tracker.models import Parts
+        from Tracker.services.qms.disposition import route_part_to_rework_if_needed
+        disp = self._rework_disposition()
+        Parts.objects.filter(pk=self.part.pk).update(step=self.task_step, part_status="COMPLETED")
+        route_part_to_rework_if_needed(disp, self.user)
+        self.part.refresh_from_db()
+        self.assertEqual((self.part.step_id, self.part.part_status), (self.task_step.id, "COMPLETED"))
+
     def test_the_rework_split_ends_the_failed_visit(self):
         """The visit the part failed is ROLLED_BACK *and exited*; it used to keep
         exited_at NULL, so get_current_execution could return it instead of the

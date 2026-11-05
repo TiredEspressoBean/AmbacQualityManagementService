@@ -382,23 +382,32 @@ def decide_disposition(
     # Changing a Scrap decision while the disposition is open un-scraps the part, with
     # a reason; both decisions stay on the record (user decision 2026-10-22). It used to
     # half-apply: the part moved to Rework but stayed SCRAPPED.
+    # Return to Supplier is undone the same way: it leaves the part CANCELLED, which
+    # outranks every other decision's status, so re-deciding it used to leave the part
+    # cancelled (hunt 2026-11-05).
     unscrap = None
-    if (disposition.disposition_type == 'SCRAP' and disposition_type != 'SCRAP'
-            and disposition.part_id):
-        from Tracker.models import Parts, PartsStatus
+    from Tracker.models import PartsStatus
+    # type: (status it left the part in, label, verb, past, a core in that state)
+    _terminal = {'SCRAP': (PartsStatus.SCRAPPED, 'Scrap', 'un-scraps', 'un-scrapped', 'scrapped'),
+                 'RETURN_TO_SUPPLIER': (PartsStatus.CANCELLED, 'Return to Supplier',
+                                        'reinstates', 'reinstated', 'returned')}
+    was = _terminal.get(disposition.disposition_type)
+    if was and disposition_type != disposition.disposition_type and disposition.part_id:
+        from Tracker.models import Parts
+        status, label, verb, done, core_state = was
         part = Parts.objects.get(pk=disposition.part_id)  # tenant-safe: by the disposition's FK
-        if part.part_status == PartsStatus.SCRAPPED:
+        if part.part_status == status:
             if not (notes or '').strip():
-                raise ValueError("Changing a Scrap decision un-scraps the part: say why.")
+                raise ValueError(f"Changing a {label} decision {verb} the part: say why.")
             from Tracker.services.reman.core_steps import core_of
             if core_of(part) is not None:
                 raise ValueError(
-                    "This unit is a core; a scrapped core is reinstated from its core page, "
-                    "not by changing the disposition.")
+                    f"This unit is a core; a {core_state} core is reinstated from its core "
+                    "page, not by changing the disposition.")
             unscrap = part
             who = (authorized_by.get_full_name() or authorized_by.get_username()) if authorized_by else 'someone'
-            notes = (f"Decision changed from Scrap to {valid[disposition_type]} by {who}; "
-                     f"the part was un-scrapped. Reason: {notes.strip()}")
+            notes = (f"Decision changed from {label} to {valid[disposition_type]} by {who}; "
+                     f"the part was {done}. Reason: {notes.strip()}")
 
     if disposition_type == 'NOT_NONCONFORMANCE':
         # Only for a finding that was withdrawn: its capture voided, its report
@@ -598,6 +607,15 @@ def route_part_to_rework_if_needed(disposition: QuarantineDisposition, user) -> 
         return
     part = disposition.part
     if part is None:
+        return
+    from Tracker.models import PartsStatus
+    part.refresh_from_db()
+    # Only a part still awaiting the rework the decision set (apply_disposition_to_part
+    # makes it REWORK_NEEDED from held). Any later save of the disposition — QA taking
+    # it, the edit form — used to route again: a part already reworked, even
+    # COMPLETED or SHIPPED, had its visit rolled back and was split back into rework
+    # (capture-recapture hunt 2026-11-05).
+    if part.part_status != PartsStatus.REWORK_NEEDED:
         return
     process = part.work_order.process if part.work_order_id else None
     if process is None:
