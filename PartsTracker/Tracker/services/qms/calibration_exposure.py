@@ -158,7 +158,9 @@ def exposure_for(record) -> CalibrationExposure:
             part = getattr(ex, 'part', None)
             who = m.recorded_by
             by_visit[key] = row = {
-                'id': f"reading-{m.pk}", 'part': part.ERP_id if part else '',
+                # The reading's own id: the API types `id` as a UUID, and a made-up
+                # "reading-<pk>" made the client reject the whole list.
+                'id': str(m.pk), 'part': part.ERP_id if part else '',
                 'part_id': str(part.pk) if part else None,
                 'step': ex.step.name if getattr(ex, 'step_id', None) else '',
                 'created_at': m.recorded_at,

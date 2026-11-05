@@ -130,3 +130,7 @@ class CalibrationExposureTests(TenantTestCase):
         fail = self._cal(D(2026, 7, 1), 'FAIL')
         rows = [r for r in exposure_for(fail).reports if r.part == "NZ-1"]
         self.assertEqual([(r.report_number, r.step, r.status) for r in rows], [("", "Torque", "FAIL")])
+        # The API types `id` as a UUID and the generated client rejects the whole
+        # response otherwise — a backend test can't see that, so check the shape here.
+        import uuid
+        self.assertEqual(rows[0].id, str(uuid.UUID(rows[0].id)))
