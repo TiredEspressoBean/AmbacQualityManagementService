@@ -224,3 +224,7 @@ class ScanTests(_Fixture):
         self.assertTrue(url.startswith(settings.FRONTEND_URL.rstrip('/')))
         hit = self._scan(url).json()
         self.assertEqual((hit["kind"], hit["id"], hit["label"]), ("PART", str(self.part.id), "INJ-9001"))
+        # The whole code must be the address: junk left in a scan box before it isn't
+        # read as a host (a scheme-less label address is only ever our own host).
+        bare = url.split("://", 1)[-1]
+        self.assertEqual(self._scan(f"NOT-A-THING-99{bare}").status_code, 404)

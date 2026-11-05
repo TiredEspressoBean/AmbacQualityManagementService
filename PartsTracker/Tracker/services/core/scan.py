@@ -26,6 +26,13 @@ _LOCATION_PATH = re.compile(r"^/production/locations/([^/]+)/?$", re.I)
 _PART_PATH = re.compile(r"^/details/parts/([0-9a-f-]{36})/?$", re.I)
 
 
+def _frontend_host() -> str:
+    """This deployment's frontend host[:port], with or without a scheme in the setting."""
+    from django.conf import settings
+    url = (getattr(settings, "FRONTEND_URL", "") or "").strip()
+    return urlparse(url if "://" in url else f"//{url}").netloc.lower()
+
+
 def _part(part) -> dict:
     return {"kind": "PART", "id": str(part.id), "label": part.ERP_id,
             "detail": part.part_type.name if part.part_type_id else "",
@@ -57,9 +64,17 @@ def resolve_scan(tenant, code: str) -> dict | None:
 
     is_url = text.lower().startswith(("http://", "https://"))
     # A label printed where FRONTEND_URL has no scheme ("host:port/path") encodes the
-    # address without one. Read it as a URL only when its path is one of our label
-    # paths, so a lot number or serial that happens to hold a slash is still looked up.
-    path = urlparse(text if is_url else f"//{text}").path if (is_url or "/" in text) else ""
+    # address without one. Read it as a URL only when its host is this deployment's own
+    # (so junk typed before a scan — "…NOT-A-THING-99localhost:5173/details/…" — isn't
+    # taken as a host) and its path is one of our label paths; a lot number or serial
+    # that happens to hold a slash is still looked up.
+    path = ""
+    if is_url:
+        path = urlparse(text).path
+    elif "/" in text:
+        bare = urlparse(f"//{text}")
+        if bare.netloc and bare.netloc.lower() == _frontend_host():
+            path = bare.path
     m = _LOT_PATH.match(path)
     if m:
         lot = MaterialLot.objects.filter(tenant=tenant, id=m.group(1)).first()  # tenant-safe: explicit tenant filter

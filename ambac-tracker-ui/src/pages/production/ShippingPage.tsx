@@ -195,9 +195,17 @@ function ScanToPick({ group, allGroups, onUnit, onLot, picked, pickedLots }: {
                     + `${elsewhere.customer_name ? ` (${elsewhere.customer_name})` : ""}, not this one.`);
                 return;
             }
-            // Not ready to ship anywhere: say where it is.
+            // Not ready to ship anywhere: say why — already gone, or where it is.
             try {
                 const part = await api.api_Parts_retrieve({ params: { id: hit.id } });
+                if (part.part_status === "SHIPPED") {
+                    // Which shipment: the Shipped list's search matches a serial.
+                    const found = await api.api_CustomerShipments_list({ queries: { search: part.ERP_id, limit: 1 } })
+                        .catch(() => null);
+                    const number = found?.results?.[0]?.shipment_number;
+                    toast.error(`${part.ERP_id} has already shipped${number ? ` (${number})` : ""}.`);
+                    return;
+                }
                 const at = part.step_name ? ` — it's at ${part.step_name}` : "";
                 toast.error(`${part.ERP_id} isn't ready to ship: it isn't at its Ship step${at}`
                     + ` (${String(part.part_status ?? "").toLowerCase().replace(/_/g, " ")}).`);
@@ -205,6 +213,10 @@ function ScanToPick({ group, allGroups, onUnit, onLot, picked, pickedLots }: {
                 toast.error(`${hit.label} isn't ready to ship.`);
             }
         } finally {
+            // Clear after EVERY scan, ticked or refused: a scanner types the next code
+            // straight in, and a refusal left in the box was glued onto it — every scan
+            // after the first refusal failed. The message names what was scanned.
+            setCode("");
             setBusy(false);
         }
     };
