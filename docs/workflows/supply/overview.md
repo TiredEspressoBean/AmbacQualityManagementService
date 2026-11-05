@@ -298,8 +298,8 @@ in the lot's history.
 Labels print from the row menu, or from the **Print labels** action on the toast
 after a batch receipt, which covers every lot just created.
 
-A label carries the item and part number, **LOT number with a barcode**, a **QR
-code to the lot**, supplier and supplier lot, quantity (as *3 boxes* when counted
+A label carries a large **QR code to the lot** — the code to scan — the item and part
+number, the **LOT number with a smaller barcode**, supplier and supplier lot, quantity (as *3 boxes* when counted
 that way), heat number, received date, use-by date, company name and print date.
 
 !!! note "A label never shows status"
@@ -325,8 +325,8 @@ different questions, so they are different sheets:
 ### The Material Requisition
 
 The per-job document, printed when the job is released. Its header carries the
-work order, part, quantity and due date, with a barcode of the work order so the
-sheet scans back to the job; a banner says up front how many lines are short.
+work order, part, quantity and due date, with a QR code and a barcode of the work
+order so the sheet scans back to the job; a banner says up front how many lines are short.
 
 One row per component:
 

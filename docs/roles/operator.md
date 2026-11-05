@@ -62,11 +62,11 @@ It takes more than work orders:
 
 | Scan or type | Opens |
 |--------------|-------|
+| The **QR code** on any printed label or sheet | Whatever it points at — a part label's opens its work order with that unit ticked, as a serial does |
 | A **work order** number | That work order |
 | A **serial** on a part or WIP tag | Its work order, with **Start work on parts** open and that unit ticked |
 | A **lot number** | That material lot |
-| A **location label** (the barcode reads `LOC:…`) | That location |
-| The **QR code** on any printed label | Whatever it points at |
+| A **location label**'s barcode (it reads `LOC:…`) | That location |
 
 !!! tip "Scan the unit, not the paperwork"
     Scanning the serial ticks the exact unit in Start Work, which is the one

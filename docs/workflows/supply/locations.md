@@ -37,9 +37,9 @@ that tree, and **counts roll up** — a rack reports what its bins hold.
 
     Turn the switch **off** to narrow it to what is on the rack itself.
 
-Print **location labels** as a thermal label or a Letter sheet. A label carries
-**LOC:&lt;code&gt;** when the location has a label code, otherwise **LOC:&lt;name&gt;** —
-and older labels still scan.
+Print **location labels** as a thermal label or a Letter sheet. A label's QR code
+opens the location; its barcode reads **LOC:&lt;code&gt;** when the location has a
+label code, otherwise **LOC:&lt;name&gt;** — and older labels still scan.
 
 ### What a location can refuse
 
@@ -313,23 +313,31 @@ lead marks them **Mark all keyed** and they leave the tab.
 
 ## Scanning
 
-Every scan box — Home, Locations, staging, and the move and ship dialogs —
-accepts the same things:
+Scan the **QR code**. Every printed label and sheet carries one as its main code —
+material lot labels, part labels, location labels, the traveler and the material
+requisition — and it is the address of that record's page, so a phone camera opens
+it too. Each also keeps a smaller **barcode** of its number, for a scanner that
+can't read QR.
 
+Every scan box — Home, Locations, staging, cycle counts, and the move and ship
+dialogs — accepts the same things:
+
+- the QR code on any printed label or sheet
 - lot numbers
 - serial numbers
 - work orders
-- location labels (`LOC:<code>`, or `LOC:<name>` where the location has no label code)
-- the QR code on a printed label
+- location labels' barcodes (`LOC:<code>`, or `LOC:<name>` where the location has no
+  label code)
 
 Staging's **Took another** takes a scan and records the lot actually used.
 
 !!! tip "Setting up a scanner"
-    Use a **keyboard-wedge** scanner — one that types what it reads — paired to
-    the tablet as a **Bluetooth keyboard**. Configure it with:
+    Use a **2D imaging** scanner, which reads QR codes (an older laser scanner
+    reads only the barcodes), set up as a **keyboard-wedge** — it types what it
+    reads — paired to the tablet as a **Bluetooth keyboard**. Configure it with:
 
     - an **Enter suffix**, so a scan submits the box it lands in
-    - **Code 128** and **QR** enabled
+    - **QR** and **Code 128** enabled
 
     No driver or app is needed: if the scanner can type into a text box, it
     works everywhere scanning is accepted.

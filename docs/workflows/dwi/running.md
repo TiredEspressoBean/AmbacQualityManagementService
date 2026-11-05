@@ -555,8 +555,8 @@ network or scanner is out, work does not stop — the **paper traveller** does.
 
 Print the traveller for the work order before you need it. It carries, per
 operation, **Operator / Date**, **Inspector / Date**, **Acc**, **Rej** and
-**Remarks** write-in columns, a **Sign-off Key** for initials, and the header
-barcode.
+**Remarks** write-in columns, a **Sign-off Key** for initials, and the work order's
+QR code and barcode in the header.
 
 !!! important "Paper is a fallback, not a second record"
     The traveller says so itself: *"The digital work order is the system of
@@ -568,7 +568,7 @@ barcode.
 
 ### Catching up afterwards
 
-1. Scan the header barcode, or type the work order, to get back to the job
+1. Scan the header QR code, or type the work order, to get back to the job
 2. Work each substep as normal, entering the values from the sheet
 3. Note on the sheet who signed each operation — the Sign-off Key initials are
    the record of that, and the paper stays in the binder
@@ -589,8 +589,8 @@ barcode.
     up on their behalf.
 
 !!! tip "Scanning still works on paper"
-    The header carries the work-order barcode precisely so the sheet can take
-    you back to the right job without typing. See
+    The header carries the work order's QR code (and its barcode) precisely so the
+    sheet can take you back to the right job without typing. See
     [Scanning](../supply/locations.md#scanning).
 
 ## Next Steps
