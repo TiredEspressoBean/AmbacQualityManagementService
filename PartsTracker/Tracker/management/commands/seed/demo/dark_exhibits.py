@@ -35,6 +35,7 @@ class DemoDarkExhibitSeeder(BaseSeeder):
         out['coc_customer'] = self.seed_coc_customer()
         out['customer_property'] = self.seed_customer_property()
         out['consumption'] = self.seed_material_usage(users)
+        out['abc_history'] = self.seed_abc_history(users)
         out['cycle_count'] = self.seed_cycle_count(users)
         out['doc_control'] = self.seed_document_control(users)
         out['export_control'] = self.seed_export_control()
@@ -284,7 +285,8 @@ class DemoDarkExhibitSeeder(BaseSeeder):
         from Tracker.models import CycleCount, StorageLocation
         from Tracker.services.mes import cycle_count as cc
 
-        if CycleCount.objects.exists():
+        # The ABC history is applied counts; only an unfinished one means this already ran.
+        if CycleCount.objects.filter(status__in=['OPEN', 'SUBMITTED']).exists():
             return None
         loc = (StorageLocation.objects.filter(name__icontains='Main Stores').first()
                or StorageLocation.objects.first())
@@ -299,6 +301,66 @@ class DemoDarkExhibitSeeder(BaseSeeder):
         cc.submit_count(count, counter)
         self.log(f"  Cycle count: {count.count_number} submitted at {loc.name} (awaiting apply)")
         return count.count_number
+
+    # ------------------------------------------------------------------ #
+    # Receiving / buyers — ABC cycle-count cadences
+    # ------------------------------------------------------------------ #
+    # Item -> (class, days since its last applied count). The A and B items show the
+    # cadences working: one of each counted recently, one of each overdue. The Common
+    # Rail Injector stays C and never counted.
+    ABC_HISTORY = {
+        'Control Valve Assembly': ('A', 12),     # due again in 18 days
+        'Solenoid Coil': ('A', 41),              # 11 days overdue (every 30)
+        'Injector Nozzle Assembly': ('B', 35),   # due in 55 days
+        'Injector Spring': ('B', 100),           # 10 days overdue (every 90)
+        'Seal & O-Ring Kit': ('C', 200),         # due in 165 days
+    }
+
+    def seed_abc_history(self, users):
+        """Give a few items an A or B class and a counting history, so the Due tab shows
+        the cadences — counted recently, overdue, never counted — and the accuracy strip
+        and 12-month trend have counts behind them.
+
+        Each count is started, counted, submitted and applied through the cycle-count
+        service, then dated back to when it was done. They count exactly what's on the
+        record: applying a difference would move today's stock, which other exhibits
+        (shortages, staging) are built on.
+        """
+        from Tracker.models import CycleCount, Material, PartTypes
+        from Tracker.services.mes import cycle_count as cc
+
+        counter = self._pick_user(users, 'luis.recv@demo.ambac.com')
+        lead = self._pick_user(users, 'casey.dual@demo.ambac.com')
+        if counter is None or lead is None:
+            return 0
+        done = 0
+        # Oldest first, so the count numbers run in date order.
+        for name, (cls, days_ago) in sorted(self.ABC_HISTORY.items(), key=lambda kv: -kv[1][1]):
+            item = Material.objects.filter(name=name).first()
+            kw = {'material': item.pk} if item else None
+            if item is None:
+                item = (PartTypes.objects.filter(name=name, is_current_version=True).first()
+                        or PartTypes.objects.filter(name=name).order_by('-created_at').first())
+                kw = {'part_type': item.pk} if item else None
+            if item is None:
+                self.log(f"  Warning: {name} not found; no count history for it.", warning=True)
+                continue
+            type(item).objects.filter(pk=item.pk).update(abc_class=cls)
+            count = cc.start_count(self.tenant, counter, **kw)
+            if not count.lines:
+                count.delete()
+                continue
+            cc.record_count(count, [{'kind': l['kind'], 'id': l['id'], 'counted': l.get('expected') or 0}
+                                    for l in count.lines])
+            cc.submit_count(count, counter)
+            cc.apply_count(count, lead)
+            when = self.today - timedelta(days=days_ago)
+            CycleCount.objects.filter(pk=count.pk).update(
+                created_at=when, submitted_at=when + timedelta(hours=1),
+                applied_at=when + timedelta(hours=3))
+            done += 1
+        self.log(f"  ABC history: {done} items counted and applied (classes A/B/C set)")
+        return done
 
     def _count_entries(self, count):
         """Count every line on the sheet, the first lot deliberately short — a variance

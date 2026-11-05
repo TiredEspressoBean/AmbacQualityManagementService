@@ -173,6 +173,14 @@ the only thing that tells the planner the shortage has an end.
 Count blind when you want an honest number: a counter who can see the figure tends to
 find it.
 
+**What's due.** **Supply** > **Cycle Counts** opens on **Due**: how often something is
+counted follows its class. **Solenoid Coil** is class **A**, counted every 30 days, and
+is overdue. **Injector Spring** is **B**, every 90 days, and overdue too. **Common Rail
+Injector** is **C** and has never been counted. **Control Valve Assembly** is also A, but
+it was counted recently, so it isn't listed. **Count accuracy, last 90 days** above the
+tabs gives each class's share of counted lines within tolerance, and **12-month trend**
+charts it month by month.
+
 ---
 
 ## 7. Stage the bench

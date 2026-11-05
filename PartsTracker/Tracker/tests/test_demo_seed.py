@@ -318,7 +318,9 @@ class DemoSeedDarkExhibitTests(TestCase):
         from Tracker.models import CycleCount
         from Tracker.services.mes.cycle_count import variances
         with tenant_context(self.tenant.id):
-            count = CycleCount.objects.get(count_number="CC-2026-0001")
+            # The exercise is the one count left submitted (the ABC history before it is
+            # applied), whatever number it drew.
+            count = CycleCount.objects.get(status="SUBMITTED")
             diffs = variances(count)
             self.assertEqual(len(diffs), 1, diffs)
             self.assertTrue(all(line.get("counted") is not None for line in count.lines))
