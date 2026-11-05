@@ -24,12 +24,16 @@ The footer shows **how many people can cover each skill**.
 |--------|----------------|
 | **People** | How many people are in scope |
 | **People with role gaps** | Someone is assigned a role they aren't fully qualified for |
-| **Skills at coverage risk** | One person can do it — or nobody can |
+| **Cross-training gaps** | Skills nobody is qualified in (uncovered) or only one person is (a single point of failure), counting everyone in the company |
 | **Expiring soon** | Qualifications about to lapse |
 
 !!! warning "Thin coverage is a staffing risk"
     The tile counts every skill with one qualified person or none, so a skill
-    nobody holds is in the same number as a skill one person holds. Either way
+    nobody holds is in the same number as a skill one person holds.
+
+    It counts everyone qualified, QA staff included. The capacity heatmap's **skill
+    bottlenecks** count only operators the schedule can dispatch, so the two
+    numbers can differ. Either way
     that work stops — read the matrix itself to see which case each skill is.
     The matrix surfaces this deliberately — it's the number worth acting on
     before it becomes urgent.

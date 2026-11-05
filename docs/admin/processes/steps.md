@@ -109,6 +109,7 @@ The properties panel covers:
 | **Terminal step** | The routing ends here |
 | **Expected duration** | Planned duration |
 | **Max visits (rework limit)** | How many times a part may revisit the step |
+| **Repeat visits are worked by** | Who may work a part's second and later visits to the step: *Anyone qualified* (the default — no rule), *Whoever worked the last visit* (the repeat visit is assigned to them), *Someone else* (anyone but whoever worked an earlier visit), or *Someone with a role* (pick the role). A first visit is never constrained. *Checked when the visit is started; a supervisor can authorize past it with a reason.* Also shown on a Rework step, beside **Max visits before escalation** |
 | **QA signoff** | Whether a lot needs QA to release it off this step, and how firmly that release is signed — *Not required*, *Check off* (recorded under their login), or *Signature + password* (they re-enter their own password). At every level, the sign-off is refused to anyone who signed one of the step's substeps on that work order, or who is assigned to or completed a part's open visit to the step on it — *"Segregation of duties: you completed work on this step — a different qualified inspector has to sign it off."* |
 | **Sampling required** | Sampling applies at this step |
 | **Min sampling rate (%)** | Shown once sampling is required: the minimum percentage of parts sampled at this step |

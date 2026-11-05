@@ -304,14 +304,16 @@ Forecast](../../workflows/scheduling/forecast.md).
 The rows under it ask the sharper question: *enough of the right people?* Each is a
 set of qualifications and how many people hold them. A row marked **one person**
 is a step only one operator can do: one absence stops it, however much crew you
-have. The headline counts them: *2 skills only one person can do*.
+have. The headline counts them: *2 skill bottlenecks — one certified operator on the
+schedule*. That counts operators the plan can dispatch; the Training Matrix's
+**Cross-training gaps** counts everyone in the company, so the two can differ.
 
 **Scheduling** > **Schedule (Gantt)** > **People** asks *who is booked?* Each row is
 one operator's occupied time on the current plan. It doesn't tell you whether the
 month fits.
 
-**Exercise 11.1.** Say which two skills only one person can do, and what you'd do
-about it before someone's away.
+**Exercise 11.1.** Say which two skill bottlenecks there are, and what you'd do
+about them before someone's away.
 
 Once work is under way, a job's **Labor** tab asks *is it taking what we planned?*
 Open `WO-2024-0042-A`: its actual direct hours sit under the planned hours from the
