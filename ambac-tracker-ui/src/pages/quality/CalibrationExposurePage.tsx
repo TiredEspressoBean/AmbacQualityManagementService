@@ -30,6 +30,18 @@ const calibrationExposureOptions = (id: string) =>
         retry: false,  // a 400 ("found it in tolerance") is an answer, not a blip
     });
 
+/** "5 quality reports and 1 reading": a row with no report number is a reading
+ *  captured in the instructions with no report of its own. */
+function exposureHeading(rows: Array<{ report_number: string }>): string {
+    const reports = rows.filter((r) => r.report_number).length;
+    const readings = rows.length - reports;
+    const parts = [
+        reports || !readings ? `${reports} quality report${reports === 1 ? "" : "s"}` : "",
+        readings ? `${readings} reading${readings === 1 ? "" : "s"}` : "",
+    ].filter(Boolean);
+    return parts.join(" and ");
+}
+
 export function CalibrationExposurePage() {
     const { id } = useParams({ from: "/quality/calibrations/records/$id/exposure" });
     const [busy, setBusy] = useState(false);
@@ -85,7 +97,7 @@ export function CalibrationExposurePage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="tabular-nums">
-                                {data.count} quality report{data.count === 1 ? "" : "s"}
+                                {exposureHeading(data.reports)}
                             </CardTitle>
                             <CardDescription>
                                 {data.result === "FAIL"
@@ -103,7 +115,7 @@ export function CalibrationExposurePage() {
                         <CardContent className="overflow-x-auto">
                             {data.count === 0 ? (
                                 <p className="text-sm text-muted-foreground">
-                                    This gauge wasn&rsquo;t recorded on any quality report in the window.
+                                    This gauge wasn&rsquo;t recorded on any quality report or reading in the window.
                                 </p>
                             ) : (
                                 <Table>
