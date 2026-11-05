@@ -58,3 +58,29 @@ class SpcReasonTests(TenantTestCase):
         self.assertEqual(first.superseded_by_id, second.id)
         self.assertEqual(first.superseded_reason, "Replaced by a new baseline: After fixture change")
         self.assertEqual(SPCBaseline.objects.filter(status=BaselineStatus.ACTIVE).count(), 1)
+
+    def test_the_chart_keeps_the_newest_points_when_the_window_holds_more(self):
+        """Readings come oldest first; `limit` keeps the newest, not the oldest (hunt
+        2026-11-05: [:limit] dropped the latest readings past 500)."""
+        import datetime
+        from django.utils import timezone
+        from Tracker.models import StepExecutionMeasurement
+        mdef = MeasurementDefinition.objects.create(
+            tenant=self.tenant_a, step=self.mdef.step, label="OD", type="NUMERIC", unit="mm",
+            nominal=10, upper_tol=1, lower_tol=1)
+        from Tracker.models import Parts, StepExecution
+        step = self.mdef.step
+        now = timezone.now()
+        for days_ago, value in ((3, 10.1), (2, 10.2), (1, 10.3)):
+            part = Parts.objects.create(tenant=self.tenant_a, ERP_id=f"B-{days_ago}",
+                                        part_type=step.part_type, step=step)
+            visit = StepExecution.objects.create(tenant=self.tenant_a, part=part, step=step,
+                                                 status="IN_PROGRESS")
+            sem = StepExecutionMeasurement.objects.create(
+                tenant=self.tenant_a, step_execution=visit, measurement_definition=mdef, value=value,
+                recorded_by=self.user_a)
+            StepExecutionMeasurement.objects.filter(pk=sem.pk).update(
+                recorded_at=now - datetime.timedelta(days=days_ago))
+        r = self.client.get("/api/spc/data/", {"measurement_id": str(mdef.id), "limit": 2})
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual([float(p["value"]) for p in r.json()["data_points"]], [10.2, 10.3])

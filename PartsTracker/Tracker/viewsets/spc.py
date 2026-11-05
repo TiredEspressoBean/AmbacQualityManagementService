@@ -290,7 +290,11 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         rows = collect_spc_rows(
             tenant=definition.tenant, measurement_id=measurement_id,
             start=start_date, end=end_date,
-        )[:limit]
+        )
+        # Oldest first, so the newest `limit` are the tail: [:limit] kept the oldest
+        # and dropped the latest readings once the window held more (hunt 2026-11-05).
+        if limit > 0:
+            rows = rows[-limit:]
 
         data_points = [{
             'id': None,
