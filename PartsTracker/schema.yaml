@@ -26359,6 +26359,13 @@ paths:
                   type: string
                   description: That person's password. Verified inline; they are never
                     logged in, and the decision is attributed to them.
+                parts:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: 'A failed load''s disposition only: the held parts
+                    this decision is for. Omit to decide the whole load.'
               required:
               - disposition_type
       security:
@@ -57400,7 +57407,23 @@ components:
           type: string
         part_status:
           type: string
+        awaiting_decision:
+          type: boolean
+        disposition_id:
+          type: string
+          format: uuid
+          nullable: true
+        disposition_number:
+          type: string
+          nullable: true
+        disposition_type:
+          type: string
+          nullable: true
       required:
+      - awaiting_decision
+      - disposition_id
+      - disposition_number
+      - disposition_type
       - erp_id
       - id
       - part_status

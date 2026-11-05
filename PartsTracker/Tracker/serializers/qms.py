@@ -848,6 +848,12 @@ class DispositionAffectedPartSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     erp_id = serializers.CharField()
     part_status = serializers.CharField()
+    # Held and still waiting for this load's decision — what the decide dialog offers.
+    awaiting_decision = serializers.BooleanField()
+    # The part's own disposition, once the load's decision reached it.
+    disposition_id = serializers.UUIDField(allow_null=True)
+    disposition_number = serializers.CharField(allow_null=True)
+    disposition_type = serializers.CharField(allow_null=True)
 
 
 class QuarantineDispositionSerializer(SecureModelMixin):
@@ -951,10 +957,21 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         general dispositions). Lets the form show the affected load."""
         if not obj.batch_execution_id:
             return []
-        return [
-            {'id': p.id, 'erp_id': p.ERP_id, 'part_status': p.part_status}
-            for p in obj.batch_execution.parts.all()
-        ]
+        from Tracker.models import PartsStatus
+        from Tracker.services.qms.disposition import is_load_disposition, load_part_dispositions
+        own = load_part_dispositions(obj) if is_load_disposition(obj) else {}
+        out = []
+        for p in obj.batch_execution.parts.order_by('ERP_id'):
+            d = own.get(p.pk)
+            out.append({
+                'id': p.id, 'erp_id': p.ERP_id, 'part_status': p.part_status,
+                'awaiting_decision': (is_load_disposition(obj) and d is None
+                                      and p.part_status == PartsStatus.QUARANTINED),
+                'disposition_id': d.id if d else None,
+                'disposition_number': d.disposition_number if d else None,
+                'disposition_type': (d.disposition_type or None) if d else None,
+            })
+        return out
 
     def _work_order(self, obj):
         # Part dispositions carry the WO through the part; batch dispositions

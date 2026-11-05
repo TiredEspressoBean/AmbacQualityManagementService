@@ -971,6 +971,12 @@ class QuarantineDisposition(SecureModel):
                   "load), instead of a single part. Affected parts are the batch's "
                   "members. Mutually exclusive with `part` in practice.",
     )
+    load_disposition = models.ForeignKey(
+        'self', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='part_dispositions',
+        help_text="Set on a part's disposition made by deciding a failed load's "
+                  "disposition: the load's disposition it came from.",
+    )
     step = models.ForeignKey('Steps', on_delete=models.PROTECT, null=True, blank=True, related_name='dispositions')
     quality_reports = models.ManyToManyField('QualityReports', related_name='dispositions')
     documents = GenericRelation('Documents')
@@ -1128,7 +1134,18 @@ class QuarantineDisposition(SecureModel):
         """Get list of reasons why disposition cannot be completed"""
         blockers = []
 
-        if not self.disposition_type:
+        if self.batch_execution_id and not self.part_id:
+            # A failed load's disposition: decided when every held part is, and done when
+            # each part's own disposition is (services/qms/disposition, load section).
+            from Tracker.services.qms.disposition import load_part_dispositions, undecided_load_parts
+            waiting = undecided_load_parts(self)
+            if waiting:
+                blockers.append(f"{len(waiting)} held part(s) in the load still need a decision")
+            still_open = [d for d in load_part_dispositions(self).values()
+                          if d.current_state in ('OPEN', 'IN_PROGRESS')]
+            if still_open:
+                blockers.append(f"{len(still_open)} part disposition(s) from this load are still open")
+        elif not self.disposition_type:
             blockers.append("No disposition decision selected")
         if self.current_state not in ['OPEN', 'IN_PROGRESS']:
             blockers.append(f"Disposition is {self.get_current_state_display()}, not active")

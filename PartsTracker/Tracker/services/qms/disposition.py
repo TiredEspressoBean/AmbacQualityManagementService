@@ -720,3 +720,144 @@ def record_scrap_verification(disposition, user, *, verified: bool) -> None:
         return
     disposition.save(update_fields=["scrap_verified", "scrap_verified_by", "scrap_verified_at", "updated_at"])
 
+
+# ---------------------------------------------------------------------------
+# A failed batch load: the decision reaches the parts
+# ---------------------------------------------------------------------------
+#
+# A failed batch cycle opens ONE disposition for the load (batch_disposition.
+# contain_failed_batch): part is null, batch_execution is set, and the members still in
+# production are held QUARANTINED. Deciding it used to do nothing to them — the save
+# cascade and apply_disposition_to_part act only on a disposition's own part — so every
+# member stayed held until changed by hand.
+#
+# Now a decision on the load applies to the WHOLE load or to the parts QA picks (user
+# decision 2026-11-05: chosen in the decide dialog). Each chosen part gets its own
+# disposition — part set, `load_disposition` pointing back at the load's — decided through decide_disposition, so
+# it takes the same path as any part's decision: the status mapping, the shipped and
+# terminal guards, rework routing with its visit cap and MRB escalation, and its own
+# close when the rework is re-inspected. Parts not chosen stay held under the load's
+# disposition until they're decided.
+
+
+def is_load_disposition(disposition) -> bool:
+    """The disposition a failed batch cycle opened for its whole load (no part)."""
+    return bool(disposition.batch_execution_id) and not disposition.part_id
+
+
+def load_part_dispositions(disposition):
+    """The per-part dispositions a load's decisions made, keyed by part id."""
+    return {
+        d.part_id: d for d in (QuarantineDisposition.objects  # tenant-safe: scoped by the parent FK
+                               .filter(load_disposition=disposition, archived=False)
+                               .order_by('created_at'))
+    }
+
+
+def undecided_load_parts(disposition) -> list:
+    """The load's parts still held and waiting for this disposition's decision: held
+    (QUARANTINED) and with no decision of their own yet."""
+    from Tracker.models import PartsStatus
+    decided = load_part_dispositions(disposition)
+    return [p for p in disposition.batch_execution.parts.order_by('ERP_id')
+            if p.part_status == PartsStatus.QUARANTINED and p.pk not in decided]
+
+
+@transaction.atomic
+def decide_load_disposition(
+    disposition: QuarantineDisposition,
+    *,
+    disposition_type: str,
+    authorized_by,
+    part_ids=None,
+    notes: str = '',
+    customer_approval: dict | None = None,
+) -> QuarantineDisposition:
+    """Decide a failed load's disposition for the whole load, or for the parts in
+    `part_ids` (None = every part still waiting for it).
+
+    Each chosen part gets its own disposition, decided as any part's would be (see the
+    section note above). The decision is recorded on the load's disposition too when it
+    covers the whole load at once; a load decided in parts keeps each part's decision
+    on that part's disposition and closes when every part is decided and done.
+
+    Raises:
+        ValueError: not a load's disposition; a part named that isn't waiting for this
+            decision; nothing left to decide; or any refusal decide_disposition makes
+            (unknown type, a concession missing for use-as-is / repair).
+    """
+    if not is_load_disposition(disposition):
+        raise ValueError("This disposition isn't a load's — decide it as a part's disposition.")
+    if disposition.current_state == 'CLOSED':
+        raise ValueError("This disposition is closed; its decision can no longer be changed.")
+
+    waiting = undecided_load_parts(disposition)
+    if not waiting:
+        raise ValueError("Every held part in this load already has a decision; change a "
+                         "part's decision on its own disposition.")
+    by_id = {str(p.pk): p for p in waiting}
+    if part_ids is None:
+        chosen = waiting
+    else:
+        wanted = [str(i) for i in part_ids]
+        unknown = [i for i in wanted if i not in by_id]
+        if unknown:
+            raise ValueError("Only parts held in this load and not yet decided can be chosen.")
+        if not wanted:
+            raise ValueError("Choose at least one part, or decide the whole load.")
+        chosen = [by_id[i] for i in dict.fromkeys(wanted)]
+
+    whole_load = (len(chosen) == len(waiting)
+                  and not load_part_dispositions(disposition))  # nothing decided before
+    reports = list(disposition.quality_reports.all())
+    containment = (disposition.containment_action or '').strip() or (
+        f"Held with its load under {disposition.disposition_number}.")
+
+    made = []
+    for part in chosen:
+        # A part's disposition, linked to the load's (a disposition is a part's or a
+        # load's, never both — disposition_not_both_part_and_batch).
+        child = QuarantineDisposition.objects.create(
+            tenant=disposition.tenant, part=part, load_disposition=disposition,
+            step=disposition.step, severity=disposition.severity,
+            assigned_to=disposition.assigned_to,
+            description=f"{part.ERP_id} from the load on {disposition.disposition_number}: "
+                        f"{disposition.description}",
+            containment_action=containment,
+        )
+        if reports:
+            child.quality_reports.add(*reports)
+        decide_disposition(child, disposition_type=disposition_type, authorized_by=authorized_by,
+                           notes=notes, customer_approval=customer_approval)
+        made.append(child)
+
+    # Rework / repair moves each part to the rework step now, as a part's decision does
+    # when its form saves (serializers.QuarantineDispositionSerializer._route_if_rework).
+    if disposition_type in ('REWORK', 'REPAIR'):
+        for child in made:
+            try:
+                route_part_to_rework_if_needed(child, authorized_by)
+            except Exception:
+                logger.exception("Rework routing failed for load disposition %s", child.pk)
+
+    valid = dict(QuarantineDisposition.DISPOSITION_TYPES)
+    if whole_load:
+        decide_disposition(disposition, disposition_type=disposition_type,
+                           authorized_by=authorized_by, notes=notes,
+                           customer_approval=customer_approval)
+    else:
+        who = (authorized_by.get_full_name() or authorized_by.get_username()) if authorized_by else 'someone'
+        line = (f"{timezone.now():%Y-%m-%d} {who}: {valid[disposition_type]} for "
+                f"{', '.join(p.ERP_id for p in chosen)}"
+                + (f" — {notes.strip()}" if (notes or '').strip() else ""))
+        disposition.refresh_from_db()
+        disposition.resolution_notes = (f"{disposition.resolution_notes}\n{line}".strip()
+                                        if disposition.resolution_notes else line)
+        update = ['resolution_notes', 'updated_at']
+        if disposition.current_state == 'OPEN':
+            disposition.current_state = 'IN_PROGRESS'  # decided in part
+            update.append('current_state')
+        disposition.save(update_fields=update)
+    disposition.refresh_from_db()
+    return disposition
+

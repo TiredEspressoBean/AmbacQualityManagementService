@@ -24594,6 +24594,11 @@ export interface components {
             id: string;
             erp_id: string;
             part_status: string;
+            awaiting_decision: boolean;
+            /** Format: uuid */
+            disposition_id: string | null;
+            disposition_number: string | null;
+            disposition_type: string | null;
         };
         DispositionBreakdownResponse: {
             data: {
@@ -61178,6 +61183,8 @@ export interface operations {
                     cosign_email?: string;
                     /** @description That person's password. Verified inline; they are never logged in, and the decision is attributed to them. */
                     cosign_password?: string;
+                    /** @description A failed load's disposition only: the held parts this decision is for. Omit to decide the whole load. */
+                    parts?: string[];
                 };
             };
         };

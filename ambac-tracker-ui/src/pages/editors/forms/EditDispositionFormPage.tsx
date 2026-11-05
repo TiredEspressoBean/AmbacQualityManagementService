@@ -26,6 +26,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -351,6 +353,18 @@ export default function EditDispositionFormPage() {
         }
     }
 
+    // A failed batch load's disposition (no part of its own): the decision applies to
+    // the whole load, or to the held parts chosen here (user decision 2026-11-05). Each
+    // chosen part gets its own disposition; the rest stay held until decided.
+    const isLoad = mode === "edit" && !!disposition?.batch_execution && !disposition?.part
+    const waitingParts = (disposition?.affected_parts ?? []).filter((p) => p.awaiting_decision)
+    const [loadScope, setLoadScope] = useState<"whole" | "choose">("whole")
+    const [chosenParts, setChosenParts] = useState<string[]>([])
+    const toggleChosen = (id: string, on: boolean) =>
+        setChosenParts((prev) => on ? [...prev, id] : prev.filter((x) => x !== id))
+    // Only parts still waiting can be chosen — drop any decided since they were ticked.
+    const chosenWaiting = chosenParts.filter((id) => waitingParts.some((p) => String(p.id) === id))
+
     // Authorize the disposition_type decision via the co-signable `decide` action.
     const authorizeDecision = async (values: FormValues, cosign?: { email: string; password: string }, note?: string) => {
         // `decide` requires a real disposition type; the form's field allows ""
@@ -376,6 +390,7 @@ export default function EditDispositionFormPage() {
             customer_approval_date: values.customer_approval_date || undefined,
             ...(note ? { notes: note } : {}),
             ...(cosign ? { cosign_email: cosign.email, cosign_password: cosign.password } : {}),
+            ...(isLoad && loadScope === "choose" ? { parts: chosenWaiting } : {}),
         }, { params: { id: dispositionId! }, headers: csrf() })
     }
 
@@ -387,6 +402,10 @@ export default function EditDispositionFormPage() {
     const onSubmit = async (values: FormValues) => {
         const changing = mode === "edit" && !!values.disposition_type
             && values.disposition_type !== disposition?.disposition_type
+        if (changing && isLoad && loadScope === "choose" && chosenWaiting.length === 0) {
+            toast.error("Choose the parts this decision is for, or decide the whole load.")
+            return
+        }
         if (changing && values.disposition_type === "SCRAP") {
             setDecisionGate({ values, kind: "scrap" })
             return
@@ -635,6 +654,60 @@ export default function EditDispositionFormPage() {
                                                 )}
                                             />
                                         </div>
+
+                                        {/* A failed load: the decision is for the whole load or the parts
+                                            chosen here; each gets its own disposition, and parts not
+                                            chosen stay held until decided. */}
+                                        {isLoad && (
+                                            <div className="space-y-2 rounded-md border p-3">
+                                                <p className="text-sm font-medium">Applies to</p>
+                                                {waitingParts.length === 0 ? (
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Every held part in this load has a decision. Change a part's
+                                                        decision on its own disposition (listed under Affected Load).
+                                                    </p>
+                                                ) : (
+                                                    <>
+                                                        <RadioGroup
+                                                            value={loadScope}
+                                                            onValueChange={(v) => setLoadScope(v as "whole" | "choose")}
+                                                            className="flex gap-6"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <RadioGroupItem value="whole" id="load-scope-whole" />
+                                                                <Label htmlFor="load-scope-whole">
+                                                                    Whole load ({waitingParts.length} held part{waitingParts.length === 1 ? "" : "s"})
+                                                                </Label>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <RadioGroupItem value="choose" id="load-scope-choose" />
+                                                                <Label htmlFor="load-scope-choose">Choose parts</Label>
+                                                            </div>
+                                                        </RadioGroup>
+                                                        {loadScope === "choose" && (
+                                                            <div className="grid gap-1.5 pt-1 sm:grid-cols-2">
+                                                                {waitingParts.map((p) => (
+                                                                    <div key={p.id} className="flex items-center gap-2">
+                                                                        <Checkbox
+                                                                            id={`load-part-${p.id}`}
+                                                                            checked={chosenWaiting.includes(String(p.id))}
+                                                                            onCheckedChange={(on) => toggleChosen(String(p.id), on === true)}
+                                                                        />
+                                                                        <Label htmlFor={`load-part-${p.id}`} className="font-mono text-xs">
+                                                                            {p.erp_id}
+                                                                        </Label>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Each part gets its own disposition with this decision.
+                                                            {loadScope === "choose" && " Parts not chosen stay held until they're decided."}
+                                                        </p>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
 
                                         {/* Severity */}
                                         <FormField
@@ -1066,14 +1139,27 @@ export default function EditDispositionFormPage() {
                                     </div>
                                     <div className="space-y-1 pt-1">
                                         {(disposition.affected_parts ?? []).map((p) => (
-                                            <div key={p.id} className="flex justify-between items-center rounded bg-muted/40 px-2 py-1">
+                                            <div key={p.id} className="flex justify-between items-center gap-2 rounded bg-muted/40 px-2 py-1">
                                                 <span className="font-mono text-xs">{p.erp_id}</span>
-                                                <Badge
-                                                    variant={p.part_status === "QUARANTINED" ? "destructive" : "outline"}
-                                                    className="text-xs"
-                                                >
-                                                    {p.part_status?.replace(/_/g, " ")}
-                                                </Badge>
+                                                <div className="flex items-center gap-1.5">
+                                                    {/* The part's own disposition, once the load's decision reached it. */}
+                                                    {p.disposition_id && (
+                                                        <Link
+                                                            to="/production/dispositions/$id/edit"
+                                                            params={{ id: String(p.disposition_id) }}
+                                                            className="text-xs underline-offset-2 hover:underline"
+                                                        >
+                                                            {p.disposition_number}
+                                                            {p.disposition_type ? ` · ${dispositionTypeLabels[p.disposition_type] ?? p.disposition_type}` : ""}
+                                                        </Link>
+                                                    )}
+                                                    <Badge
+                                                        variant={p.part_status === "QUARANTINED" ? "destructive" : "outline"}
+                                                        className="text-xs"
+                                                    >
+                                                        {p.awaiting_decision ? "Held — awaiting decision" : p.part_status?.replace(/_/g, " ")}
+                                                    </Badge>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

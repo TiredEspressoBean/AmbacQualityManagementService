@@ -9253,6 +9253,10 @@ export type DispositionAffectedPart = {
   id: string;
   erp_id: string;
   part_status: string;
+  awaiting_decision: boolean;
+  disposition_id: string | null;
+  disposition_number: string | null;
+  disposition_type: string | null;
 };
 export type PaginatedRcaRecordList = {
   /**
@@ -24906,6 +24910,10 @@ const DispositionAffectedPart = z.object({
   id: z.string().uuid(),
   erp_id: z.string(),
   part_status: z.string(),
+  awaiting_decision: z.boolean(),
+  disposition_id: z.string().uuid().nullable(),
+  disposition_number: z.string().nullable(),
+  disposition_type: z.string().nullable(),
 });
 const QuarantineDisposition = z.object({
   id: z.string().uuid(),
@@ -25059,6 +25067,7 @@ const api_QuarantineDispositions_decide_create_Body = z.object({
   customer_approval_date: z.string().optional(),
   cosign_email: z.string().optional(),
   cosign_password: z.string().optional(),
+  parts: z.array(z.string().uuid()).optional(),
 });
 const ReopenDispositionRequestRequest = z.object({ reason: z.string().min(1) });
 const PaginatedRcaRecordList = z.object({

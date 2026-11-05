@@ -269,6 +269,8 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
             "customer_approval_date": {"type": "string", "format": "date", "description": "Optional approval date (defaults to today)"},
             "cosign_email": {"type": "string", "description": "Email of an authorized approver co-signing (when the caller lacks approve_disposition)"},
             "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the decision is attributed to them."},
+            "parts": {"type": "array", "items": {"type": "string", "format": "uuid"},
+                      "description": "A failed load's disposition only: the held parts this decision is for. Omit to decide the whole load."},
         }, "required": ["disposition_type"]}},
         responses={200: dict},
     )
@@ -292,17 +294,31 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
         if err_response is not None:
             return err_response
 
+        customer_approval = {
+            'reference': request.data.get('customer_approval_reference'),
+            'date': request.data.get('customer_approval_date') or None,
+        }
         try:
-            decide_disposition(
-                disposition,
-                disposition_type=disposition_type,
-                authorized_by=signer,
-                notes=request.data.get('notes', ''),
-                customer_approval={
-                    'reference': request.data.get('customer_approval_reference'),
-                    'date': request.data.get('customer_approval_date') or None,
-                },
-            )
+            # A failed load's disposition decides for the whole load or the chosen parts.
+            from Tracker.services.qms.disposition import decide_load_disposition, is_load_disposition
+            if is_load_disposition(disposition):
+                parts = request.data.get('parts')
+                if parts is not None and not isinstance(parts, list):
+                    return Response({'detail': "parts must be a list of part ids.", 'code': 'decide_invalid'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                decide_load_disposition(
+                    disposition, disposition_type=disposition_type, authorized_by=signer,
+                    part_ids=parts, notes=request.data.get('notes', ''),
+                    customer_approval=customer_approval)
+                disposition.refresh_from_db()
+            else:
+                decide_disposition(
+                    disposition,
+                    disposition_type=disposition_type,
+                    authorized_by=signer,
+                    notes=request.data.get('notes', ''),
+                    customer_approval=customer_approval,
+                )
         except ValueError as e:
             return Response({'detail': str(e), 'code': 'decide_invalid'},
                             status=status.HTTP_400_BAD_REQUEST)
