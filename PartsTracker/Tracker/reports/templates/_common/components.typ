@@ -178,12 +178,17 @@
 //
 // `column-gutter` is split across the shared cell edge, so it means the same
 // thing it did in the inner grid of the stacked-block version.
-// A break opportunity after a hyphen inside a word (zero-width space), for IDs and
-// dates in narrow columns: "ORD-2024-QA", "2026-11-05". Only a hyphen that follows a
-// letter or digit — a minus sign leading a number (-0.002) never splits from it.
+// A break opportunity after a hyphen inside a word, for IDs and dates in narrow
+// columns: "ORD-2024-0053", "TD-INJ-2026-0001". Each word segment ending in a hyphen
+// ("ORD-", "2024-") is set as its own inline box, and a line may break between boxes —
+// before a digit too, which Unicode line breaking otherwise forbids. Only segments that
+// start with a letter or digit, so a minus leading a number (-0.002) never splits, and
+// spaces stay ordinary break points. No character goes into the text: a zero-width
+// space (U+200B) did, so an ID copied out of the PDF didn't match in a search box, and
+// weak spacing broke before a letter but not before a digit (2026-11-05).
 // Used by `report-table` on every column but the first.
 #let hyphen-breakable(body) = {
-  show regex("\w-"): it => [#it.text#sym.zws]
+  show regex("\w[^\s\-]*-"): it => box(it.text)
   body
 }
 
