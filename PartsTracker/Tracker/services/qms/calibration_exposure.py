@@ -86,14 +86,28 @@ def exposure_for(record) -> CalibrationExposure:
 
     tz = plant_tz(record.tenant)
     end = datetime.combine(record.calibration_date + timedelta(days=1), time.min, tzinfo=tz)
+    start = (datetime.combine(last_good.calibration_date, time.min, tzinfo=tz)
+             if last_good else None)
+    # A gauge picked on a measurement node in the operator's instructions is recorded on
+    # the reading (StepExecutionMeasurement.equipment), not as an equipment link on a
+    # report — those readings were left off the suspect list (hunt 2026-11-05). Reports
+    # on a visit where the gauge took readings count; readings with no report are listed
+    # by visit below.
+    from django.db.models import Q
+    from Tracker.models import StepExecutionMeasurement
+    readings = (StepExecutionMeasurement.objects  # tenant-safe: .objects auto-scopes
+                .filter(equipment_id__in=chain, recorded_at__lt=end))
+    if start:
+        readings = readings.filter(recorded_at__gte=start)
+    read_visits = set(readings.exclude(step_execution__isnull=True)
+                      .values_list('step_execution_id', flat=True))
     reports = (QualityReports.objects  # tenant-safe: .objects auto-scopes
-               .filter(archived=False, equipment_links__equipment_id__in=chain,
-                       created_at__lt=end)
+               .filter(Q(equipment_links__equipment_id__in=chain) | Q(step_execution_id__in=read_visits),
+                       archived=False, created_at__lt=end)
                .select_related('part', 'material_lot', 'step', 'detected_by')
                .prefetch_related('personnel_links__user')
                .order_by('created_at'))
-    if last_good:
-        start = datetime.combine(last_good.calibration_date, time.min, tzinfo=tz)
+    if start:
         reports = reports.filter(created_at__gte=start)
 
     roles = {}
@@ -125,8 +139,37 @@ def exposure_for(record) -> CalibrationExposure:
             created_at=qr.created_at,
             inspector=(who.get_full_name() or who.email) if who else '',
             status=qr.status,
-            role=roles.get(qr.pk, ''),
+            role=roles.get(qr.pk, 'GAUGE'),
         ))
+
+    # Readings with no report on their visit: one row per visit (or load), failed if
+    # any reading was out of spec.
+    reported = {qr.step_execution_id for qr in reports if qr.step_execution_id}
+    by_visit = {}
+    for m in (readings.select_related('step_execution__part', 'step_execution__step',
+                                      'batch_execution__step', 'recorded_by')
+              .order_by('recorded_at')):
+        key = ('SE', m.step_execution_id) if m.step_execution_id else ('BE', m.batch_execution_id)
+        if key[1] is None or (key[0] == 'SE' and key[1] in reported):
+            continue
+        row = by_visit.get(key)
+        if row is None:
+            ex = m.step_execution or m.batch_execution
+            part = getattr(ex, 'part', None)
+            who = m.recorded_by
+            by_visit[key] = row = {
+                'id': f"reading-{m.pk}", 'part': part.ERP_id if part else '',
+                'part_id': str(part.pk) if part else None,
+                'step': ex.step.name if getattr(ex, 'step_id', None) else '',
+                'created_at': m.recorded_at,
+                'inspector': (who.get_full_name() or who.email) if who else '', 'failed': False}
+        row['failed'] = row['failed'] or m.is_within_spec is False
+    for row in by_visit.values():
+        rows.append(ExposedReport(
+            id=row['id'], report_number='', part=row['part'], part_id=row['part_id'],
+            material_lot_id=None, step=row['step'], created_at=row['created_at'],
+            inspector=row['inspector'], status='FAIL' if row['failed'] else 'PASS', role='GAUGE'))
+    rows.sort(key=lambda r: r.created_at)
 
     return CalibrationExposure(
         calibration_id=str(record.pk),

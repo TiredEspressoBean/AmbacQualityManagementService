@@ -108,3 +108,25 @@ class CalibrationExposureTests(TenantTestCase):
         self.assertIn("spreadsheetml", xlsx["Content-Type"])
 
         self.assertEqual(client.get(f'/api/CalibrationRecords/{fit.pk}/exposure/').status_code, 400)
+
+
+    def test_a_reading_taken_with_the_gauge_is_on_the_list(self):
+        """A gauge picked on a measurement node is recorded on the reading, not as an
+        equipment link on a report; those readings are exposed too (hunt 2026-11-05)."""
+        from Tracker.models import (
+            MeasurementDefinition, Parts, PartTypes, StepExecution, StepExecutionMeasurement, Steps,
+        )
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name="Nozzle")
+        step = Steps.objects.create(tenant=self.tenant_a, name="Torque", part_type=pt)
+        part = Parts.objects.create(tenant=self.tenant_a, ERP_id="NZ-1", part_type=pt, step=step)
+        visit = StepExecution.objects.create(tenant=self.tenant_a, part=part, step=step, status="IN_PROGRESS")
+        md = MeasurementDefinition.objects.create(tenant=self.tenant_a, label="Torque", type="NUMERIC",
+                                                  unit="Nm", nominal=25, upper_tol=1, lower_tol=1, step=step)
+        reading = StepExecutionMeasurement.objects.create(
+            tenant=self.tenant_a, step_execution=visit, measurement_definition=md, value=27,
+            recorded_by=self.user_a, equipment=self.gauge)
+        StepExecutionMeasurement.objects.filter(pk=reading.pk).update(recorded_at=timezone.make_aware(
+            datetime.datetime(2026, 3, 3, 12)))
+        fail = self._cal(D(2026, 7, 1), 'FAIL')
+        rows = [r for r in exposure_for(fail).reports if r.part == "NZ-1"]
+        self.assertEqual([(r.report_number, r.step, r.status) for r in rows], [("", "Torque", "FAIL")])

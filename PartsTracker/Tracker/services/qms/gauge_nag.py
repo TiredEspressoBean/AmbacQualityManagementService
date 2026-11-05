@@ -7,7 +7,8 @@ gate must block, and this nag exists to PRE-EMPT that gate: warn the inspector
 about gauges in their own recent rotation before the block lands.
 
 "Gauges you used" = the equipment attached to the quality reports the user
-filed (`QualityReportEquipment` via the report's detector — `detected_by_q`). This is the single
+filed (`QualityReportEquipment` via the report's detector — `detected_by_q`), plus the gauge
+on readings they captured (`StepExecutionMeasurement.equipment`). This is the single
 equipment↔user source since `EquipmentUsage` was retired (it modeled the same
 link but was never written at runtime — see plan #1).
 """
@@ -39,6 +40,14 @@ def my_gauge_nag(user, used_within_days: int = DEFAULT_USED_WITHIN_DAYS,
     used_ids = set(
         QualityReportEquipment.objects
         .filter(quality_report__in=__reports_by(user, used_cutoff))
+        .values_list("equipment_id", flat=True)
+    )
+    # ...and the gauges on readings they captured in the instructions, which record the
+    # gauge on the reading, not on a report (hunt 2026-11-05).
+    from Tracker.models import StepExecutionMeasurement
+    used_ids |= set(
+        StepExecutionMeasurement.objects  # tenant-safe: .objects auto-scopes
+        .filter(recorded_by=user, recorded_at__gte=used_cutoff, equipment__isnull=False)
         .values_list("equipment_id", flat=True)
     )
     if not used_ids:
