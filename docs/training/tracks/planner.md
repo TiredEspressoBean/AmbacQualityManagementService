@@ -63,7 +63,7 @@ said.
 chased, and what the supplier said then.
 
 **Requirements** lists what open work is short of, with need-by and order-by dates:
-*Control Valve Assembly · short 8 · order now*. Ordering it is Purchasing's; your
+*Control Valve Assembly · short 14 · order now*. Ordering it is Purchasing's; your
 part is knowing which jobs it holds up when you plan.
 
 ---

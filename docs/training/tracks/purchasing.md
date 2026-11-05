@@ -70,8 +70,8 @@ Log in as Priya. **Purchasing** links **Shortages**, **Material outlook**, **Exp
 
 1. **Shortages** (**Scheduling** > **Requirements**). **Source (buy)** lists what
    open work needs that stock plus what's expected won't cover: *Control Valve
-   Assembly · short 8*, from Precision Castings, with its lead time, need-by and
-   order-by dates. *Order now* means the order-by date has passed.
+   Assembly · short 14*, with its lead time, need-by and order-by dates. *Order now*
+   means the order-by date has passed. No supplier is named yet: module 4 sets it.
 2. Place the order in the ERP. Then tick the row and **Add expected delivery**:
    *Record what you've ordered in the ERP so planning counts it as incoming. Nothing
    is purchased here.*
@@ -109,7 +109,8 @@ promise, so re-promising can't improve a record.
 
 **You will:** change a bought part's supplier and lead time.
 
-**Data Management** > **Part Types** > `Control Valve Assembly` > **Sourcing**: *Who
+**Data Management** > **Part Types**, and on the `Control Valve Assembly` row the truck
+icon, **Sourcing** (*Sourcing — supplier, lead time, safety stock*): *Who
 it's bought from and how long they take, as the ERP has it, and the safety stock
 planning holds back. The part itself isn't changed.* Set **Preferred supplier** and
 **Lead time (days)**, and **Save**.
@@ -129,7 +130,8 @@ comes from; what the part *is* (its drawing, its specs) is Engineering's.
    reads *Rating C · Review: suspend*. The recommendation is the useful part.
    Suspending a supplier is the QA manager's decision; you take the recommendation
    to them.
-2. **Approved Suppliers** > **New qualification**: Lakeshore Seals Inc, part type
+2. **Supplier qualifications** opens the **Approved Supplier List**. **New
+   qualification**: Lakeshore Seals Inc, part type
    Common Rail Injector, basis **AUDIT**, with a note of when the audit is booked.
    **Create**: *Qualification created (PENDING)*.
 3. In that row's menu, try **Grant…**. It's refused: *You do not have permission to
@@ -152,7 +154,8 @@ next two years of orders, quoted deals and the volume forecast will draw.
 1. On your home page, **Material outlook** opens **Capacity Planning** at 24
    months. Scroll to **Materials**. Each bought item has a row of months: the stock
    left after the demand to date, negative once it runs short. Hover a month for
-   what's needed in it and how much of that is firm, RFI or forecast.
+   what's needed in it; from the second month on, it also splits that into firm, RFI
+   and forecast.
 2. Hover **Control Valve Assembly**: *First short (firm) &lt;month&gt; · order by
    &lt;date&gt; (late) · 28-day lead time*. Firm orders alone take it short, so
    it gets an order-by date: the 1st of the first short month, less the lead

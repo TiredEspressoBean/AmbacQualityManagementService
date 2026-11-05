@@ -190,8 +190,8 @@ charts it month by month.
 **Scheduling** > **Staging List** reads the solved schedule and lists, per station,
 what each job consumes, from which lot and where it is.
 
-1. If the next 8 hours show no materials, widen it to **next 24h**. A window with
-   nothing to stage is usually the window, not a fault.
+1. If `WO-TRAIN-BOTTLE` isn't listed, widen it to **next 24h**: the staging list only
+   shows work scheduled inside its window, and a job just outside it isn't missing.
 2. **Assembly Cell** > `WO-TRAIN-BOTTLE` · Assembly: five lines, from the
    `STOCK-CRI-*` lots in Main Stores. **Confirm** the Control Valve Assembly line: it
    reads *took 2*.
@@ -237,7 +237,7 @@ it had and your reason stay on the lot.
    Notes**. **Receive Core**.
 2. The core is *Received · Returns to customer*. **Start teardown** opens its first
    step, the check-in: scan the identity band, photograph it as it arrived, set the
-   arrival condition, and sign. *Cores arrive as-is from the field — record what you
+   arrival condition, and sign. *Cores arrive as-is from the field - record what you
    see, don't clean yet.*
 3. **Complete step**: *Step submitted — awaiting QA sign-off.* It goes on to
    Disassembly when QA signs.

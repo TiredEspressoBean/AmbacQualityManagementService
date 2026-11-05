@@ -45,8 +45,9 @@ Every password is `demo123`.
 **You will:** find what's ready to go.
 
 Log in as Rosa. **Shipping dock** links **Shipments**, **What ships when**, **Outside processing**,
-**Locations** and **Material lots**; **Look up** counts what's out at vendors and
-what's ready to ship.
+**Locations** and **Material lots**. **Look up** counts outside processing: what's
+**out at vendors**, and what's **ready to ship** out to one. Both open **Outside
+processing**; what's ready for customers is on **Shipments**.
 
 **Supply** > **Shipping**: *What can go to customers now, and what has gone.
 Invoicing stays in your ERP.* **Ready to ship** groups everything by order and
@@ -144,9 +145,9 @@ route the whole time: outside processing is not a shipment to a customer.
 **You will:** read what customers are owed and by when, and spot the line that's
 late.
 
-1. On your home page, **What ships when** opens the **Ship** section of
-   **Requirements**: every open order line still to ship, **Overdue** first, then
-   by due month.
+1. On your home page, **What ships when** opens **Requirements**. Scroll to its last
+   section, **Ship**: every open order line still to ship, **Overdue** first, then by
+   due month.
 2. **Overdue** (in red) leads with `ORD-2024-0053`, Great Lakes Diesel's 8 Common
    Rail Injectors. **Planned / not yet** reads *0 / 8*, and its status is *not
    started*: nothing has been made for it.
@@ -186,7 +187,7 @@ return reference. The shipment offers **Returned as received** in place of a CoC
 says the unit goes back without repair at the customer's request, who declined and
 how, and the findings behind the work they declined. Nothing is certified.
 
-The usual case is a unit that's been rebuilt. `ORD-2024-0047` (Northern Trucking)
+The usual case is a unit that's been rebuilt. `ORD-2024-0047` (Northern Trucking Co)
 lists `CORE-240217-0013`: *Rebuilt — ready to return*. Ship it the same way. The
 shipment offers the **Packing list** and a **CoC**, and the core reads *returned*. The
 CoC names the customer's own serial, says the unit was *repaired*, and leaves the
