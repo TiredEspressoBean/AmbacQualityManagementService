@@ -177,3 +177,20 @@ class VoidBlocksSequencingTests(TenantContextMixin, VectorTestCase):
             captures=_attestation(),
         )
         self.assertIsNotNone(result.completion_id)
+
+    def test_a_voided_completion_stays_listed_after_the_re_capture(self):
+        """Capturing again retired the voided row as archived, and the step history
+        lists non-archived rows: QA's void and its reason vanished from the traveler.
+        It stays beside the new capture (hunt 2026-11-05)."""
+        submit_substep(substep=self.first, step_execution=self.se, user=self.user,
+                       captures=_attestation())
+        voided = SubstepCompletion.objects.get(step_execution=self.se, substep=self.first)
+        voided.void(self.qa, "gauge was out of calibration")
+        submit_substep(substep=self.first, step_execution=self.se, user=self.user,
+                       captures=_attestation())
+        voided.refresh_from_db()
+        self.assertTrue(voided.is_voided)
+        self.assertIsNotNone(voided.deleted_at, "retired, so the re-capture is the live one")
+        self.assertFalse(voided.archived)
+        listed = SubstepCompletion.objects.filter(step_execution=self.se, substep=self.first).active()
+        self.assertEqual(sorted(c.is_voided for c in listed), [False, True])

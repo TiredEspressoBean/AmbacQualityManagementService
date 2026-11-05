@@ -1266,10 +1266,14 @@ def _record_completion(
     # update_or_create used to rewrite the voided row in place — it stayed
     # voided, the gate skips voided rows, and the re-capture never counted. Retire
     # the voided row (soft-delete keeps it as history) and let this one be new.
+    # Retired by deleted_at alone — what the uniqueness constraint keys on — and NOT
+    # archived: the step history lists non-archived rows, and archiving made QA's void
+    # and its reason vanish from the traveler the moment the substep was captured
+    # again. "Voiding retracts and annotates; it never removes" (hunt 2026-11-05).
     voided = SubstepCompletion.objects.filter(  # tenant-safe: keyed to a scoped execution
         step_execution=step_execution, batch_execution=batch_execution, substep=substep,
         is_voided=True, deleted_at__isnull=True)
-    voided.update(deleted_at=timezone.now(), archived=True)
+    voided.update(deleted_at=timezone.now())
     completion, _ = SubstepCompletion.objects.update_or_create(
         step_execution=step_execution,
         batch_execution=batch_execution,
