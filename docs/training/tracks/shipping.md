@@ -63,7 +63,10 @@ hasn't passed.
 
 **You will:** ship four of the six units waiting on an order.
 
-1. Under `ORD-2024-0042` (Midwest Fleet Services), tick `INJ-0042-011` to `-014`.
+1. Under `ORD-2024-0042` (Midwest Fleet Services), scan `INJ-0042-011` to `-014` into
+   *Scan a unit or lot label to tick it* (or type each serial and press Enter), or tick
+   them. Each scan answers *"INJ-0042-011 ticked."*. Scan `INJ-0042-001` too: *"has
+   already shipped (SHP-…)"*. It has already gone, so the scan ticks nothing.
 2. **Ship 4…**: *Each part at a Ship step completes it, so its sign-off checks must
    be done.* Enter the carrier (`UPS Freight`) and your ERP shipper or packing-slip
    number (`PS-88213`). Leave tracking blank: you don't have it yet.

@@ -24,7 +24,25 @@ property](overview.md#customer-property).
 
 ## Shipping something
 
-Tick what is going and press **Ship…**. The dialog takes:
+Tick what is going and press **Ship…**.
+
+### Scanning what's going
+
+Each order has a box above its list: *Scan a unit or lot label to tick it*. Scan a
+unit's serial barcode or the QR code on its part label, or a customer lot's label, and
+it's ticked: *"INJ-… ticked."* The box clears after every scan, so you can scan the
+next one straight away. A scan that can't be ticked says why, and ticks nothing:
+
+| Scanned | Reply |
+|---------|-------|
+| A unit already ticked | *"INJ-… is already ticked."* |
+| A unit on another order | *"INJ-… is on order ORD-… (Customer), not this one."* |
+| A unit that has already gone | *"INJ-… has already shipped (SHP-…)."* |
+| A unit not yet at its Ship step | *"INJ-… isn't ready to ship: it isn't at its Ship step — it's at &lt;step&gt; (&lt;status&gt;)."* |
+| A work order's barcode | *"“WO-…” is a work order — scan the unit's label."* |
+| Anything else | *"No unit matches “…”."* |
+
+The dialog takes:
 
 | Field | |
 |-------|---|
