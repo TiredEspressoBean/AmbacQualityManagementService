@@ -299,10 +299,11 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
         return core
 
     def _capped_unit(self, walk):
-        """The escalation exhibit. Sarah finds the spray angle out at Nozzle Inspection
-        twice; each time the FAIL opens a disposition, Maria decides REWORK, and the
-        unit is reworked (by Mike, then Dave: the step is set to a different operator
-        per visit, though nothing enforces that yet). Coming back from the second rework the check is at its visit cap, so
+        """The escalation exhibit. The spray angle is out at Nozzle Inspection twice —
+        Sarah finds it first, and the repeat check is Maria's (the step's repeat visits
+        need the QA Manager role); each time the FAIL opens a disposition, Maria decides
+        REWORK, and the unit is reworked (by Mike, then Dave: the Rework step wants a
+        different operator per visit). Coming back from the second rework the check is at its visit cap, so
         the route escalates to MRB Review, where the engine quarantines it and opens
         a disposition for a person to decide."""
         from Tracker.models import Core, ProcessStep
@@ -320,9 +321,9 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
         try:
             with transaction.atomic():
                 self._run_batch_step(wo, [part], 'Cleaning', walk)
-                for reworker in (self.mike, self.dave):
+                for inspector, reworker in ((self.sarah, self.mike), (self.maria, self.dave)):
                     report = self._run_step_for([part], 'Nozzle Inspection', walk,
-                                                advance=False, operator=self.sarah,
+                                                advance=False, operator=inspector,
                                                 out_of_spec='Spray Angle')
                     self._rework(part, report,
                                  containment='Single unit; no other units at the check.',

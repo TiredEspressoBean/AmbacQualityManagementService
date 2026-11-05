@@ -117,6 +117,28 @@ decisions and your reason stay in the resolution notes. Closed by mistake?
 **Reopen** it, with a reason. It's *In progress* again, to re-decide or close again,
 and the decision stands until you do. Your reason goes into the resolution notes.
 
+**A failed load.** `WO-QA-MANAGE-02`'s three bodies were washed together, and the
+bath read 71 °C against its 65 °C limit, so the cycle failed and all three are held
+under one disposition: *Batch cycle failed at Wash - 3 parts in the load (3 held, 0
+already past this step).* Sarah contained it (the heater relay was replaced and the
+bath re-verified) and assigned it to you. Find it in your **Inbox** >
+**Dispositions**.
+
+1. Open it. **Affected Load** lists the three bodies, each *Held — awaiting
+   decision*.
+2. Decide one body on its own: under **Applies to**, choose **Choose parts**, tick
+   `INJ-QA-MANAGE-011`, and choose **Scrap**. Confirm. The body gets its own
+   disposition, linked from **Affected Load** (*DISP-… · Scrap*), and the other two
+   are still held.
+3. Decide the rest together: **Whole load (2 held parts)**, **Use As Is**, with
+   **Requires approval**, **Approval received** and concession `ENG-CONC-0043`.
+   Submit. Each gets its own Use As Is disposition, and the load's notes record both
+   decisions.
+
+**Try to break it:** close the load's disposition now. It's refused — *"Cannot complete
+disposition: 3 part disposition(s) from this load are still open"* — because the load
+is settled only when every part's own disposition is.
+
 ---
 
 ## 3. Rule on what arrives

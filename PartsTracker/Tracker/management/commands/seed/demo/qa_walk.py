@@ -100,6 +100,13 @@ OVERSIZE_BORE = 4.007
 FALSE_FAIL_WO = 'WO-QA-INSPECT-06'
 FALSE_FAIL_PARTS = ['INJ-QA-INSPECT-051', 'INJ-QA-INSPECT-052']
 
+# QA Manager: a failed load to decide. Three bodies washed together; the bath ran hot,
+# so the cycle failed and the whole load is held under one disposition. Sarah has
+# contained it; deciding it (the whole load, or chosen parts) is Maria's.
+FAILED_LOAD_WO = 'WO-QA-MANAGE-02'
+FAILED_LOAD_PARTS = ['INJ-QA-MANAGE-011', 'INJ-QA-MANAGE-012', 'INJ-QA-MANAGE-013']
+HOT_BATH = 71.0
+
 # Casey's reason names the certification the gate found missing at that step.
 OVERRIDE_REASONS = {
     'Body Inspection': 'Only operator free for the cell; run on my authority pending '
@@ -191,6 +198,13 @@ class DemoQaWalkSeeder(BaseSeeder):
             result['false_fail_disposition'] = self._walk_false_fail(wo, parts, result)
         self._space_out(wo, self.today - timedelta(hours=2, minutes=30))
 
+        with transaction.atomic():
+            wo = self._work_order(order, process, FAILED_LOAD_WO, len(FAILED_LOAD_PARTS))
+            parts = self._parts(wo, part_type, FAILED_LOAD_PARTS)
+            result['failed_load_disposition'] = self._walk_failed_load(wo, parts, result)
+        self._space_out(wo, self.today - timedelta(hours=1, minutes=40))
+        self._date_failed_load(wo)
+
         result['failed_gauge'] = self._fail_gauge()
 
         result['work_orders'] = [wo1, wo2] + drills
@@ -212,6 +226,10 @@ class DemoQaWalkSeeder(BaseSeeder):
         ff = result.get('false_fail_disposition')
         self.log(f"  {FALSE_FAIL_WO}: {FALSE_FAIL_PARTS[1]} failed for a burr that wasn't "
                  f"there, {ff.disposition_number if ff else 'no disposition'} open")
+        fl = result.get('failed_load_disposition')
+        self.log(f"  {FAILED_LOAD_WO}: Wash load failed (bath {HOT_BATH:g} °C), "
+                 f"{fl.disposition_number if fl else 'no disposition'} holds "
+                 f"{len(FAILED_LOAD_PARTS)} parts for Maria")
         self.log(f"  Training-gate overrides recorded: {result['override_count']}")
         return result
 
@@ -323,6 +341,77 @@ class DemoQaWalkSeeder(BaseSeeder):
         if disposition is None:
             self.log(f"  Warning: no disposition opened for {failed.ERP_id}.", warning=True)
         return disposition
+
+    def _walk_failed_load(self, wo, parts, result):
+        """Machined and ground, then washed together: the load is sealed and its
+        completion check reads the bath hot, which fails the cycle. The failed check
+        contains the load (batch_disposition): every part is held and one disposition
+        opens for the batch. Sarah records the containment; the decision is Maria's."""
+        from Tracker.services.dwi.batch_lifecycle import seal_batch
+        from Tracker.services.qms.disposition import record_containment_complete
+        self._run_step_for(parts, 'Machining', result)
+        self._run_step_for(parts, 'Precision Grinding', result)
+        for part in parts:
+            se = self._start(part, result)
+            for ss in self._substeps(part.step, scope='sampled'):
+                self._submit(ss, step_execution=se)
+        step = self.step['Wash']
+        batch = BatchExecution.objects.create(tenant=self.tenant, work_order=wo, step=step,
+                                              started_by=self.operator, started_at=timezone.now())
+        batch.parts.set(parts)
+        # The seal point first (the cycle starts), then the completion checks, the way
+        # an operator runs them: the bath reading is what fails.
+        for ss in self._substeps(step, scope='batch'):
+            batch.refresh_from_db()
+            if ss.seals_load:
+                self._submit(ss, batch_execution=batch)
+                batch.refresh_from_db()
+                if batch.sealed_at is None:
+                    seal_batch(batch=batch, user=self.operator)
+            else:
+                self._submit(ss, batch_execution=batch, out_of_spec='Bath Temperature',
+                             reading=HOT_BATH)
+        disposition = (QuarantineDisposition.objects
+                       .filter(batch_execution=batch, current_state='OPEN').first())
+        if disposition is None:
+            self.log(f"  Warning: the failed load on {wo.ERP_id} opened no disposition.",
+                     warning=True)
+            return None
+        disposition.assigned_to = self.maria
+        disposition.containment_action = (
+            'Load held on the wash rack. Bath thermostat read 71 °C against the 65 °C '
+            'limit; heater relay replaced and the bath re-verified at 60 °C.')
+        disposition.save(update_fields=['assigned_to', 'containment_action', 'updated_at'])
+        record_containment_complete(disposition, self.sarah)
+        for part in parts:
+            part.refresh_from_db()
+        return disposition
+
+    def _date_failed_load(self, wo):
+        """_space_out re-dates part visits; the load, its readings, its report and its
+        disposition belong to the batch, not a part. Load them from the parts' Wash
+        start, seal ten minutes later, read the bath at the end of the run, and contain
+        it shortly after."""
+        batch = BatchExecution.objects.filter(work_order=wo, step=self.step['Wash']).first()
+        if batch is None:
+            return
+        start = (StepExecution.objects.filter(part__work_order=wo, step=batch.step)
+                 .exclude(started_at__isnull=True).order_by('started_at')
+                 .values_list('started_at', flat=True).first())
+        if start is None:
+            return
+        sealed = start + timedelta(minutes=10)
+        read = sealed + timedelta(minutes=28)
+        BatchExecution.objects.filter(pk=batch.pk).update(started_at=start, sealed_at=sealed)
+        StepExecutionMeasurement.objects.filter(batch_execution=batch).update(recorded_at=read)
+        SubstepResponse.objects.filter(batch_execution=batch).update(responded_at=read)
+        SubstepCompletion.objects.filter(batch_execution=batch, substep__seals_load=True).update(
+            completed_at=sealed)
+        SubstepCompletion.objects.filter(batch_execution=batch, substep__seals_load=False).update(
+            completed_at=read)
+        QualityReports.objects.filter(batch_execution=batch).update(created_at=read, updated_at=read)
+        QuarantineDisposition.objects.filter(batch_execution=batch).update(
+            created_at=read, containment_completed_at=read + timedelta(minutes=15))
 
     def _make_bodies(self, wo, parts, result):
         """Machining, grinding and the wash: a body made, up to its inspection."""
