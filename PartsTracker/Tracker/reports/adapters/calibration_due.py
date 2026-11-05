@@ -132,7 +132,7 @@ class CalibrationDueAdapter(ReportAdapter):
         equipment_qs = (
             Equipments.objects
             .filter(tenant=tenant)
-            .select_related("equipment_type")
+            .select_related("equipment_type", "location")
             .order_by("name")
         )
 
@@ -162,7 +162,8 @@ class CalibrationDueAdapter(ReportAdapter):
                     equip.equipment_type.name
                     if equip.equipment_type else None
                 ),
-                location=equip.location or "",
+                # A StorageLocation now, not text: the report crashed on any gauge with one.
+                location=equip.location.name if equip.location_id else "",
                 last_cal_date=latest_record.calibration_date,
                 due_date=latest_record.due_date,
                 days_until_due=days_until_due,
