@@ -45,7 +45,7 @@ that explains it.
 | An inspection recorded FAIL that should have passed | Void it, re-inspect, then close the disposition as **Not a nonconformance** | QA Inspector, then QA Manager | [When the finding was wrong](quality/dispositions.md#when-the-finding-was-wrong-not-a-nonconformance) |
 | An inspection recorded PASS that should have failed | Void it and capture the FAIL | QA Inspector | [Voiding a completion](dwi/running.md#voiding-a-completion) |
 | A first piece passed in error | **Void pass**: the run holds until it is re-inspected | QA Inspector | [A first piece passed in error](work-orders/fpi.md#a-first-piece-passed-in-error) |
-| A disposition decided wrong | Decide again while it is open. A Scrap changed un-scraps, with a reason | QA Manager | [Decided wrong, or closed too soon](quality/dispositions.md#decided-wrong-or-closed-too-soon) |
+| A disposition decided wrong | Decide again while it is open. A Scrap or Return to Supplier changed reinstates the part, with a reason | QA Manager | [Decided wrong, or closed too soon](quality/dispositions.md#decided-wrong-or-closed-too-soon) |
 | A disposition closed by mistake | **Reopen**, with a reason | QA Manager | [Decided wrong, or closed too soon](quality/dispositions.md#decided-wrong-or-closed-too-soon) |
 | A CAPA verified wrongly | Before closing: Not Effective sends it back. A closed CAPA is final: raise a new one | QA Manager | [Closed is the end of the line](capa/verification.md#closed-is-the-end-of-the-line) |
 | A training record wrong | Edit it; the form asks for a reason | QA Manager | [Correcting a record](quality/training-records.md#correcting-a-record) |

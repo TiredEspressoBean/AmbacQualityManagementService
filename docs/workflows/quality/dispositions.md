@@ -204,10 +204,12 @@ OPEN  ──(decision recorded)──▶  IN_PROGRESS  ──(resolution complet
 ### Decided wrong, or closed too soon
 
 **While it is open,** a decision can be changed by deciding again, with the same
-authority as the first. Changing a **Scrap** to anything else asks for a reason,
-and brings the part back out of scrap to be handled under the new decision. Both
-decisions and the reason stay in the resolution notes. A scrapped **core** is the
-exception: it is reinstated from its core page, not here.
+authority as the first. Changing a **Scrap** or a **Return to Supplier** to
+anything else asks for a reason, and reinstates the part — out of scrap, or back
+from cancelled — to be handled under the new decision. Both decisions and the
+reason stay in the resolution notes: *"Decision changed from Return to Supplier to
+Rework by &lt;name&gt;; the part was reinstated. Reason: …"*. A scrapped or returned
+**core** is the exception: it is reinstated from its core page, not here.
 
 **Once closed,** its decision can't be changed by editing: *"This disposition is
 closed; its decision can no longer be changed."* A disposition closed by mistake

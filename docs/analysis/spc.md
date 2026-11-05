@@ -91,7 +91,7 @@ Use the dropdowns at the top to select:
 | Setting | Options | Description |
 |---------|---------|-------------|
 | **Chart Type** | Subgroup (X̄-R or X̄-S), I-MR | The subgroup chart is X̄-S when the subgroup size is over 8, X̄-R otherwise |
-| **Date Range** | Last 30, 60, 90 or 180 days | How far back to pull data. Starts at 90 |
+| **Date Range** | Last 30, 60, 90 or 180 days | How far back to pull data. Starts at 90. A range holding more than 500 readings charts the newest 500 |
 | **Subgroup Size (n)** | 2–10, 15, 20, 25 | Number of consecutive measurements per point. Subgroup charts only; starts at 5 |
 
 Standard practice is subgroup size of 5. Larger subgroups detect smaller shifts but require more data.

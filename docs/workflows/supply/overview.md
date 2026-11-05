@@ -757,9 +757,9 @@ with your mix of free-issue work and bulk stock.
 
 | Metric | Shows |
 |--------|-------|
-| **Lots received** | Volume |
-| **Accepted** / **Rejected** | Counts |
-| **Reject rate** | Quality performance |
+| **Lots received** | Volume — the deliveries, not the pieces later split off them |
+| **Accepted** / **Rejected** | How each lot's inspection came out, wherever the lot is now. **Rejected** is a lot with a reject decision on it or on pieces split off it — return, scrap, or use as is on a concession — or one still rejected or returned. **Accepted** is the rest that passed: accepted, in use, consumed or shipped |
+| **Reject rate** | Rejected out of accepted + rejected |
 | **CoC compliance** | Whether certificates of conformance arrived |
 | **On-time delivery** | Delivery performance |
 | **Open SCARs** | Outstanding corrective actions |

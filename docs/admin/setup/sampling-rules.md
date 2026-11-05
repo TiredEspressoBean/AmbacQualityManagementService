@@ -46,7 +46,9 @@ is automatic, and governed by the primary's return count — **Return after**
 Where the rule set's strategy is **Z1.4**, incoming inspection carries a
 **severity** per supplier per receiving step, and it switches itself on lot
 history. This one is **cross-work-order** — it is a standing judgement about
-that supplier:
+that supplier. Each lot counts once, when its verdict is first decided —
+evaluating it again, or accepting or rejecting after evaluating, doesn't count it
+twice:
 
 | Transition | When |
 |------------|------|

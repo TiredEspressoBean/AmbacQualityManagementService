@@ -233,7 +233,7 @@ accepted and rejected, the reject rate, CoC compliance, on-time delivery and ope
 SCARs. **Great Lakes Diesel** is rated C, with a recommendation to review for
 suspension.
 
-1. Read why: a rejected lot, low CoC compliance and an open SCAR.
+1. Read why: rejected lots, low CoC compliance and an open SCAR.
 2. **Suspend from the Approved Supplier List**, then from Great Lakes Diesel's row
    menu, **Suspend…**, with the reason. Their lots waiting at the dock
    (`RCV-MAT-0001` to `0004`) are held as *Unqualified supplier*, and so is anything
