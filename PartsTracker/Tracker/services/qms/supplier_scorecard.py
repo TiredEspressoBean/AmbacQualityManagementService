@@ -50,17 +50,37 @@ def _rating(*, inspected, reject_rate, on_time_rate, coc_compliance, open_scar_c
 
 
 def compute_supplier_scorecard(supplier) -> SupplierScorecard:
-    from Tracker.models import MaterialLot, CAPA
+    from django.db.models import Exists, OuterRef, Q
+    from Tracker.models import MaterialLot, CAPA, QualityReports, QuarantineDisposition
 
     # Customer property is not a purchase: it says nothing about the supplier.
     # Received means arrived: an expected receipt still ON_ORDER (or cancelled) isn't a
     # lot from them yet, and counting it understated CoC compliance too.
+    # The lots received — not the pieces split off them (a partial reject, an issue),
+    # which counted as more lots from the supplier.
     lots = (MaterialLot.objects  # tenant-safe: runs in request/tenant_context; SecureManager auto-scopes
-            .filter(archived=False, supplier=supplier, owner__isnull=True, received_date__isnull=False)
+            .filter(archived=False, supplier=supplier, owner__isnull=True, received_date__isnull=False,
+                    parent_lot__isnull=True)
             .exclude(status__in=["ON_ORDER", "CANCELLED"]))
     received = lots.count()
-    accepted = lots.filter(status="ACCEPTED").count()
-    rejected = lots.filter(status="REJECTED").count()
+    # The inspection's outcome, not where the lot is now: an accepted lot goes on to
+    # IN_USE / CONSUMED and a rejected one to RETURNED / SCRAPPED, and counting only
+    # ACCEPTED / REJECTED dropped both — the reject rate and rating drifted as stock was
+    # used or sent back (hunt 2026-11-05). Rejected = a reject decision on the lot or a
+    # piece split off it (a declined whole-lot request decides nothing), or still
+    # REJECTED / RETURNED. Accepted = the rest that got past inspection.
+    reject_decision = QuarantineDisposition.objects.filter(  # tenant-safe: correlated to scoped lots
+        disposition_type__in=("RETURN_TO_SUPPLIER", "SCRAP", "USE_AS_IS"))
+    is_rejected = (Q(status__in=("REJECTED", "RETURNED"))
+                   | Exists(reject_decision.filter(material_lot=OuterRef("pk")))
+                   | Exists(reject_decision.filter(material_lot__parent_lot=OuterRef("pk"))))
+    passed = QualityReports.objects.filter(  # tenant-safe: correlated to scoped lots
+        material_lot=OuterRef("pk"), status="PASS")
+    rejected = lots.filter(is_rejected).count()
+    accepted = (lots.exclude(is_rejected)
+                .filter(Q(status__in=("ACCEPTED", "IN_USE", "CONSUMED", "SHIPPED"))
+                        | Q(status="SCRAPPED") & Exists(passed))
+                .count())
     inspected = accepted + rejected
 
     with_coc = lots.exclude(certificate_of_conformance="").count()

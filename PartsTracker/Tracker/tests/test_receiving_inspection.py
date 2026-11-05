@@ -511,6 +511,21 @@ class SupplierQualityTests(_ReceivingFixtureMixin, TenantTestCase):
         self.assertAlmostEqual(sc.on_time_rate, 0.5)   # 1 on-time of 2 with a promised date
         self.assertEqual(sc.open_scar_count, 0)
 
+    def test_scorecard_counts_the_outcome_not_where_the_lot_is_now(self):
+        """An accepted lot goes on to IN_USE / CONSUMED, a rejected one to RETURNED or
+        (by its disposition) SCRAPPED; they stay accepted / rejected (hunt 2026-11-05)."""
+        from Tracker.models import QuarantineDisposition
+        from Tracker.services.qms.supplier_scorecard import compute_supplier_scorecard
+        self._lot("U", "IN_USE")
+        self._lot("C", "CONSUMED")
+        self._lot("R", "RETURNED")
+        scrapped = self._lot("S", "SCRAPPED")
+        QuarantineDisposition.objects.create(tenant=self.tenant_a, material_lot=scrapped,
+                                             quantity=Decimal("100"), disposition_type="SCRAP")
+        sc = compute_supplier_scorecard(self.supplier)
+        self.assertEqual((sc.lots_accepted, sc.lots_rejected, sc.lots_inspected), (2, 2, 4))
+        self.assertAlmostEqual(sc.reject_rate, 0.5)
+
     def test_open_scar_is_supplier_capa_and_counts(self):
         from Tracker.services.qms.scar import open_scar
         from Tracker.services.qms.supplier_scorecard import compute_supplier_scorecard
