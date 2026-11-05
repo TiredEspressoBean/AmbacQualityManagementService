@@ -34,8 +34,12 @@
 
 #set text(size: 9pt)
 
+// Column widths: each column sized to its content (auto), one text column (1fr)
+// taking the rest — fixed fractions were narrower than a date or an order number,
+// which printed over the next column.
+
 // ── SOURCE (buy) ──────────────────────────────────────────────────────────────
-#let src-cols = (2fr, 0.6fr, 1.1fr, 0.6fr, 1fr, 1fr, 1fr)
+#let src-cols = (1fr, auto, auto, auto, auto, auto, auto)
 // "Recoverable" is what the core bank could yield — a forecast, shown BESIDE the short
 // figure and never subtracted from it. Buying to the short column is always safe; the
 // recoverable column is what a planner may choose to wait on.
@@ -64,7 +68,7 @@
 // would ask for the same unit repeatedly. Covers replacement slots on exchange rebuilds
 // — the only demand recovered stock may fill — after what is on the shelf and what
 // teardowns already committed will yield. A PROPOSAL — nothing here commits a core.
-#let rec-cols = (1.4fr, 0.8fr, 0.9fr, 2.6fr, 1fr)
+#let rec-cols = (1fr, auto, auto, 2fr, auto)
 #section("Recover — teardown proposed to refill recovered stock",
   data.recover.map(r => (
     [#r.core_type #linebreak()#text(size: 7pt, fill: muted)[#r.cores_available in bank]],
@@ -84,7 +88,7 @@
 )
 
 // ── PRODUCE (build) ────────────────────────────────────────────────────────────
-#let prod-cols = (1.5fr, 1.8fr, 0.6fr, 1fr, 1.1fr)
+#let prod-cols = (auto, 1fr, auto, auto, auto)
 #section("Produce — in-house components to build",
   data.produce.map(r => (
     text(font: mono-font)[#r.work_order],
@@ -100,7 +104,7 @@
 )
 
 // ── TOOLING ────────────────────────────────────────────────────────────────────
-#let tool-cols = (2.4fr, 1fr, 0.8fr, 1.1fr)
+#let tool-cols = (1fr, auto, auto, auto)
 #section("Tooling — resources not on hand",
   data.tooling.map(r => (
     r.fixture,
@@ -117,7 +121,9 @@
 // ── SHIP ───────────────────────────────────────────────────────────────────────
 // What customers are owed, by when: open order lines still to ship, overdue first,
 // then by due date; no due date last. RFI lines are tentative — a deal not yet won.
-#let ship-cols = (0.7fr, 1.5fr, 1.6fr, 1.8fr, 0.6fr, 0.7fr, 0.7fr, 1.3fr)
+// Three free-text columns share the room: a lone 1fr got nothing once the auto
+// columns (a long status note, a part name) had taken the width, and overlapped.
+#let ship-cols = (auto, auto, 1fr, 1.2fr, auto, auto, auto, 1fr)
 #section("Ship — open order lines still to ship",
   data.ship.map(r => (
     if r.due_date == none { text(fill: muted)[no due date] } else { date-cell(r.due_date) },

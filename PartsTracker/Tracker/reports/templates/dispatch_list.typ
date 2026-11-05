@@ -51,8 +51,10 @@
   }
 }
 
-// Column widths shared between header and data rows
-#let col-widths = (1.3fr, 2fr, 0.5fr, 1fr, 0.55fr, 0.9fr, 1.4fr)
+// Column widths: each sized to its content (auto), the part name taking the rest.
+// Fixed fractions were narrower than a teardown WO number, which printed over the
+// part name; auto columns shrink and wrap before they overlap.
+#let col-widths = (auto, 1fr, auto, auto, auto, auto, auto)
 
 // ----------------------------------------------------------------------------
 // Document

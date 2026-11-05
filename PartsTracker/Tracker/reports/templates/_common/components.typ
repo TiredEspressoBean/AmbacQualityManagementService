@@ -178,6 +178,15 @@
 //
 // `column-gutter` is split across the shared cell edge, so it means the same
 // thing it did in the inner grid of the stacked-block version.
+// A break opportunity after a hyphen inside a word (zero-width space), for IDs and
+// dates in narrow columns: "ORD-2024-QA", "2026-11-05". Only a hyphen that follows a
+// letter or digit — a minus sign leading a number (-0.002) never splits from it.
+// Used by `report-table` on every column but the first.
+#let hyphen-breakable(body) = {
+  show regex("\w-"): it => [#it.text#sym.zws]
+  body
+}
+
 #let report-table(
   columns,
   header,
@@ -216,7 +225,11 @@
       repeat: true,
       ..header.map(h => text(weight: "semibold", font: sans-font)[#h]),
     ),
-    ..rows.map(r => r.map(cell => c(cell))).flatten(),
+    // Every column but the first may break after a hyphen: Unicode line breaking won't
+    // break "-" before a digit, so an ID like 20261105-174855-220597 was one unbreakable
+    // run that printed over the next column. The first column keeps its ID whole; size
+    // it `auto` so it has the room.
+    ..rows.map(r => r.enumerate().map(((i, cell)) => c(if i == 0 { cell } else { hyphen-breakable(cell) }))).flatten(),
   )
 }
 
