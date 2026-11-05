@@ -3688,6 +3688,23 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
             fields.append('training_authorization')
         if fields:
             execution.save(update_fields=fields)
+        # What every other way of opening and starting a visit does (the engine's
+        # creators in parts.py, lifecycle.start_execution). A first Start Work on a new
+        # order's step 1 came here and skipped them: the order stayed Pending while
+        # worked, a rule-sampled substep with no decision read as deselected (the
+        # sampled inspection was never required), a received core's teardown didn't
+        # begin, and the visit's machine wasn't recorded (hunt 2026-11-05).
+        if execution.part_id:
+            from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
+            from Tracker.services.mes.parts import _stamp_production_equipment
+            evaluate_substep_sampling(execution)
+            _stamp_production_equipment(execution)
+        if execution.status == 'IN_PROGRESS':
+            from Tracker.services.mes.work_order import mark_started
+            mark_started(execution.subject_work_order)
+            if execution.part_id:
+                from Tracker.services.reman.core_steps import on_step_started
+                on_step_started(execution.part, self.request.user)
 
     def update(self, request, *args, **kwargs):
         # Close the PATCH bypass: flipping an existing row to IN_PROGRESS is the

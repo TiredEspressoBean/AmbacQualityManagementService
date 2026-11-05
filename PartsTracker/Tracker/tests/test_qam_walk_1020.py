@@ -199,6 +199,10 @@ class FirstStartAssignsTests(TenantTestCase):
             format="json")
         self.assertEqual(resp.status_code, 201, resp.content)
         self.assertEqual(StepExecution.objects.get(part=part, step=step).assigned_to_id, self.user_a.id)
+        # ...and it's a start like any other: the order is no longer Pending (hunt
+        # 2026-11-05 — the first Start Work skipped the start side effects).
+        wo.refresh_from_db()
+        self.assertEqual(wo.workorder_status, "IN_PROGRESS")
 
 
 class OperatorSendToReworkTests(_Api):

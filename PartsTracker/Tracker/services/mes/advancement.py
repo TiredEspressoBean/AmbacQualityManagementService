@@ -370,9 +370,14 @@ def _report_staged(result, staged, step, wo) -> None:
     waiting = [p for p in staged if p.pk in still_here]
     if not waiting:
         return
+    from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
+    # The live cohort only, as advance_part_step counts it: never a scrapped part or one
+    # already split off.
     pending = list(Parts.objects.filter(  # tenant-safe: .objects auto-scopes
         archived=False, work_order=wo, step=step, part_type=waiting[0].part_type,
-    ).exclude(part_status=PartsStatus.READY_FOR_NEXT_STEP).order_by("ERP_id"))
+        split_from_lot=False,
+    ).exclude(part_status=PartsStatus.READY_FOR_NEXT_STEP)
+     .exclude(part_status__in=TERMINAL_PART_STATUSES).order_by("ERP_id"))
     held = [q for q in pending if q.part_status in HELD_PART_STATUSES]
     names = ", ".join(
         f"{q.ERP_id} ({q.get_part_status_display().lower()})" if q in held else q.ERP_id

@@ -138,3 +138,13 @@ class AdvancePartStepPreservesHeldStatusTests(TenantContextMixin, VectorTestCase
         p.refresh_from_db()
         self.assertEqual(p.part_status, PartsStatus.QUARANTINED,
                          'batch-completion staging must not clear the quarantine hold')
+
+    def test_a_scrapped_part_left_at_a_batch_step_doesnt_strand_the_lot(self):
+        """A scrapped (or split-off) part at a lot-moves-together step is never
+        "ready"; counting it left every lot-mate at "marked ready" (hunt 2026-11-05)."""
+        self._make_part('P-HP-SCRAP', self.batch_step, PartsStatus.SCRAPPED)
+        live = self._make_part('P-HP-LIVE', self.batch_step, PartsStatus.IN_PROGRESS)
+        outcome = advance_part_step(live, operator=self.user, skip_gate_check=True)
+        live.refresh_from_db()
+        self.assertNotEqual(outcome, "marked_ready")
+        self.assertEqual(live.step_id, self.terminal.id)

@@ -639,6 +639,24 @@ def _enforce_sequencing(substep, step_execution=None, batch_execution=None) -> N
         )
 
     missing = [s for s in prior.order_by('order') if s.id not in done_ids]
+    if missing and step_execution is not None:
+        # A sampled substep this part was sampled OUT of (or not decided yet) isn't
+        # open — the advancement gate reads it the same way. Counting it refused every
+        # later substep and stuck the part (hunt 2026-11-05).
+        from Tracker.models import SamplingDecision, SamplingOutcome
+        sampled = [s for s in missing if s.scope == SubstepScope.SAMPLED]
+        if sampled:
+            outcome = dict(SamplingDecision.objects.filter(
+                step_execution=step_execution, substep__in=sampled, superseded_by__isnull=True,
+            ).values_list('substep_id', 'outcome'))
+
+            def _not_required(s):
+                o = outcome.get(s.id)
+                if o is None:  # no decision: rule-based reads as deselected, rule-less as selected
+                    return s.sampling_rule_id is not None
+                return o in (SamplingOutcome.DESELECTED, SamplingOutcome.PENDING)
+
+            missing = [s for s in missing if not (s.scope == SubstepScope.SAMPLED and _not_required(s))]
     if missing:
         names = ', '.join(f"'{s.title}'" for s in missing[:3])
         more = '' if len(missing) <= 3 else f" (+{len(missing) - 3} more)"

@@ -126,13 +126,18 @@ def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
     # Pre-fetch completed batches that cover this part for this step
     # (regardless of current cohort-split status — see Case 19 in the
     # sandbox). A sealed load still running doesn't count yet.
-    sealed_batches_for_part = list(
-        BatchExecution.objects.filter(archived=False,
-            step=step,
-            parts=part,
-            completed_at__isnull=False,
-        )
+    # THIS visit's load: one completed after the visit was entered. Any load at the step
+    # with the part in it used to count, so a part rolled back or looping back to a
+    # wash / heat treat passed on its old cycle without running it again (hunt
+    # 2026-11-05) — per-part completions are keyed to the visit; loads now are too.
+    loads = BatchExecution.objects.filter(archived=False,
+        step=step,
+        parts=part,
+        completed_at__isnull=False,
     )
+    if step_execution.entered_at:
+        loads = loads.filter(completed_at__gte=step_execution.entered_at)
+    sealed_batches_for_part = list(loads)
     cohort_completions_index: dict[tuple[int, int], SubstepCompletion] = {}
     if sealed_batches_for_part:
         # tenant-safe: batch_execution and substep are both tenant-scoped FKs;

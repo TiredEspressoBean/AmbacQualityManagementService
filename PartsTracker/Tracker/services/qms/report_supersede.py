@@ -31,6 +31,17 @@ def void_completion(completion, user, reason: str):
     completion.void(user, reason)
     if not completion.substep_id:
         return completion
+    # The void re-opens the substep for a FRESH signature (gate_signature): its block
+    # signatures were given for the data now retracted, so they're retired as an undo
+    # retires one (soft-deleted, kept in history). Left live, the re-capture was taken as
+    # signed on them — possibly by someone else — and a new signature was refused as
+    # "already signed" (hunt 2026-11-05).
+    from Tracker.models import SubstepGateCompletion
+    for gate in (SubstepGateCompletion.objects  # tenant-safe: scoped by the execution FK
+                 .filter(deleted_at__isnull=True, **_pair_filter(completion))):
+        gate.deleted_at = timezone.now()
+        gate.archived = True
+        gate.save(update_fields=['deleted_at', 'archived', 'updated_at'])  # audited, as an undo is
     for report in (QualityReports.objects  # tenant-safe: scoped by the execution FK
                    .select_for_update()
                    .filter(superseded_at__isnull=True, **_pair_filter(completion))

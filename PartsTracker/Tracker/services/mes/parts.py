@@ -380,11 +380,17 @@ def advance_part_step(
             part.part_status = PartsStatus.READY_FOR_NEXT_STEP
         part.save()
 
+        # The lot is its live cohort, as the lot advancer reads it (advancement.py 3c):
+        # a terminal part left at the step (scrapped, cancelled…) is never "ready", and
+        # a part split off the lot moves on its own — counting either stranded the
+        # lot-mates at "marked ready" for good (hunt 2026-11-05).
         other_parts_pending = Parts.objects.filter(archived=False,
             work_order=part.work_order,
             part_type=part.part_type,
             step=part.step,
-        ).exclude(part_status=PartsStatus.READY_FOR_NEXT_STEP)
+            split_from_lot=False,
+        ).exclude(part_status=PartsStatus.READY_FOR_NEXT_STEP).exclude(
+            part_status__in=TERMINAL_PART_STATUSES)
 
         if other_parts_pending.exists():
             return "marked_ready"
@@ -589,6 +595,25 @@ def _attempt_lot_rejoin(part, operator) -> None:
         logger.warning("Lot rejoin attempt failed for part %s (left split).", part.id)
 
 
+def _settle_dispositions_on_rollback(part, operator, from_step, to_step, reason: str) -> None:
+    """Close the held part's open dispositions with the rollback as their resolution —
+    no decision taken (the type is cleared, as a declined whole-lot request is), the
+    rollback and its reason on the record, closed by whoever rolled it back."""
+    from Tracker.models import QuarantineDisposition
+    who = (operator.get_full_name() or operator.get_username()) if operator else 'someone'
+    note = (f"Settled by a rollback from {from_step.name} to {to_step.name} by {who}"
+            + (f": {reason.strip()}" if (reason or '').strip() else "."))
+    for d in (QuarantineDisposition.objects  # tenant-safe: scoped by the part FK
+              .filter(part=part, archived=False).exclude(current_state='CLOSED')):
+        d.disposition_type = ''
+        d.resolution_notes = f"{d.resolution_notes}\n{note}".strip() if d.resolution_notes else note
+        d.resolution_completed = True
+        d.resolution_completed_by = operator
+        d.resolution_completed_at = timezone.now()
+        d.current_state = 'CLOSED'
+        d.save()
+
+
 def rollback_part_step(
     part: Parts,
     operator,
@@ -659,6 +684,7 @@ def rollback_part_step(
         raise ValueError("Cannot determine step execution history for rollback")
 
     previous_step = previous_execution.step
+    rollback_reason = (reason or '').strip()
 
     if requires_approval:
         if override_id:
@@ -676,6 +702,7 @@ def rollback_part_step(
                 override.used = True
                 override.used_at = timezone.now()
                 override.save(update_fields=['used', 'used_at'])
+                rollback_reason = rollback_reason or (override.reason or '').strip()
 
             except StepOverride.DoesNotExist:
                 raise ValueError("Invalid or expired rollback override")
@@ -725,6 +752,12 @@ def rollback_part_step(
     evaluate_substep_sampling(rolled_back_exec)
 
     old_step = part.step
+    # A rollback may clear a hold (user decision 2026-11-05); it settles the part's open
+    # disposition too, so the record doesn't say "awaiting decision" while the part is
+    # worked again.
+    from Tracker.services.mes.locations import HELD_PART_STATUSES
+    if part.part_status in HELD_PART_STATUSES:
+        _settle_dispositions_on_rollback(part, operator, old_step, previous_step, rollback_reason)
     part.step = previous_step
     part.part_status = PartsStatus.IN_PROGRESS
 

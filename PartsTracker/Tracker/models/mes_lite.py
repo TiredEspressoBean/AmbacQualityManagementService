@@ -1111,9 +1111,17 @@ class Steps(SecureModel):
 
     def can_advance_step(self, work_order, step):
         """Fixed method with proper field references"""
-        parts = Parts.objects.filter(work_order=work_order, step=step)
+        # The live cohort, as the lot advancer counts it: a terminal part left at the
+        # step (scrapped, cancelled…) or one split off the lot is never "ready", and
+        # counting it kept ready/total under the pass threshold for good (hunt 2026-11-05).
+        from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
+        parts = (Parts.objects.filter(archived=False, work_order=work_order, step=step,
+                                      split_from_lot=False)
+                 .exclude(part_status__in=TERMINAL_PART_STATUSES))
         ready_for_next = parts.filter(part_status=PartsStatus.READY_FOR_NEXT_STEP).count()
         total = parts.count()
+        if total == 0:
+            return True
 
         if step.block_on_quarantine and parts.filter(part_status='QUARANTINED').exists():
             return False

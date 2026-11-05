@@ -611,6 +611,10 @@ class RejoinCohortTests(AdvancementEngineBase):
         target.refresh_from_db()
         self.assertEqual(target.part_status, PartsStatus.SCRAPPED, "scrap split is terminal")
         self.assertTrue(target.split_from_lot)
+        # ...and it's a scrap like any other: the visit it was on ends, so it leaves the
+        # step's queue (hunt 2026-11-05 — the split set the status alone).
+        from Tracker.models import StepExecution
+        self.assertFalse(StepExecution.objects.filter(part=target, exited_at__isnull=True).exists())
 
     def test_scrapped_part_cannot_rejoin(self):
         # #5: a SCRAP lot-split keeps its step, so siblings are present — but a terminal

@@ -151,6 +151,20 @@ class VerifiedSignatureTests(TenantTestCase):
         with self.assertRaisesRegex(ValidationError, "has been submitted"):
             clear_gate_signature(gate, self.user_a)
 
+    def test_a_void_reopens_the_blocks_for_a_fresh_signature(self):
+        """The signatures were given for the data the void retracts: the re-capture
+        needs new ones, and a new one isn't refused as "already signed" (hunt 2026-11-05)."""
+        from Tracker.services.qms.report_supersede import void_completion
+        gate = self._sign()
+        self._submit()
+        completion = SubstepCompletion.objects.get(step_execution=self.se, substep=self.substep,
+                                                   deleted_at__isnull=True)
+        void_completion(completion, self.user_a, "Wrong gauge used")
+        gate.refresh_from_db()
+        self.assertIsNotNone(gate.deleted_at)
+        self.assertEqual(unsigned_signature_blocks(self.substep, self.se), ["Release sign-off"])
+        self.assertNotEqual(self._sign().pk, gate.pk)
+
     def test_someone_elses_signature_needs_clearing_authority(self):
         gate = self._sign()
         other = get_user_model().objects.create_user(

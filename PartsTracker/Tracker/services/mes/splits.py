@@ -91,8 +91,6 @@ def split_part_from_lot(
                 "substep - reworked parts must be re-inspected before they can advance."
             )
 
-    from Tracker.services.reman.core_part import scrap_if_core
-
     with transaction.atomic():
         # Lock the part and re-check the idempotency guard under the lock: two
         # concurrent splits of the same part must not both proceed (which would
@@ -104,10 +102,9 @@ def split_part_from_lot(
             # scrapped. Without this, the idempotency guard would leave it non-terminal
             # (schedulable/rejoinable) despite the scrap request.
             if reason == PartSplitReason.SCRAP and part.part_status != PartsStatus.SCRAPPED:
-                scrap_if_core(part, reason="scrapped from its lot")
-                part.part_status = PartsStatus.SCRAPPED
                 part.lot_split_reason = PartSplitReason.SCRAP
-                part.save(update_fields=['part_status', 'lot_split_reason'])
+                part.save(update_fields=['lot_split_reason'])
+                _scrap_split_part(part)
             return SplitResult(
                 part_id=str(part.id),
                 reason=part.lot_split_reason or reason,
@@ -120,16 +117,7 @@ def split_part_from_lot(
         part.lot_split_at = timezone.now()
         update_fields = ['split_from_lot', 'lot_split_reason', 'lot_split_at']
 
-        if reason == PartSplitReason.SCRAP:
-            # A scrapped part is terminal: mark it SCRAPPED so it's excluded from
-            # scheduling and can never rejoin. The split flag alone doesn't set status
-            # (status is otherwise driven by the disposition cascade), so a scrap-split
-            # made directly through this service must set it here to stay consistent.
-            # A core is scrapped by its stage, which its part then follows.
-            scrap_if_core(part, reason="scrapped from its lot")
-            part.part_status = PartsStatus.SCRAPPED
-            update_fields.append('part_status')
-        elif reason == PartSplitReason.QUARANTINE:
+        if reason == PartSplitReason.QUARANTINE:
             # A part split off the cohort must land in a DEFINED held state, never drift
             # down the route solo. Quarantine holds it: QUARANTINED is excluded from
             # scheduling and preserved through transitions (HELD_PART_STATUSES), matching
@@ -183,6 +171,10 @@ def split_part_from_lot(
             moved_to_step_id = str(rework_target_step.id)
 
         part.save(update_fields=update_fields)
+        if reason == PartSplitReason.SCRAP:
+            # A scrapped part is terminal: SCRAPPED, excluded from scheduling, never
+            # rejoins — through the same guards and consequences as any scrap.
+            _scrap_split_part(part)
 
         logger.info(
             "Part %s split from cohort (reason=%s, moved_to=%s, by=%s)",
@@ -207,6 +199,33 @@ def split_part_from_lot(
         moved_to_step_id=moved_to_step_id,
         already_split=False,
     )
+
+
+def _scrap_split_part(part) -> None:
+    """Scrap a part split from its lot as any scrap does (parts.bulk_set_status,
+    disposition): refused while its disposition is open (that decision is QA's) or once
+    it has ended (completed, shipped); the visit it was on ends, so it leaves the step's
+    queue; and its work order completes if this was its last live part. A "Split —
+    scrap" used to set the status alone (hunt 2026-11-05). Raises ValidationError."""
+    from Tracker.models import PartsStatus
+    from Tracker.services.mes.parts import (
+        _blocks_terminal_exit, _cascade_work_order_completion, end_open_executions,
+        status_set_refusal,
+    )
+    from Tracker.services.reman.core_part import scrap_if_core
+
+    refusal = status_set_refusal(part, PartsStatus.SCRAPPED)
+    if refusal:
+        raise ValidationError(refusal)
+    if _blocks_terminal_exit(part.part_status, PartsStatus.SCRAPPED, False):
+        raise ValidationError(f"{part.ERP_id} is {part.get_part_status_display().lower()}; it can't be scrapped.")
+    # A core is scrapped by its stage, which its part follows and which ends its visit.
+    if scrap_if_core(part, reason="scrapped from its lot"):
+        return
+    part.part_status = PartsStatus.SCRAPPED
+    part.save(update_fields=['part_status'])
+    end_open_executions(part)
+    _cascade_work_order_completion(part)
 
 
 def rejoin_part_to_lot(

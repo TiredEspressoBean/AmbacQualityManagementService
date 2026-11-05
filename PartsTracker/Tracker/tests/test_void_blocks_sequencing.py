@@ -164,3 +164,16 @@ class VoidBlocksSequencingTests(TenantContextMixin, VectorTestCase):
                 substep=second_batch, batch_execution=batch, user=self.user,
                 captures=_attestation(),
             )
+
+    def test_a_substep_the_part_was_sampled_out_of_doesnt_block_the_next(self):
+        """An earlier required substep this part was sampled OUT of isn't open — the
+        advancement gate reads it the same way. It refused every later substep and stuck
+        the part (hunt 2026-11-05)."""
+        from Tracker.models import SamplingDecision, SamplingOutcome
+        SamplingDecision.objects.create(tenant=self.tenant, step_execution=self.se,
+                                        substep=self.first, outcome=SamplingOutcome.DESELECTED)
+        result = submit_substep(
+            substep=self.second, step_execution=self.se, user=self.user,
+            captures=_attestation(),
+        )
+        self.assertIsNotNone(result.completion_id)

@@ -249,6 +249,50 @@ class CompletedByIsWhoDidTheWorkTests(_Fixture):
         self.assertTrue(StepTransitionLog.objects.filter(part=self.part, operator=signer).exists(),
                         "who moved it stays on the transition log")
 
+    def test_a_load_from_an_earlier_visit_doesnt_cover_this_one(self):
+        """The batch gate took any completed load at the step with the part in it: a part
+        back at a wash for another visit passed on its old cycle (hunt 2026-11-05)."""
+        import datetime
+        from Tracker.models import BatchExecution, SubstepCompletion
+        from Tracker.services.dwi.advancement_gate import substep_completion_blockers
+        sub = Substep.objects.create(tenant=self.tenant_a, step=self.step, order=0, title="Wash cycle",
+                                     scope="BATCH", body_blocks={"type": "doc", "content": []})
+        old = BatchExecution.objects.create(tenant=self.tenant_a, work_order=self.wo, step=self.step,
+                                            started_by=self.user_a)
+        old.parts.add(self.part)
+        SubstepCompletion.objects.create(tenant=self.tenant_a, batch_execution=old, substep=sub,
+                                         completed_by=self.user_a)
+        BatchExecution.objects.filter(pk=old.pk).update(
+            completed_at=timezone.now() - datetime.timedelta(days=2))
+        visit = StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=self.step,
+                                             visit_number=2, status="IN_PROGRESS")
+        blockers = substep_completion_blockers(self.step, visit, self.wo)
+        self.assertTrue(any("Wash cycle" in b for b in blockers), blockers)
+
+    def test_rolling_back_a_held_part_settles_its_disposition(self):
+        """A rollback may clear a hold (user decision 2026-11-05); it closes the part's
+        open disposition with the rollback's reason, so the NCR doesn't say "awaiting
+        decision" while the part is worked."""
+        from Tracker.services.mes.parts import advance_part_step, rollback_part_step
+        first = self._two_steps()
+        # An undo inside the window, without approval (steps want approval by default).
+        Steps.objects.filter(part_type=self.pt).update(rollback_requires_approval=False)
+        StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=first,
+                                     visit_number=1, status="IN_PROGRESS", assigned_to=self.user_a)
+        advance_part_step(self.part, operator=self.user_a, skip_gate_check=True)
+        self.part.refresh_from_db()
+        Parts.objects.filter(pk=self.part.pk).update(part_status="QUARANTINED")
+        self.part.refresh_from_db()
+        disp = QuarantineDisposition.objects.create(tenant=self.tenant_a, part=self.part,
+                                                    step=self.part.step, description="Burr")
+        rollback_part_step(self.part, self.user_a, reason="Advanced it by mistake")
+        self.part.refresh_from_db()
+        disp.refresh_from_db()
+        self.assertEqual((self.part.step_id, self.part.part_status), (first.id, "IN_PROGRESS"))
+        self.assertEqual(disp.current_state, "CLOSED")
+        self.assertIn("Settled by a rollback", disp.resolution_notes)
+        self.assertIn("Advanced it by mistake", disp.resolution_notes)
+
     def test_a_same_revisit_goes_back_to_who_worked_the_step_before(self):
         """revisit_assignment's choices are uppercase; this compared lowercase, so SAME
         never took effect. A revisit under SAME is handed to the previous visit's worker;
@@ -383,6 +427,19 @@ class RevisitRuleEnforcedTests(_Fixture):
         self.assertEqual((snap["rule"], snap["authorized_by"], snap["reason"]),
                          ("DIFFERENT", sup.id, "Only trained hand on shift"))
         self.assertNotIn("override", repeat.training_authorization, "not a training override")
+
+    def test_resuming_your_own_visit_keeps_its_start_record(self):
+        """A re-claim by the holder re-ran the gates and replaced the snapshot: the
+        override given at the real start was lost (hunt 2026-11-05)."""
+        from Tracker.services.mes.lifecycle import start_execution
+        repeat, other, sup = self._visits("DIFFERENT")
+        start_execution(repeat, self.user_a, authorizer=sup, reason="Only trained hand on shift")
+        repeat.refresh_from_db()
+        before = repeat.training_authorization
+        start_execution(repeat, self.user_a)  # Start Work again on the part they hold
+        repeat.refresh_from_db()
+        self.assertEqual(repeat.training_authorization, before)
+        self.assertIn("revisit_override", repeat.training_authorization)
 
     def test_different_lets_someone_else_start_it(self):
         from Tracker.services.mes.lifecycle import start_execution

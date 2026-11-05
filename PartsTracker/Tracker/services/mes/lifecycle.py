@@ -493,6 +493,13 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     """
     # Refusals no supervisor override reaches past (see assert_startable).
     assert_startable(execution.part if execution.part_id else None, execution.subject_work_order)
+    # Resuming your own visit (Start Work on a part you already started) isn't a new
+    # start: re-running the gates replaced the start record, dropping the supervisor
+    # override / reassignment / revisit override given at the real start — it fell off
+    # the Training Overrides review, and an operator started under an override was
+    # "not qualified" again (hunt 2026-11-05). The held/ended refusals above still apply.
+    if execution.status == 'IN_PROGRESS' and execution.assigned_to_id == operator.id:
+        return execution
     # The step's revisit rule on a repeat visit; a supervisor can authorize past it.
     revisit_override = check_revisit_rule(
         execution.part if execution.part_id else None, execution.step, operator,
