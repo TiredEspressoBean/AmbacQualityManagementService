@@ -121,9 +121,11 @@
 // ── SHIP ───────────────────────────────────────────────────────────────────────
 // What customers are owed, by when: open order lines still to ship, overdue first,
 // then by due date; no due date last. RFI lines are tentative — a deal not yet won.
-// Three free-text columns share the room: a lone 1fr got nothing once the auto
-// columns (a long status note, a part name) had taken the width, and overlapped.
-#let ship-cols = (auto, auto, 1fr, 1.2fr, auto, auto, auto, 1fr)
+// Order, customer, part type and status share what the date and the three quantity
+// columns leave (an order number wraps at its hyphens). A lone 1fr got nothing once
+// the auto columns had taken the width and overlapped; a one-line customer crushed
+// the part type and status into tall rows.
+#let ship-cols = (auto, 1fr, 1.1fr, 1.2fr, auto, auto, auto, 1fr)
 #section("Ship — open order lines still to ship",
   data.ship.map(r => (
     if r.due_date == none { text(fill: muted)[no due date] } else { date-cell(r.due_date) },

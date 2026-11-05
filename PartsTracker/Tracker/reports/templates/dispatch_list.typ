@@ -51,10 +51,23 @@
   }
 }
 
-// Column widths: each sized to its content (auto), the part name taking the rest.
-// Fixed fractions were narrower than a teardown WO number, which printed over the
-// part name; auto columns shrink and wrap before they overlap.
-#let col-widths = (auto, 1fr, auto, auto, auto, auto, auto)
+// One work order's cells, shared by the width measurement and the tables.
+#let header = ([WO \#], "Part", "Qty", "Due Date", "Days", "Priority", "Status")
+#let row-cells(item) = {
+  let late = item.days_until_due != none and int(item.days_until_due) < 0
+  let flag(body) = text(fill: if late { bad } else { muted }, weight: if late { "semibold" } else { "regular" })[#body]
+  (
+    // 8pt: every section's WO column is as wide as the longest number on the sheet (a
+    // teardown's runs to 35 characters), and the part name needs the room.
+    text(font: mono-font, size: 8pt, fill: if late { bad } else { ink }, weight: if late { "semibold" } else { "regular" })[#item.wo_number],
+    item.part_name,
+    text(fill: muted)[#item.qty_remaining],
+    flag(if item.due_date == none [—] else [#item.due_date]),
+    days-cell(item.days_until_due),
+    wo-priority-badge(item.priority),
+    text(fill: status-color(item.status))[#status-label(item.status)],
+  )
+}
 
 // ----------------------------------------------------------------------------
 // Document
@@ -82,27 +95,28 @@
 ] else [
   #set par(justify: false)
   #set text(size: 9pt)
-  #for group in data.groups [
-    #group-band(group.step_name, count: [#group.wo_count WO#if group.wo_count != 1 [s]])
-    #report-table(
-      col-widths,
-      ([WO \#], "Part", "Qty", "Due Date", "Days", "Priority", "Status"),
-      group.items.map(item => {
-        let late = item.days_until_due != none and int(item.days_until_due) < 0
-        let flag(body) = text(fill: if late { bad } else { muted }, weight: if late { "semibold" } else { "regular" })[#body]
-        (
-          text(font: mono-font, fill: if late { bad } else { ink }, weight: if late { "semibold" } else { "regular" })[#item.wo_number],
-          item.part_name,
-          text(fill: muted)[#item.qty_remaining],
-          flag(if item.due_date == none [—] else [#item.due_date]),
-          days-cell(item.days_until_due),
-          wo-priority-badge(item.priority),
-          text(fill: status-color(item.status))[#status-label(item.status)],
-        )
-      }),
-      aligns: (left, left, right, left, right, center, left),
+  // One set of column widths for every work-centre section, so the columns line up
+  // down the sheet: each column as wide as its widest cell in ANY section (header
+  // included), the part name taking the rest. Per-section auto widths put the Part
+  // column at a different place in every section. A column's width includes the
+  // table's cell padding (report-table: 6pt at the edges, 9pt gutter), hence the +.
+  #context {
+    let rows = data.groups.map(g => g.items).flatten().map(row-cells)
+    let widest(i) = calc.max(
+      measure(text(weight: "semibold", font: sans-font)[#header.at(i)]).width,
+      ..rows.map(r => measure(r.at(i)).width),
     )
-  ]
+    let widths = range(header.len()).map(i => if i == 1 { 1fr } else { widest(i) + 11pt })
+    for group in data.groups {
+      group-band(group.step_name, count: [#group.wo_count WO#if group.wo_count != 1 [s]])
+      report-table(
+        widths,
+        header,
+        group.items.map(row-cells),
+        aligns: (left, left, right, left, right, center, left),
+      )
+    }
+  }
 ]
 
 // ── Footer note ───────────────────────────────────────────────────────────────
