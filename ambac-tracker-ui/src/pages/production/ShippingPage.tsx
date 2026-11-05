@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { FileCheck2, PackageCheck, Truck } from "lucide-react";
+import { toast } from "sonner";
+import { FileCheck2, PackageCheck, ScanLine, Truck } from "lucide-react";
+import { api } from "@/lib/api/generated";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
+import { resolveScan } from "@/lib/scan";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,7 +92,7 @@ export function ShippingPage() {
                         </p>
                     ) : (
                         <div className="space-y-3">
-                            {ready.data!.map((g) => <ReadyOrderCard key={g.order_id ?? `owner-${g.customer_id}`} group={g} />)}
+                            {ready.data!.map((g) => <ReadyOrderCard key={g.order_id ?? `owner-${g.customer_id}`} group={g} allGroups={ready.data!} />)}
                         </div>
                     )
             ) : (
@@ -142,7 +146,84 @@ export function ShippingPage() {
     );
 }
 
-function ReadyOrderCard({ group }: { group: ReadyOrder }) {
+/** Pick by scanning: a unit's serial (its label's Code 128) or the label's QR ticks
+ *  that unit on this order, a customer lot's label ticks the lot. A scanner is a
+ *  keyboard — Enter submits and focus stays here for the next one. What's refused
+ *  says why: on another order, or not at its Ship step. */
+function ScanToPick({ group, allGroups, onUnit, onLot, picked, pickedLots }: {
+    group: ReadyOrder; allGroups: ReadyOrder[];
+    onUnit: (id: string) => void; onLot: (id: string) => void;
+    picked: Set<string>; pickedLots: Set<string>;
+}) {
+    const [code, setCode] = useState("");
+    const [busy, setBusy] = useState(false);
+    const scan = async () => {
+        const typed = code.trim();
+        if (!typed || busy) return;
+        setBusy(true);
+        try {
+            let hit: Awaited<ReturnType<typeof resolveScan>>;
+            try {
+                hit = await resolveScan(typed);
+            } catch (e) {
+                toast.error(apiErrorMessage(e) ?? "Couldn't look that up — try again.");
+                return;
+            }
+            if (hit?.kind === "LOT") {
+                const lot = group.lots.find((l) => l.id === hit.id);
+                if (!lot) { toast.error(`Lot ${hit.label} isn't listed on this order.`); return; }
+                if (pickedLots.has(lot.id)) { toast.info(`Lot ${lot.lot_number} is already ticked.`); }
+                else { onLot(lot.id); toast.success(`Lot ${lot.lot_number} ticked.`); }
+                setCode("");
+                return;
+            }
+            if (hit?.kind !== "PART") {
+                toast.error(hit ? `“${typed}” is ${hit.kind === "WORK_ORDER" ? "a work order" : "not a unit"} — scan the unit's label.`
+                    : `No unit matches “${typed}”.`);
+                return;
+            }
+            const unit = group.parts.find((p) => p.id === hit.id);
+            if (unit) {
+                if (picked.has(unit.id)) toast.info(`${unit.erp_id} is already ticked.`);
+                else { onUnit(unit.id); toast.success(`${unit.erp_id} ticked.`); }
+                setCode("");
+                return;
+            }
+            const elsewhere = allGroups.find((g) => g !== group && g.parts.some((p) => p.id === hit.id));
+            if (elsewhere) {
+                toast.error(`${hit.label} is on ${elsewhere.order_number ? `order ${elsewhere.order_number}` : "another order"}`
+                    + `${elsewhere.customer_name ? ` (${elsewhere.customer_name})` : ""}, not this one.`);
+                return;
+            }
+            // Not ready to ship anywhere: say where it is.
+            try {
+                const part = await api.api_Parts_retrieve({ params: { id: hit.id } });
+                const at = part.step_name ? ` — it's at ${part.step_name}` : "";
+                toast.error(`${part.ERP_id} isn't ready to ship: it isn't at its Ship step${at}`
+                    + ` (${String(part.part_status ?? "").toLowerCase().replace(/_/g, " ")}).`);
+            } catch {
+                toast.error(`${hit.label} isn't ready to ship.`);
+            }
+        } finally {
+            setBusy(false);
+        }
+    };
+    return (
+        <div className="flex gap-2">
+            {/* Never disabled while looking up: a disabled input drops focus, and the
+                next scan would type into nothing. */}
+            <Input placeholder="Scan a unit or lot label to tick it" value={code}
+                onChange={(e) => setCode(e.target.value)} aria-label="Scan to pick"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void scan(); } }}
+                className="max-w-sm font-mono" />
+            <Button type="button" variant="outline" size="sm" onClick={() => void scan()} disabled={busy || !code.trim()}>
+                <ScanLine className="mr-1 h-4 w-4" /> Tick
+            </Button>
+        </div>
+    );
+}
+
+function ReadyOrderCard({ group, allGroups }: { group: ReadyOrder; allGroups: ReadyOrder[] }) {
     const [picked, setPicked] = useState<Set<string>>(new Set());
     const [pickedLots, setPickedLots] = useState<Set<string>>(new Set());
     const [open, setOpen] = useState(false);
@@ -173,6 +254,9 @@ function ReadyOrderCard({ group }: { group: ReadyOrder }) {
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 overflow-x-auto">
+                <ScanToPick group={group} allGroups={allGroups} picked={picked} pickedLots={pickedLots}
+                    onUnit={(id) => setPicked((s) => new Set(s).add(id))}
+                    onLot={(id) => setPickedLots((s) => new Set(s).add(id))} />
                 {group.parts.length > 0 && (
                     <table className="w-full text-sm">
                         <thead>
