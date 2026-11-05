@@ -214,3 +214,13 @@ class ScanTests(_Fixture):
         self.assertEqual(old["id"], str(rack.id))
         self.assertEqual(self._scan("LOC-77").json()["label"], "WO-LOC-77")  # one partial match
         self.assertEqual(self._scan("nothing-like-it").status_code, 404)
+
+    def test_the_part_label_qr_scans_back_to_the_unit(self):
+        """The part ID label's QR was a placeholder domain with a path nothing resolved;
+        it's the unit's own page now, and a scan box reads it as the unit (2026-11-05)."""
+        from django.conf import settings
+        from Tracker.reports.adapters.part_id_label import part_label_url
+        url = part_label_url(self.part)
+        self.assertTrue(url.startswith(settings.FRONTEND_URL.rstrip('/')))
+        hit = self._scan(url).json()
+        self.assertEqual((hit["kind"], hit["id"], hit["label"]), ("PART", str(self.part.id), "INJ-9001"))

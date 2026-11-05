@@ -15,7 +15,7 @@ USAGE FROM AN ADAPTER
     from Tracker.reports.services.barcodes import render_barcode_svg, render_qr_svg
 
     barcode_svg = render_barcode_svg("SN-0847291")
-    qr_svg = render_qr_svg("https://tenant.example.com/parts/0847291")
+    qr_svg = render_qr_svg(f"{settings.FRONTEND_URL}/details/parts/{part.id}")
 
     # Put the string into the Pydantic context so the template can read it:
     return MyContext(
@@ -139,7 +139,8 @@ def render_qr_svg(
 
     Args:
         value: the string to encode. Typically a URL pointing back
-            into the system (`https://tenant.example.com/parts/<id>`)
+            into the system (`<FRONTEND_URL>/details/parts/<id>`, which
+            `services/core/scan.resolve_scan` resolves)
             or a self-contained data payload. Callers choose.
         error_correction: 'L' (7%), 'M' (15%, default), 'Q' (25%),
             or 'H' (30%). Use 'H' for labels that might get dirty or

@@ -5,7 +5,8 @@ needs no driver — only one place that turns whatever was typed into the thing 
 That place is here, and every scan field asks it.
 
 A code can be:
-- one of our own URLs, from a label's QR code — the path is the answer;
+- one of our own URLs, from a label's QR code — the path is the answer (a lot's page,
+  a location's, or a unit's: the part ID label's QR);
 - ``LOC:<code or name>``, from a location label;
 - a lot number, a serial (part ERP id), a work-order number, or a location code or
   name, matched exactly (case-insensitive), tried in that order.
@@ -21,6 +22,16 @@ from Tracker.services.mes.locations import LOCATION_PREFIX, find_location
 
 _LOT_PATH = re.compile(r"^/production/material-lots/([0-9a-f-]{36})/?$", re.I)
 _LOCATION_PATH = re.compile(r"^/production/locations/([^/]+)/?$", re.I)
+# The part ID label's QR: the unit's own page.
+_PART_PATH = re.compile(r"^/details/parts/([0-9a-f-]{36})/?$", re.I)
+
+
+def _part(part) -> dict:
+    return {"kind": "PART", "id": str(part.id), "label": part.ERP_id,
+            "detail": part.part_type.name if part.part_type_id else "",
+            "path": f"/workorder/{part.work_order_id}" if part.work_order_id else "",
+            "item_id": str(part.part_type_id) if part.part_type_id else None,
+            "work_order_id": str(part.work_order_id) if part.work_order_id else None}
 
 
 def _lot(lot) -> dict:
@@ -44,16 +55,25 @@ def resolve_scan(tenant, code: str) -> dict | None:
     if not text:
         return None
 
-    if text.lower().startswith(("http://", "https://")):
-        path = urlparse(text).path
-        m = _LOT_PATH.match(path)
-        if m:
-            lot = MaterialLot.objects.filter(tenant=tenant, id=m.group(1)).first()  # tenant-safe: explicit tenant filter
-            return _lot(lot) if lot is not None else None
-        m = _LOCATION_PATH.match(path)
-        if m:
-            # By id; a label printed before locations were records carries the name.
-            return _location(find_location(tenant, unquote(m.group(1))))
+    is_url = text.lower().startswith(("http://", "https://"))
+    # A label printed where FRONTEND_URL has no scheme ("host:port/path") encodes the
+    # address without one. Read it as a URL only when its path is one of our label
+    # paths, so a lot number or serial that happens to hold a slash is still looked up.
+    path = urlparse(text if is_url else f"//{text}").path if (is_url or "/" in text) else ""
+    m = _LOT_PATH.match(path)
+    if m:
+        lot = MaterialLot.objects.filter(tenant=tenant, id=m.group(1)).first()  # tenant-safe: explicit tenant filter
+        return _lot(lot) if lot is not None else None
+    m = _PART_PATH.match(path)
+    if m:
+        part = (Parts.objects.filter(tenant=tenant, id=m.group(1))  # tenant-safe: explicit tenant filter
+                .select_related("part_type").first())
+        return _part(part) if part is not None else None
+    m = _LOCATION_PATH.match(path)
+    if m:
+        # By id; a label printed before locations were records carries the name.
+        return _location(find_location(tenant, unquote(m.group(1))))
+    if is_url:
         return {"kind": "URL", "id": "", "label": path, "detail": "", "path": path, "item_id": None}
 
     if text.upper().startswith(LOCATION_PREFIX):
@@ -66,11 +86,7 @@ def resolve_scan(tenant, code: str) -> dict | None:
     part = (Parts.objects.filter(tenant=tenant, archived=False, ERP_id__iexact=text)  # tenant-safe: explicit tenant filter
             .select_related("part_type").first())
     if part is not None:
-        return {"kind": "PART", "id": str(part.id), "label": part.ERP_id,
-                "detail": part.part_type.name if part.part_type_id else "",
-                "path": f"/workorder/{part.work_order_id}" if part.work_order_id else "",
-                "item_id": str(part.part_type_id) if part.part_type_id else None,
-                "work_order_id": str(part.work_order_id) if part.work_order_id else None}
+        return _part(part)
     wo = WorkOrder.objects.filter(tenant=tenant, archived=False, ERP_id__iexact=text).first()  # tenant-safe: explicit tenant filter
     if wo is not None:
         return {"kind": "WORK_ORDER", "id": str(wo.id), "label": wo.ERP_id, "detail": "",

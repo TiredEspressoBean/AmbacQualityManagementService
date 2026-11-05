@@ -144,6 +144,14 @@ class PartIdLabelAdapter(ReportAdapter):
         return f"part_label_{validated_params.get('id', 'unknown')}.pdf"
 
 
+def part_label_url(part) -> str:
+    """What the label's QR encodes: the unit's own page in this deployment. A phone
+    camera opens it, and a scan box resolves it (services/core/scan.resolve_scan), as
+    the lot label's QR does. It was a placeholder domain and a path no page answers."""
+    from django.conf import settings
+    return f"{settings.FRONTEND_URL.rstrip('/')}/details/parts/{part.id}"
+
+
 def build_part_id_label_context(part, tenant) -> PartIdLabelContext:
     """Build a PartIdLabelContext for a single Parts instance.
 
@@ -159,8 +167,7 @@ def build_part_id_label_context(part, tenant) -> PartIdLabelContext:
     if part.part_type and getattr(part.part_type, "version", None):
         revision = f"Rev {part.part_type.version}"
 
-    tenant_slug = getattr(tenant, "slug", None) or "example"
-    qr_url = f"https://{tenant_slug}.ambactracker.example/parts/{part.id}"
+    qr_url = part_label_url(part)
 
     barcode_svg = render_barcode_svg(
         serial if serial else "UNKNOWN",
