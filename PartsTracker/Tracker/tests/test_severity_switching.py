@@ -62,6 +62,27 @@ class SeveritySwitchingTests(TenantTestCase):
         self._accept(); self._reject(); self._accept(); self._reject()  # 2 rejects within 4
         self.assertEqual(self._severity(), "TIGHTENED")
 
+    def test_a_lot_counts_once_however_often_it_is_evaluated(self):
+        """The evaluate endpoint, the Evaluate button and accept/reject's bulk record each
+        re-ran the evaluation; each counted as another lot (hunt 2026-11-05). One rejected
+        lot evaluated twice is one reject — not the two that tighten."""
+        from Tracker.services.qms.receiving_inspection import evaluate_lot_acceptance
+        self._seq += 1
+        lot = MaterialLot.objects.create(
+            tenant=self.tenant_a, lot_number=f"LOT-{self._seq:03d}",
+            received_date=datetime.date(2026, 1, 1), received_by=self.user_a,
+            quantity=Decimal("500"), quantity_remaining=Decimal("500"),
+            unit_of_measure="EA", status="AWAITING_INSPECTION", material_type=self.part_type,
+            supplier=self.supplier)
+        report = QualityReports.objects.create(
+            tenant=self.tenant_a, material_lot=lot, step=self.step, status="PENDING",
+            sample_size=50, accept_number=2, reject_number=3, defectives_found=3)
+        evaluate_lot_acceptance(report)
+        evaluate_lot_acceptance(report)
+        report.refresh_from_db()
+        self.assertEqual(report.status, "FAIL")
+        self.assertEqual(self._severity(), "NORMAL")
+
     def test_normal_to_reduced_ten_consecutive_accepts(self):
         for _ in range(10):
             self._accept()

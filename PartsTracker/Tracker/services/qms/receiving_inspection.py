@@ -733,11 +733,16 @@ def evaluate_lot_acceptance(report):
     else:
         status = "PENDING"
 
+    decided_now = status in ("PASS", "FAIL") and report.status not in ("PASS", "FAIL")
     if status != report.status:
         report.status = status
         report.save(update_fields=["status"])
     _fire_lot_gate(report)
-    if status in ("PASS", "FAIL"):
+    # Z1.4 switching counts LOTS: once, when this lot's verdict is decided. Every
+    # evaluation used to count — the evaluate endpoint, the Evaluate button, the bulk
+    # record in accept / reject — so one bad lot could tighten a supplier and reduced
+    # inspection came after ~5 lots, not 10 (hunt 2026-11-05).
+    if decided_now:
         from Tracker.services.qms.severity_switching import update_after_lot
         update_after_lot(report)
     return report
