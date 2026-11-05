@@ -210,20 +210,42 @@ chart anywhere.
 
 ## A whole load quarantined at once
 
-There is no multi-select bulk disposition — you cannot tick several quarantined
-parts and decide them together. Each disposition is decided on its own record.
+There is no multi-select bulk disposition for unrelated parts — you cannot tick
+several quarantined parts and decide them together. Each disposition is decided on
+its own record.
 
-What does happen in bulk is **containment**, and the system starts it, not you: if
-a shared batch cycle fails — one ultrasonic wash, one heat-treat load — the parts
-from that load **still in production** (in progress, awaiting QA, ready for their
-next step, or at an outside process) are quarantined together, and a single
-disposition is opened for the batch. That is one decision covering the load
-because they genuinely share one event, not a convenience for grouping unrelated
-parts.
+The exception is a **failed load**, and the system starts it, not you: if a shared
+batch cycle fails — one ultrasonic wash, one heat-treat load — the parts from that
+load **still in production** (in progress, awaiting QA, ready for their next step,
+or at an outside process) are quarantined together, and a single disposition is
+opened for the batch. That is one decision covering the load because they genuinely
+share one event, not a convenience for grouping unrelated parts.
 
 Parts from the load that have already moved on — completed, shipped, scrapped —
 aren't held, but the disposition counts them so they can be followed up: *Batch
 cycle failed at Wash - 6 parts in the load (0 held, 6 already past this step).*
+
+### Deciding a failed load
+
+Decide the load's disposition as any other, and say what the decision is for in
+**Applies to**, under **Disposition Type**: **Whole load (N held parts)**, or
+**Choose parts** and tick the held parts' serials. *Each part gets its own
+disposition with this decision. Parts not chosen stay held until they're decided.*
+
+Each chosen part gets its **own disposition**, decided with the same type and
+authority, and from there it behaves like any part's decision: Scrap scraps it,
+Rework sends it to the process's rework step, Use As Is needs its approval
+reference. The load's **Affected Load** card links each part to its disposition
+(*DISP-… · Scrap*), and marks a part still waiting **Held — awaiting decision**.
+Parts that had already moved past the step when the cycle failed weren't held and
+can't be chosen.
+
+A whole-load decision is also recorded on the load's disposition. A load decided in
+parts keeps no single type; each decision is noted on it. Once every held part has
+a decision, the load takes no more: *"Every held part in this load has a decision.
+Change a part's decision on its own disposition (listed under Affected Load)."* The
+load's disposition closes only when none of its held parts is waiting and every
+part disposition from it is closed.
 
 See [Running Work Instructions](../dwi/running.md#per-part-work-and-shared-cycles)
 for how shared cycles differ from per-part work.

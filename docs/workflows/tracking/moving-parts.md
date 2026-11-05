@@ -177,6 +177,12 @@ bypass](#requesting-a-bypass)), marked *Step Rollback*. **Approving it carries t
 rollback out** there and then, so nobody has to press anything again. A refused
 request leaves the part where it is.
 
+A **held** part — quarantined, on hold, or waiting for rework — can be sent back
+too, and the rollback settles its hold: the part goes back in progress at the
+earlier step, and its open disposition is closed with no decision taken and the
+rollback on the record — *"Settled by a rollback from &lt;step&gt; to &lt;step&gt;
+by &lt;name&gt;: &lt;reason&gt;"*. The same is true of an operator's **Undo**.
+
 ### The wrong part in a shared cycle
 
 When one cycle ran several parts together (a washer load, an oven batch), a part
