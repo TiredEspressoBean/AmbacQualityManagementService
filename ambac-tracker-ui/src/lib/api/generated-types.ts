@@ -53816,6 +53816,8 @@ export interface operations {
                 material_type?: string;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
+                /** @description 'true'/'1' narrows to usable stock: ACCEPTED and IN_USE (partly drawn) — as consumption, staging and shipping count it. */
+                on_hand?: string;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 /** @description A search term. */
@@ -54169,8 +54171,6 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["CorrectLotSourceRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["CorrectLotSourceRequest"];
                 "application/json": components["schemas"]["CorrectLotSourceRequest"];
             };
         };

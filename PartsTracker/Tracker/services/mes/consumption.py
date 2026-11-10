@@ -124,8 +124,12 @@ def _usable_lots(item, tenant, customer_id=None):
     return theirs + list(base.filter(owner__isnull=True).order_by(*order))
 
 
-def reserved_by_lot(item, tenant) -> dict:
+def reserved_by_lot(item, tenant, exclude_job=None) -> dict:
     """`{lot_id: quantity}` picked to a bench and not yet consumed, per lot.
+
+    `exclude_job` = `(work_order_id, step_id)`: a job's own pick isn't held against it —
+    it read SHORT for what was in its own tote, and "substituted" (supply round 1, S5).
+    Each entry counts what's left of it after consumption drew some (`issued`, S17).
 
     Read out of `MaterialStagingLine.picked_lots`, which is what the picker actually
     recorded taking. The aggregate `reserved_quantity` makes totals honest; this makes
@@ -135,15 +139,18 @@ def reserved_by_lot(item, tenant) -> dict:
 
     held: dict = {}
     # tenant-safe: explicit tenant filter
-    for row in (MaterialStagingLine.objects
-                .filter(archived=False, tenant=tenant, issued_at__isnull=True, **item_filter(item))
-                .values_list('picked_lots', flat=True)):
+    rows = (MaterialStagingLine.objects
+            .filter(archived=False, tenant=tenant, issued_at__isnull=True, **item_filter(item)))
+    if exclude_job is not None:
+        rows = rows.exclude(staging__work_order_id=exclude_job[0], staging__step_id=exclude_job[1])
+    for row in rows.values_list('picked_lots', flat=True):
         for entry in (row or []):
             lot_id = entry.get('lot_id')
             if not lot_id:
                 continue
-            held[str(lot_id)] = held.get(str(lot_id), Decimal('0')) + Decimal(
-                str(entry.get('qty') or 0))
+            left = Decimal(str(entry.get('qty') or 0)) - Decimal(str(entry.get('issued') or 0))
+            if left > 0:
+                held[str(lot_id)] = held.get(str(lot_id), Decimal('0')) + left
     return held
 
 
@@ -160,9 +167,10 @@ def reserved_quantity(material_id, tenant) -> Decimal:
     from Tracker.models import MaterialStagingLine
 
     # tenant-safe: explicit tenant filter
+    from django.db.models import F
     total = (MaterialStagingLine.objects
              .filter(archived=False, tenant=tenant, material_id=material_id, issued_at__isnull=True)
-             .aggregate(q=Sum('qty_picked'))['q'])
+             .aggregate(q=Sum(F('qty_picked') - F('qty_issued')))['q'])
     return Decimal(str(total or 0))
 
 
@@ -179,7 +187,7 @@ def available_quantity(material_id, tenant) -> Decimal:
     return max(Decimal('0'), Decimal(str(on_hand or 0)) - reserved_quantity(material_id, tenant))
 
 
-def plan_draw(item, tenant, needed) -> list:
+def plan_draw(item, tenant, needed, exclude_job=None) -> list:
     """Which lots a draw of `needed` WOULD take, without taking them.
 
     Shares `_usable_lots` with the real consumption, so a pick list and the record
@@ -200,7 +208,7 @@ def plan_draw(item, tenant, needed) -> list:
     # this function only suggests — nothing it returns gets saved. Without it two sheets
     # print correct totals against the same lot number and the second picker walks to a
     # bin that was emptied this morning.
-    held = reserved_by_lot(item, tenant)
+    held = reserved_by_lot(item, tenant, exclude_job=exclude_job)
     for lot in _usable_lots(item, tenant):
         if drawn >= needed:
             break
@@ -278,6 +286,7 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
 
         needed = Decimal(str(line.quantity))
         drawn = Decimal('0')
+        by_lot: dict = {}
         # Prefer the lots the picker actually put in the tote over re-deriving FEFO.
         # This is the whole point of recording them: the sheet named what the plan
         # WOULD draw, the picker took what was really on the shelf, and the record has
@@ -301,8 +310,9 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
             )
             result.usages.append(usage)
             drawn += take
+            by_lot[str(lot.id)] = by_lot.get(str(lot.id), Decimal('0')) + take
 
-        _mark_line_issued(part, step, item.key, tenant)
+        _mark_line_issued(part, step, item.key, tenant, by_lot)
 
         if drawn < needed:
             # Recorded, not raised: the part was built, so the shortfall is a stock
@@ -366,18 +376,37 @@ def _picked_lots_for(part, step, item, tenant) -> list:
     if not ids:
         return []
     # tenant-safe: explicit tenant filter
-    by_id = {str(l.id): l for l in MaterialLot.objects.filter(tenant=tenant, id__in=ids)}
+    # Only lots still usable: a picked lot held or rejected since the pick is not drawn
+    # (supply round 1, S2 — "No draw can take from it").
+    by_id = {str(l.id): l for l in MaterialLot.objects.filter(
+        tenant=tenant, id__in=ids, archived=False, status__in=('ACCEPTED', 'IN_USE'),
+        quantity_remaining__gt=0)}
     return [by_id[str(i)] for i in ids if str(i) in by_id]
 
 
-def _mark_line_issued(part, step, item, tenant) -> None:
-    """Release the reservation: the material is in the unit now, not on a cart."""
+def _mark_line_issued(part, step, item, tenant, drawn_by_lot: dict) -> None:
+    """Release what this unit drew from the reservation: that material is in the unit
+    now, not on a cart. A job's line covers every unit and this runs per unit, so the
+    line is issued only once all of its pick has been drawn — the whole reservation was
+    released after the first unit (supply round 1, S17)."""
     from django.utils import timezone
 
     row = _staging_line(part, step, item, tenant)
-    if row is not None and row.issued_at is None:
+    if row is None or row.issued_at is not None:
+        return
+    total = sum(drawn_by_lot.values(), Decimal('0'))
+    entries = list(row.picked_lots or [])
+    for entry in entries:
+        took = drawn_by_lot.get(str(entry.get('lot_id')))
+        if took:
+            entry['issued'] = float(Decimal(str(entry.get('issued') or 0)) + took)
+    row.picked_lots = entries
+    row.qty_issued = Decimal(str(row.qty_issued or 0)) + total
+    fields = ['qty_issued', 'picked_lots']
+    if row.qty_issued >= Decimal(str(row.qty_picked or 0)):
         row.issued_at = timezone.now()
-        row.save(update_fields=['issued_at'])
+        fields.append('issued_at')
+    row.save(update_fields=fields)
 
 
 def _after_return(lot) -> str:
@@ -424,7 +453,11 @@ def correct_usage_lot(usage, new_lot, *, user, reason: str):
                          f"this draw took {qty}")
 
     old.quantity_remaining += qty
-    old.status = _after_return(old)
+    # Only a status the draw itself set (in use / consumed) goes back; a lot held,
+    # rejected or scrapped since keeps that — returning the quantity lifted its hold
+    # (supply round 1, S1).
+    if old.status in ('IN_USE', 'CONSUMED'):
+        old.status = _after_return(old)
     old.save(update_fields=['quantity_remaining', 'status', 'updated_at'])
     new.quantity_remaining -= qty
     new.status = 'CONSUMED' if new.quantity_remaining <= 0 else 'IN_USE'

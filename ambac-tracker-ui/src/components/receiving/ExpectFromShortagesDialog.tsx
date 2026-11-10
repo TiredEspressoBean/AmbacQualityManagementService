@@ -26,7 +26,9 @@ type Draft = {
 const addDays = (days: number) => {
     const d = new Date();
     d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0, 10);
+    // The local date, not toISOString()'s UTC one (supply round 1, S11).
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
 /** What's short, or failing that the forecast shortfall — a buyer ticked the row to

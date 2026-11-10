@@ -368,7 +368,9 @@ def correct_lot_source(lot, *, user, reason: str, changes: dict):
         # The rest of a short delivery, still on order, shares its item, supplier and PO
         # line: if those were keyed wrong, so was the remainder's (walk 2026-10-26).
         remainder = []
-        if locked.short_receipt == "BACKORDERED":
+        # Only with a PO to tie them: with a blank PO, "same item, supplier and line"
+        # matched unrelated expected receipts (supply round 1, S20).
+        if locked.short_receipt == "BACKORDERED" and locked.erp_po_number:
             remainder = list(MaterialLot.objects.select_for_update().filter(  # tenant-safe: explicit tenant filter
                 tenant=locked.tenant, status="ON_ORDER", archived=False,
                 material_id=locked.material_id, material_type_id=locked.material_type_id,

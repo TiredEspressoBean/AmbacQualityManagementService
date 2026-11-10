@@ -134,14 +134,22 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
     # Net out stock already pulled to a bench and not yet consumed. `quantity_remaining`
     # doesn't move until consumption, so without this a loaded cart still reads as
     # available and the same units get promised to a second job.
+    from django.db.models import F
     from Tracker.models import MaterialStagingLine
+    # What's left of each pick (consumption may have drawn part of it: S17). A job's own
+    # pick is given back to it below — it isn't short for what's in its own tote (S5).
+    own_picks: dict = {}
     # tenant-safe: explicit tenant filter
     for row in (MaterialStagingLine.objects
                 .filter(archived=False, tenant=tenant, issued_at__isnull=True)
-                .values('material', 'material_type').annotate(q=Sum('qty_picked'))):
+                .values('material', 'material_type', 'staging__work_order_id', 'staging__step_id')
+                .annotate(q=Sum(F('qty_picked') - F('qty_issued')))):
         k = _key(row)
+        left = max(Decimal('0'), Decimal(str(row['q'] or 0)))
+        job = (str(row['staging__work_order_id']), str(row['staging__step_id']))
+        own_picks[(job, k)] = own_picks.get((job, k), Decimal('0')) + left
         if k in onhand:
-            onhand[k] = max(Decimal('0'), onhand[k] - Decimal(str(row['q'] or 0)))
+            onhand[k] = max(Decimal('0'), onhand[k] - left)
 
     bom_cache: dict = {}
     fixtures = _fixtures_by_step(tenant)
@@ -154,7 +162,9 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
         job['materials'] = _materials_for(pt_id, job['step_id'], job['units'],
                                           onhand, bom_cache, tenant,
                                           is_reman=is_reman,
-                                          recovered=recovered if takes_pool else None)
+                                          recovered=recovered if takes_pool else None,
+                                          work_order_id=job['work_order_id'],
+                                          own_picks=own_picks)
         job['fixtures'] = sorted(fixtures.get(job['step_id'], ()))
         job['short_count'] = sum(1 for m in job['materials'] if m['short'] > 0)
         stations[(job['work_center_id'], job['work_center'])].append(job)
@@ -209,7 +219,8 @@ def staging_list(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_HOURS)
 
 def _materials_for(part_type_id, step_id, units: int, onhand: dict,
                    bom_cache: dict, tenant, is_reman: bool = False,
-                   recovered: dict | None = None) -> list:
+                   recovered: dict | None = None, work_order_id=None,
+                   own_picks: dict | None = None) -> list:
     """BOM lines consumed at this step, scaled to the units landing here.
 
     Scaled to the UNITS AT THIS STATION, not the work order's quantity — a lot that
@@ -261,7 +272,8 @@ def _materials_for(part_type_id, step_id, units: int, onhand: dict,
         # allow recovery — a contract or line override forbidding harvested parts. In
         # both, counting the pool as cover would have the sheet send a picker for a
         # part the unit may not take. On-hand here is purchased lots only.
-        have = onhand.get(item.key, Decimal('0'))
+        job = (str(work_order_id), str(step_id))
+        have = onhand.get(item.key, Decimal('0')) + (own_picks or {}).get((job, item.key), Decimal('0'))
         out.append({
             'from_teardown': False,
             'recovered_on_hand': 0.0,    # kept for a uniform row shape
@@ -277,7 +289,8 @@ def _materials_for(part_type_id, step_id, units: int, onhand: dict,
             'optional': bool(line.is_optional),
             # The lots consumption WILL draw, so the picker pulls those and the
             # traceability record matches what physically went in.
-            'lots': plan_draw(item.key, tenant, needed),
+            'lots': plan_draw(item.key, tenant, needed,
+                              exclude_job=(work_order_id, step_id) if work_order_id else None),
         })
     return sorted(out, key=lambda m: (-m['short'], m['material']))
 
@@ -499,8 +512,10 @@ def record_pick(tenant, work_order_id, step_id, material_id, qty, lots, user,
             'picked_lots': list(lots or []),
             'picked_by': user,
             # A re-pick after issue starts a fresh reservation rather than silently
-            # topping up a line the system already believes was consumed.
+            # topping up a line the system already believes was consumed — nothing of
+            # the new pick has been drawn yet (S17's running count starts again).
             'issued_at': None,
+            'qty_issued': Decimal('0'),
         })
 
     # Picking IS staging for this job-operation — the handler shouldn't have to say so

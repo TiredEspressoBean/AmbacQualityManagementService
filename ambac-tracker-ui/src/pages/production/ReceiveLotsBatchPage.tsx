@@ -1,3 +1,4 @@
+import { todayLocal } from "@/lib/date-only";
 import { LocationCombobox } from "@/components/locations/LocationCombobox";
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -16,7 +17,8 @@ import { locationSummaryOptions } from "@/hooks/useLocations";
 import { SOURCE_TYPE_OPTIONS, type SourceType } from "@/components/receiving/lotStatus";
 
 const NONE = "__none__";
-const today = () => new Date().toISOString().slice(0, 10);
+// The local day — toISOString() is the UTC day, tomorrow by evening (supply round 1, S11).
+const today = () => todayLocal();
 
 type Row = {
     lot_number: string;

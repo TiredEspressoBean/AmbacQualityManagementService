@@ -97,7 +97,9 @@ def _read(tenant, row) -> dict:
         # balance is where the stock IS, and the list is set up from it.
         "location": (_resolve_location(tenant, _text(row.get("location")))
                      if _text(row.get("location")) else None),
-        "received_date": _date(row, "received_date", "Received date") or tenant_today(tenant),
+        # Blank = not given: today for a new lot (in _apply), and left alone on an
+        # existing one — a re-upload re-dated every lot (supply round 1, S16).
+        "received_date": _date(row, "received_date", "Received date"),
         "supplier": _resolve_supplier(tenant, _text(row.get("supplier"))),
         "supplier_lot_number": _text(row.get("supplier_lot_number")),
         "heat_number": _text(row.get("heat_number")),
@@ -119,6 +121,12 @@ def _apply(tenant, fields: dict) -> str:
 
     existing = MaterialLot.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, lot_number__iexact=fields["lot_number"]).first()
+    if fields.get("received_date") is None:
+        if existing is None:
+            from Tracker.services.core.clock import tenant_today
+            fields = {**fields, "received_date": tenant_today(tenant)}
+        else:
+            fields = {k: v for k, v in fields.items() if k != "received_date"}
     if existing is None:
         try:
             with transaction.atomic():

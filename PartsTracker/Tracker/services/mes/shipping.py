@@ -411,6 +411,8 @@ def order_shipping(order) -> dict:
     shipments, so a part shipped by hand at its Ship step counts but has no date."""
     from collections import defaultdict
     from Tracker.models import Parts
+    from Tracker.services.core.clock import plant_tz
+    tz = plant_tz(order.tenant)
     lines = list(order.lines.filter(archived=False).order_by("line_number"))  # tenant-safe: reverse FK from a scoped order
     by_line = defaultdict(list)
     for p in (Parts.objects.filter(  # tenant-safe: FK to a scoped order
@@ -430,8 +432,9 @@ def order_shipping(order) -> dict:
                 numbers[s.id] = (s.shipment_number, s.shipped_at)
         shipments = [{"shipment_id": str(sid), "shipment_number": numbers[sid][0],
                       "shipped_at": numbers[sid][1], "quantity": n,
+                      # The plant's day it shipped, not UTC's (supply round 1, S8).
                       "on_time": (line.due_date is None
-                                  or timezone.localdate(numbers[sid][1]) <= line.due_date)}
+                                  or numbers[sid][1].astimezone(tz).date() <= line.due_date)}
                      for sid, n in sorted(dates.items(), key=lambda kv: numbers[kv[0]][1])]
         qty = len(shipped)
         out.append({
@@ -459,6 +462,8 @@ def delivery_performance(tenant, days: int = 90) -> dict:
     measure" is honest; one that just says 100% is not.
     """
     from Tracker.models import Parts
+    from Tracker.services.core.clock import plant_tz
+    tz = plant_tz(tenant)
     since = timezone.now() - timedelta(days=days)
     rows = (Parts.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, part_status="SHIPPED", customer_shipment__isnull=False,
@@ -477,7 +482,7 @@ def delivery_performance(tenant, days: int = 90) -> dict:
         if due is None:
             unmeasured.add(key)
             continue
-        deliveries[key] = timezone.localdate(at) <= due
+        deliveries[key] = at.astimezone(tz).date() <= due  # the plant's day (S8)
 
     on_time = sum(1 for ok in deliveries.values() if ok)
     total = len(deliveries)
@@ -508,3 +513,27 @@ def shipment_lots(shipment):
     ).values_list("object_id", flat=True)
     return list(MaterialLot.objects.filter(tenant=shipment.tenant, id__in=list(ids))  # tenant-safe: explicit tenant filter
                 .select_related("material", "material_type"))
+
+
+def shipped_quantity(lot, shipment) -> Decimal:
+    """How much of ``lot`` went on ``shipment``. A whole remaining lot ships unsplit, so
+    its received ``quantity`` can be more than went — the paperwork said 100 when 60
+    shipped (supply round 1, S4). What went is recorded when it ships."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import MaterialLot, RecordEdit
+    edit = (RecordEdit.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=lot.tenant, content_type=ContentType.objects.get_for_model(MaterialLot),
+        object_id=lot.id, field_name="quantity_remaining",
+        reason=f"Shipped on {shipment.shipment_number}").order_by("-edited_at").first())
+    if edit is not None:
+        try:
+            return Decimal(edit.old_value)
+        except (ArithmeticError, ValueError):
+            pass
+    return lot.quantity
+
+
+def shipped_date(shipment) -> date:
+    """The plant's day ``shipment`` left — not the UTC day (supply round 1, S8/S9)."""
+    from Tracker.services.core.clock import plant_tz
+    return shipment.shipped_at.astimezone(plant_tz(shipment.tenant)).date()

@@ -1,3 +1,4 @@
+import { todayLocal } from "@/lib/date-only";
 import { LocationCombobox } from "@/components/locations/LocationCombobox";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -46,7 +47,8 @@ type Props = {
 /** Statuses that mean "someone still has to make a call on this lot". */
 const NEEDS_DISPOSITION = ["RECEIVED", "AWAITING_INSPECTION", "QUARANTINE"];
 
-const today = () => new Date().toISOString().slice(0, 10);
+// The local day — toISOString() is the UTC day, tomorrow by evening (supply round 1, S11).
+const today = () => todayLocal();
 
 /**
  * Book in an expected receipt that has physically arrived.

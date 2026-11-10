@@ -43494,6 +43494,11 @@ Query params:
         schema: z.number().int().optional(),
       },
       {
+        name: "on_hand",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
         name: "ordering",
         type: "Query",
         schema: z.string().optional(),
@@ -43752,7 +43757,7 @@ nothing has been taken from the lot. Not shrinkage: that&#x27;s adjust-quantity.
     path: "/api/MaterialLots/:id/correct-source/",
     alias: "api_MaterialLots_correct_source_create",
     description: `Correct a lot&#x27;s supplier, item or PO line recorded wrong at receipt, with a reason — only while nothing has been used, split or adjusted.`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
       {
         name: "body",

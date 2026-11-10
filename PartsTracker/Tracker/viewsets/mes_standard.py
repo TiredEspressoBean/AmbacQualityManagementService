@@ -628,6 +628,11 @@ _RAISE_SCAR_RESPONSE = inline_serializer(name="RaiseScarResponse", fields={
             ),
         ),
         OpenApiParameter(
+            name='on_hand', type=OpenApiTypes.STR, required=False,
+            description=("'true'/'1' narrows to usable stock: ACCEPTED and IN_USE (partly "
+                         "drawn) — as consumption, staging and shipping count it."),
+        ),
+        OpenApiParameter(
             name='delivery', type=OpenApiTypes.STR, required=False,
             enum=['overdue', 'due_soon', 'late'],
             description=(
@@ -752,6 +757,10 @@ class MaterialLotViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, 
             # The same rule as the inspection queue and inbox — one place.
             from Tracker.services.qms.incoming_inspection import awaiting_inspection
             qs = awaiting_inspection(qs)
+        # On hand: ACCEPTED and IN_USE. The Materials tab read ACCEPTED only and hid
+        # partly drawn lots (supply round 1, S12).
+        if self.request.query_params.get('on_hand') in ('true', '1'):
+            qs = qs.filter(status__in=['ACCEPTED', 'IN_USE'])
         # Late deliveries: ON_ORDER lots past (overdue), or within DUE_SOON_DAYS of
         # (due_soon), their promised date; `late` is both. The plant's day, not UTC's.
         delivery = self.request.query_params.get('delivery')
@@ -864,7 +873,9 @@ class MaterialLotViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, 
     @extend_schema(request=CorrectLotSourceSerializer, responses={200: MaterialLotSerializer},
                    description="Correct a lot's supplier, item or PO line recorded wrong at receipt, "
                                "with a reason — only while nothing has been used, split or adjusted.")
-    @action(detail=True, methods=['post'], url_path='correct-source')
+    # JSON only: as multipart, the generated client sent a cleared supplier (null) as the
+    # text "null" — "“null” is not a valid UUID." (supply round 1, S14).
+    @action(detail=True, methods=['post'], url_path='correct-source', parser_classes=_JSON_ONLY)
     def correct_source(self, request, pk=None):
         from Tracker.services.mes.material_lot import SOURCE_FIELDS, correct_lot_source
         ser = CorrectLotSourceSerializer(data=request.data, context={'request': request})

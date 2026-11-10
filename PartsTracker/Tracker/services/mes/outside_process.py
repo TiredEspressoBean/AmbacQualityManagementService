@@ -89,8 +89,17 @@ def build_ready_to_ship_groups():
         return []
 
     by_step = defaultdict(list)
+    # Not one whose open visit here already went out on a shipment: accepted back and
+    # held for QA it's IN_PROGRESS again, but it has been — it reappeared here, and Send
+    # out took its execution off the closed shipment (supply round 1, S18).
+    from django.db.models import Exists, OuterRef
+    from Tracker.models import StepExecution
+    been_out = StepExecution.objects.filter(  # tenant-safe: correlated to the scoped outer part
+        archived=False, part=OuterRef("pk"), step=OuterRef("step"),
+        status__in=["PENDING", "CLAIMED", "IN_PROGRESS"], outside_process_shipment__isnull=False)
     parts = (Parts.objects  # tenant-safe: .objects auto-scopes (request context)
              .filter(archived=False, step_id__in=osp_step_ids, part_status__in=_READY_TO_SHIP_STATUSES)
+             .exclude(Exists(been_out))
              .select_related("step", "step__outside_supplier", "work_order"))
     for p in parts:
         by_step[p.step_id].append(p)
@@ -177,6 +186,12 @@ def send_parts_out(*, step, parts, supplier=None, reference="", user=None):
         )
         for part in parts:
             ex = _active_execution_for(part, step)
+            if ex.outside_process_shipment_id is not None:
+                # It went out on that shipment and came back; reusing the visit moved it
+                # off the closed shipment (S18).
+                raise ValueError(
+                    f"{part.ERP_id} has already been out and back for this step "
+                    f"({ex.outside_process_shipment.shipment_number}).")
             ex.outside_process_shipment = shipment
             ex.save(update_fields=["outside_process_shipment", "updated_at"])
             part.part_status = PartsStatus.AT_OUTSIDE_PROCESS

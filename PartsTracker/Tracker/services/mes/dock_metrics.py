@@ -63,9 +63,11 @@ def dock_metrics(tenant, days: int = 30, today=None) -> dict:
     from Tracker.services.qms.lot_holds import holds
     held_counts = Counter(code for lot in lots.filter(status="QUARANTINE").exclude(hold_reason="")
                           for code in holds(lot))
+    # old_value="" is a hold being placed, not released (supply round 1, S13).
     released = (RecordEdit.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, content_type=lot_ct, field_name="hold_reason",
         edited_at__date__gte=start, edited_at__date__lte=today)
+        .exclude(old_value="")
         .values("old_value").annotate(n=Count("id")).order_by("-n"))
 
     # Rejected in the window. A declined whole-lot request was never a reject.

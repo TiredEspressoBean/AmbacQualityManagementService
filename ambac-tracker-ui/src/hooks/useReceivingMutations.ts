@@ -185,6 +185,8 @@ export const useReceiveExpectedLot = () => {
             received_as_unit?: "BOX" | "LB";
             heat_number?: string;
             source_type?: "MANUFACTURER" | "AUTHORIZED_DISTRIBUTOR" | "INDEPENDENT_DISTRIBUTOR";
+            /** Book in a delivery over the order's tolerance. */
+            accept_overage?: boolean;
         }) =>
             api.api_MaterialLots_receive_create(
                 {
@@ -198,6 +200,8 @@ export const useReceiveExpectedLot = () => {
                         : {}),
                     ...(vars.heat_number ? { heat_number: vars.heat_number } : {}),
                     ...(vars.source_type ? { source_type: vars.source_type } : {}),
+                    // Forwarded: the dialog's "Accept the overage" did nothing (supply X1).
+                    ...(vars.accept_overage ? { accept_overage: true } : {}),
                 },
                 { params: { id: vars.id }, headers: csrf() },
             ),

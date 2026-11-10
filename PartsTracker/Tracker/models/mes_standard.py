@@ -2168,6 +2168,11 @@ class MaterialStagingLine(SecureModel):
     # real FKs, and this is the pick-time note that feeds it.
     picked_lots = models.JSONField(default=list, blank=True)
 
+    # How much of the pick consumption has drawn so far. A job's line covers all its
+    # units and consumption runs per unit: the reservation is what's picked and not yet
+    # issued, and the line is issued only once all of it is (supply round 1, S17 — the
+    # whole pick was released after the first unit).
+    qty_issued = models.DecimalField(max_digits=12, decimal_places=4, default=0)
     issued_at = models.DateTimeField(
         null=True, blank=True,
         help_text="When consumption drew this line down. Null = picked but not yet "

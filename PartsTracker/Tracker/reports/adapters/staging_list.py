@@ -106,7 +106,14 @@ class StagingListAdapter(ReportAdapter):
             station_name = wc.name if wc else ""
 
         def _fmt_dt(value) -> str:
-            return value.strftime("%b %d %H:%M") if value else ""
+            # On the plant's clock: an aware UTC time printed as-is (supply round 1, S10).
+            if not value:
+                return ""
+            from django.utils import timezone as _tz
+            from Tracker.services.core.clock import plant_tz
+            if _tz.is_aware(value):
+                value = _tz.localtime(value, plant_tz(tenant))
+            return value.strftime("%b %d %H:%M")
 
         stations: list[StagingStationBlock] = []
         for st in data["stations"]:

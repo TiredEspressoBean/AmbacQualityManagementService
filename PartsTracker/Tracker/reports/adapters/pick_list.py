@@ -238,17 +238,22 @@ class PickListAdapter(ReportAdapter):
             part_number = part_type.ERP_id or ""
             part_name = part_type.name
 
-            # Fetch the released BOM for this part type (tenant-scoped)
+            # The released ASSEMBLY BOM consumption draws to — the same pick as
+            # consumption._released_bom_lines: not archived, latest version. Ordering by the
+            # revision text, any BOM type, picked a superseded or non-assembly BOM
+            # (supply round 1, S15).
             bom = (
                 BOM.objects
                 .filter(
                     tenant=tenant,
                     part_type=part_type,
                     status="RELEASED",
+                    bom_type="ASSEMBLY",
+                    archived=False,
                 )
                 .prefetch_related("lines__component_type", "lines__material",
                                   "lines__consumed_at_step")
-                .order_by("-revision")
+                .order_by("-version")
                 .first()
             )
 
@@ -277,6 +282,8 @@ class PickListAdapter(ReportAdapter):
             if bom is not None:
                 wo_qty = Decimal(wo.quantity)
                 for line in bom.lines.all():
+                    if line.archived:
+                        continue  # a removed line isn't material for the job
                     # Off-route lines stay on the sheet rather than vanishing from it —
                     # a line that disappears looks like a BOM that never had it.
                     off_route = (
@@ -302,7 +309,9 @@ class PickListAdapter(ReportAdapter):
                     location, lot_text, short_text = "", "", ""
                     buy = buy_line_item(line)
                     if buy is not None and not off_route:
-                        plan = plan_draw(buy.key, tenant, qty_req)
+                        # This job's own pick isn't held against it (S5).
+                        plan = plan_draw(buy.key, tenant, qty_req,
+                                         exclude_job=(wo.id, line.consumed_at_step_id))
                         planned = sum(Decimal(str(p['take'])) for p in plan)
                         lot_text = ", ".join(p['lot_number'] for p in plan)
                         location = next(

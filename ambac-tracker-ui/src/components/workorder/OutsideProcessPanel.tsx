@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 
 import { useRetrieveParts } from "@/hooks/parts";
 import { useRetrieveProcessWithSteps } from "@/hooks/useRetrieveProcessWithSteps";
-import { useListOSPShipments, useReceiveBack } from "@/hooks/useOutsideProcess";
+import { useListOSPShipments, useReadyToShip, useReceiveBack } from "@/hooks/useOutsideProcess";
 import { useReportActivity } from "@/hooks/useReportActivity";
 import { SendPartsOutDialog } from "@/components/workorder/SendPartsOutDialog";
 import { api } from "@/lib/api/generated";
@@ -64,17 +64,24 @@ export function OutsideProcessPanel({
         [proc],
     );
 
+    // The server's ready list decides: a part back from the vendor and held for QA is
+    // IN_PROGRESS at the step again, but it has been out (supply round 1, S18).
+    const { data: readyGroups } = useReadyToShip();
+    const readyIds = useMemo(
+        () => new Set((readyGroups ?? []).flatMap((g) => g.parts.map((p) => String(p.id)))),
+        [readyGroups]);
     const readyByStep = useMemo(() => {
         const m = new Map<string, PartRow[]>();
         for (const p of (partsData?.results ?? []) as PartRow[]) {
             if (!p.step) continue;
             if (String(p.part_status) !== READY_TO_SHIP_STATUS) continue;
+            if (!readyIds.has(String(p.id))) continue;
             const arr = m.get(String(p.step)) ?? [];
             arr.push(p);
             m.set(String(p.step), arr);
         }
         return m;
-    }, [partsData]);
+    }, [partsData, readyIds]);
 
     const allShipments = shipmentsData?.results ?? [];
     const sentShipments = allShipments.filter((s) => s.status === "SENT");

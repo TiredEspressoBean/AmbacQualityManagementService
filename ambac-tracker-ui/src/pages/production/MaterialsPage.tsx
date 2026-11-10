@@ -71,7 +71,8 @@ function queriesForTab(tab: Tab): Record<string, unknown> {
     if (tab === "onorder") return { status: "ON_ORDER" };
     if (tab === "late") return { delivery: "late" };
     if (tab === "awaiting") return { inspection_pending: "true" };
-    if (tab === "onhand") return { status: "ACCEPTED" };
+    // Usable stock: ACCEPTED and IN_USE (partly drawn) — supply round 1, S12.
+    if (tab === "onhand") return { on_hand: "true" };
     if (tab === "held") return { status: "QUARANTINE" };
     if (tab === "rejected") return { status: "REJECTED" };
     return {};
@@ -88,7 +89,7 @@ export function MaterialsPage() {
     const onorder = useListMaterialLots({ status: "ON_ORDER", limit: 1 });
     const late = useListMaterialLots({ delivery: "late", limit: 1 });
     const awaiting = useListMaterialLots({ inspection_pending: "true", limit: 1 });
-    const onhand = useListMaterialLots({ status: "ACCEPTED", limit: 1 });
+    const onhand = useListMaterialLots({ on_hand: "true", limit: 1 });
     const held = useListMaterialLots({ status: "QUARANTINE", limit: 1 });
     const rejected = useListMaterialLots({ status: "REJECTED", limit: 1 });
     const counts: Record<Tab, number | undefined> = {

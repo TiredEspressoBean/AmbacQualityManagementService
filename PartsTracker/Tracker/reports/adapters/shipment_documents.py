@@ -129,9 +129,11 @@ def build_shipment_document_context(shipment, tenant, user=None, *,
                           quantity=str(len(v)), serials=v)
              for k, v in sorted(groups.items())]
     units = sum(len(v) for v in groups.values())
-    from Tracker.services.mes.shipping import shipment_lots
+    from Tracker.services.mes.shipping import shipment_lots, shipped_quantity, shipped_date
     for lot in shipment_lots(shipment):
-        qty = f"{lot.quantity:f}".rstrip("0").rstrip(".") if "." in f"{lot.quantity:f}" else f"{lot.quantity:f}"
+        # What went on this shipment, not the lot's received quantity (supply round 1, S4).
+        went = shipped_quantity(lot, shipment)
+        qty = f"{went:f}".rstrip("0").rstrip(".") if "." in f"{went:f}" else f"{went:f}"
         items.append(ShipmentItem(part_type=lot.item_name or "Material",
                                   quantity=f"{qty} {lot.unit_of_measure}".strip(),
                                   serials=[f"Lot {lot.lot_number}"]))
@@ -145,7 +147,7 @@ def build_shipment_document_context(shipment, tenant, user=None, *,
     return ShipmentDocumentContext(
         our_org=tenant.name,
         shipment_number=shipment.shipment_number,
-        shipped_date=shipment.shipped_at.date(),
+        shipped_date=shipped_date(shipment),  # the plant's day, not UTC's (S9)
         customer_name=customer.name,
         customer_address=customer.address or None,
         carrier=shipment.carrier or None,

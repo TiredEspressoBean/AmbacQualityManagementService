@@ -42,6 +42,11 @@ REASONS = [
 REASON_CODES = {c for c, _ in REASONS}
 # Units that have left for good aren't stock to count — or to chase.
 GONE = ("SCRAPPED", "CANCELLED", "SHIPPED", "DISMANTLED", "RMA_CLOSED")
+# Stock a count can adjust: accepted and partly drawn lots. A rejected, held or still-in-
+# receiving lot at the location can't be adjusted (adjust_quantity refuses it), and one
+# such line failed the whole apply (supply round 1, S3); its quantity is settled by its
+# disposition or its inspection, not a count.
+COUNTABLE_LOT_STATUSES = ("ACCEPTED", "IN_USE")
 
 
 def _num(v):
@@ -86,7 +91,7 @@ def start_count(tenant, user, *, location=None, material=None, part_type=None, b
         if CycleCount.objects.filter(tenant=tenant, location=loc, status="OPEN").exists():  # tenant-safe: explicit tenant filter
             raise ValueError(f"{loc.name} already has a count open — finish or submit it first.")
         lots = (MaterialLot.objects.filter(tenant=tenant, archived=False, location=loc,  # tenant-safe: explicit tenant filter
-                                           quantity_remaining__gt=0)
+                                           quantity_remaining__gt=0, status__in=COUNTABLE_LOT_STATUSES)
                 .select_related("location").order_by("lot_number"))
         parts = (Parts.objects.filter(tenant=tenant, archived=False, location=loc)  # tenant-safe: explicit tenant filter
                  .exclude(part_status__in=GONE).select_related("part_type", "location").order_by("ERP_id"))
@@ -98,7 +103,7 @@ def start_count(tenant, user, *, location=None, material=None, part_type=None, b
         if CycleCount.objects.filter(tenant=tenant, material=mat, status="OPEN").exists():  # tenant-safe: explicit tenant filter
             raise ValueError(f"{mat.name} already has a count open — finish or submit it first.")
         lots = (MaterialLot.objects.filter(tenant=tenant, archived=False, material=mat,  # tenant-safe: explicit tenant filter
-                                           quantity_remaining__gt=0, location__isnull=False)
+                                           quantity_remaining__gt=0, status__in=COUNTABLE_LOT_STATUSES, location__isnull=False)
                 .select_related("location").order_by("location__name", "lot_number"))
         parts = Parts.objects.none()
         scope = {"material": mat}
@@ -110,7 +115,7 @@ def start_count(tenant, user, *, location=None, material=None, part_type=None, b
             raise ValueError(f"{pt.name} already has a count open — finish or submit it first.")
         # Stock in a location: units on the floor in a work cell aren't stock to count.
         lots = (MaterialLot.objects.filter(tenant=tenant, archived=False, material_type=pt,  # tenant-safe: explicit tenant filter
-                                           quantity_remaining__gt=0, location__isnull=False)
+                                           quantity_remaining__gt=0, status__in=COUNTABLE_LOT_STATUSES, location__isnull=False)
                 .select_related("location").order_by("location__name", "lot_number"))
         parts = (Parts.objects.filter(tenant=tenant, archived=False, part_type=pt, location__isnull=False)  # tenant-safe: explicit tenant filter
                  .exclude(part_status__in=GONE).select_related("part_type", "location")

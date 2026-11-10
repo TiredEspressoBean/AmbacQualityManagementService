@@ -35,9 +35,12 @@ class ShipmentLotSerializer(serializers.Serializer):
     unit_of_measure = serializers.CharField(allow_blank=True)
 
 
-def _lot_rows(lots):
+def _lot_rows(lots, shipment):
+    # How much went, not the lot's received quantity (supply round 1, S4).
+    from Tracker.services.mes.shipping import shipped_quantity
     return [{"id": l.id, "lot_number": l.lot_number, "item_name": l.item_name or "",
-             "quantity": float(l.quantity), "unit_of_measure": l.unit_of_measure} for l in lots]
+             "quantity": float(shipped_quantity(l, shipment)), "unit_of_measure": l.unit_of_measure}
+            for l in lots]
 
 
 class CustomerShipmentSerializer(SecureModelMixin):
@@ -90,7 +93,7 @@ class CustomerShipmentSerializer(SecureModelMixin):
     @extend_schema_field(ShipmentLotSerializer(many=True))
     def get_lots(self, obj):
         from Tracker.services.mes.shipping import shipment_lots
-        return ShipmentLotSerializer(_lot_rows(shipment_lots(obj)), many=True).data
+        return ShipmentLotSerializer(_lot_rows(shipment_lots(obj), obj), many=True).data
 
     @extend_schema_field(ShipmentPartSerializer(many=True))
     def get_parts(self, obj):

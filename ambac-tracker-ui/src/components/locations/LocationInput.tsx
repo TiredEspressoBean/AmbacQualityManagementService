@@ -26,6 +26,10 @@ export function LocationInput({ value, onChange, onEnter, id, placeholder = "Sca
     const { data } = useQuery(locationSummaryOptions());
     const [focused, setFocused] = useState(false);
     const [active, setActive] = useState(0);
+    // Whether the highlight was moved with the arrow keys. Enter takes a suggestion only
+    // then: a scanned code (or a typed name) submits as entered — "Rack 1" went to
+    // "Rack 10" when that sorted first (supply round 1, S19).
+    const [navigated, setNavigated] = useState(false);
     const needle = value.trim().toLowerCase();
     const matches = useMemo(() => {
         if (!needle) return [];
@@ -37,7 +41,7 @@ export function LocationInput({ value, onChange, onEnter, id, placeholder = "Sca
     }, [data, needle]);
     const open = focused && matches.length > 0;
 
-    const pick = (name: string) => { onChange(name); setActive(0); };
+    const pick = (name: string) => { onChange(name); setActive(0); setNavigated(false); };
 
     return (
         <div className="relative">
@@ -53,14 +57,15 @@ export function LocationInput({ value, onChange, onEnter, id, placeholder = "Sca
                 onFocus={() => setFocused(true)}
                 // Delayed so a click on a suggestion lands before the list closes.
                 onBlur={() => setTimeout(() => setFocused(false), 120)}
-                onChange={(e) => { onChange(locationFromScan(e.target.value)); setActive(0); }}
+                onChange={(e) => { onChange(locationFromScan(e.target.value)); setActive(0); setNavigated(false); }}
                 onKeyDown={(e) => {
-                    if (open && e.key === "ArrowDown") { e.preventDefault(); setActive((a) => Math.min(a + 1, matches.length - 1)); }
-                    else if (open && e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
+                    if (open && e.key === "ArrowDown") { e.preventDefault(); setNavigated(true); setActive((a) => Math.min(a + 1, matches.length - 1)); }
+                    else if (open && e.key === "ArrowUp") { e.preventDefault(); setNavigated(true); setActive((a) => Math.max(a - 1, 0)); }
                     else if (e.key === "Enter") {
                         e.preventDefault();
-                        // A scanned code submits as typed; a highlighted suggestion is taken first.
-                        if (open && matches[active] && matches[active].name.toLowerCase() !== needle) pick(matches[active].name);
+                        // A scanned / typed value submits as entered; a suggestion is taken only
+                        // when it was chosen with the arrow keys.
+                        if (open && navigated && matches[active]) pick(matches[active].name);
                         else onEnter?.();
                     } else if (e.key === "Escape") setFocused(false);
                 }}
