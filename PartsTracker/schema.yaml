@@ -73414,7 +73414,8 @@ components:
           format: decimal
           pattern: ^-?\d{0,2}(?:\.\d{0,3})?$
           nullable: true
-          description: Acceptable Quality Limit for AQL/C=0 lot acceptance.
+          description: Acceptable Quality Limit for AQL/C=0 lot acceptance (0.10 and
+            up).
         inspection_level:
           type: string
           description: ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.
@@ -80669,7 +80670,8 @@ components:
           format: decimal
           pattern: ^-?\d{0,2}(?:\.\d{0,3})?$
           nullable: true
-          description: Acceptable Quality Limit for AQL/C=0 lot acceptance.
+          description: Acceptable Quality Limit for AQL/C=0 lot acceptance (0.10 and
+            up).
         inspection_level:
           type: string
           description: ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.
@@ -80814,7 +80816,8 @@ components:
           format: decimal
           pattern: ^-?\d{0,2}(?:\.\d{0,3})?$
           nullable: true
-          description: Acceptable Quality Limit for AQL/C=0 lot acceptance.
+          description: Acceptable Quality Limit for AQL/C=0 lot acceptance (0.10 and
+            up).
         inspection_level:
           type: string
           description: ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.

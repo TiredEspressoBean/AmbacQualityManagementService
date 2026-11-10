@@ -16,8 +16,11 @@ Contains full traceability and compliance features:
 """
 
 
+from decimal import Decimal
+
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q, CheckConstraint, Index
 
@@ -505,8 +508,11 @@ class SamplingRuleSet(SecureModel):
 
     # Acceptance-sampling plan params — used when the ruleset carries an AQL/C_ZERO rule
     # (RECEIVING steps). Null for ordinary per-part streaming rulesets.
+    # Z1.4's tables are carried from AQL 0.10 (acceptance_sampling.STANDARD_AQLS). A
+    # lower AQL used to snap UP to 0.10 — ten times looser than asked (walk 2026-11-10).
     aql = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True,
-        help_text="Acceptable Quality Limit for AQL/C=0 lot acceptance.")
+        validators=[MinValueValidator(Decimal("0.10"))],
+        help_text="Acceptable Quality Limit for AQL/C=0 lot acceptance (0.10 and up).")
     inspection_level = models.CharField(max_length=3, blank=True,
         help_text="ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling.")
     severity = models.CharField(max_length=10, blank=True,

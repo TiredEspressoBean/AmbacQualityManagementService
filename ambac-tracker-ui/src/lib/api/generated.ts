@@ -9795,7 +9795,7 @@ export type SamplingRuleSet = {
     | undefined;
   aql?:
     | /**
-     * Acceptable Quality Limit for AQL/C=0 lot acceptance.
+     * Acceptable Quality Limit for AQL/C=0 lot acceptance (0.10 and up).
      *
      * @pattern ^-?\d{0,2}(?:\.\d{0,3})?$
      */
@@ -15033,7 +15033,7 @@ export type PatchedSamplingRuleSetRequest = Partial<{
    */
   supplier: string | null;
   /**
-   * Acceptable Quality Limit for AQL/C=0 lot acceptance.
+   * Acceptable Quality Limit for AQL/C=0 lot acceptance (0.10 and up).
    *
    * @pattern ^-?\d{0,2}(?:\.\d{0,3})?$
    */
@@ -17392,7 +17392,7 @@ export type SamplingRuleSetRequest = {
     | undefined;
   aql?:
     | /**
-     * Acceptable Quality Limit for AQL/C=0 lot acceptance.
+     * Acceptable Quality Limit for AQL/C=0 lot acceptance (0.10 and up).
      *
      * @pattern ^-?\d{0,2}(?:\.\d{0,3})?$
      */

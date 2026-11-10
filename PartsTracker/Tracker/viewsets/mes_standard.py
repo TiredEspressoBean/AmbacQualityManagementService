@@ -1145,11 +1145,26 @@ class MaterialLotViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, 
         rs = receiving_inspection.resolve_sampling_ruleset(step, lot.supplier) if step else None
         report = lot.quality_reports.filter(archived=False).order_by('-created_at').first()
         waiting = receiving_inspection.pending_accept_incomplete(report) if report else None
+        plan = dict(sp.__dict__)
+        if report is not None and report.sample_size is not None:
+            # An opened inspection is judged by the plan frozen on its report, not the
+            # rule as it stands now — a rule edit, or the supplier switching severity,
+            # showed one plan while the lot was judged by another (walk 2026-11-10).
+            plan.update(sample_size=report.sample_size,
+                        accept_number=report.accept_number if report.accept_number is not None else 0,
+                        reject_number=(report.reject_number if report.reject_number is not None
+                                       else (report.accept_number or 0) + 1),
+                        k=report.acceptability_constant_k)
+            if (sp.sample_size, sp.accept_number, sp.reject_number) != (
+                    plan['sample_size'], plan['accept_number'], plan['reject_number']):
+                # The current rule's strategy / level / severity aren't this plan's: the
+                # report keeps only its numbers, so the labels are left out.
+                plan.update(strategy='', inspection_level='', severity='')
         return Response(SamplePlanResponseSerializer({
             'report_id': report.id if report else None,
             'report_status': report.status if report else None,
             'accept_incomplete_pending': waiting.approval_number if waiting else None,
-            **sp.__dict__,
+            **plan,
             'variables_characteristic_id': rs.variables_characteristic_id if rs else None,
             'characteristics': chars,
             'step_id': step.id if step else None,

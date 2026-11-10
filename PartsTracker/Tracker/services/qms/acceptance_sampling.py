@@ -265,6 +265,10 @@ class SamplePlan:
 
 
 def _snap_aql(aql: float) -> float:
+    # Below the tabulated range there's no plan to snap to: snapping up to 0.10 judged
+    # an AQL 0.010 lot ten times looser than asked (walk 2026-11-10). Fail closed.
+    if aql < STANDARD_AQLS[0] - 1e-9:
+        raise ValueError(f"AQL {aql} is below 0.10, the lowest AQL the sampling tables carry.")
     for a in STANDARD_AQLS:
         if aql <= a + 1e-9:
             return a

@@ -286,7 +286,10 @@ export function ReceivingInspectionPage() {
                     {samplePlan && (
                         <div className="rounded-md border p-3 text-sm">
                             <div className="font-medium">
-                                Sample plan ({samplePlan.strategy}, level {samplePlan.inspection_level}{samplePlan.severity ? `, ${samplePlan.severity}` : ""})
+                                {/* Blank labels: the inspection's frozen plan is no longer the rule's. */}
+                                Sample plan{samplePlan.strategy
+                                    ? ` (${samplePlan.strategy}, level ${samplePlan.inspection_level}${samplePlan.severity ? `, ${samplePlan.severity}` : ""})`
+                                    : " (as set when the inspection opened)"}
                             </div>
                             <div className="text-muted-foreground">
                                 {isVariables ? (

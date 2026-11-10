@@ -32873,7 +32873,7 @@ export interface components {
             supplier?: string | null;
             /**
              * Format: decimal
-             * @description Acceptable Quality Limit for AQL/C=0 lot acceptance.
+             * @description Acceptable Quality Limit for AQL/C=0 lot acceptance (0.10 and up).
              */
             aql?: string | null;
             /** @description ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling. */
@@ -36603,7 +36603,7 @@ export interface components {
             supplier?: string | null;
             /**
              * Format: decimal
-             * @description Acceptable Quality Limit for AQL/C=0 lot acceptance.
+             * @description Acceptable Quality Limit for AQL/C=0 lot acceptance (0.10 and up).
              */
             aql?: string | null;
             /** @description ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling. */
@@ -36682,7 +36682,7 @@ export interface components {
             supplier?: string | null;
             /**
              * Format: decimal
-             * @description Acceptable Quality Limit for AQL/C=0 lot acceptance.
+             * @description Acceptable Quality Limit for AQL/C=0 lot acceptance (0.10 and up).
              */
             aql?: string | null;
             /** @description ANSI/ASQ Z1.4 inspection level (I/II/III) for AQL sampling. */

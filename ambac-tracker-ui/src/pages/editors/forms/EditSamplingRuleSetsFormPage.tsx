@@ -60,9 +60,9 @@ const formSchema = schemas.SamplingRuleSetRequest.pick({
 
 const NONE = "__none__"
 
-// Standard AQL series (Z1.4 / ISO 2859-1) — off-series values have no table row.
-const AQL_SERIES = ["0.010", "0.015", "0.025", "0.040", "0.065", "0.10", "0.15",
-    "0.25", "0.40", "0.65", "1.0", "1.5", "2.5", "4.0", "6.5", "10"]
+// Standard AQL series (Z1.4 / ISO 2859-1) — off-series values have no table row. The
+// tables are carried from 0.10 (the server refuses lower).
+const AQL_SERIES = ["0.10", "0.15", "0.25", "0.40", "0.65", "1.0", "1.5", "2.5", "4.0", "6.5", "10"]
 
 // Gate actions are side-effects only. Routing (scrap/quarantine/rework/next) is the
 // step's edges + decision type; tightening is the escalation/severity layer. So the
@@ -416,7 +416,7 @@ export default function SamplingRuleSetsFormPage() {
                             {form.watch("strategy") === "Z14"
                                 ? "Severity tightens after rejected lots and relaxes after a sustained good run, per Z1.4 switching rules."
                                 : "Inspection escalates to 100% after a rejected lot (C=0 convention)."}
-                            {" "}Switching is automatic from lot-acceptance history — engine wiring is a pending backend task.
+                            {" "}Switching is automatic from lot-acceptance history.
                         </p>
                     </div>
                     <FormField control={form.control} name="supplier" render={({ field }) => (

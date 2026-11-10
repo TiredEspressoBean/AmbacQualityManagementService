@@ -375,7 +375,13 @@ def submit_substep(
         # PASS-reading report.
         if report is not None:
             report.refresh_from_db(fields=["status"])
-        if report is not None and report.status == "PENDING":
+        if report is not None and report.material_lot_id:
+            # A receiving lot: the plan decides (and, decided, the lot counts for Z1.4
+            # switching). Rolled up here, one reading set the lot PASS/FAIL and the
+            # switching count never ran (walk 2026-11-10, N9/R1).
+            from Tracker.services.qms.receiving_inspection import evaluate_lot_acceptance
+            evaluate_lot_acceptance(report)
+        elif report is not None and report.status == "PENDING":
             has_findings = (
                 report.annotations.exists()
                 or QualityReportDefect.objects.filter(report=report).exists()
@@ -908,6 +914,12 @@ def _apply_status(report: QualityReports, cap) -> None:
     quarantine, so a visual-judgement FAIL left the part in production with no NCR."""
     raw = (cap.get("status") or "").upper()
     if raw not in {"PASS", "FAIL", "PENDING", "REPAIR"}:
+        return
+    if report.material_lot_id:
+        # A receiving lot's verdict is its sampling plan's (defectives vs Ac/Re over
+        # n units), not one substep's result. Applied here, a Pending after an
+        # out-of-spec reading was refused as rewriting a FAIL and the whole run was
+        # lost; a Pass decided the lot on one reading (walk 2026-11-10).
         return
     if raw == "REPAIR":
         # Only where the server offers it — refused with the reason, never stored.

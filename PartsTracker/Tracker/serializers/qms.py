@@ -1,5 +1,6 @@
 # serializers/qms.py - Quality Management System serializers
 import logging
+from decimal import Decimal
 
 from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
@@ -691,7 +692,9 @@ class StepSamplingRulesUpdateSerializer(serializers.Serializer):
     gate_capa_severity = serializers.CharField(required=False, allow_blank=True)
     gate_approval_template = serializers.UUIDField(required=False, allow_null=True)
     # Acceptance sampling (RECEIVING steps).
-    aql = serializers.DecimalField(max_digits=5, decimal_places=3, required=False, allow_null=True)
+    # The sampling tables start at AQL 0.10; a lower one snapped up, ten times looser.
+    aql = serializers.DecimalField(max_digits=5, decimal_places=3, required=False, allow_null=True,
+                                   min_value=Decimal("0.10"))
     inspection_level = serializers.CharField(required=False, allow_blank=True)
     severity = serializers.CharField(required=False, allow_blank=True)
     strategy = serializers.CharField(required=False, allow_blank=True)

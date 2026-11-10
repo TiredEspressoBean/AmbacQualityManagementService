@@ -80,6 +80,50 @@ class DwiLotVerdictTests(_ReceivingFixtureMixin, TenantTestCase):
         self.assertEqual(report.status, "FAIL")
 
 
+class DwiStatusAndPlanTests(_ReceivingFixtureMixin, TenantTestCase):
+    """Walk 2026-11-10 follow-ups: the DWI status capture doesn't decide a lot; the
+    page shows the frozen plan; AQL below the tables is refused, not snapped up."""
+
+    def setUp(self):
+        super().setUp()
+        self._build_fixtures()
+
+    def test_a_substep_status_doesnt_decide_a_lot(self):
+        from Tracker.services.dwi.operator_capture import _apply_status
+        lot = self._make_lot()
+        report = ri.open_inspection(lot, self.user_a)
+        _apply_status(report, {"status": "PASS"})
+        report.refresh_from_db()
+        self.assertEqual(report.status, "PENDING")
+        report.status = "FAIL"
+        report.save(update_fields=["status"])
+        _apply_status(report, {"status": "PENDING"})  # was refused, losing the run
+        report.refresh_from_db()
+        self.assertEqual(report.status, "FAIL")
+
+    def test_aql_below_the_tables_is_refused(self):
+        from Tracker.services.qms.acceptance_sampling import compute_sample_plan
+        with self.assertRaises(ValueError):
+            compute_sample_plan(lot_size=500, aql=0.010, inspection_level="II",
+                                severity="NORMAL", strategy="Z14")
+
+    def test_the_page_shows_the_frozen_plan(self):
+        lot = self._make_lot()
+        report = ri.open_inspection(lot, self.user_a)
+        frozen = (report.sample_size, report.accept_number, report.reject_number)
+        # The rule changes after the inspection opened.
+        self.ruleset.strategy = "Z14"
+        self.ruleset.aql = Decimal("6.5")
+        self.ruleset.save(update_fields=["strategy", "aql"])
+        self.assertNotEqual(ri.sample_plan_for_lot(lot).sample_size, frozen[0])
+        from rest_framework.test import APIClient
+        c = APIClient()
+        c.force_authenticate(user=self.superuser)
+        c.credentials(HTTP_X_TENANT_ID=str(self.tenant_a.id))
+        body = c.get(f"/api/MaterialLots/{lot.id}/sample_plan/").json()
+        self.assertEqual((body["sample_size"], body["accept_number"], body["reject_number"]), frozen)
+
+
 class _Fixture(APITestCase):
     @classmethod
     def setUpTestData(cls):
