@@ -505,7 +505,8 @@ The reason is required. What happens next depends on who you are:
 The approver finds the request in their **Inbox** as *Accept lot on an unfinished
 sample*. **Review** opens the lot's inspection page, where **Sign / Respond** takes
 the decision, a signature and their password. Approved, the lot is **Accepted**.
-Rejected, it stays under inspection.
+Rejected, it stays under inspection. Finishing the inspection or rejecting the lot
+meanwhile withdraws the request.
 
 The inspection itself is not marked passed: its verdict stays open, because the plan
 never gave one. The [inspection record](#the-inspection-record) is stamped **SAMPLE
