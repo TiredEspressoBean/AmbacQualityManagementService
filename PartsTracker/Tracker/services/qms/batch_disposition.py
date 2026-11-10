@@ -46,10 +46,14 @@ def contain_failed_batch(report) -> None:
     if report.dispositions.exists():
         return
 
-    # Idempotency: one open disposition per batch.
-    if QuarantineDisposition.objects.filter(archived=False,
+    # Idempotency: one open disposition per batch. A second failing report on the load
+    # joins it — left unlinked, it passed the once-per-report guard above after the
+    # disposition closed and re-contained the load (round-3 #8).
+    open_one = QuarantineDisposition.objects.filter(archived=False,
         batch_execution=batch, current_state__in=["OPEN", "IN_PROGRESS"],
-    ).exists():
+    ).first()
+    if open_one is not None:
+        open_one.quality_reports.add(report)
         return
 
     members = list(batch.parts.all())

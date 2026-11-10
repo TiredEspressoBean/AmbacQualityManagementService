@@ -19,9 +19,11 @@ export const unassignedDispositionsOptions = () =>
     queryOptions({
         queryKey: ["dispositions", "unassigned"] as const,
         queryFn: () => api.api_QuarantineDispositions_list({
-            queries: { assigned_to__isnull: true, limit: 25 },
+            // Filtered on the server: dropping CLOSED here after limit=25 let closed rows
+            // push open ones out of the queue (round-3 #9).
+            queries: { assigned_to__isnull: true, current_state__in: ["OPEN", "IN_PROGRESS"], limit: 25 },
         }),
-        select: (d) => (d.results ?? []).filter((r) => r.current_state !== "CLOSED"),
+        select: (d) => d.results ?? [],
     });
 
 export function UnassignedDispositions({ userPk }: { userPk: number }) {

@@ -332,8 +332,20 @@ def _promote_to_inspection_record(
     # would dereference a null part. A failed batch cycle is recorded as a FAIL
     # on the report (visible in the inbox); reacting to it is not v1 behavior.
     transitioning_into_fail = (prior_status != "FAIL" and new_status == "FAIL")
-    if (is_new_report or transitioning_into_fail) and batch_execution is None:
-        record_quality_report_side_effects(report)
+    if batch_execution is None:
+        if is_new_report:
+            record_quality_report_side_effects(report)
+        elif transitioning_into_fail:
+            # The create-time effects ran once already (sampling analytics, audit-log
+            # link); running them again counted the inspection twice. A later FAIL gets
+            # the FAIL consequences only (round-3 #16).
+            from Tracker.services.qms.quality_report import (
+                _apply_fail_consequences, on_report_failed)
+            if report.part_id:
+                on_report_failed(report, prior_status)
+            else:
+                # A lot / OSP report has no part, but its failure is still an NCR.
+                _apply_fail_consequences(report)
 
 
 def _compute_report_status(report: QualityReports) -> str:

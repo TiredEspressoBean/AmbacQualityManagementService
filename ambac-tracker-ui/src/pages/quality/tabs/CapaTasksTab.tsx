@@ -359,7 +359,9 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                         />
                     </div>
 
-                    {editingTask && (
+                    {/* Completing is Complete Task (sign-off, every assignee); a completed
+                        task stays completed. So no Completed here, and no status once done. */}
+                    {editingTask && editingTask.status !== "COMPLETED" && (
                         <div className="space-y-2">
                             <Label>Status</Label>
                             <Select
@@ -370,7 +372,7 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {schemas.CapaTaskStatusEnum.options.map((status) => (
+                                    {schemas.CapaTaskStatusEnum.options.filter((s) => s !== "COMPLETED").map((status) => (
                                         <SelectItem key={status} value={status}>
                                             {taskStatusLabels[status] ?? status}
                                         </SelectItem>

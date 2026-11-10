@@ -327,6 +327,22 @@ def _z14_plan(letter: str, aql: float, severity: str) -> tuple[int, int, int]:
     return n, ac, ac + 1
 
 
+def aql_refusal(strategy: str, aql) -> str | None:
+    """Why a ruleset's AQL can't be judged under its strategy, or None. C=0 carries only
+    the AQL columns transcribed into _C0_SAMPLE_SIZE; the others raised when a lot was
+    routed and the lot sat RECEIVED with no inspection (round-3 #10). They aren't
+    reconstructed — add columns only from a controlled copy of Squeglia's table."""
+    if aql is None or (strategy or "C0") != "C0":
+        return None
+    if float(aql) not in _C0_SAMPLE_SIZE:
+        offered = ", ".join(f"{a:g}" for a in sorted(_C0_SAMPLE_SIZE))
+        return f"C=0 plans are carried for AQL {offered} only."
+    return None
+
+
+C0_AQLS = sorted(_C0_SAMPLE_SIZE)
+
+
 def _c0_sample_size(lot_size: int, aql: float) -> int:
     table = _C0_SAMPLE_SIZE.get(aql)
     if table is None:

@@ -442,7 +442,16 @@ def apply_calibration_result_to_equipment(calibration_record) -> None:
     """
     from Tracker.models.mes_standard import EquipmentStatus
 
-    equipment = calibration_record.equipment
+    # Only the gauge's LATEST calibration decides: saving an older record (an edited
+    # note, a history import, a back-dated entry) put a failed gauge back in service
+    # (round-3 #20). The gauge is its current version; its calibrations may sit on an
+    # earlier one.
+    versions = calibration_record.equipment.get_version_history()
+    equipment = next((v for v in reversed(versions) if v.is_current_version),
+                     calibration_record.equipment)
+    latest = equipment.get_latest_calibration()
+    if latest is None or latest.pk != calibration_record.pk:
+        return
 
     if calibration_record.result == 'FAIL':
         if equipment.status != EquipmentStatus.OUT_OF_SERVICE:

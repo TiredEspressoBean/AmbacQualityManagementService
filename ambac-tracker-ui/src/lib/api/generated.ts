@@ -9943,6 +9943,7 @@ export type SamplingSeverityState = {
   discontinued: boolean;
   consecutive_accepts: number;
   lots_in_regime: number;
+  rejects_in_regime: number;
   rejects_in_window: number;
   next_severity_on_accepts: string;
   accepts_needed: number | null;
@@ -25591,6 +25592,7 @@ const SamplingSeverityState = z.object({
   discontinued: z.boolean(),
   consecutive_accepts: z.number().int(),
   lots_in_regime: z.number().int(),
+  rejects_in_regime: z.number().int(),
   rejects_in_window: z.number().int(),
   next_severity_on_accepts: z.string(),
   accepts_needed: z.number().int().nullable(),
@@ -34432,6 +34434,11 @@ substep isn&#x27;t done, or if membership crosses WO boundaries.`,
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
+      },
+      {
+        name: "needs_my_approval",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
       {
         name: "offset",
@@ -52255,6 +52262,11 @@ Usage:
         name: "current_state",
         type: "Query",
         schema: z.enum(["CLOSED", "IN_PROGRESS", "OPEN"]).optional(),
+      },
+      {
+        name: "current_state__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
       },
       {
         name: "disposition_number",

@@ -104,10 +104,15 @@ def open_disposition_for_failed_report(report) -> QuarantineDisposition:
                  .filter(archived=False, part=part, step=step)
                  .order_by('-entered_at').first())
         if visit is not None:
+            # Only one still to be decided: a decided one (IN_PROGRESS, a type chosen)
+            # already settled its finding, and a new failure joined to it never got a
+            # decision — the part stayed quarantined (round-3 #7).
+            from django.db.models import Q
             same_finding = (QuarantineDisposition.objects  # tenant-safe: scoped by the part FK
                             .filter(archived=False, part=part, step=step,
-                                    current_state__in=['OPEN', 'IN_PROGRESS'],
+                                    current_state='OPEN',
                                     created_at__gte=visit.entered_at)
+                            .filter(Q(disposition_type='') | Q(disposition_type__isnull=True))
                             .order_by('created_at').first())
             if same_finding is not None:
                 same_finding.quality_reports.add(report)

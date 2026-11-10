@@ -473,7 +473,7 @@ class SamplingSeverityStateSerializer(SecureModelMixin):
         fields = (
             'id', 'step', 'step_name', 'supplier', 'supplier_name',
             'severity', 'severity_since', 'discontinued',
-            'consecutive_accepts', 'lots_in_regime',
+            'consecutive_accepts', 'lots_in_regime', 'rejects_in_regime',
             'rejects_in_window', 'next_severity_on_accepts', 'accepts_needed',
             'updated_at',
         )
@@ -518,6 +518,15 @@ class SamplingRuleSetSerializer(SecureModelMixin):
         read_only_fields = (
             'created_at', 'updated_at', 'rules', 'part_type_info', 'process_info', 'step_info',
             'part_type_name', 'process_name', 'version')
+
+    def validate(self, attrs):
+        from Tracker.services.qms.acceptance_sampling import aql_refusal
+        strategy = attrs.get('strategy', getattr(self.instance, 'strategy', ''))
+        aql = attrs.get('aql', getattr(self.instance, 'aql', None))
+        refusal = aql_refusal(strategy, aql)
+        if refusal:
+            raise serializers.ValidationError({'aql': refusal})
+        return super().validate(attrs)
 
     @extend_schema_field(serializers.ListField())
     def get_rules(self, obj):
@@ -723,6 +732,10 @@ class StepSamplingRulesUpdateSerializer(serializers.Serializer):
         # Only treat acceptance as "provided" when at least one field was sent,
         # so editing a non-receiving step's rules doesn't wipe a plan.
         acceptance = None
+        from Tracker.services.qms.acceptance_sampling import aql_refusal
+        refusal = aql_refusal(vd.get('strategy', ''), vd.get('aql'))
+        if refusal:
+            raise serializers.ValidationError({'aql': refusal})
         if any(k in vd for k in ('aql', 'inspection_level', 'severity', 'strategy', 'variables_characteristic')):
             acceptance = {
                 'aql': vd.get('aql'),
@@ -1598,6 +1611,17 @@ class CapaTasksSerializer(SecureModelMixin):
         CAPA's approval; drafting the plan (tasks not yet started) doesn't."""
         from Tracker.services.qms.capa import task_work_refusal
         new_status = attrs.get('status')
+        old_status = getattr(self.instance, 'status', None)
+        # Completing a task is the complete action (signature, every assignee, the
+        # stamps): an edit that set COMPLETED skipped all of it, and one that moved a
+        # completed task back left its stamps behind (round-3 #1).
+        if new_status == CapaTaskStatus.COMPLETED and old_status != CapaTaskStatus.COMPLETED:
+            raise serializers.ValidationError(
+                {'status': "Complete a task with Complete Task, which records its sign-off."})
+        if (old_status == CapaTaskStatus.COMPLETED and new_status is not None
+                and new_status != CapaTaskStatus.COMPLETED):
+            raise serializers.ValidationError(
+                {'status': "A completed task stays completed; add a new task for more work."})
         if new_status in (CapaTaskStatus.IN_PROGRESS, CapaTaskStatus.COMPLETED):
             probe = CapaTasks(
                 capa=attrs.get('capa') or getattr(self.instance, 'capa', None),

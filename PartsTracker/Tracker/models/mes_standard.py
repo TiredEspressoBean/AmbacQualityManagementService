@@ -316,8 +316,14 @@ class Equipments(SecureModel):
         return self.equipment_type.requires_calibration if self.equipment_type else False
 
     def get_latest_calibration(self):
-        """Return the most recent CalibrationRecord for this equipment."""
-        return self.calibration_records.first()  # Ordered by -calibration_date
+        """Return the most recent CalibrationRecord for this gauge — across its versions:
+        an edit makes a new version of the same instrument, and its calibrations stay on
+        the version they were recorded against (round-3 #19). Deleted records aren't one."""
+        from Tracker.models import CalibrationRecord
+        chain = [v.pk for v in self.get_version_history()]
+        return (CalibrationRecord.objects  # tenant-safe: .objects auto-scopes
+                .filter(equipment_id__in=chain, archived=False)
+                .order_by('-calibration_date', '-created_at').first())
 
     @property
     def calibration_status(self) -> str | None:
@@ -745,6 +751,9 @@ class SamplingSeverityState(SecureModel):
     recent_outcomes = models.JSONField(default=list, blank=True)   # last ≤5: 'A'|'R'|'G'
     consecutive_accepts = models.PositiveIntegerField(default=0)   # clean accepts in a row
     lots_in_regime = models.PositiveIntegerField(default=0)        # lots since the current severity began
+    # Lots NOT accepted since the current severity began. On tightened, 5 of them
+    # (cumulative) is the standard's discontinue point (Z1.4 §8.4; round-3 #11).
+    rejects_in_regime = models.PositiveIntegerField(default=0)
 
     class Meta:
         verbose_name = 'Sampling Severity State'

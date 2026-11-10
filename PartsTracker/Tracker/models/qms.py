@@ -1626,11 +1626,16 @@ class CAPA(SecureModel):
         reach verification (hunt 2026-11-10, N1)."""
         return self.tasks.filter(archived=False)
 
+    def _open_tasks(self):
+        """Tasks still to do. A cancelled task is done with — it stays on record as
+        cancelled, and it blocked closing the CAPA forever (round-3 #2)."""
+        return self._live_tasks().exclude(status__in=['COMPLETED', 'CANCELLED'])
+
     def all_tasks_completed(self):
         """Check if all tasks are completed"""
         if not hasattr(self, 'tasks'):
             return True
-        return not self._live_tasks().exclude(status='COMPLETED').exists()
+        return not self._open_tasks().exists()
 
     def has_confirmed_verification(self):
         """Check if there's a verification with CONFIRMED effectiveness"""
@@ -1697,7 +1702,7 @@ class CAPA(SecureModel):
             capa=OuterRef('pk'), effectiveness_result='CONFIRMED')
         any_task = CapaTasks.objects.filter(capa=OuterRef('pk'), archived=False)
         open_task = CapaTasks.objects.filter(capa=OuterRef('pk'), archived=False).exclude(
-            status=CapaTaskStatus.COMPLETED)
+            status__in=[CapaTaskStatus.COMPLETED, CapaTaskStatus.CANCELLED])
         # Mirrors rca_verified(): a non-blank summary AND a verified root cause.
         rca_done = RcaRecord.objects.filter(
             capa=OuterRef('pk'), root_cause_summary__regex=r'\S',
@@ -1742,9 +1747,11 @@ class CAPA(SecureModel):
         if self.rca_complete():
             progress += 25
 
-        if hasattr(self, 'tasks') and self._live_tasks().exists():
-            completed = self._live_tasks().filter(status=CapaTaskStatus.COMPLETED).count()
-            total = self._live_tasks().count()
+        # Cancelled tasks are neither done nor to do: out of the count.
+        counted = self._live_tasks().exclude(status=CapaTaskStatus.CANCELLED) if hasattr(self, 'tasks') else None
+        if counted is not None and counted.exists():
+            completed = counted.filter(status=CapaTaskStatus.COMPLETED).count()
+            total = counted.count()
             progress += int((completed / total) * 50)
 
         verification = self.latest_verification
@@ -1766,7 +1773,7 @@ class CAPA(SecureModel):
             blockers.append("Root cause not verified")
 
         if hasattr(self, 'tasks'):
-            incomplete_tasks = self._live_tasks().exclude(status='COMPLETED')
+            incomplete_tasks = self._open_tasks()
             if incomplete_tasks.exists():
                 blockers.append(f"{incomplete_tasks.count()} task(s) still pending")
 
@@ -2849,13 +2856,35 @@ class CalibrationRecordQuerySet(SecureQuerySet):
 
         A deleted (archived) record isn't one — it kept deciding the gauge's due date and
         the nag (round-1 #22). Same-day records (a FAIL, then the after-repair PASS)
-        are ordered by when they were entered, not arbitrarily."""
-        from django.db.models import OuterRef, Subquery
+        are ordered by when they were entered, not arbitrarily.
+
+        Per GAUGE, not per equipment row: editing a gauge makes a new version, and its
+        calibrations stay on the version they were recorded against — keyed on the row,
+        the edited gauge read never calibrated and a failed one stopped reading FAILED
+        (round-3 #19). The record kept is the latest across the version chain."""
+        from Tracker.models import Equipments
         live = self.filter(archived=False)
-        latest_ids = live.filter(
-            equipment=OuterRef('equipment')
-        ).order_by('-calibration_date', '-created_at').values('id')[:1]
-        return live.filter(id__in=Subquery(latest_ids))
+        rows = list(live.values_list('id', 'equipment_id', 'calibration_date', 'created_at'))
+        if not rows:
+            return live.none()
+        # Every version link in the tenants concerned, then each row's chain root.
+        tenant_ids = set(live.values_list('tenant_id', flat=True))
+        parent = dict(Equipments.all_tenants  # tenant-safe: limited to the records' tenants
+                      .filter(tenant_id__in=tenant_ids)
+                      .values_list('id', 'previous_version_id'))
+
+        def root(eid):
+            seen = {eid}
+            while parent.get(eid) is not None and parent[eid] not in seen:
+                eid = parent[eid]
+                seen.add(eid)
+            return eid
+        best = {}
+        for rid, eid, cal_date, created in rows:
+            key = root(eid)
+            if key not in best or (cal_date, created) > best[key][1]:
+                best[key] = (rid, (cal_date, created))
+        return live.filter(id__in=[rid for rid, _ in best.values()])
 
 
 class CalibrationRecordManager(SecureManager):
@@ -3530,11 +3559,17 @@ class StepExecutionMeasurement(SecureModel):
             if self.value is None:
                 return None
             from decimal import Decimal
-            if defn.nominal is None or defn.lower_tol is None or defn.upper_tol is None:
+            # A one-sided spec judges its one side (as MeasurementResult does); with no
+            # nominal or no tolerance at all there's nothing to judge (None). It needed
+            # all three, so a max-only reading never got a verdict (round-3 #14).
+            if defn.nominal is None or (defn.lower_tol is None and defn.upper_tol is None):
                 return None
-            lower = defn.nominal - defn.lower_tol
-            upper = defn.nominal + defn.upper_tol
-            return lower <= Decimal(str(self.value)) <= upper
+            v = Decimal(str(self.value))
+            if defn.lower_tol is not None and v < defn.nominal - defn.lower_tol:
+                return False
+            if defn.upper_tol is not None and v > defn.nominal + defn.upper_tol:
+                return False
+            return True
         elif defn.type == "PASS_FAIL":
             return self.string_value.upper() == "PASS"
         return None

@@ -21,8 +21,9 @@ Switching rules (ANSI/ASQ Z1.4 §):
   - Normal → Reduced: 10 consecutive lots accepted.
   - Reduced → Normal: a lot rejected, OR a lot lands in the reduced accept/reject
     gap (accepted but reduced discontinued).
-  - Discontinue: tightened persists 5 consecutive lots without earning a return
-    to normal → stop accepting the supplier's product (recommendation).
+  - Discontinue: 5 lots NOT accepted (cumulative) while on tightened inspection →
+    stop accepting the supplier's product (recommendation). Z1.4 §8.4 / MIL-STD-105E
+    4.7.3 (user decision 2026-11-10: follow the standard, not "5 lots on tightened").
 """
 from __future__ import annotations
 
@@ -33,7 +34,7 @@ _NORMAL_TO_TIGHTENED_REJECTS = 2   # within the last _WINDOW lots
 _WINDOW = 5
 _TIGHTENED_TO_NORMAL_ACCEPTS = 5
 _NORMAL_TO_REDUCED_ACCEPTS = 10
-_DISCONTINUE_TIGHTENED_LOTS = 5
+_DISCONTINUE_TIGHTENED_REJECTS = 5   # lots not accepted, cumulative, on tightened
 
 
 def effective_severity(step, supplier, ruleset) -> str:
@@ -83,6 +84,7 @@ def _reset_regime(state, severity):
     state.recent_outcomes = []
     state.consecutive_accepts = 0
     state.lots_in_regime = 0
+    state.rejects_in_regime = 0
     state.discontinued = False
 
 
@@ -106,6 +108,8 @@ def update_after_lot(report) -> None:
     state.recent_outcomes = window[-_WINDOW:]
     state.consecutive_accepts = state.consecutive_accepts + 1 if outcome == "A" else 0
     state.lots_in_regime = state.lots_in_regime + 1
+    if outcome == "R":
+        state.rejects_in_regime = state.rejects_in_regime + 1
 
     transitioned = False
     emit_discontinue = False
@@ -119,7 +123,7 @@ def update_after_lot(report) -> None:
     elif state.severity == "TIGHTENED":
         if state.consecutive_accepts >= _TIGHTENED_TO_NORMAL_ACCEPTS:
             _reset_regime(state, "NORMAL"); transitioned = True
-        elif state.lots_in_regime >= _DISCONTINUE_TIGHTENED_LOTS and not state.discontinued:
+        elif state.rejects_in_regime >= _DISCONTINUE_TIGHTENED_REJECTS and not state.discontinued:
             state.discontinued = True
             emit_discontinue = True
 
@@ -129,7 +133,7 @@ def update_after_lot(report) -> None:
 
     state.save(update_fields=[
         "severity", "severity_since", "recent_outcomes", "consecutive_accepts",
-        "lots_in_regime", "discontinued", "updated_at",
+        "lots_in_regime", "rejects_in_regime", "discontinued", "updated_at",
     ])
     if emit_discontinue:
         _emit_discontinued(state, supplier)

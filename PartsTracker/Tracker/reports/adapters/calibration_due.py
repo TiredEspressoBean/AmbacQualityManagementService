@@ -131,7 +131,8 @@ class CalibrationDueAdapter(ReportAdapter):
         # CalibrationRecord, so we only surface tracked instruments.
         equipment_qs = (
             Equipments.objects
-            .filter(tenant=tenant)
+            # One row per gauge: its current version (its history spans the chain).
+            .filter(tenant=tenant, is_current_version=True, archived=False)
             .select_related("equipment_type", "location")
             .order_by("name")
         )
@@ -140,14 +141,9 @@ class CalibrationDueAdapter(ReportAdapter):
 
         for equip in equipment_qs:
             # Get the latest calibration record for this equipment
-            # A deleted record isn't the latest; same-day ties go to the later entry
-            # (round-1 #22).
-            latest_record: Optional[CalibrationRecord] = (
-                CalibrationRecord.objects
-                .filter(tenant=tenant, equipment=equip, archived=False)
-                .order_by("-calibration_date", "-created_at")
-                .first()
-            )
+            # Across the gauge's versions; a deleted record isn't the latest; same-day
+            # ties go to the later entry (round-1 #22, round-3 #19).
+            latest_record: Optional[CalibrationRecord] = equip.get_latest_calibration()
 
             if latest_record is None:
                 # Equipment has never been calibrated — skip it;

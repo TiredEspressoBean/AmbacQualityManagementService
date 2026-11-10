@@ -56,6 +56,13 @@ def my_gauge_nag(user, used_within_days: int = DEFAULT_USED_WITHIN_DAYS,
     today = tenant_today(user.tenant_id)
     due_cutoff = today + timedelta(days=due_within_days)
 
+    # A gauge is every version of it: its calibrations may sit on an earlier version
+    # than the one used (round-3 #19).
+    from Tracker.models import Equipments
+    for eq in Equipments.all_tenants.filter(  # tenant-safe: explicit tenant filter; any version
+            pk__in=list(used_ids), tenant_id=user.tenant_id):
+        used_ids |= {v.pk for v in eq.get_version_history()}
+
     # The latest calibration per gauge decides: a FAIL is listed whatever its due date.
     records = (CalibrationRecord.objects  # tenant-safe: .objects auto-scopes
                .filter(equipment_id__in=used_ids)

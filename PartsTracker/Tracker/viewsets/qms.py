@@ -13,6 +13,7 @@ from Tracker.permissions import TenantAccessPermission
 from rest_framework import parsers
 from rest_framework.response import Response
 from rest_framework.filters import OrderingFilter
+from Tracker.filters import QuarantineDispositionFilter
 
 from Tracker.models import (
     # QMS models
@@ -129,18 +130,9 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
     serializer_class = QuarantineDispositionSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
 
-    # Fixed filterset fields - these should be actual model fields, not SerializerMethodField names
-    filterset_fields = {k: ["exact"] for k in [
-                        "disposition_number", "current_state", "disposition_type", "resolution_completed",
-                        "resolution_completed_by", "part", "part__ERP_id", "part__part_type__name",
-                        # Batch dispositions (a failed cycle's whole load) — filter/list by the batch,
-                        # or reach them as a class via batch_execution (part is null on these).
-                        "batch_execution",
-                        # Held-lots surface + RTV loop: reach the rejected lot / its supplier through the
-                        # linked receiving quality reports (no denormalized FK on the disposition).
-                        "quality_reports__material_lot", "quality_reports__material_lot__supplier"]}
-    # assigned_to__isnull=true is the unassigned queue (auto-opened dispositions).
-    filterset_fields["assigned_to"] = ["exact", "isnull"]
+    # Fields as before (assigned_to__isnull=true is the unassigned queue), plus
+    # current_state__in taking repeated values — filters.QuarantineDispositionFilter.
+    filterset_class = QuarantineDispositionFilter
 
     # Search fields should be actual model fields that can be searched
     search_fields = ["disposition_number", "description", "resolution_notes", "assigned_to__first_name",
@@ -861,6 +853,8 @@ class CAPAFilterSet(django_filters.FilterSet):
         # so nothing else can see it.
         parameters=[
             OpenApiParameter(name='overdue', description='Show only overdue CAPAs', required=False, type=bool),
+            OpenApiParameter(name='needs_my_approval', description='Only CAPAs waiting on my approval',
+                             required=False, type=bool),
         ]
     ),
     create=extend_schema(description="Create a new CAPA"),
@@ -881,7 +875,8 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = CAPAFilterSet
     search_fields = ['capa_number', 'problem_statement', 'immediate_action']
-    ordering_fields = ['initiated_date', 'due_date', 'completed_date', 'capa_number', 'severity']
+    ordering_fields = ['initiated_date', 'due_date', 'completed_date', 'capa_number', 'severity',
+                       'created_at']
     ordering = ['-initiated_date']
     pagination_class = LimitOffsetPagination
 
@@ -2834,9 +2829,9 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
                 'label': defn.label,
                 'type': defn.type,
                 'unit': defn.unit,
-                'nominal': float(defn.nominal) if defn.nominal else None,
-                'upper_tol': float(defn.upper_tol) if defn.upper_tol else None,
-                'lower_tol': float(defn.lower_tol) if defn.lower_tol else None,
+                'nominal': float(defn.nominal) if defn.nominal is not None else None,  # 0 is a value (round-3 #17)
+                'upper_tol': float(defn.upper_tol) if defn.upper_tol is not None else None,
+                'lower_tol': float(defn.lower_tol) if defn.lower_tol is not None else None,
                 'required': defn.required,
                 'is_recorded': is_recorded,
             })
@@ -2902,8 +2897,9 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
             out_of_spec_details.append({
                 'id': str(m.id),
                 'label': m.measurement_definition.label,
-                'value': float(m.value) if m.value else m.string_value,
-                'nominal': float(m.measurement_definition.nominal) if m.measurement_definition.nominal else None,
+                'value': float(m.value) if m.value is not None else m.string_value,  # a 0.0 reading is 0
+                'nominal': (float(m.measurement_definition.nominal)
+                            if m.measurement_definition.nominal is not None else None),
             })
 
         return Response({

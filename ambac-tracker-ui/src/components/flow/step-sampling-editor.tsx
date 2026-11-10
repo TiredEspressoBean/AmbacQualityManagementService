@@ -70,6 +70,10 @@ const NONE = '__none__';
 // table row, so AQL is a fixed selection rather than free entry. The tables are
 // carried from 0.10 (the server refuses lower).
 const AQL_SERIES = ['0.10', '0.15', '0.25', '0.40', '0.65', '1.0', '1.5', '2.5', '4.0', '6.5', '10'];
+// C=0 (Squeglia) plans are carried for these AQLs only; the server refuses others for C=0.
+const C0_AQLS = ["0.65", "1.0", "1.5", "2.5", "4.0", "6.5"];
+// No strategy is C=0 (the server's default).
+const aqlsFor = (strategy?: string | null) => (strategy === "Z14" || strategy === "Z19" ? AQL_SERIES : C0_AQLS);
 
 // Gate actions are side-effects only — things that DON'T move the subject through
 // the flow. Anything spatial (quarantine, scrap, rework, return-to-supplier, next)
@@ -704,7 +708,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
                       <SelectTrigger className="h-8"><SelectValue placeholder="—" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>—</SelectItem>
-                        {AQL_SERIES.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                        {aqlsFor(form.watch('strategy') as string | null).map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>

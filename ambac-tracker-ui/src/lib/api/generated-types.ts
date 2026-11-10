@@ -36760,6 +36760,7 @@ export interface components {
             readonly discontinued: boolean;
             readonly consecutive_accepts: number;
             readonly lots_in_regime: number;
+            readonly rejects_in_regime: number;
             readonly rejects_in_window: number;
             readonly next_severity_on_accepts: string;
             readonly accepts_needed: number | null;
@@ -43881,6 +43882,8 @@ export interface operations {
                 initiated_by?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
+                /** @description Only CAPAs waiting on my approval */
+                needs_my_approval?: boolean;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
@@ -61033,6 +61036,8 @@ export interface operations {
                  *     * `CLOSED` - Closed
                  */
                 current_state?: "CLOSED" | "IN_PROGRESS" | "OPEN";
+                /** @description Multiple values may be separated by commas. */
+                current_state__in?: string[];
                 disposition_number?: string;
                 /**
                  * @description * `REWORK` - Rework

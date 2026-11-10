@@ -104,7 +104,10 @@ def _report_window_qs(ruleset, work_order, material_lot):
     """Base QualityReports queryset for the gate's window, newest first."""
     from Tracker.models.qms import QualityReports
 
-    qs = QualityReports.objects.filter(archived=False, status__in=["PASS", "FAIL"])
+    # A superseded report (its capture voided and taken again) isn't a result: the
+    # re-capture is. Both counted (round-3 #18).
+    qs = QualityReports.objects.filter(archived=False, status__in=["PASS", "FAIL"],
+                                       superseded_at__isnull=True)
     if material_lot is not None:
         qs = qs.filter(material_lot=material_lot)
     else:

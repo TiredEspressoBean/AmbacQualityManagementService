@@ -33,11 +33,8 @@ from rest_framework import serializers
 from Tracker.reports.adapters.base import ReportAdapter
 
 
-# Subgroup-size → d2 factor for within-subgroup σ estimation (AIAG SPC).
-_D2_FACTORS: dict[int, float] = {
-    2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534,
-    7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078,
-}
+# Subgroup-size → d2 factor for within-subgroup σ estimation (AIAG SPC), n = 2..25.
+from Tracker.services.qms.spc_factors import D2_FACTORS as _D2_FACTORS  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

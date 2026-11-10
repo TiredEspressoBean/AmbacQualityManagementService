@@ -222,6 +222,39 @@ class PartialRejectRemainderTests(_Fixture):
         self.assertEqual((report.status, lot.status), ("FAIL", "ACCEPTED"))
 
 
+class StockHeldTwiceTests(_Fixture):
+    """Round-3 #12: accepted stock held by hand, then a supplier hold added, went back
+    through receiving when the supplier hold was released last."""
+
+    def test_stock_returns_to_stock_whichever_hold_is_last(self):
+        lot = self._lot()
+        report = self._report(lot)
+        report.status = "PASS"
+        report.save(update_fields=["status"])
+        ri.accept(report, self.qa)
+        lot.refresh_from_db()
+        self.assertEqual(lot.status, "ACCEPTED")
+        ri.place_manual_hold(lot, self.qa, "Suspect plating")
+        # A supplier suspension doesn't touch stock held by hand.
+        self.assertEqual(ri.hold_supplier_lots_at_dock(self.acme), [])
+        # Even if it carries a second hold, releasing them in any order restores stock.
+        from Tracker.services.qms import lot_holds
+        lot.refresh_from_db()
+        lot_holds.hold(lot, ri.HOLD_SUPPLIER_UNQUALIFIED)
+        lot.refresh_from_db()
+        ri.release_hold(lot, self.qa, "Plating fine", code="MANUAL")
+        ri.release_hold(lot, self.qa, "Supplier requalified", code=ri.HOLD_SUPPLIER_UNQUALIFIED)
+        lot.refresh_from_db()
+        self.assertEqual(lot.status, "ACCEPTED")
+
+    def test_inbox_plan_badge_is_the_frozen_plan(self):
+        """Round-3 #13."""
+        from Tracker.services.qms.inspection_inbox import _plan_badge
+        lot = self._lot()
+        report = self._report(lot)
+        self.assertEqual(_plan_badge(lot), f"n={report.sample_size} · Ac {report.accept_number or 0}")
+
+
 class AcceptIncompleteTests(_Fixture):
     """N14 (user decision 2026-11-10)."""
 

@@ -69,8 +69,13 @@ def _wo_due_tone(expected_completion, today) -> tuple[str, str]:
 
 
 def _plan_badge(lot) -> str | None:
-    """The sampling ANSWER ("n=13 · Ac 1"), never the code tables."""
+    """The sampling ANSWER ("n=13 · Ac 1"), never the code tables. Once the inspection
+    is open, the plan frozen on its report — the one it is judged by (round-3 #13)."""
     from Tracker.services.qms.receiving_inspection import sample_plan_for_lot
+    report = (lot.quality_reports.filter(archived=False, superseded_at__isnull=True)
+              .order_by("-created_at").first())
+    if report is not None and report.sample_size is not None:
+        return f"n={report.sample_size} · Ac {report.accept_number or 0}"
     try:
         plan = sample_plan_for_lot(lot)
     except Exception:

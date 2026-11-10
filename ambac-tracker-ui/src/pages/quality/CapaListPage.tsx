@@ -19,7 +19,7 @@ const col = createColumnHelper<Schema<"CAPA">>();
 // other pages deep-link into a scoped list — e.g. a supplier scorecard → its SCARs.
 // Takes the validated search params rather than bare strings: capa_type is a
 // choice field, and the route's schema already narrowed it to the real enum.
-function useCapasListWithFilter(urlFilters: CapaListSearchParams) {
+function useCapasListWithFilter(urlFilters: CapaListSearchParams, needsMyApproval = false) {
     return function useCapasList({
         offset,
         limit,
@@ -40,6 +40,8 @@ function useCapasListWithFilter(urlFilters: CapaListSearchParams) {
         if (search !== undefined) queries.search = search;
         if (urlFilters.supplier) queries.supplier = urlFilters.supplier;
         if (urlFilters.capa_type) queries.capa_type = urlFilters.capa_type;
+        // The toggle never reached the query (round-3 #4).
+        if (needsMyApproval) queries.needs_my_approval = true;
         return useListCapas(queries);
     };
 }
@@ -69,15 +71,16 @@ export function CapaListPage() {
             modelName="CAPA"
             headerContent={<CapaStatsCards filters={{ supplier: search.supplier, capa_type: search.capa_type }} />}
             extraToolbarContent={filterToolbar}
-            useList={useCapasListWithFilter({ supplier: search.supplier, capa_type: search.capa_type })}
+            useList={useCapasListWithFilter({ supplier: search.supplier, capa_type: search.capa_type }, needsMyApproval)}
             sortOptions={[
                 { label: "CAPA # (Newest)", value: "-capa_number" },
                 { label: "CAPA # (Oldest)", value: "capa_number" },
                 { label: "Due Date (Soonest)", value: "due_date" },
                 { label: "Due Date (Latest)", value: "-due_date" },
-                { label: "Severity (Critical First)", value: "-severity" },
-                { label: "Severity (Minor First)", value: "severity" },
-                { label: "Status", value: "status" },
+                // Severity codes sort alphabetically: CRITICAL < MAJOR < MINOR. Status is
+                // computed (not a sortable column), so it isn't offered (round-3 #5).
+                { label: "Severity (Critical First)", value: "severity" },
+                { label: "Severity (Minor First)", value: "-severity" },
                 { label: "Created (Newest)", value: "-created_at" },
                 { label: "Created (Oldest)", value: "created_at" },
             ]}

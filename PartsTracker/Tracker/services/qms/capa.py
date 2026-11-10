@@ -300,7 +300,7 @@ def verify_capa_effectiveness(
         refusal = capa_plan_refusal(capa)
         if refusal:
             raise ValidationError(refusal)
-        open_tasks = capa._live_tasks().exclude(status=CapaTaskStatus.COMPLETED).count()
+        open_tasks = capa._open_tasks().count()
         if open_tasks:
             raise ValidationError(
                 f"Cannot close CAPA: {open_tasks} task(s) still pending. Complete them before "
@@ -345,6 +345,13 @@ def verify_capa_effectiveness(
         rca = capa.rca_records.first()
         if rca:
             rca.rca_review_status = RcaReviewStatus.REQUIRED
+            # The cause didn't hold: reopen it for review. Left VERIFIED, the RCA stayed
+            # locked and rca_verified() true, so the CAPA went back to verification with
+            # the cause never re-reviewed (round-3 #3). The audit log keeps who verified it.
+            from Tracker.models.qms import RootCauseVerificationStatus
+            rca.root_cause_verification_status = RootCauseVerificationStatus.UNVERIFIED
+            rca.root_cause_verified_by = None
+            rca.root_cause_verified_at = None
             rca.save()
 
         capa.status = CapaStatus.IN_PROGRESS

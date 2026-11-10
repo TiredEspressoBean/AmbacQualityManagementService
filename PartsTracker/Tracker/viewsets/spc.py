@@ -421,6 +421,12 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         # Get query params
         days = int(request.query_params.get('days', 90))
         subgroup_size = int(request.query_params.get('subgroup_size', 5))
+        # The range method needs subgroups of 2..25 (the d2 table): 1 gave R̄=0 and read
+        # "capable", 0 crashed (round-3 #15).
+        from Tracker.services.qms.spc_factors import D2_FACTORS, MIN_SUBGROUP, MAX_SUBGROUP
+        if not MIN_SUBGROUP <= subgroup_size <= MAX_SUBGROUP:
+            return Response({'detail': f"subgroup_size must be {MIN_SUBGROUP}–{MAX_SUBGROUP}."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         # Calculate date range
         end_date = timezone.now()
@@ -491,8 +497,7 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
 
         # Within-subgroup standard deviation (for Cp/Cpk)
         # Using average range method with d2 factor
-        d2_factors = {2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078}
-        d2 = d2_factors.get(subgroup_size, 2.326)  # Default to n=5
+        d2 = D2_FACTORS[subgroup_size]
 
         # Calculate ranges for subgroups
         ranges = []

@@ -116,11 +116,20 @@ class SeveritySwitchingTests(TenantTestCase):
         notification_event.connect(rcv, weak=False)
         try:
             self._reject(); self._reject()                  # → TIGHTENED (regime reset)
-            # 5 lots on tightened without 5 consecutive accepts → discontinue.
-            self._accept(); self._accept(); self._reject(); self._accept(); self._accept()
+            # Z1.4 §8.4 (user decision 2026-11-10): discontinue when 5 lots are NOT
+            # accepted on tightened, cumulatively — not after any 5 lots. Accepts in
+            # between (short of the 5 in a row that return to normal) don't reset it.
+            self._accept(); self._reject(); self._reject(); self._accept(); self._reject()
+            st = SamplingSeverityState.objects.get(step=self.step, supplier=self.supplier)
+            self.assertFalse(st.discontinued, "5 lots, but only 3 not accepted")
+            self._reject()
+            st.refresh_from_db()
+            self.assertFalse(st.discontinued, "4 not accepted")
+            self._reject()
         finally:
             notification_event.disconnect(rcv)
         st = SamplingSeverityState.objects.get(step=self.step, supplier=self.supplier)
+        self.assertEqual(st.rejects_in_regime, 5)
         self.assertTrue(st.discontinued)
         self.assertIn("supplier.inspection_discontinued", seen)
 

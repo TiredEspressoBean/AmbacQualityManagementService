@@ -254,6 +254,10 @@ def hold_supplier_lots_at_dock(supplier) -> list:
                 .select_related("material_type", "material")):
         if HOLD_SUPPLIER_UNQUALIFIED in lot_holds.holds(lot):
             continue
+        # Stock held by hand isn't at the dock: accepted / in-use stock is untouched
+        # (round-3 #12).
+        if _held_from_stock(lot):
+            continue
         if _held_for_unqualified_supplier(lot):
             held.append(lot)
     return held
@@ -275,7 +279,9 @@ def release_supplier_lots_at_dock(supplier, user=None) -> list:
             continue
         with transaction.atomic():
             if not lot_holds.remove_hold(lot, HOLD_SUPPLIER_UNQUALIFIED):
-                if receiving_execution(lot) is not None:
+                if _held_from_stock(lot):
+                    inventory.restore_after_hold(lot, _held_from_stock(lot))
+                elif receiving_execution(lot) is not None:
                     inventory.return_to_inspection(lot)
                 else:
                     inventory.release_hold(lot)
@@ -495,8 +501,10 @@ def release_hold(lot, user, reason: str, code: str | None = None):
             decline_whole_lot_request(lot, user, reason)
         if remaining:
             pass  # still held for the others; nothing routes yet
-        elif released == MANUAL_HOLD and _held_from_stock(lot):
-            # Stock held by hand goes back to what it was, not through receiving again.
+        elif _held_from_stock(lot):
+            # Stock held by hand goes back to what it was, not through receiving again —
+            # whichever hold is released last (round-3 #12: a supplier hold added on top
+            # of the manual one, released last, re-received accepted stock).
             inventory.restore_after_hold(lot, _held_from_stock(lot))
         elif released == "WHOLE_LOT_REJECT_REQUESTED" or receiving_execution(lot) is not None:
             # Back to the SAME inspection: a declined whole-lot request, or a lot held

@@ -5,7 +5,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from django.db.models import Q
 import django_filters
 
-from .models import Parts, Orders, Steps, PartTypes, WorkOrder, User, Companies, Documents, TimeEntry
+from .models import Parts, Orders, Steps, PartTypes, WorkOrder, User, Companies, Documents, TimeEntry, QuarantineDisposition
 
 
 class CharInFilter(BaseInFilter, CharFilter):
@@ -264,4 +264,23 @@ class TimeEntryFilter(django_filters.FilterSet):
             'end_time': ['isnull'],
             # The approval queue reads a pay period.
             'start_time': ['gte', 'lt'],
+        }
+
+
+class QuarantineDispositionFilter(django_filters.FilterSet):
+    """Disposition list filters. `current_state__in` takes repeated values (the client
+    sends arrays as `?current_state__in=OPEN&current_state__in=IN_PROGRESS`) — the
+    unassigned queue asks for open ones on the server (round-3 #9)."""
+    current_state__in = CharInFilter(field_name='current_state', lookup_expr='in',
+                                     widget=QueryArrayWidget())
+
+    class Meta:
+        model = QuarantineDisposition
+        fields = {
+            **{k: ['exact'] for k in [
+                "disposition_number", "current_state", "disposition_type", "resolution_completed",
+                "resolution_completed_by", "part", "part__ERP_id", "part__part_type__name",
+                "batch_execution",
+                "quality_reports__material_lot", "quality_reports__material_lot__supplier"]},
+            'assigned_to': ['exact', 'isnull'],
         }

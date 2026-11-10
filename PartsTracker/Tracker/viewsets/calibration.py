@@ -211,11 +211,9 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
 
         latest_per_equipment = self._latest(qs)
 
-        # Count equipment with calibration records
-        # tenant-safe: qs is tenant-scoped via self.get_queryset()
-        total_equipment = Equipments.objects.filter(
-            calibration_records__in=qs
-        ).distinct().count()
+        # Gauges with calibration records: one per gauge, whichever versions its records
+        # sit on (an edited gauge counted twice — round-3 #19).
+        total_equipment = latest_per_equipment.count()
 
         # Current calibrations (not overdue, not failed)
         current = latest_per_equipment.filter(

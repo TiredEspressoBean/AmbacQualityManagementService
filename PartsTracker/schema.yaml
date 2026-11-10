@@ -2693,6 +2693,11 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: needs_my_approval
+        schema:
+          type: boolean
+        description: Only CAPAs waiting on my approval
       - name: offset
         required: false
         in: query
@@ -25973,6 +25978,15 @@ paths:
           * `OPEN` - Open
           * `IN_PROGRESS` - In Progress
           * `CLOSED` - Closed
+      - in: query
+        name: current_state__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       - in: query
         name: disposition_number
         schema:
@@ -80958,6 +80972,9 @@ components:
         lots_in_regime:
           type: integer
           readOnly: true
+        rejects_in_regime:
+          type: integer
+          readOnly: true
         rejects_in_window:
           type: integer
           readOnly: true
@@ -80979,6 +80996,7 @@ components:
       - id
       - lots_in_regime
       - next_severity_on_accepts
+      - rejects_in_regime
       - rejects_in_window
       - severity
       - severity_since

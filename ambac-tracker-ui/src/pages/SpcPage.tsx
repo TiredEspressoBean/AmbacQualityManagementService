@@ -594,9 +594,11 @@ export default function SpcPage() {
         limit: 1000,
         enabled: selectedMeasurementId !== null,
     });
+    // The subgroup size picked on the page — Cp/Cpk was always computed at n=5.
     const { data: capabilityData } = useSpcCapability({
         measurementId: selectedMeasurementId,
         days: dateRange,
+        subgroupSize,
         enabled: selectedMeasurementId !== null,
     });
 
