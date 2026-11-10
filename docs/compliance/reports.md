@@ -122,7 +122,7 @@ It gathers, for one lot:
 | **Plan and sampling** | Sample size, Ac/Re or k, defectives found, inspector, verdict |
 | **Measurements** | With their balloon numbers |
 | **Checklist** | The answers given |
-| **Release** | Accepted, rejected or hold released — with the reason, by whom, and when |
+| **Release** | Accepted, rejected or hold released — with the reason, by whom, and when. A lot accepted before its sample was finished reads *Accepted with the sample unfinished*, with the reason, who asked and the approval number, and the record is stamped **SAMPLE UNFINISHED** |
 
 !!! note "A lot with no plan still produces a record"
     It states that the lot went **straight to stock** (dock-to-stock). That is

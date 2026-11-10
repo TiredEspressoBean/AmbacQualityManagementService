@@ -150,6 +150,9 @@ Based on lot size and AQL level:
 - Accept number (Ac) and Reject number (Re) shown
 - If defects ≤ Ac: Accept lot
 - If defects ≥ Re: Reject lot
+- If the sample can't be finished: **Accept unfinished…** with a reason, which waits
+  for QA to approve. See [Accepting before the sample is
+  finished](../workflows/supply/overview.md#accepting-before-the-sample-is-finished).
 
 ### After Lot Decision
 

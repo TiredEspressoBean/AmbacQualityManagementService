@@ -485,6 +485,33 @@ same runtime for both. Filter by source or status to narrow it.
     segmented into Receiving, OSP returns, and In-process. See the
     [QA Inspector Guide](../../roles/qa-inspector.md).
 
+### Accepting before the sample is finished
+
+A lot is accepted when its sampling plan reaches a verdict. Sometimes that has to
+happen without one: the sample can't be finished, but the lot is needed and there is
+a reason to trust it. **Accept unfinished…** on the inspection page (under **Run
+Inspection (DWI)** when the step has work instructions) opens *Accept with the sample
+unfinished*: *"The sampling plan hasn't reached a verdict. The lot can be accepted on
+a reason that is approved — the record shows it was accepted unfinished, not
+passed."*
+
+The reason is required. What happens next depends on who you are:
+
+| You | The button | What happens |
+|-----|------------|--------------|
+| Hold **accept with the sample unfinished** (QA Manager and Tenant Admin by default) | **Accept** | *"You hold that authority, so your reason approves it now."* The lot is accepted. |
+| Anyone else | **Ask for approval** | *"Sent for approval (APR-…) · the lot waits under inspection"*. The page shows *Waiting for approval to accept with the sample unfinished* and the approval panel. |
+
+The approver finds the request in their **Inbox** as *Accept lot on an unfinished
+sample*. **Review** opens the lot's inspection page, where **Sign / Respond** takes
+the decision, a signature and their password. Approved, the lot is **Accepted**.
+Rejected, it stays under inspection.
+
+The inspection itself is not marked passed: its verdict stays open, because the plan
+never gave one. The [inspection record](#the-inspection-record) is stamped **SAMPLE
+UNFINISHED**, and its Release table reads *Accepted with the sample unfinished*, with
+the reason, who asked and the approval number.
+
 ### Rejecting
 
 The reject dialog asks two things.
@@ -520,7 +547,9 @@ The lot is then held as *Whole-lot reject requested*, waiting on QA — the requ
 is recorded, not refused.
 
 Someone holding the permission can **Confirm: reject whole lot** on the hold
-panel; someone holding the disposition-approval permission can instead:
+panel. That is the reject: the lot's inspection closes as failed, as if they had
+rejected it themselves. Someone holding the disposition-approval permission can
+instead:
 
 - **Decline request…** — *"Why is the whole-lot reject being declined?"*, then
   **Decline — back to inspection**. The pending disposition closes and the lot
