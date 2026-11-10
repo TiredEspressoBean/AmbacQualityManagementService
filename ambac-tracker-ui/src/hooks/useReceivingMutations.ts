@@ -309,6 +309,24 @@ export const useAcceptLot = () => {
     });
 };
 
+// Accept with the sample unfinished: a reason, and an approval. ACCEPTED when the caller
+// holds accept_incomplete_sample (their own approval); REQUESTED when it waits for QA.
+export const useAcceptIncomplete = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; reason: string }) =>
+            api.api_MaterialLots_accept_incomplete_create({ reason: vars.reason }, {
+                params: { id: vars.id }, headers: csrf(),
+            }),
+        onSuccess: () => {
+            invalidateReceiving(queryClient);
+            // The sample plan carries the waiting request's number.
+            queryClient.invalidateQueries({ queryKey: ["sample-plan"] });
+            queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).toLowerCase().includes("approval") });
+        },
+    });
+};
+
 export const useRejectLot = () => {
     const queryClient = useQueryClient();
     return useMutation({

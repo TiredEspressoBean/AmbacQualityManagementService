@@ -38,6 +38,9 @@ export function useSubmitApprovalResponse(approvalRequestId: string) {
             // Only the list keys were refreshed, so the page stayed Pending until reload.
             queryClient.invalidateQueries(capaDetailKeyOptions());
             queryClient.invalidateQueries(documentDetailKeyOptions());
+            // Accepting a receiving lot with its sample unfinished: the lot and its plan.
+            queryClient.invalidateQueries({ queryKey: ["material-lot"] });
+            queryClient.invalidateQueries({ queryKey: ["sample-plan"] });
         },
     });
 }

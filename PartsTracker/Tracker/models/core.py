@@ -2493,6 +2493,9 @@ class Approval_Type(models.TextChoices):
     PPAP = 'PPAP', 'PPAP'
     FAI = 'FAI', 'First Article (FAI / AS9102)'
 
+    # Accepting a receiving lot whose sample isn't finished (user decision 2026-11-10)
+    RECEIVING_ACCEPT_INCOMPLETE = 'RECEIVING_ACCEPT_INCOMPLETE', 'Accept lot on an unfinished sample'
+
 class Approval_Status_Type(models.TextChoices):
     NOT_REQUIRED = 'NOT_REQUIRED', 'Not Required'
     PENDING = 'PENDING', 'Pending'

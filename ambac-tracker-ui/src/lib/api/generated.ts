@@ -2,6 +2,18 @@ import { makeApi, Zodios, ZodiosError, type ZodiosOptions } from "@zodios/core";
 import { z, ZodError } from "zod";
 import qs from "qs";
 
+export type AcceptIncompleteResponse = {
+  outcome: AcceptIncompleteResponseOutcomeEnum;
+  approval_number: string;
+};
+export type AcceptIncompleteResponseOutcomeEnum =
+  /**
+   * * `ACCEPTED` - ACCEPTED
+   * `REQUESTED` - REQUESTED
+   *
+   * @enum ACCEPTED, REQUESTED
+   */
+  "ACCEPTED" | "REQUESTED";
 export type AcceptToInventoryResponse = {
   component: HarvestedComponent;
   part_id: string;
@@ -165,6 +177,7 @@ export type ApprovalRequest = {
     type: string;
     id: string;
     str: string;
+    material_lot_id?: (string | null) | undefined;
   };
   content_object_display: string | null;
   requested_by?: (number | null) | undefined;
@@ -277,8 +290,9 @@ export type ApprovalTypeEnum =
    * `PCN_RELEASE` - Process Change Notice Release
    * `PPAP` - PPAP
    * `FAI` - First Article (FAI / AS9102)
+   * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
    *
-   * @enum DOCUMENT_RELEASE, CAPA_APPROVAL, CAPA_CRITICAL, CAPA_MAJOR, ECO, TRAINING_CERT, PROCESS_APPROVAL, PCR_APPROVAL, PCO_APPROVAL, PCN_RELEASE, PPAP, FAI
+   * @enum DOCUMENT_RELEASE, CAPA_APPROVAL, CAPA_CRITICAL, CAPA_MAJOR, ECO, TRAINING_CERT, PROCESS_APPROVAL, PCR_APPROVAL, PCO_APPROVAL, PCN_RELEASE, PPAP, FAI, RECEIVING_ACCEPT_INCOMPLETE
    */
   | "DOCUMENT_RELEASE"
   | "CAPA_APPROVAL"
@@ -291,7 +305,8 @@ export type ApprovalTypeEnum =
   | "PCO_APPROVAL"
   | "PCN_RELEASE"
   | "PPAP"
-  | "FAI";
+  | "FAI"
+  | "RECEIVING_ACCEPT_INCOMPLETE";
 export type ApprovalFlowTypeEnum =
   /**
    * * `ALL_REQUIRED` - All Required
@@ -17278,6 +17293,14 @@ export type SamplePlanResponse = {
   step_id: string | null;
   has_substeps: boolean;
   step_execution_id: string | null;
+  report_id?: (string | null) | undefined;
+  report_status?: (string | null) | undefined;
+  accept_incomplete_pending?:
+    | /**
+     * Approval number of the request to accept this lot unfinished, while it waits.
+     */
+    (string | null)
+    | undefined;
 };
 export type ReceivingCharacteristic = {
   id: string;
@@ -19501,6 +19524,7 @@ const ApprovalTypeEnum = z.enum([
   "PCN_RELEASE",
   "PPAP",
   "FAI",
+  "RECEIVING_ACCEPT_INCOMPLETE",
 ]);
 const ApprovalFlowTypeEnum = z.enum(["ALL_REQUIRED", "THRESHOLD", "ANY"]);
 const ApprovalSequenceEnum = z.enum(["PARALLEL", "SEQUENTIAL"]);
@@ -19549,7 +19573,12 @@ const ApprovalRequest = z.object({
   content_type: z.number().int().nullish(),
   object_id: z.string().max(36).nullish(),
   content_object_info: z
-    .object({ type: z.string(), id: z.string(), str: z.string() })
+    .object({
+      type: z.string(),
+      id: z.string(),
+      str: z.string(),
+      material_lot_id: z.string().nullish(),
+    })
     .nullable(),
   content_object_display: z.string().nullable(),
   requested_by: z.number().int().nullish(),
@@ -22915,6 +22944,12 @@ const QualityReports = z.object({
   superseded_reason: z.string(),
   replaced_by: z.string().uuid().nullable(),
 });
+const AcceptIncompleteRequestRequest = z.object({ reason: z.string().min(10) });
+const AcceptIncompleteResponseOutcomeEnum = z.enum(["ACCEPTED", "REQUESTED"]);
+const AcceptIncompleteResponse = z.object({
+  outcome: AcceptIncompleteResponseOutcomeEnum,
+  approval_number: z.string(),
+});
 const AdjustQuantityRequest = z.object({
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   reason: z.string().min(1),
@@ -23057,6 +23092,9 @@ const SamplePlanResponse = z.object({
   step_id: z.string().uuid().nullable(),
   has_substeps: z.boolean(),
   step_execution_id: z.string().uuid().nullable(),
+  report_id: z.string().uuid().nullish(),
+  report_status: z.string().nullish(),
+  accept_incomplete_pending: z.string().nullish(),
 });
 const ShipBackRequest = z
   .object({
@@ -31040,6 +31078,9 @@ export const schemas = {
   QualityReportPersonnel,
   CapaDecisionEnum,
   QualityReports,
+  AcceptIncompleteRequestRequest,
+  AcceptIncompleteResponseOutcomeEnum,
+  AcceptIncompleteResponse,
   AdjustQuantityRequest,
   CancelExpectedReceiptRequest,
   ChaseExpectedReceiptRequest,
@@ -32064,6 +32105,7 @@ POST: Executes the query.`,
             "PCR_APPROVAL",
             "PPAP",
             "PROCESS_APPROVAL",
+            "RECEIVING_ACCEPT_INCOMPLETE",
             "TRAINING_CERT",
           ])
           .optional(),
@@ -32247,6 +32289,7 @@ POST: Executes the query.`,
             "PCR_APPROVAL",
             "PPAP",
             "PROCESS_APPROVAL",
+            "RECEIVING_ACCEPT_INCOMPLETE",
             "TRAINING_CERT",
           ])
           .optional(),
@@ -32380,6 +32423,7 @@ POST: Executes the query.`,
             "PCR_APPROVAL",
             "PPAP",
             "PROCESS_APPROVAL",
+            "RECEIVING_ACCEPT_INCOMPLETE",
             "TRAINING_CERT",
           ])
           .optional(),
@@ -32496,6 +32540,7 @@ POST: Executes the query.`,
             "PCR_APPROVAL",
             "PPAP",
             "PROCESS_APPROVAL",
+            "RECEIVING_ACCEPT_INCOMPLETE",
             "TRAINING_CERT",
           ])
           .optional(),
@@ -32723,6 +32768,7 @@ POST: Executes the query.`,
             "PCR_APPROVAL",
             "PPAP",
             "PROCESS_APPROVAL",
+            "RECEIVING_ACCEPT_INCOMPLETE",
             "TRAINING_CERT",
           ])
           .optional(),
@@ -32893,6 +32939,7 @@ POST: Executes the query.`,
             "PCR_APPROVAL",
             "PPAP",
             "PROCESS_APPROVAL",
+            "RECEIVING_ACCEPT_INCOMPLETE",
             "TRAINING_CERT",
           ])
           .optional(),
@@ -43562,6 +43609,26 @@ Query params:
   },
   {
     method: "post",
+    path: "/api/MaterialLots/:id/accept_incomplete/",
+    alias: "api_MaterialLots_accept_incomplete_create",
+    description: `Accept a lot whose inspection sample isn&#x27;t finished, on a reason. Needs approving by someone with accept_incomplete_sample: a holder&#x27;s own is approved at once (ACCEPTED); anyone else&#x27;s waits (REQUESTED). The report keeps no verdict.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(10) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: AcceptIncompleteResponse,
+  },
+  {
+    method: "post",
     path: "/api/MaterialLots/:id/accept/",
     alias: "api_MaterialLots_accept_create",
     description: `Material lot tracking with split capability`,
@@ -46295,7 +46362,10 @@ let customers self-manage their digest cadence.`,
       },
     ],
     response: PersonalSchedule,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "put",
     path: "/api/notifications/schedules/personal/:id/",
@@ -46319,10 +46389,7 @@ let customers self-manage their digest cadence.`,
       },
     ],
     response: PersonalSchedule,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/notifications/schedules/personal/:id/",
@@ -51551,7 +51618,10 @@ Usage:
       },
     ],
     response: Processes,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/Processes/:id/",
@@ -51590,10 +51660,7 @@ Usage:
       },
     ],
     response: Processes,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "put",
     path: "/api/Processes/:id/",
@@ -56685,7 +56752,10 @@ Response:
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutionMeasurements/metadata/",
@@ -56693,10 +56763,7 @@ Response:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutionMeasurements/required/",
@@ -62477,7 +62544,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: PaginatedTrainingRequirementList,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/TrainingRequirements/",
@@ -62492,10 +62562,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: TrainingRequirement,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingRequirements/:id/",

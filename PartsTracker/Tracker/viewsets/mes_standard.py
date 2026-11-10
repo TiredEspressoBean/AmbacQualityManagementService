@@ -687,6 +687,8 @@ class MaterialLotViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, 
         'chase': ['change_materiallot'],
         # Receiving inspection (purchased material, Flow A).
         'accept': ['change_materiallot'],
+        # Open to inspectors: without accept_incomplete_sample it waits as a request.
+        'accept_incomplete': ['change_materiallot'],
         'reject': ['change_materiallot'],
         'extend_shelf_life': ['change_materiallot'],
         # raise_scar creates a real CAPA row (SUPPLIER type) via
@@ -1141,7 +1143,12 @@ class MaterialLotViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, 
         # variables_characteristic isn't on the SamplePlan DTO (lot-level); pull it
         # from the resolved ruleset so the UI knows which characteristic to capture.
         rs = receiving_inspection.resolve_sampling_ruleset(step, lot.supplier) if step else None
+        report = lot.quality_reports.filter(archived=False).order_by('-created_at').first()
+        waiting = receiving_inspection.pending_accept_incomplete(report) if report else None
         return Response(SamplePlanResponseSerializer({
+            'report_id': report.id if report else None,
+            'report_status': report.status if report else None,
+            'accept_incomplete_pending': waiting.approval_number if waiting else None,
             **sp.__dict__,
             'variables_characteristic_id': rs.variables_characteristic_id if rs else None,
             'characteristics': chars,
@@ -1225,6 +1232,33 @@ class MaterialLotViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, 
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return self._qr_response(report)
+
+    @extend_schema(
+        request=inline_serializer('AcceptIncompleteRequest', fields={
+            'reason': serializers.CharField(min_length=10),
+        }),
+        responses={200: inline_serializer('AcceptIncompleteResponse', fields={
+            'outcome': serializers.ChoiceField(choices=['ACCEPTED', 'REQUESTED']),
+            'approval_number': serializers.CharField(),
+        })},
+        description="Accept a lot whose inspection sample isn't finished, on a reason. "
+                    "Needs approving by someone with accept_incomplete_sample: a holder's "
+                    "own is approved at once (ACCEPTED); anyone else's waits (REQUESTED). "
+                    "The report keeps no verdict.",
+    )
+    @action(detail=True, methods=['post'], parser_classes=_JSON_ONLY)
+    def accept_incomplete(self, request, pk=None):
+        lot = self.get_object()
+        report = lot.quality_reports.order_by('-created_at').first()
+        if report is None:
+            return Response({'detail': 'No open inspection for this lot.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            outcome, approval = receiving_inspection.request_accept_incomplete(
+                report, request.user, request.data.get('reason', ''))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'outcome': outcome, 'approval_number': approval.approval_number})
 
     @extend_schema(
         request=None,

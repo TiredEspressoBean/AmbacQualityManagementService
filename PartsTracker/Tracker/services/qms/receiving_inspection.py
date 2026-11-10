@@ -827,11 +827,149 @@ def accept(report, user, *, remainder: bool = False):
             f"Lot {report.material_lot.lot_number} failed its inspection; reject it. "
             f"Its disposition can still decide to use it as is."
         )
+    # The sample isn't finished: no verdict to accept on. That takes a reason and an
+    # approval — `request_accept_incomplete` (user decision 2026-11-10, N14). Accept used
+    # to stamp the report PASS here as though the plan had been met.
+    if report.status == "PENDING" and not remainder:
+        raise ValueError(
+            f"Lot {report.material_lot.lot_number}'s sample isn't complete. Finish it, or "
+            f"give the reason to accept it as it stands — that needs approving."
+        )
     inventory.mark_lot_accepted(report.material_lot)
     _finalize_execution(report.material_lot, user)
+    _cancel_accept_incomplete_requests(report)
     if report.status == "PENDING":
+        # The partial reject's remainder (remainder=True).
         report.status = "PASS"
         report.save(update_fields=["status"])
+    return report
+
+
+# ── Accept on an unfinished sample (user decision 2026-11-10, N14) ─────────────────
+# Allowed only with a reason, and only once someone holding the authority approves it.
+# The lot waits, still under inspection, as an ApprovalRequest on its report; a holder
+# of the authority approves their own in the same step. The report keeps no verdict
+# (PENDING): the plan wasn't met, and the record says the lot was accepted on the
+# approved reason with the sample incomplete — never that it passed.
+ACCEPT_INCOMPLETE_PERMISSION = "accept_incomplete_sample"
+ACCEPT_INCOMPLETE_APPROVAL = "RECEIVING_ACCEPT_INCOMPLETE"
+ACCEPTED = "ACCEPTED"
+ACCEPT_REQUESTED = "REQUESTED"
+
+
+def can_accept_incomplete(user) -> bool:
+    return bool(user and getattr(user, "is_authenticated", False)
+                and user.has_tenant_perm(ACCEPT_INCOMPLETE_PERMISSION))
+
+
+def pending_accept_incomplete(report):
+    """The accept-incomplete request waiting on this report, if any."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import ApprovalRequest
+    return (ApprovalRequest.objects  # tenant-safe: .objects auto-scopes; keyed to the report
+            .filter(content_type=ContentType.objects.get_for_model(report.__class__),
+                    object_id=str(report.pk), approval_type=ACCEPT_INCOMPLETE_APPROVAL,
+                    status="PENDING")
+            .order_by("-requested_at").first())
+
+
+def accepted_incomplete_approval(report):
+    """The APPROVED accept-incomplete request the lot was accepted on, if it was."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import ApprovalRequest
+    return (ApprovalRequest.objects  # tenant-safe: .objects auto-scopes; keyed to the report
+            .filter(content_type=ContentType.objects.get_for_model(report.__class__),
+                    object_id=str(report.pk), approval_type=ACCEPT_INCOMPLETE_APPROVAL,
+                    status="APPROVED")
+            .order_by("-completed_at").first())
+
+
+def _cancel_accept_incomplete_requests(report):
+    """The lot was decided another way (sample finished, rejected): a request to accept
+    it unfinished has nothing left to decide."""
+    from Tracker.services.core.approval import cancel_approval_request
+    req = pending_accept_incomplete(report)
+    if req is not None:
+        cancel_approval_request(req)
+
+
+def _accept_incomplete_refusal(report) -> str | None:
+    lot = report.material_lot
+    if lot.status != "AWAITING_INSPECTION":
+        return f"Lot {lot.lot_number} is {lot.get_status_display().lower()}; it is not under inspection."
+    if report.status != "PENDING":
+        return (f"Lot {lot.lot_number}'s inspection has its verdict ({report.get_status_display()}); "
+                f"accept or reject it on that.")
+    return None
+
+
+def request_accept_incomplete(report, user, reason: str):
+    """Ask to accept a lot whose sample isn't finished. Returns ``(outcome, approval)``:
+    ACCEPTED when ``user`` holds the authority (their own approval, in the same step),
+    REQUESTED when it waits for someone who does."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import ApprovalRequest, GroupApproverAssignment, TenantGroup
+    from Tracker.services.core.approval import (
+        add_approver, notify_approvers, submit_approval_response)
+
+    if report.material_lot_id is None:
+        raise ValueError("Report is not a receiving inspection (no material_lot).")
+    reason = (reason or "").strip()
+    if len(reason) < 10:
+        raise ValueError("Say why the lot should be accepted with its sample unfinished "
+                         "(at least 10 characters).")
+    refusal = _accept_incomplete_refusal(report)
+    if refusal:
+        raise ValueError(refusal)
+    if pending_accept_incomplete(report) is not None:
+        raise ValueError(f"Lot {report.material_lot.lot_number} is already waiting for "
+                         f"approval to accept it unfinished.")
+    if hold_if_expired(report.material_lot):
+        raise ValueError(
+            f"Lot {report.material_lot.lot_number} is shelf-life expired; it was "
+            f"quarantined instead of accepted. Extend the shelf life or dispose it.")
+
+    tenant = report.tenant
+    with transaction.atomic():
+        approval = ApprovalRequest.objects.create(
+            tenant=tenant,
+            approval_number=ApprovalRequest.generate_approval_number(tenant),
+            content_type=ContentType.objects.get_for_model(report.__class__),
+            object_id=str(report.pk),
+            approval_type=ACCEPT_INCOMPLETE_APPROVAL,
+            requested_by=user if (user and user.is_authenticated) else None,
+            reason=reason,
+            flow_type="ANY",
+        )
+        # Whoever holds the authority may decide it: the groups that carry it.
+        for group in (TenantGroup.objects
+                      .filter(tenant=tenant, permissions__codename=ACCEPT_INCOMPLETE_PERMISSION)
+                      .distinct()):
+            GroupApproverAssignment.objects.create(approval_request=approval, group=group)
+        if can_accept_incomplete(user):
+            # A holder approves their own in the same step; their reason is the
+            # justification. (A superuser holds it without a group.)
+            if not approval.is_eligible_somewhere(user):
+                add_approver(approval, user, is_required=False)
+            submit_approval_response(approval, user, "APPROVED", comments=reason)
+            approval.refresh_from_db()
+            return ACCEPTED, approval
+    notify_approvers(approval)
+    return ACCEPT_REQUESTED, approval
+
+
+def complete_accept_incomplete(report, approver):
+    """The accept-incomplete request was approved: accept the lot, its report left
+    without a verdict. Called from the approval cascade."""
+    refusal = _accept_incomplete_refusal(report)
+    if refusal:
+        # Decided some other way while the request waited — nothing to accept.
+        logger.info("Accept-incomplete approved for report %s, not applied: %s", report.pk, refusal)
+        return report
+    if hold_if_expired(report.material_lot):
+        return report
+    inventory.mark_lot_accepted(report.material_lot)
+    _finalize_execution(report.material_lot, approver)
     return report
 
 
@@ -853,7 +991,12 @@ def reject(report, user):
         raise ValueError("Report is not a receiving inspection (no material_lot).")
     inventory.mark_lot_rejected(report.material_lot)
     _finalize_execution(report.material_lot, user)
+    _cancel_accept_incomplete_requests(report)
     if report.status == "PENDING":
         report.status = "FAIL"
         report.save(update_fields=["status"])
+        # Rejected before its sample decided it: still a lot decided, and a rejected
+        # one, for Z1.4 switching (evaluate_lot_acceptance counts the others).
+        from Tracker.services.qms.severity_switching import update_after_lot
+        update_after_lot(report)
     return report

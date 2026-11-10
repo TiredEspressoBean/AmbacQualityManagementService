@@ -395,6 +395,13 @@ def apply_approval_decision_to_content_object(request: ApprovalRequest, status):
             obj.approval_required = False
             obj.save(update_fields=['approval_status', 'approval_required'])
 
+    elif obj_type == 'QualityReports' and request.approval_type == 'RECEIVING_ACCEPT_INCOMPLETE':
+        # Approved: the lot is accepted, its report left without a verdict. Rejected:
+        # nothing changes — the lot stays under inspection.
+        if status == Approval_Status_Type.APPROVED:
+            from Tracker.services.qms.receiving_inspection import complete_accept_incomplete
+            complete_accept_incomplete(obj, request.get_primary_approver())
+
     elif obj_type == 'PartApproval':
         # Part-approval gate (PPAP / FAI): a completed approval grants the
         # (part_type, supplier) record. Rejection suspends it so it can be
@@ -570,6 +577,11 @@ def self_approval_permitted(approval_request: ApprovalRequest, approver) -> bool
     template = approval_request.get_template()
     if template and template.allow_self_approval:
         return True
+    # Accepting a lot on an unfinished sample: someone holding that authority approves
+    # their own request in one step (user decision 2026-11-10, N14).
+    if approval_request.approval_type == 'RECEIVING_ACCEPT_INCOMPLETE':
+        from Tracker.services.qms.receiving_inspection import can_accept_incomplete
+        return can_accept_incomplete(approver)
     return (approval_request.approval_type in SOLE_APPROVER_SELF_APPROVAL_TYPES
             and not other_eligible_approvers(approval_request, approver).exists())
 

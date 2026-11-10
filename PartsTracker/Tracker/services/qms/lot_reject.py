@@ -147,9 +147,19 @@ def confirm_whole_lot_reject(lot, user):
         raise ValueError("Rejecting a whole lot needs the reject-whole-lot permission.")
     if lot.status != "QUARANTINE" or HOLD_WHOLE_LOT_REJECT_REQUESTED not in lot_holds.holds(lot):
         raise ValueError(f"Lot {lot.lot_number} has no whole-lot reject waiting.")
+    from Tracker.services.qms import receiving_inspection as ri
+    report = (lot.quality_reports.filter(archived=False, superseded_at__isnull=True)
+              .order_by("-created_at").first())
     with transaction.atomic():
         lot_holds.clear_holds(lot)  # rejected: the decision supersedes every hold
-        inventory.mark_lot_rejected(lot)
+        if report is not None:
+            # The whole reject, as the direct path takes it: closes the inspection
+            # (report FAIL, receiving execution completed, the lot counted for
+            # switching). Moving the lot alone left the report PENDING and the
+            # execution IN_PROGRESS (hunt 2026-11-10, N13).
+            ri.reject(report, user)
+        else:
+            inventory.mark_lot_rejected(lot)
         disposition = (QuarantineDisposition.objects  # tenant-safe: .objects auto-scopes
                        .filter(material_lot=lot).exclude(current_state="CLOSED")
                        .order_by("-created_at").first())

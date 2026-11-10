@@ -303,13 +303,23 @@ def _promote_to_inspection_record(
             sample_number=sample_number,
         ))
 
-    # Recompute report.status from the cumulative measurements: any out-of-
-    # spec MeasurementResult → FAIL; otherwise PASS once any measurements
-    # exist.
-    new_status = _compute_report_status(report)
-    if new_status != prior_status:
-        report.status = new_status
-        report.save(update_fields=["status"])
+    if 'material_lot' in report_fields:
+        # A receiving lot's verdict is the sampling plan's: defectives vs Ac/Re once
+        # n units are in. Any-OOS → FAIL / else PASS here failed the lot on its first
+        # defective with Ac ≥ 1, passed it after one good reading, and — the verdict
+        # already written — kept the lot out of Z1.4 switching (hunt 2026-11-10, N9/R1).
+        # evaluate_lot_acceptance also fires the lot gate and counts the lot.
+        from Tracker.services.qms.receiving_inspection import evaluate_lot_acceptance
+        evaluate_lot_acceptance(report)
+        new_status = report.status
+    else:
+        # Recompute report.status from the cumulative measurements: any out-of-
+        # spec MeasurementResult → FAIL; otherwise PASS once any measurements
+        # exist.
+        new_status = _compute_report_status(report)
+        if new_status != prior_status:
+            report.status = new_status
+            report.save(update_fields=["status"])
 
     # Fire side effects on first creation OR when the status transitions
     # into FAIL (auto-quarantine, ncr.opened, sampling fallback). Subsequent

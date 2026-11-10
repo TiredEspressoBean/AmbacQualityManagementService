@@ -2306,6 +2306,13 @@ class SamplePlanResponseSerializer(serializers.Serializer):
     step_id = serializers.UUIDField(allow_null=True)
     has_substeps = serializers.BooleanField()
     step_execution_id = serializers.UUIDField(allow_null=True)
+    # The open inspection's verdict so far — PENDING while the sample is unfinished,
+    # when Accept needs a reason and an approval — and the request waiting, if one is.
+    report_id = serializers.UUIDField(allow_null=True, required=False)
+    report_status = serializers.CharField(allow_null=True, required=False)
+    accept_incomplete_pending = serializers.CharField(
+        allow_null=True, required=False,
+        help_text="Approval number of the request to accept this lot unfinished, while it waits.")
 
 
 class IncomingInspectionRowSerializer(serializers.Serializer):

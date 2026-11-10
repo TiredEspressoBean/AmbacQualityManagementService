@@ -19,6 +19,8 @@
   if v == "PASS" { tone-badge("PASS", "ok") }
   else if v == "FAIL" { tone-badge("FAIL", "bad") }
   else if v == "PENDING" { tone-badge("PENDING", "warn") }
+  // Accepted on an approved reason with the sample unfinished: no verdict was reached.
+  else if v == "INCOMPLETE" { tone-badge("SAMPLE UNFINISHED", "warn") }
   else { tone-badge("NO INSPECTION", "muted") }
 }
 
@@ -112,7 +114,9 @@
   #text(fill: muted, style: "italic")[No release decision recorded yet.]
 ] else [
   #report-table(
-    (auto, 1fr, auto, auto),
+    // Both text columns share the width: an `auto` decision as long as a hold release
+    // or an unfinished-sample accept squeezed Reason to nothing and it overprinted By.
+    (1fr, 1.4fr, auto, auto),
     ("Decision", "Reason", "By", "When"),
     data.events.map(e => (
       text(weight: "semibold")[#e.what],

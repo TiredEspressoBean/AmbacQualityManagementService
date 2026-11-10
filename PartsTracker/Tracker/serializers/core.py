@@ -1102,16 +1102,21 @@ class ApprovalRequestSerializer(SecureModelMixin):
             'type': {'type': 'string'},
             'id': {'type': 'string'},
             'str': {'type': 'string'},
+            # A receiving inspection report's lot: its page is where the request is
+            # decided (accept with the sample unfinished).
+            'material_lot_id': {'type': 'string', 'nullable': True},
         },
     })
     def get_content_object_info(self, obj):
         """Get basic info about the linked content object"""
         if obj.content_object:
             # Return basic info - type and ID
+            lot_id = getattr(obj.content_object, 'material_lot_id', None)
             return {
                 'type': obj.content_type.model,
                 'id': obj.object_id,
-                'str': str(obj.content_object)
+                'str': str(obj.content_object),
+                'material_lot_id': str(lot_id) if lot_id else None,
             }
         return None
 

@@ -25,6 +25,7 @@ paths:
           - PCR_APPROVAL
           - PPAP
           - PROCESS_APPROVAL
+          - RECEIVING_ACCEPT_INCOMPLETE
           - TRAINING_CERT
         description: |-
           * `DOCUMENT_RELEASE` - Document Release
@@ -39,6 +40,7 @@ paths:
           * `PCN_RELEASE` - Process Change Notice Release
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
+          * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
       - in: query
         name: content_type
         schema:
@@ -294,6 +296,7 @@ paths:
           - PCR_APPROVAL
           - PPAP
           - PROCESS_APPROVAL
+          - RECEIVING_ACCEPT_INCOMPLETE
           - TRAINING_CERT
         description: |-
           * `DOCUMENT_RELEASE` - Document Release
@@ -308,6 +311,7 @@ paths:
           * `PCN_RELEASE` - Process Change Notice Release
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
+          * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
       - in: query
         name: content_type
         schema:
@@ -504,6 +508,7 @@ paths:
           - PCR_APPROVAL
           - PPAP
           - PROCESS_APPROVAL
+          - RECEIVING_ACCEPT_INCOMPLETE
           - TRAINING_CERT
         description: |-
           * `DOCUMENT_RELEASE` - Document Release
@@ -518,6 +523,7 @@ paths:
           * `PCN_RELEASE` - Process Change Notice Release
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
+          * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
       - in: query
         name: content_type
         schema:
@@ -660,6 +666,7 @@ paths:
           - PCR_APPROVAL
           - PPAP
           - PROCESS_APPROVAL
+          - RECEIVING_ACCEPT_INCOMPLETE
           - TRAINING_CERT
         description: |-
           * `DOCUMENT_RELEASE` - Document Release
@@ -674,6 +681,7 @@ paths:
           * `PCN_RELEASE` - Process Change Notice Release
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
+          * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
       - in: query
         name: content_type
         schema:
@@ -995,6 +1003,7 @@ paths:
           - PCR_APPROVAL
           - PPAP
           - PROCESS_APPROVAL
+          - RECEIVING_ACCEPT_INCOMPLETE
           - TRAINING_CERT
         description: |-
           * `DOCUMENT_RELEASE` - Document Release
@@ -1009,6 +1018,7 @@ paths:
           * `PCN_RELEASE` - Process Change Notice Release
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
+          * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
       - in: query
         name: delegation_policy
         schema:
@@ -1274,6 +1284,7 @@ paths:
           - PCR_APPROVAL
           - PPAP
           - PROCESS_APPROVAL
+          - RECEIVING_ACCEPT_INCOMPLETE
           - TRAINING_CERT
         description: |-
           * `DOCUMENT_RELEASE` - Document Release
@@ -1288,6 +1299,7 @@ paths:
           * `PCN_RELEASE` - Process Change Notice Release
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
+          * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
       - in: query
         name: delegation_policy
         schema:
@@ -16104,6 +16116,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/MaterialLots/{id}/accept_incomplete/:
+    post:
+      operationId: api_MaterialLots_accept_incomplete_create
+      description: 'Accept a lot whose inspection sample isn''t finished, on a reason.
+        Needs approving by someone with accept_incomplete_sample: a holder''s own
+        is approved at once (ACCEPTED); anyone else''s waits (REQUESTED). The report
+        keeps no verdict.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptIncompleteRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptIncompleteResponse'
           description: ''
   /api/MaterialLots/{id}/adjust-quantity/:
     post:
@@ -51031,6 +51076,32 @@ components:
         * `A` - A
         * `B` - B
         * `C` - C
+    AcceptIncompleteRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 10
+      required:
+      - reason
+    AcceptIncompleteResponse:
+      type: object
+      properties:
+        outcome:
+          $ref: '#/components/schemas/AcceptIncompleteResponseOutcomeEnum'
+        approval_number:
+          type: string
+      required:
+      - approval_number
+      - outcome
+    AcceptIncompleteResponseOutcomeEnum:
+      enum:
+      - ACCEPTED
+      - REQUESTED
+      type: string
+      description: |-
+        * `ACCEPTED` - ACCEPTED
+        * `REQUESTED` - REQUESTED
     AcceptInvitationInputRequest:
       type: object
       properties:
@@ -51390,6 +51461,9 @@ components:
               type: string
             str:
               type: string
+            material_lot_id:
+              type: string
+              nullable: true
           readOnly: true
         content_object_display:
           type: string
@@ -52049,6 +52123,7 @@ components:
       - PCN_RELEASE
       - PPAP
       - FAI
+      - RECEIVING_ACCEPT_INCOMPLETE
       type: string
       description: |-
         * `DOCUMENT_RELEASE` - Document Release
@@ -52063,6 +52138,7 @@ components:
         * `PCN_RELEASE` - Process Change Notice Release
         * `PPAP` - PPAP
         * `FAI` - First Article (FAI / AS9102)
+        * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
     AssemblyRemoveRequest:
       type: object
       description: |-
@@ -80255,6 +80331,18 @@ components:
           type: string
           format: uuid
           nullable: true
+        report_id:
+          type: string
+          format: uuid
+          nullable: true
+        report_status:
+          type: string
+          nullable: true
+        accept_incomplete_pending:
+          type: string
+          nullable: true
+          description: Approval number of the request to accept this lot unfinished,
+            while it waits.
       required:
       - accept_number
       - characteristics

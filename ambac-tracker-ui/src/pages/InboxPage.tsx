@@ -177,6 +177,10 @@ function getApprovalReferenceUrl(approval: PendingApproval): string {
     if (contentType.includes("processchangenotice") || approvalType.startsWith("PCN")) {
         return `/quality/change-control/pcns/${id}`;
     }
+    // Accepting a receiving lot with its sample unfinished: decided on the lot's page.
+    if (approvalType === "RECEIVING_ACCEPT_INCOMPLETE" && approval.content_object_info?.material_lot_id) {
+        return `/production/receiving-inspection/${approval.content_object_info.material_lot_id}`;
+    }
     // CAPA / Documents.
     if (contentType.includes("capa") || approvalType.includes("CAPA")) {
         return `/quality/capas/${id}`;

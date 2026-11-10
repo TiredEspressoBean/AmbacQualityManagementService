@@ -14,6 +14,8 @@ export interface PendingApproval {
         type: string;
         id: string;
         str?: string;
+        /** A receiving inspection report's lot — the page its request is decided on. */
+        material_lot_id?: string | null;
     };
     content_object_display?: string | null;
     requested_by: string;

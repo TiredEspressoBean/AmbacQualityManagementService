@@ -1891,6 +1891,10 @@ class MaterialLot(SecureModel):
             # pieces found bad. Granted to QA managers by default; a tenant may grant
             # it to inspectors. Without it, a whole-lot reject is held as a request.
             ('reject_whole_lot', 'Can reject a whole lot back to the vendor'),
+            # Accepting a lot whose inspection sample isn't finished, on a reason (user
+            # decision 2026-11-10). Without it, the accept waits as an approval request
+            # for someone who has it; with it, the holder approves their own.
+            ('accept_incomplete_sample', 'Can accept a lot whose inspection sample is unfinished'),
             # Holding a suspect lot by hand — stock already accepted or in use, say
             # (user decision 2026-10-28, B12). A QA act; releasing it is the existing
             # release-hold path (approve_disposition).

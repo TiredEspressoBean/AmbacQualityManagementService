@@ -52,15 +52,14 @@ _CODE_LETTERS = [
 ]
 
 _LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "L", "M", "N", "P", "Q", "R"]
-_LAST_TAB_IDX = _LETTERS.index("N")  # last code letter tabulated in _Z14_NORMAL_AC
+_LAST_TAB_IDX = _LETTERS.index("R")  # every code letter A–R is tabulated
 _Z14_SAMPLE_SIZE = {
     "A": 2, "B": 3, "C": 5, "D": 8, "E": 13, "F": 20, "G": 32, "H": 50,
     "J": 80, "K": 125, "L": 200, "M": 315, "N": 500, "P": 800, "Q": 1250, "R": 2000,
 }
 
-# Z1.4 Table II-A single sampling, NORMAL — acceptance number Ac per (code letter, AQL).
-# Re = Ac + 1. Transcribed cell-for-cell from the MIL-STD-105E Table II-A scan
-# (Z1.4 attribute tables are identical to 105E); verified 2026-07-06.
+# Z1.4 Tables II-A/B/C single sampling — acceptance number Ac (and, reduced, Re) per
+# (code letter, AQL).
 #
 # ARROWS ARE PRESERVED, not flattened to numbers: an arrow means "use the first
 # numeric plan in this AQL column in the arrow's direction — AND its sample size."
@@ -71,65 +70,112 @@ _Z14_SAMPLE_SIZE = {
 # a bogus Ac=21 but are really up-arrows.
 _UP = "UP"
 _DOWN = "DOWN"
-_Z14_NORMAL_AC = {
-    # letter: {aql: Ac | _UP | _DOWN}
-    "C": {0.65: _DOWN, 1.0: _DOWN, 1.5: _DOWN, 2.5: 0,     4.0: _UP,   6.5: _DOWN},
-    "D": {0.65: _DOWN, 1.0: _DOWN, 1.5: 0,     2.5: _UP,   4.0: _DOWN, 6.5: 1},
-    "E": {0.65: _DOWN, 1.0: 0,     1.5: _UP,   2.5: _UP,   4.0: 1,     6.5: 2},
-    "F": {0.65: 0,     1.0: _UP,   1.5: _DOWN, 2.5: 1,     4.0: 2,     6.5: 3},
-    "G": {0.65: _UP,   1.0: _DOWN, 1.5: 1,     2.5: 2,     4.0: 3,     6.5: 5},
-    "H": {0.65: _DOWN, 1.0: 1,     1.5: 2,     2.5: 3,     4.0: 5,     6.5: 7},   # H@2.5 anchor (3,4)
-    "J": {0.65: 1,     1.0: 2,     1.5: 3,     2.5: 5,     4.0: 7,     6.5: 10},  # J@1.0 anchor (2,3)
-    "K": {0.65: 2,     1.0: 3,     1.5: 5,     2.5: 7,     4.0: 10,    6.5: 14},
-    "L": {0.65: 3,     1.0: 5,     1.5: 7,     2.5: 10,    4.0: 14,    6.5: 21},
-    "M": {0.65: 5,     1.0: 7,     1.5: 10,    2.5: 14,    4.0: 21,    6.5: _UP},
-    "N": {0.65: 7,     1.0: 10,    1.5: 14,    2.5: 21,    4.0: _UP,   6.5: _UP},
-}
 
-# Z1.4 Table II-B single sampling, TIGHTENED — Ac per (code letter, AQL). Re = Ac + 1.
-# Same sample sizes as normal (_Z14_SAMPLE_SIZE). Arrows follow the same rule as II-A.
-# Cross-verified 2026-07-07 against the MIL-STD-105E primary scan (gridded image reads
-# of rows H/K/N) with the decoder validated on the known-good Normal table. The
-# tightened Ac ladder is 0,1,2,3,5,8,12,18,27,41.
-_Z14_TIGHTENED_AC = {
-    "C": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN, 1.5: _DOWN, 2.5: _DOWN, 4.0: 0,    6.5: 1},
-    "D": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN, 1.5: _DOWN, 2.5: 0,    4.0: 1,    6.5: 2},
-    "E": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN, 1.5: 0,    2.5: 1,    4.0: 2,    6.5: 3},
-    "F": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: 0,    1.5: 1,    2.5: 2,    4.0: 3,    6.5: 5},
-    "G": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: 0,    1.0: 1,    1.5: 2,    2.5: 3,    4.0: 5,    6.5: 8},
-    "H": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: 0,    0.65: 1,    1.0: 2,    1.5: 3,    2.5: 5,    4.0: 8,    6.5: 12},
-    "J": {0.10: _DOWN, 0.15: _DOWN, 0.25: 0,    0.40: 1,    0.65: 2,    1.0: 3,    1.5: 5,    2.5: 8,    4.0: 12,   6.5: 18},
-    "K": {0.10: _DOWN, 0.15: 0,    0.25: 1,    0.40: 2,    0.65: 3,    1.0: 5,    1.5: 8,    2.5: 12,   4.0: 18,   6.5: 27},
-    "L": {0.10: 0,    0.15: 1,    0.25: 2,    0.40: 3,    0.65: 5,    1.0: 8,    1.5: 12,   2.5: 18,   4.0: 27,   6.5: 41},
-    "M": {0.10: 1,    0.15: 2,    0.25: 3,    0.40: 5,    0.65: 8,    1.0: 12,   1.5: 18,   2.5: 27,   4.0: 41,   6.5: _UP},
-    "N": {0.10: 2,    0.15: 3,    0.25: 5,    0.40: 8,    0.65: 12,   1.0: 18,   1.5: 27,   2.5: 41,   4.0: _UP,  6.5: _UP},
-}
+# The tables below are written as the printed grid: one row per code letter, one
+# token per AQL column, in _TABLE_AQLS order. "v" = ↓, "^" = ↑, a number = Ac, and
+# (reduced) "Ac/Re". Transcribed 2026-11-10 cell for cell from the MIL-STD-105E
+# Tables II-A/B/C (10 May 1989 legible copy, elsmar.com); Z1.4's single-sampling
+# attribute tables are the same. Every column follows the standard's diagonal
+# structure, which is the check on the reading. The earlier tables stopped at rows
+# C–N and columns 0.65–6.5 (so an offered AQL like 0.25 or 10, or a cell arrowing to
+# row B, raised and the lot was never inspected), and had misread cells — tightened
+# climbed the ladder straight after Ac 0 (H@1.0 = 2 at n=50, looser than normal's 1)
+# where the standard has two ↓ cells; normal E@2.5 was ↑ (it's ↓); reduced placed
+# "0/1" a row low in most columns.
+_TABLE_AQLS = [0.10, 0.15, 0.25, 0.40, 0.65, 1.0, 1.5, 2.5, 4.0, 6.5, 10.0]
+
+
+def _grid(rows: dict) -> dict:
+    """{letter: "tok tok …"} → {letter: {aql: Ac | (Ac, Re) | _UP | _DOWN}}."""
+    def cell(tok):
+        if tok == "v":
+            return _DOWN
+        if tok == "^":
+            return _UP
+        if "/" in tok:
+            ac, re = tok.split("/")
+            return int(ac), int(re)
+        return int(tok)
+    out = {}
+    for letter, line in rows.items():
+        toks = line.split()
+        assert len(toks) == len(_TABLE_AQLS), f"row {letter}: {len(toks)} cells"
+        out[letter] = {aql: cell(t) for aql, t in zip(_TABLE_AQLS, toks)}
+    return out
+
+
+# Table II-A — NORMAL. Ac; Re = Ac + 1. Ac ladder 0,1,2,3,5,7,10,14,21.
+#                 0.10 0.15 0.25 0.40 0.65 1.0  1.5  2.5  4.0  6.5  10
+_Z14_NORMAL_AC = _grid({
+    "A": "v    v    v    v    v    v    v    v    v    0    v",
+    "B": "v    v    v    v    v    v    v    v    0    ^    v",
+    "C": "v    v    v    v    v    v    v    0    ^    v    1",
+    "D": "v    v    v    v    v    v    0    ^    v    1    2",
+    "E": "v    v    v    v    v    0    ^    v    1    2    3",
+    "F": "v    v    v    v    0    ^    v    1    2    3    5",
+    "G": "v    v    v    0    ^    v    1    2    3    5    7",
+    "H": "v    v    0    ^    v    1    2    3    5    7    10",
+    "J": "v    0    ^    v    1    2    3    5    7    10   14",
+    "K": "0    ^    v    1    2    3    5    7    10   14   21",
+    "L": "^    v    1    2    3    5    7    10   14   21   ^",
+    "M": "v    1    2    3    5    7    10   14   21   ^    ^",
+    "N": "1    2    3    5    7    10   14   21   ^    ^    ^",
+    "P": "2    3    5    7    10   14   21   ^    ^    ^    ^",
+    "Q": "3    5    7    10   14   21   ^    ^    ^    ^    ^",
+    "R": "5    7    10   14   21   ^    ^    ^    ^    ^    ^",
+})
+
+# Table II-B — TIGHTENED. Same sample sizes as normal; Re = Ac + 1. Ac ladder
+# 0,1,2,3,5,8,12,18 — after Ac 0 a column has two ↓ cells before Ac 1.
+#                 0.10 0.15 0.25 0.40 0.65 1.0  1.5  2.5  4.0  6.5  10
+_Z14_TIGHTENED_AC = _grid({
+    "A": "v    v    v    v    v    v    v    v    v    v    v",
+    "B": "v    v    v    v    v    v    v    v    v    0    v",
+    "C": "v    v    v    v    v    v    v    v    0    v    v",
+    "D": "v    v    v    v    v    v    v    0    v    v    1",
+    "E": "v    v    v    v    v    v    0    v    v    1    2",
+    "F": "v    v    v    v    v    0    v    v    1    2    3",
+    "G": "v    v    v    v    0    v    v    1    2    3    5",
+    "H": "v    v    v    0    v    v    1    2    3    5    8",
+    "J": "v    v    0    v    v    1    2    3    5    8    12",
+    "K": "v    0    v    v    1    2    3    5    8    12   18",
+    "L": "0    v    v    1    2    3    5    8    12   18   ^",
+    "M": "v    v    1    2    3    5    8    12   18   ^    ^",
+    "N": "v    1    2    3    5    8    12   18   ^    ^    ^",
+    "P": "1    2    3    5    8    12   18   ^    ^    ^    ^",
+    "Q": "2    3    5    8    12   18   ^    ^    ^    ^    ^",
+    "R": "3    5    8    12   18   ^    ^    ^    ^    ^    ^",
+})
 
 # Z1.4 Table II-C single sampling, REDUCED — (Ac, Re) per (code letter, AQL).
 # REDUCED uses SMALLER sample sizes AND has the accept/reject gap (Re is often
 # NOT Ac+1): when observed defectives d satisfy Ac < d < Re, the lot is ACCEPTED
 # but reduced inspection is discontinued (revert to normal — §4.7.4.b / §4.10.1.4).
-# Cross-verified 2026-07-07 (rows D–N confirmed via gridded image reads). Row C
-# (degenerate n=2) had an ambiguous top-corner cell at AQL 4.0/6.5 → left as arrows
-# (fail-closed: resolves down to row D, a slightly larger conservative sample) rather
-# than ship an unverified value.
+# Table II-C — REDUCED: (Ac, Re), smaller samples. After "0/1" a column has ↑ then ↓,
+# then 0/2, 1/3, 1/4, 2/5, 3/6, 5/8, 7/10, 10/13.
 _Z14_REDUCED_SAMPLE_SIZE = {
     "A": 2, "B": 2, "C": 2, "D": 3, "E": 5, "F": 8, "G": 13, "H": 20,
     "J": 32, "K": 50, "L": 80, "M": 125, "N": 200, "P": 315, "Q": 500, "R": 800,
 }
-_Z14_REDUCED_ACRE = {
-    "C": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN,  1.5: _DOWN,  2.5: _DOWN,  4.0: _DOWN,    6.5: _DOWN},   # 4.0/6.5 uncertain → fail-closed to D
-    "D": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN,  1.5: _DOWN,  2.5: _DOWN,  4.0: (0, 1),    6.5: (0, 2)},
-    "E": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN,  1.5: _DOWN,  2.5: (0, 1),  4.0: (0, 2),    6.5: (1, 3)},
-    "F": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: _DOWN,  1.5: (0, 1),  2.5: (0, 2),  4.0: (1, 3),    6.5: (1, 4)},
-    "G": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: _DOWN, 1.0: (0, 1),  1.5: (0, 2),  2.5: (1, 3),  4.0: (1, 4),    6.5: (2, 5)},
-    "H": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: _DOWN, 0.65: (0, 1),  1.0: (0, 2),  1.5: (1, 3),  2.5: (1, 4),  4.0: (2, 5),    6.5: (3, 6)},
-    "J": {0.10: _DOWN, 0.15: _DOWN, 0.25: _DOWN, 0.40: (0, 1),  0.65: (0, 2),  1.0: (1, 3),  1.5: (1, 4),  2.5: (2, 5),  4.0: (3, 6),    6.5: (5, 8)},
-    "K": {0.10: _DOWN, 0.15: _DOWN, 0.25: (0, 1),  0.40: (0, 2),  0.65: (1, 3),  1.0: (1, 4),  1.5: (2, 5),  2.5: (3, 6),  4.0: (5, 8),    6.5: (7, 10)},
-    "L": {0.10: _DOWN, 0.15: (0, 1),  0.25: (0, 2),  0.40: (1, 3),  0.65: (1, 4),  1.0: (2, 5),  1.5: (3, 6),  2.5: (5, 8),  4.0: (7, 10),   6.5: (10, 13)},
-    "M": {0.10: (0, 1),  0.15: (0, 2),  0.25: (1, 3),  0.40: (1, 4),  0.65: (2, 5),  1.0: (3, 6),  1.5: (5, 8),  2.5: (7, 10), 4.0: (10, 13),  6.5: (14, 17)},
-    "N": {0.10: (0, 2),  0.15: (1, 3),  0.25: (1, 4),  0.40: (2, 5),  0.65: (3, 6),  1.0: (5, 8),  1.5: (7, 10), 2.5: (10, 13),4.0: (14, 17),  6.5: (21, 24)},
-}
+#                   0.10  0.15  0.25  0.40  0.65  1.0   1.5   2.5   4.0   6.5   10
+_Z14_REDUCED_ACRE = _grid({
+    "A": "v     v     v     v     v     v     v     v     v     0/1   v",
+    "B": "v     v     v     v     v     v     v     v     0/1   ^     v",
+    "C": "v     v     v     v     v     v     v     0/1   ^     v     0/2",
+    "D": "v     v     v     v     v     v     0/1   ^     v     0/2   1/3",
+    "E": "v     v     v     v     v     0/1   ^     v     0/2   1/3   1/4",
+    "F": "v     v     v     v     0/1   ^     v     0/2   1/3   1/4   2/5",
+    "G": "v     v     v     0/1   ^     v     0/2   1/3   1/4   2/5   3/6",
+    "H": "v     v     0/1   ^     v     0/2   1/3   1/4   2/5   3/6   5/8",
+    "J": "v     0/1   ^     v     0/2   1/3   1/4   2/5   3/6   5/8   7/10",
+    "K": "0/1   ^     v     0/2   1/3   1/4   2/5   3/6   5/8   7/10  10/13",
+    "L": "^     v     0/2   1/3   1/4   2/5   3/6   5/8   7/10  10/13 ^",
+    "M": "v     0/2   1/3   1/4   2/5   3/6   5/8   7/10  10/13 ^     ^",
+    "N": "0/2   1/3   1/4   2/5   3/6   5/8   7/10  10/13 ^     ^     ^",
+    "P": "1/3   1/4   2/5   3/6   5/8   7/10  10/13 ^     ^     ^     ^",
+    "Q": "1/4   2/5   3/6   5/8   7/10  10/13 ^     ^     ^     ^     ^",
+    "R": "2/5   3/6   5/8   7/10  10/13 ^     ^     ^     ^     ^     ^",
+})
 
 # C=0 (Squeglia) sample sizes by AQL → [(lot_max, n)]. Ac=0, Re=1 always.
 # Common AQL columns; verify against Squeglia's published tables.
@@ -239,9 +285,9 @@ def _z14_resolve(letter: str, aql: float, table: dict, sizes: dict):
     MIL-STD-105E. Following an arrow changes BOTH n and the plan to the resolved
     letter's. ``cell`` is an int Ac (normal/tightened) or an (Ac, Re) tuple (reduced).
 
-    Code letters A/B (tiny lots) aren't tabulated; a missing cell searches toward
-    the tabulated C–N band (↓ from below it, ↑ from above), then is clamped by lot
-    size upstream. A wholly-untabulated column trips the cycle guard → raise.
+    Every letter A–R and every STANDARD_AQL is tabulated, so a cell is always a
+    number or an arrow; the fallback step and cycle guard only matter for an AQL
+    outside the table (raise).
     """
     idx = _LETTERS.index(letter)
     seen: set[str] = set()

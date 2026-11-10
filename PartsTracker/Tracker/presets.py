@@ -395,6 +395,9 @@ SOD_APPROVAL_PERMISSIONS = [
     # Rejecting a whole lot back to the vendor (VDMR). A tenant may also grant it to
     # its inspectors' group; without it an inspector's whole-lot reject is a request.
     'reject_whole_lot',
+    # Accepting a lot on an unfinished sample — approves the inspector's request, or
+    # the holder's own in one step (user decision 2026-11-10).
+    'accept_incomplete_sample',
     # Supplier quality / part approval grant authority (the `grant` action's
     # marker perm) — QA Manager / Tenant Admin tier, like other approve verbs.
     'approve_supplierqualification', 'approve_partapproval',

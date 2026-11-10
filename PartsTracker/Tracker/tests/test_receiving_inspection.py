@@ -84,22 +84,73 @@ class AcceptanceSamplingTests(SimpleTestCase):
                                  severity="NORMAL", strategy="Z14")
         self.assertEqual((sp.sample_size, sp.accept_number), (20, 0))
 
-    # ── Z1.4 severity switching (Tables II-B tightened / II-C reduced), 2026-07-07 ──
+    # ── Z1.4 severity switching (Tables II-B tightened / II-C reduced) ──
+    # Values per the MIL-STD-105E tables as transcribed 2026-11-10. The earlier goldens
+    # here (tightened H@2.5 = 5, L@6.5 = 41) pinned a misread table that made
+    # tightened LOOSER than normal.
     def test_z14_tightened_is_stricter(self):
-        # Lot 500 level II → code H. Normal H@2.5 = Ac 3; Tightened H@2.5 = Ac 5
-        # (same n=50, Re=Ac+1). Tightened accepts on FEWER defectives per its ladder.
+        # Lot 500 level II → code H. Normal H@2.5 = Ac 3; Tightened H@2.5 = Ac 2
+        # (same n=50, Re=Ac+1). Tightened accepts on FEWER defectives.
         normal = compute_sample_plan(lot_size=500, aql=2.5, inspection_level="II",
                                      severity="NORMAL", strategy="Z14")
         tight = compute_sample_plan(lot_size=500, aql=2.5, inspection_level="II",
                                     severity="TIGHTENED", strategy="Z14")
         self.assertEqual((normal.sample_size, normal.accept_number), (50, 3))
-        self.assertEqual((tight.sample_size, tight.accept_number, tight.reject_number), (50, 5, 6))
+        self.assertEqual((tight.sample_size, tight.accept_number, tight.reject_number), (50, 2, 3))
+
+    def test_z14_tightened_never_looser_than_normal(self):
+        # Every code letter, every AQL: at the same lot, tightened never accepts on more
+        # defectives than normal with a sample no larger.
+        from Tracker.services.qms.acceptance_sampling import STANDARD_AQLS, _CODE_LETTERS
+        for lot_max, _ in _CODE_LETTERS[:-1]:
+            for aql in STANDARD_AQLS:
+                for level in ("I", "II", "III"):
+                    kw = dict(lot_size=lot_max, aql=aql, inspection_level=level, strategy="Z14")
+                    normal = compute_sample_plan(severity="NORMAL", **kw)
+                    tight = compute_sample_plan(severity="TIGHTENED", **kw)
+                    if tight.sample_size <= normal.sample_size:
+                        self.assertLessEqual(tight.accept_number, normal.accept_number,
+                                             (lot_max, aql, level))
 
     def test_z14_tightened_up_arrow(self):
-        # Lot 20000 level II → code M; tightened M@6.5 ↑ → L@6.5 (n=200, Ac=41).
+        # Lot 20000 level II → code M; tightened M@6.5 ↑ → L@6.5 (n=200, Ac=18).
         sp = compute_sample_plan(lot_size=20000, aql=6.5, inspection_level="II",
                                  severity="TIGHTENED", strategy="Z14")
-        self.assertEqual((sp.sample_size, sp.accept_number, sp.reject_number), (200, 41, 42))
+        self.assertEqual((sp.sample_size, sp.accept_number, sp.reject_number), (200, 18, 19))
+
+    def test_z14_every_offered_aql_has_a_plan(self):
+        # N4: the tables stopped at AQL 0.65–6.5 and rows C–N, so AQL 0.10–0.40 / 10,
+        # or a cell arrowing to row A/B, raised and the lot was never inspected.
+        from Tracker.services.qms.acceptance_sampling import STANDARD_AQLS, _CODE_LETTERS
+        lots = [2, 8] + [lot_max for lot_max, _ in _CODE_LETTERS[:-1]] + [1_000_000]
+        for severity in ("NORMAL", "TIGHTENED", "REDUCED"):
+            for aql in STANDARD_AQLS:
+                for level in ("I", "II", "III"):
+                    for lot in lots:
+                        sp = compute_sample_plan(lot_size=lot, aql=aql, inspection_level=level,
+                                                 severity=severity, strategy="Z14")
+                        self.assertLessEqual(sp.sample_size, lot)
+                        self.assertLess(sp.accept_number, sp.reject_number)
+
+    def test_z14_cells_that_used_to_raise(self):
+        # Lot 25 level II → C; C@4.0 ↑ → B@4.0 (n=3, Ac 0). B wasn't tabulated.
+        sp = compute_sample_plan(lot_size=25, aql=4.0, inspection_level="II",
+                                 severity="NORMAL", strategy="Z14")
+        self.assertEqual((sp.sample_size, sp.accept_number, sp.reject_number), (3, 0, 1))
+        # Lot 1000 level II → J; J@0.15 = Ac 0 (n=80).
+        sp = compute_sample_plan(lot_size=1000, aql=0.15, inspection_level="II",
+                                 severity="NORMAL", strategy="Z14")
+        self.assertEqual((sp.sample_size, sp.accept_number), (80, 0))
+        # Lot 1000 level II → J; J@10 = Ac 14 (n=80).
+        sp = compute_sample_plan(lot_size=1000, aql=10.0, inspection_level="II",
+                                 severity="NORMAL", strategy="Z14")
+        self.assertEqual((sp.sample_size, sp.accept_number), (80, 14))
+
+    def test_z14_normal_e_at_2_5_is_a_down_arrow(self):
+        # Lot 90 level II → E. E@2.5 is ↓ (was misread ↑) → F@2.5 (n=20, Ac 1).
+        sp = compute_sample_plan(lot_size=90, aql=2.5, inspection_level="II",
+                                 severity="NORMAL", strategy="Z14")
+        self.assertEqual((sp.sample_size, sp.accept_number), (20, 1))
 
     def test_z14_reduced_smaller_sample_and_gap(self):
         # Lot 500 level II → code H. Reduced uses a SMALLER sample (n=20 vs 50) and
@@ -467,6 +518,8 @@ class ReceivingDwiExecutionTests(_ReceivingFixtureMixin, TenantTestCase):
     def test_accept_finalizes_execution(self):
         lot = self._make_lot()
         report = receiving_inspection.open_inspection(lot, self.user_a)
+        report.status = "PASS"  # the sample's verdict (an unfinished one can't be accepted)
+        report.save(update_fields=["status"])
         receiving_inspection.accept(report, self.user_a)
         ex = receiving_inspection.receiving_execution(lot)  # only open ones
         self.assertIsNone(ex)  # finalized → no longer "open"

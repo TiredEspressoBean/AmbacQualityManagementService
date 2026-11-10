@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Schema } from "@/lib/api/types";
 import {
-    useSamplePlan, useOpenInspection, useRecordUnits, useRecordBulk, useAcceptLot, useRejectLot, useRaiseScar,
+    useSamplePlan, useOpenInspection, useRecordUnits, useRecordBulk, useAcceptLot, useAcceptIncomplete, useRejectLot, useRaiseScar,
     useUploadLotCoC, materialLotOptions } from "@/hooks/useReceivingMutations";
 import { useSupplierQualificationStatus } from "@/hooks/useSupplierQualifications";
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
@@ -21,6 +21,9 @@ import { LotHoldBadges, canExtend, lotHolds } from "@/components/receiving/lotSt
 import { LotHoldPanel } from "@/components/receiving/LotHoldPanel";
 import { ReportButton } from "@/components/reports/ReportButton";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { ApprovalSignaturePanel } from "@/components/approval/ApprovalSignaturePanel";
 import { FileText } from "lucide-react";
 
 type Char = NonNullable<Schema<"SamplePlanResponse">["characteristics"]>[number];
@@ -127,6 +130,14 @@ export function ReceivingInspectionPage() {
     const recordMut = useRecordUnits();
     const recordBulkMut = useRecordBulk();
     const acceptMut = useAcceptLot();
+    const acceptIncompleteMut = useAcceptIncomplete();
+    const [incompleteOpen, setIncompleteOpen] = useState(false);
+    const [incompleteReason, setIncompleteReason] = useState("");
+    // The sample is unfinished until the server has a verdict: Accept then takes a
+    // reason and an approval (a holder of accept_incomplete_sample approves their own).
+    const sampleUnfinished = samplePlan?.report_status === "PENDING";
+    const acceptWaiting = samplePlan?.accept_incomplete_pending ?? null;
+    const canAcceptIncomplete = usePermissionSet().has("accept_incomplete_sample");
     const rejectMut = useRejectLot();
     const scarMut = useRaiseScar();
     // A SCAR is a supplier-tagged CAPA; raise_scar is gated by initiate_capa
@@ -300,6 +311,21 @@ export function ReceivingInspectionPage() {
                     {lot.status === "AWAITING_INSPECTION" && samplePlan?.has_substeps && (
                         <DwiLaunch samplePlan={samplePlan} lotId={lotId} navigate={navigate} />
                     )}
+                    {/* The run decides the lot when its sample is done; accepting it before
+                        then takes a reason and an approval, from here. */}
+                    {lot.status === "AWAITING_INSPECTION" && samplePlan?.has_substeps && sampleUnfinished && (
+                        <div className="border-t pt-3 space-y-2">
+                            {acceptWaiting ? (
+                                <p className="text-sm text-muted-foreground">
+                                    Waiting for approval to accept with the sample unfinished ({acceptWaiting}).
+                                </p>
+                            ) : (
+                                <Button variant="outline" size="sm" onClick={() => setIncompleteOpen(true)}>
+                                    Accept unfinished…
+                                </Button>
+                            )}
+                        </div>
+                    )}
 
                     {lot.status === "AWAITING_INSPECTION" && !samplePlan?.has_substeps && (
                         <div className="space-y-3">
@@ -455,13 +481,21 @@ export function ReceivingInspectionPage() {
                                 );
                             })()}
 
+                            {acceptWaiting && (
+                                <p className="text-sm text-muted-foreground border-t pt-3">
+                                    Waiting for approval to accept with the sample unfinished ({acceptWaiting}).
+                                    Finishing the sample decides the lot instead.
+                                </p>
+                            )}
                             <div className="flex gap-2 border-t pt-3">
-                                <Button disabled={acceptMut.isPending}
-                                    onClick={() => acceptMut.mutate({ id: lotId }, {
-                                        onSuccess: () => { toast.success("Lot accepted"); navigate({ to: "/production/material-lots" }); },
-                                        onError: () => toast.error("Could not accept lot"),
-                                    })}>
-                                    Accept
+                                <Button disabled={acceptMut.isPending || !!acceptWaiting}
+                                    onClick={() => sampleUnfinished
+                                        ? setIncompleteOpen(true)
+                                        : acceptMut.mutate({ id: lotId }, {
+                                            onSuccess: () => { toast.success("Lot accepted"); navigate({ to: "/production/material-lots" }); },
+                                            onError: () => toast.error("Could not accept lot"),
+                                        })}>
+                                    {sampleUnfinished ? "Accept unfinished…" : "Accept"}
                                 </Button>
                                 <Button variant="destructive" disabled={rejectMut.isPending || rejectSubmitting}
                                     onClick={() => setRejectOpen(true)}>
@@ -490,6 +524,18 @@ export function ReceivingInspectionPage() {
                     )}
                 </CardContent>
             </Card>
+            {/* A request to accept with the sample unfinished: approved here (signature +
+                password), and kept here as the record once decided. */}
+            {samplePlan?.report_id && (
+                <ApprovalSignaturePanel
+                    contentTypeModel="qualityreports"
+                    objectId={String(samplePlan.report_id)}
+                    contentTitle={lot.lot_number ?? String(lot.id)}
+                    contentKind="Accept lot with the sample unfinished"
+                    title="Accept with the sample unfinished"
+                    description="The sampling plan reached no verdict; accepting the lot takes an approved reason."
+                />
+            )}
             <EntityDocumentsEditor
                 contentTypeModel="materiallot"
                 objectId={String(lot.id)}
@@ -515,6 +561,44 @@ export function ReceivingInspectionPage() {
                 canRejectWholeLot={canRejectWholeLot}
                 unitOfMeasure={lot.unit_of_measure}
             />
+            <Dialog open={incompleteOpen} onOpenChange={setIncompleteOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Accept with the sample unfinished</DialogTitle>
+                        <DialogDescription>
+                            The sampling plan hasn't reached a verdict. The lot can be accepted on a reason
+                            that is approved — the record shows it was accepted unfinished, not passed.
+                            {canAcceptIncomplete
+                                ? " You hold that authority, so your reason approves it now."
+                                : " It waits for someone who may approve it (QA)."}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea value={incompleteReason} onChange={(e) => setIncompleteReason(e.target.value)}
+                        placeholder="Why accept it before the sample is finished?" rows={3} />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIncompleteOpen(false)}>Cancel</Button>
+                        <Button disabled={incompleteReason.trim().length < 10 || acceptIncompleteMut.isPending}
+                            onClick={() => acceptIncompleteMut.mutate({ id: lotId, reason: incompleteReason.trim() }, {
+                                onSuccess: (r) => {
+                                    setIncompleteOpen(false);
+                                    setIncompleteReason("");
+                                    if (r.outcome === "ACCEPTED") {
+                                        toast.success(`Lot accepted with the sample unfinished (${r.approval_number})`);
+                                        navigate({ to: "/production/material-lots" });
+                                    } else {
+                                        toast.success(`Sent for approval (${r.approval_number}) · the lot waits under inspection`);
+                                    }
+                                },
+                                onError: (e: unknown) => {
+                                    const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+                                    toast.error(detail ?? "Could not accept lot");
+                                },
+                            })}>
+                            {canAcceptIncomplete ? "Accept" : "Ask for approval"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <ExtendShelfLifeDialog
                 lotId={String(lot.id)}
                 lotNumber={lot.lot_number}

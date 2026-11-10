@@ -80,7 +80,9 @@ class ReceivingInspectionRecordContext(BaseModel):
     reject_number: Optional[int] = None
     k: Optional[float] = None
     defectives_found: Optional[int] = None
-    verdict: Optional[str] = None      # PASS / FAIL / PENDING, or None with no inspection
+    # PASS / FAIL / PENDING, INCOMPLETE (accepted on an approved reason with the sample
+    # unfinished), or None with no inspection
+    verdict: Optional[str] = None
     inspected_by: Optional[str] = None
 
     measurements: list[InspectionMeasurementRow] = []
@@ -156,11 +158,16 @@ def _hold_releases(lot) -> list[ReleaseEventRow]:
     labels = {
         "SUPPLIER_UNQUALIFIED": "Unqualified supplier", "PART_UNAPPROVED": "Unapproved part",
         "SHELF_LIFE_EXPIRED": "Shelf life expired", "AWAITING_COC": "Awaiting CoC",
-        "AWAITING_HEAT_NUMBER": "Awaiting heat number",
+        "AWAITING_HEAT_NUMBER": "Awaiting heat number", "GAUGE_UNAVAILABLE": "Gauge unavailable",
+        "QUALITY_GATE": "Quality gate", "MANUAL": "Held by hand",
+        "WHOLE_LOT_REJECT_REQUESTED": "Whole-lot reject requested",
     }
+    # old_value="" is a hold being PLACED (place_manual_hold writes "" → MANUAL), not
+    # released: it printed as "Hold released ()" (hunt 2026-11-10, N3).
     edits = RecordEdit.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=lot.tenant, content_type=ContentType.objects.get_for_model(lot.__class__),
-        object_id=lot.id, field_name="hold_reason").select_related("edited_by").order_by("edited_at")
+        object_id=lot.id, field_name="hold_reason").exclude(old_value="").select_related(
+        "edited_by").order_by("edited_at")
     return [ReleaseEventRow(what=f"Hold released ({labels.get(e.old_value, e.old_value)})",
                             by=_name(e.edited_by), at=e.edited_at, note=e.reason) for e in edits]
 
@@ -208,7 +215,20 @@ def build_receiving_inspection_record_context(lot, tenant) -> ReceivingInspectio
         one, many = {"BOX": ("box", "boxes"), "LB": ("lb", "lb")}[lot.received_as_unit]
         received_as = f"{_num(lot.received_as_quantity)} {one if lot.received_as_quantity == 1 else many}"
 
-    events = sorted(_hold_releases(lot) + _status_events(lot), key=lambda e: e.at or datetime.min)
+    events = _hold_releases(lot) + _status_events(lot)
+    verdict = report.status if report is not None else None
+    # Accepted with the sample unfinished, on an approved reason (N14): no verdict was
+    # reached, and the record says so — with who asked, why, and who approved it.
+    from Tracker.services.qms.receiving_inspection import accepted_incomplete_approval
+    concession = accepted_incomplete_approval(report) if report is not None else None
+    if concession is not None and verdict == "PENDING":
+        verdict = "INCOMPLETE"
+        events.append(ReleaseEventRow(
+            what="Accepted with the sample unfinished",
+            by=_name(concession.get_primary_approver()), at=concession.completed_at,
+            note=(f"{concession.reason} (asked by {_name(concession.requested_by) or '—'}; "
+                  f"approval {concession.approval_number})")))
+    events = sorted(events, key=lambda e: e.at or datetime.min)
 
     return ReceivingInspectionRecordContext(
         lot_number=lot.lot_number,
@@ -235,7 +255,7 @@ def build_receiving_inspection_record_context(lot, tenant) -> ReceivingInspectio
         reject_number=report.reject_number if report is not None else None,
         k=report.acceptability_constant_k if report is not None else None,
         defectives_found=report.defectives_found if report is not None else None,
-        verdict=report.status if report is not None else None,
+        verdict=verdict,
         # The detector, which on a receiving inspection is the inspector who opened it.
         inspected_by=_name(report.primary_detector) if report is not None else None,
         measurements=measurements,

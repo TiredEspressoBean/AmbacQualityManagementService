@@ -6166,6 +6166,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/{id}/accept_incomplete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Accept a lot whose inspection sample isn't finished, on a reason. Needs approving by someone with accept_incomplete_sample: a holder's own is approved at once (ACCEPTED); anyone else's waits (REQUESTED). The report keeps no verdict. */
+        post: operations["api_MaterialLots_accept_incomplete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/{id}/adjust-quantity/": {
         parameters: {
             query?: never;
@@ -21629,6 +21646,19 @@ export interface components {
          * @enum {string}
          */
         AbcClassEnum: "A" | "B" | "C";
+        AcceptIncompleteRequestRequest: {
+            reason: string;
+        };
+        AcceptIncompleteResponse: {
+            outcome: components["schemas"]["AcceptIncompleteResponseOutcomeEnum"];
+            approval_number: string;
+        };
+        /**
+         * @description * `ACCEPTED` - ACCEPTED
+         *     * `REQUESTED` - REQUESTED
+         * @enum {string}
+         */
+        AcceptIncompleteResponseOutcomeEnum: "ACCEPTED" | "REQUESTED";
         AcceptInvitationInputRequest: {
             token: string;
             password: string;
@@ -21779,6 +21809,7 @@ export interface components {
                 type: string;
                 id: string;
                 str: string;
+                material_lot_id?: string | null;
             } | null;
             readonly content_object_display: string | null;
             requested_by?: number | null;
@@ -22059,9 +22090,10 @@ export interface components {
          *     * `PCN_RELEASE` - Process Change Notice Release
          *     * `PPAP` - PPAP
          *     * `FAI` - First Article (FAI / AS9102)
+         *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
          * @enum {string}
          */
-        ApprovalTypeEnum: "DOCUMENT_RELEASE" | "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "ECO" | "TRAINING_CERT" | "PROCESS_APPROVAL" | "PCR_APPROVAL" | "PCO_APPROVAL" | "PCN_RELEASE" | "PPAP" | "FAI";
+        ApprovalTypeEnum: "DOCUMENT_RELEASE" | "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "ECO" | "TRAINING_CERT" | "PROCESS_APPROVAL" | "PCR_APPROVAL" | "PCO_APPROVAL" | "PCN_RELEASE" | "PPAP" | "FAI" | "RECEIVING_ACCEPT_INCOMPLETE";
         /**
          * @description Taking a component back out of the unit — fitted by mistake, or the wrong one.
          *     The reason is kept on the usage (Corrections #23).
@@ -36408,6 +36440,11 @@ export interface components {
             has_substeps: boolean;
             /** Format: uuid */
             step_execution_id: string | null;
+            /** Format: uuid */
+            report_id?: string | null;
+            report_status?: string | null;
+            /** @description Approval number of the request to accept this lot unfinished, while it waits. */
+            accept_incomplete_pending?: string | null;
         };
         /**
          * @description Append-only sampling decision per (StepExecution, Substep). The
@@ -41838,8 +41875,9 @@ export interface operations {
                  *     * `PCN_RELEASE` - Process Change Notice Release
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
+                 *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 content_type?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -42041,8 +42079,9 @@ export interface operations {
                  *     * `PCN_RELEASE` - Process Change Notice Release
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
+                 *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 content_type?: number;
                 object_id?: string;
                 /** @description Which field to use when ordering the results. */
@@ -42178,8 +42217,9 @@ export interface operations {
                  *     * `PCN_RELEASE` - Process Change Notice Release
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
+                 *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 content_type?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -42279,8 +42319,9 @@ export interface operations {
                  *     * `PCN_RELEASE` - Process Change Notice Release
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
+                 *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 content_type?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -42516,8 +42557,9 @@ export interface operations {
                  *     * `PCN_RELEASE` - Process Change Notice Release
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
+                 *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 /**
                  * @description * `OPTIONAL` - Optional
                  *     * `DISABLED` - Disabled
@@ -42728,8 +42770,9 @@ export interface operations {
                  *     * `PCN_RELEASE` - Process Change Notice Release
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
+                 *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 /**
                  * @description * `OPTIONAL` - Optional
                  *     * `DISABLED` - Disabled
@@ -53942,6 +53985,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_accept_incomplete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptIncompleteRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptIncompleteResponse"];
                 };
             };
         };
