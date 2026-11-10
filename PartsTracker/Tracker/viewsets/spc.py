@@ -506,11 +506,24 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             if len(subgroup) == subgroup_size:
                 ranges.append(max(subgroup) - min(subgroup))
 
-        if ranges:
-            r_bar = sum(ranges) / len(ranges)
-            std_dev_within = r_bar / d2
-        else:
-            std_dev_within = std_dev_overall  # Fallback
+        if not ranges:
+            # Not one full subgroup: there is no within-subgroup sigma, so no Cp/Cpk.
+            # Falling back to the overall sigma printed a "within" figure that wasn't one
+            # (walk 2026-11-10).
+            return Response({
+                'definition': MeasurementDefinitionSPCSerializer(definition).data,
+                'sample_size': n,
+                'subgroup_size': subgroup_size,
+                'num_subgroups': 0,
+                'usl': usl, 'lsl': lsl, 'mean': mean,
+                'std_dev_within': 0,
+                'std_dev_overall': std_dev_overall,
+                'cp': 0, 'cpk': 0, 'pp': 0, 'ppk': 0,
+                'interpretation': (f'Insufficient data for capability analysis (need at least '
+                                   f'{subgroup_size} measurements for one subgroup of {subgroup_size})'),
+            })
+        r_bar = sum(ranges) / len(ranges)
+        std_dev_within = r_bar / d2
 
         # Calculate capability indices
         # Cp = (USL - LSL) / (6 * sigma_within)

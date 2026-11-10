@@ -290,10 +290,12 @@ class SpcAdapter(ReportAdapter):
                 sub = values[i:i + subgroup_size]
                 if len(sub) == subgroup_size:
                     ranges.append(max(sub) - min(sub))
-            std_within = (sum(ranges) / len(ranges)) / d2 if ranges else std_overall
+            # No full subgroup → no within-subgroup sigma, so no Cp/Cpk (it fell back to
+            # the overall sigma and printed it as "within").
+            std_within = (sum(ranges) / len(ranges)) / d2 if ranges else None
 
             cp = cpk = pp = ppk = None
-            if std_within > 0:
+            if std_within is not None and std_within > 0:
                 cp = (usl - lsl) / (6 * std_within)
                 cpk = min((usl - mean) / (3 * std_within), (mean - lsl) / (3 * std_within))
             if std_overall > 0:
@@ -304,7 +306,7 @@ class SpcAdapter(ReportAdapter):
                 sample_size=n,
                 subgroup_size=subgroup_size,
                 num_subgroups=len(ranges),
-                std_dev_within=round(std_within, 6),
+                std_dev_within=round(std_within, 6) if std_within is not None else None,
                 std_dev_overall=round(std_overall, 6),
                 cp=round(cp, 3) if cp is not None else None,
                 cpk=round(cpk, 3) if cpk is not None else None,
