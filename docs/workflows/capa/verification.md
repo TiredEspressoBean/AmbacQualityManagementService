@@ -48,11 +48,24 @@ Common verification tasks:
 |-------|-------------|
 | **Verification method** | How effectiveness was checked |
 | **Verification criteria** | What would count as effective |
-| **Verification date** | When it was checked |
+| **Verification date** | *"The day the verification was done — earlier than today if it was."* Today by default |
 | **Verified by** | Who checked |
 | **Verification notes** | What was found |
 
 4. Decide the effectiveness result
+
+!!! note "The date is when it was done, not when it was entered"
+    The verification date is the company's record of when effectiveness was
+    checked. A check done while the person who records it was away is dated to the
+    day it was done. It can't be in the future (*"The verification date can't be in
+    the future."*) or before the CAPA was opened (*"The verification date can't be
+    before the CAPA was opened (&lt;date&gt;)."*). Confirmed, the CAPA's completed
+    date is this date. When it was actually entered stays in the history.
+
+!!! important "Confirming is refused while tasks are open"
+    *Effective - Confirmed* closes the CAPA, so it is held to the same rules as
+    closing: *"Cannot close CAPA: N task(s) still pending. Complete them before
+    confirming effectiveness."*
 
 !!! warning "Self-verification is refused unless the CAPA allows it"
     If the person verifying is the CAPA's own initiator or assignee, the system

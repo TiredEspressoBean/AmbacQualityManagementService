@@ -183,7 +183,9 @@ Before closure:
 
 1. Open the CAPA's **Verification** tab
 2. Record the effectiveness check against the verification criteria
-3. Choose **Effective - Confirmed** — this closes the CAPA in the same action
+3. Choose **Effective - Confirmed** — this closes the CAPA in the same action.
+   It's refused while any of the CAPA's tasks is still open. The **Verification
+   Date** is the day the check was done, which can be earlier than today.
 
 There is no separate closure request or closure approval. The gate is
 `verify_capa`; if you don't hold it, an authorised colleague can co-sign inline

@@ -149,12 +149,11 @@ Overdue tasks:
 - Appear on dashboard
 - Trigger escalation (if configured)
 
-!!! warning "Overdue tasks do not block closure"
-    Nothing checks task state when a CAPA is closed. Closure is the
-    *Effective - Confirmed* verification and is gated on `verify_capa` alone, so
-    a CAPA **can** be closed with tasks still open and overdue. Whether that is
-    acceptable is a judgement the verifier makes — the system will not stop
-    them.
+!!! important "Open tasks block closure"
+    A CAPA closes when its effectiveness is confirmed, and that is refused while
+    any task is still open: *"Cannot close CAPA: N task(s) still pending. Complete
+    them before confirming effectiveness."* Overdue or not, every task has to be
+    completed first. A deleted task doesn't count.
 
 The task list can be filtered to **overdue only**, which is the quickest way to
 see what is actually holding a CAPA open. Note this is the task-level filter —
