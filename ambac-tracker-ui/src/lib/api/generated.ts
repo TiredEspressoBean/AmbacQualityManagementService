@@ -29241,6 +29241,7 @@ const NcrAgingResponse = z.object({
   data: z.array(z.object({}).partial().passthrough()),
   avg_age_days: z.number(),
   overdue_count: z.number().int(),
+  open_count: z.number().int(),
 });
 const NcrTrendResponse = z.object({
   data: z.array(z.object({}).partial().passthrough()),

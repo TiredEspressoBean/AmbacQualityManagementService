@@ -64964,9 +64964,13 @@ components:
           format: double
         overdue_count:
           type: integer
+        open_count:
+          type: integer
+          description: NCRs open now, whenever they were opened.
       required:
       - avg_age_days
       - data
+      - open_count
       - overdue_count
     NcrTrendResponse:
       type: object

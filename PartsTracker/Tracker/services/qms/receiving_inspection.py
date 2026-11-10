@@ -839,9 +839,13 @@ def accept(report, user, *, remainder: bool = False):
     _finalize_execution(report.material_lot, user)
     _cancel_accept_incomplete_requests(report)
     if report.status == "PENDING":
-        # The partial reject's remainder (remainder=True).
-        report.status = "PASS"
+        # The partial reject's remainder (remainder=True): the inspection found bad
+        # pieces, so the reject decided it — FAIL, never a default PASS (round-1 #3).
+        # Decided now, so it counts for Z1.4 switching.
+        report.status = "FAIL"
         report.save(update_fields=["status"])
+        from Tracker.services.qms.severity_switching import update_after_lot
+        update_after_lot(report)
     return report
 
 

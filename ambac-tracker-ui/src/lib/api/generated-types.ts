@@ -28113,6 +28113,8 @@ export interface components {
             /** Format: double */
             avg_age_days: number;
             overdue_count: number;
+            /** @description NCRs open now, whenever they were opened. */
+            open_count: number;
         };
         NcrTrendResponse: {
             data: {

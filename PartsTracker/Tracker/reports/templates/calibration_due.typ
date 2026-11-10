@@ -18,7 +18,8 @@
 
 // Status badge — OVERDUE=red, DUE_SOON=amber, CURRENT=green
 #let status-badge(status) = {
-  if status == "OVERDUE"  { tone-badge("OVERDUE", "bad") }
+  if status == "FAILED"  { tone-badge("FAILED", "bad") }
+  else if status == "OVERDUE"  { tone-badge("OVERDUE", "bad") }
   else if status == "DUE_SOON" { tone-badge("DUE SOON", "warn") }
   else                    { tone-badge("CURRENT", "ok") }
 }
@@ -96,6 +97,7 @@
 #footer-note([
   This is a planning document generated from calibration record data as
   of #data.generated_date. It is not a calibration certificate or quality record.
-  Status thresholds: OVERDUE = past due date; DUE SOON = due within 30 days;
+  Status thresholds: FAILED = the latest calibration failed (out of service until
+  re-calibrated); OVERDUE = past due date; DUE SOON = due within 30 days;
   CURRENT = more than 30 days remaining.
 ])

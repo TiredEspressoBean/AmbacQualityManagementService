@@ -124,6 +124,10 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
         if status_filter:
             today = tenant_today(self.tenant)
             thirty_days = today + timedelta(days=30)
+            # A gauge's status is its latest calibration's: the dashboard card counts
+            # that way, and over every record an old superseded one matched too, so the
+            # card's "+N more" opened a different count (round-1 #15).
+            qs = self._latest(qs).select_related('equipment', 'equipment__equipment_type')
 
             if status_filter == 'current':
                 # Current: not overdue and not failed
@@ -135,8 +139,8 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
                     due_date__gte=today
                 ).exclude(result='FAIL')
             elif status_filter == 'overdue':
-                # Overdue: past due date
-                qs = qs.filter(due_date__lt=today)
+                # Overdue: past due date (a failed one is counted as failed, as the card does)
+                qs = qs.filter(due_date__lt=today).exclude(result='FAIL')
             elif status_filter == 'failed':
                 # Failed result
                 qs = qs.filter(result='FAIL')

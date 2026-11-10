@@ -95,10 +95,13 @@ def _ensure_qa_approval(fpi: FPIRecord, user, *, password_proven: bool = False,
     if fpi.step_id is None or fpi.work_order_id is None or user is None:
         return
     from Tracker.services.qms.step_signoff import signoff_meaning
+    # One release per first-piece context: keyed to the FPI record, so a second shift's
+    # or machine's pass no longer overwrote the first's (round-1 #7).
     QaApproval.objects.update_or_create(
         tenant=fpi.tenant,
         step=fpi.step,
         work_order=fpi.work_order,
+        fpi_record=fpi,
         # A withdrawn approval (a voided pass) stays as it was recorded; a new pass
         # gets a new row rather than rewriting it.
         archived=False,
@@ -268,10 +271,16 @@ def void_fpi_pass(fpi: FPIRecord, user, reason: str) -> FPIRecord:
             new_value=FPIStatus.VOIDED, reason=reason, edited_by=user)
         fpi.status = FPIStatus.VOIDED
         fpi.save(update_fields=['status', 'updated_at'])
-        # The pass was the step's QA release for this work order; it no longer stands.
-        QaApproval.objects.filter(  # tenant-safe: scoped FKs
-            step_id=fpi.step_id, work_order_id=fpi.work_order_id, archived=False,
-        ).update(archived=True, updated_at=timezone.now())
+        # The pass was this context's QA release; it no longer stands. Only its own:
+        # another shift's or machine's release was earned by its own first piece
+        # (round-1 #7). A release recorded before releases were per-context has no
+        # FPI record; for those the old rule stands (the work order's, withdrawn).
+        mine = QaApproval.objects.filter(fpi_record=fpi, archived=False)  # tenant-safe: scoped FK
+        if not mine.exists():
+            mine = QaApproval.objects.filter(  # tenant-safe: scoped FKs
+                step_id=fpi.step_id, work_order_id=fpi.work_order_id, archived=False,
+                fpi_record__isnull=True)
+        mine.update(archived=True, updated_at=timezone.now())
         # The re-inspection is made on a part at the step: the voided pass's first piece
         # has often moved on, and Pass needs the designated part at the FPI step — a
         # copy of it left an FPI nobody could pass, only waive (hunt 2026-11-10, N16).

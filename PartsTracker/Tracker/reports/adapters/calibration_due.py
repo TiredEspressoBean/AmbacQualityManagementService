@@ -47,7 +47,7 @@ class CalibrationDueItem(BaseModel):
     last_cal_date: datetime.date
     due_date: datetime.date
     days_until_due: int          # negative = overdue
-    status: str                  # CURRENT / DUE_SOON / OVERDUE
+    status: str                  # FAILED / CURRENT / DUE_SOON / OVERDUE
     last_result: str             # PASS / FAIL / LIMITED
 
 
@@ -140,10 +140,12 @@ class CalibrationDueAdapter(ReportAdapter):
 
         for equip in equipment_qs:
             # Get the latest calibration record for this equipment
+            # A deleted record isn't the latest; same-day ties go to the later entry
+            # (round-1 #22).
             latest_record: Optional[CalibrationRecord] = (
                 CalibrationRecord.objects
-                .filter(tenant=tenant, equipment=equip)
-                .order_by("-calibration_date", "-id")
+                .filter(tenant=tenant, equipment=equip, archived=False)
+                .order_by("-calibration_date", "-created_at")
                 .first()
             )
 
@@ -153,7 +155,9 @@ class CalibrationDueAdapter(ReportAdapter):
                 continue
 
             days_until_due = (latest_record.due_date - today).days
-            status = _calibration_status(days_until_due)
+            # A failed calibration is out of service until re-calibrated — not CURRENT.
+            status = ("FAILED" if latest_record.result == "FAIL"
+                      else _calibration_status(days_until_due))
 
             items.append(CalibrationDueItem(
                 equipment_name=equip.name,

@@ -105,6 +105,21 @@ def records_for(step, work_order, ctx: FpiContext):
     return qs.filter(**ctx.filters()).order_by('-created_at')
 
 
+def qa_released(step, work_order, part=None) -> bool:
+    """Whether `part` has the step's QA release on `work_order`. A direct step sign-off
+    releases the work order; a first-piece pass releases its own context only, so on a
+    Per Shift / Per Equipment step one context's void doesn't take another's release
+    (round-1 #7). With no part, any live release counts."""
+    from Tracker.models import QaApproval
+    qs = QaApproval.objects.filter(step=step, work_order=work_order, archived=False)  # tenant-safe: scoped FKs
+    if part is None or not step.requires_first_piece_inspection:
+        return qs.exists()
+    if qs.filter(fpi_record__isnull=True).exists():
+        return True
+    ctx = context_for(step, work_order, part=part)
+    return qs.filter(fpi_record__in=records_for(step, work_order, ctx)).exists()
+
+
 def status_in(step, work_order, ctx: FpiContext) -> dict:
     """The FPI state of one context, in the shape `Steps.get_fpi_status` returns."""
     from Tracker.models import FPIStatus, Parts

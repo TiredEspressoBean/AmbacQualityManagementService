@@ -107,6 +107,7 @@ export function NcrAnalysisPage() {
     const closureRate = totalCreated > 0 ? Math.round((totalClosed / totalCreated) * 100) : 0;
     const avgAge = agingData?.avg_age_days ?? 0;
     const overdueCount = agingData?.overdue_count ?? 0;
+    const openNow = agingData?.open_count ?? 0;
 
     // Table columns
     const columns: AnalyticsColumnDef<DispositionRow>[] = [
@@ -195,13 +196,15 @@ export function NcrAnalysisPage() {
                     icon={Package}
                     isLoading={isLoadingTrend}
                 />
+                {/* Open now, whenever opened — created − closed in the window wasn't
+                    that, and could go negative (round-1 #25). */}
                 <KpiCard
                     title="Open NCRs"
-                    value={totalCreated - totalClosed}
+                    value={openNow}
                     subtitle="Currently unresolved"
                     icon={Clock}
-                    variant={totalCreated - totalClosed > 10 ? "warning" : "default"}
-                    isLoading={isLoadingTrend}
+                    variant={openNow > 10 ? "warning" : "default"}
+                    isLoading={isLoadingAging}
                 />
                 <KpiCard
                     title="Avg Age"

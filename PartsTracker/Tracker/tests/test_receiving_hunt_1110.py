@@ -206,6 +206,22 @@ class HoldPlacementOnRecordTests(_Fixture):
         self.assertEqual([r.what for r in rows], ["Hold released (Held by hand)"])
 
 
+class PartialRejectRemainderTests(_Fixture):
+    """Round-1 #3: a partial reject on an unfinished sample accepted the rest and
+    stamped the report PASS though the inspection had found bad pieces."""
+
+    def test_the_report_reads_fail(self):
+        from Tracker.services.qms.lot_reject import reject_lot
+        lot = self._lot()
+        report = self._report(lot)
+        self.assertEqual(report.status, "PENDING")
+        _, _, outcome = reject_lot(report, self.qa, rejected_quantity=10)
+        self.assertEqual(outcome, "PARTIAL")
+        report.refresh_from_db()
+        lot.refresh_from_db()
+        self.assertEqual((report.status, lot.status), ("FAIL", "ACCEPTED"))
+
+
 class AcceptIncompleteTests(_Fixture):
     """N14 (user decision 2026-11-10)."""
 

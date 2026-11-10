@@ -10,6 +10,8 @@ export type NcrAgingResponse = {
     data: AgingBucket[];
     avg_age_days: number;
     overdue_count: number;
+    /** NCRs open now, whenever they were opened. */
+    open_count: number;
 };
 
 type UseNcrAgingParams = {

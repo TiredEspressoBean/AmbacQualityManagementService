@@ -285,15 +285,27 @@ def _raise_capa_or_scar(ruleset, firing, *, material_lot, user):
         )
 
     from Tracker.models import CAPA
-    return CAPA.objects.create(
+    # The type the gate was configured with — it was always CORRECTIVE (round-1 #14).
+    valid_types = {value for value, _ in CAPA._meta.get_field("capa_type").choices}
+    report = firing.triggered_by_report
+    capa = CAPA.objects.create(
         tenant=ruleset.tenant,
-        capa_type="CORRECTIVE",
+        capa_type=capa_type if capa_type in valid_types else "CORRECTIVE",
         severity=severity,
         status="OPEN",
         problem_statement=problem,
         initiated_by=None,  # system-raised — see docstring
         assigned_to=assignee,
+        # Where it came from, as a CAPA raised by hand from a report records it.
+        step=ruleset.step,
+        part=getattr(report, "part", None),
+        work_order=getattr(getattr(report, "part", None), "work_order", None),
     )
+    if report is not None:
+        capa.quality_reports.add(report)
+        from Tracker.services.qms.capa_decision import stamp_promoted
+        stamp_promoted(capa, None)
+    return capa
 
 
 def _default_capa_owner(tenant):

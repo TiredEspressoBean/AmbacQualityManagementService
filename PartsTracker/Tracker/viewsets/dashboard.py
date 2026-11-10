@@ -871,6 +871,8 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'data': serializers.ListField(child=serializers.DictField()),
                 'avg_age_days': serializers.FloatField(),
                 'overdue_count': serializers.IntegerField(),
+                'open_count': serializers.IntegerField(
+                    help_text="NCRs open now, whenever they were opened."),
             }
         )}
     )
@@ -937,6 +939,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             'data': data,
             'avg_age_days': avg_age,
             'overdue_count': overdue_count,
+            'open_count': count,
         })
 
     @extend_schema(

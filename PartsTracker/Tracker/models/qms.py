@@ -846,6 +846,11 @@ class QaApproval(SecureModel):
     step = models.ForeignKey("Steps", related_name='qa_approvals', on_delete=models.PROTECT)
     work_order = models.ForeignKey("WorkOrder", related_name='qa_approvals', on_delete=models.PROTECT)
     qa_staff = models.ForeignKey(User, related_name='qa_approvals', on_delete=models.PROTECT)
+    fpi_record = models.ForeignKey(
+        "FPIRecord", related_name='qa_approvals', on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="The first-piece pass/waive that released it. On a Per Shift / Per Equipment "
+                  "step each context earns its own release; null = a direct step sign-off, "
+                  "which releases the whole work order.")
 
     verification_method = models.CharField(max_length=16, choices=VERIFICATION_METHODS, default='NONE')
     """How the signer's identity was proven: the session alone, or a re-entered password."""
@@ -2840,12 +2845,17 @@ class CalibrationRecordQuerySet(SecureQuerySet):
         return self.filter(equipment=equipment)
 
     def latest_per_equipment(self):
-        """Return only the most recent calibration record per equipment."""
+        """Return only the most recent calibration record per equipment.
+
+        A deleted (archived) record isn't one — it kept deciding the gauge's due date and
+        the nag (round-1 #22). Same-day records (a FAIL, then the after-repair PASS)
+        are ordered by when they were entered, not arbitrarily."""
         from django.db.models import OuterRef, Subquery
-        latest_ids = self.filter(
+        live = self.filter(archived=False)
+        latest_ids = live.filter(
             equipment=OuterRef('equipment')
-        ).order_by('-calibration_date').values('id')[:1]
-        return self.filter(id__in=Subquery(latest_ids))
+        ).order_by('-calibration_date', '-created_at').values('id')[:1]
+        return live.filter(id__in=Subquery(latest_ids))
 
 
 class CalibrationRecordManager(SecureManager):

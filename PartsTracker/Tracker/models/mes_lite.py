@@ -1264,12 +1264,9 @@ class Steps(SecureModel):
         # 2. Check QA signoff requirement
         if self.requires_qa_signoff:
             # An archived approval was withdrawn (an FPI pass voided): it releases nothing.
-            qa_approval = QaApproval.objects.filter(
-                step=self,
-                work_order=work_order,
-                archived=False,
-            ).first()
-            if not qa_approval:
+            # A first-piece release covers its own context only (round-1 #7).
+            from Tracker.services.qms.fpi_scope import qa_released
+            if not qa_released(self, work_order, part=part):
                 blockers.append("QA signoff required but not received")
 
         # 3. Check FPI requirement (Parts-only — FPI doesn't apply to teardown).
@@ -1474,11 +1471,8 @@ class StepRequirement(SecureModel):
             work_order = step_execution.subject_work_order
             if work_order is None:
                 return False
-            return QaApproval.objects.filter(
-                step=step_execution.step,
-                work_order=work_order,
-                archived=False,
-            ).exists()
+            from Tracker.services.qms.fpi_scope import qa_released
+            return qa_released(step_execution.step, work_order, part=step_execution.part)
 
         elif self.requirement_type == RequirementType.FPI_PASSED:
             # FPI is Parts-only — Cores don't have first-piece inspection.
