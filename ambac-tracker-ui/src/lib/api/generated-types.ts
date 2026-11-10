@@ -45342,6 +45342,11 @@ export interface operations {
                     effectiveness_result: "CONFIRMED" | "NOT_EFFECTIVE";
                     /** @description Findings / justification. Required (>=10 chars) for self-verification. */
                     notes?: string;
+                    /**
+                     * Format: date
+                     * @description When the verification was done (may be earlier than today; not in the future, not before the CAPA opened). Today when omitted.
+                     */
+                    verification_date?: string;
                     /** @description Email of an authorized verifier co-signing (when the caller lacks verify_capa) */
                     cosign_email?: string;
                     /** @description That person's password. Verified inline; they are never logged in, and the verification is attributed to them. */

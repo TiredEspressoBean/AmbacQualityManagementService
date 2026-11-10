@@ -208,6 +208,9 @@ class TrainingRequirementSerializer(SecureModelMixin):
             'created_at', 'updated_at', 'archived'
         ]
         read_only_fields = ('id', 'min_level_display', 'scope', 'scope_display', 'created_at', 'updated_at')
+        # The service checks duplicates (full_clean). DRF's own validator from the
+        # live-only unique constraints made `archived` a required field.
+        validators = []
 
     # Writes go through the service, which validates (exactly one target, no
     # duplicate) — the django ValidationError it raises maps to a 400.

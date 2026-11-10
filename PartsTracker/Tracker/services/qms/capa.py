@@ -245,9 +245,15 @@ def verify_capa_effectiveness(
     user,
     confirmed: bool,
     notes: str,
+    verification_date=None,
 ) -> CapaVerification:
     """
     Complete the verification step for a CAPA.
+
+    ``verification_date`` is when the verification was done — the company's record of
+    it, which may be earlier than today (verified by others while the QA manager was
+    away: user decision 2026-11-10, N6). Not in the future, not before the CAPA was
+    opened; today when omitted. The audit log keeps when it was entered.
 
     If confirmed=True, closes the CAPA and logs a status transition.
     If confirmed=False, moves the CAPA back to IN_PROGRESS, marks RCA
@@ -277,6 +283,29 @@ def verify_capa_effectiveness(
     if not capa.rca_verified():
         raise ValidationError(ROOT_CAUSE_UNVERIFIED)
 
+    today = tenant_today(capa.tenant)
+    if verification_date is None:
+        verification_date = today
+    if verification_date > today:
+        raise ValidationError("The verification date can't be in the future.")
+    if capa.initiated_date and verification_date < capa.initiated_date:
+        raise ValidationError(
+            f"The verification date can't be before the CAPA was opened "
+            f"({capa.initiated_date:%Y-%m-%d}).")
+
+    if confirmed:
+        # Confirming closes the CAPA, so it answers to the close gate: closing through
+        # transition_capa refused open tasks and an unapproved plan, and this path closed
+        # past both (hunt #5). The verification blockers are this very act.
+        refusal = capa_plan_refusal(capa)
+        if refusal:
+            raise ValidationError(refusal)
+        open_tasks = capa._live_tasks().exclude(status=CapaTaskStatus.COMPLETED).count()
+        if open_tasks:
+            raise ValidationError(
+                f"Cannot close CAPA: {open_tasks} task(s) still pending. Complete them before "
+                f"confirming effectiveness.")
+
     # Self-verification check
     is_self_verification = (user == capa.initiated_by or user == capa.assigned_to)
     if is_self_verification:
@@ -288,7 +317,7 @@ def verify_capa_effectiveness(
             )
 
     verification.verified_by = user
-    verification.verification_date = tenant_today(capa.tenant)
+    verification.verification_date = verification_date
     verification.effectiveness_result = (
         EffectivenessResult.CONFIRMED if confirmed else EffectivenessResult.NOT_EFFECTIVE
     )
@@ -301,7 +330,8 @@ def verify_capa_effectiveness(
 
     if verification.effectiveness_result == EffectivenessResult.CONFIRMED:
         capa.status = CapaStatus.CLOSED
-        capa.completed_date = tenant_today(capa.tenant)
+        # Closed when its effectiveness was verified, which may be an earlier day.
+        capa.completed_date = verification_date
         capa.save(update_fields=['status', 'completed_date'])
 
         CapaStatusTransition.objects.create(

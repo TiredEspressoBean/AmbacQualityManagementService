@@ -72,6 +72,13 @@ class NcrContext(BaseModel):
     part_type_name: Optional[str] = None
     work_order_erp_id: Optional[str] = None
     step_name: Optional[str] = None
+    # A receiving lot's disposition, or a failed batch cycle's (the whole load).
+    lot_number: Optional[str] = None
+    batch_load: Optional[str] = None
+
+    # ---- Who decided the disposition (hunt #24) ----
+    decision_authorized_by: Optional[str] = None
+    decision_authorized_at: Optional[datetime] = None
 
     # ---- Non-conformance ----
     description: str = ""
@@ -189,6 +196,10 @@ class NcrAdapter(ReportAdapter):
                 "containment_completed_by",
                 "scrap_verified_by",
                 "resolution_completed_by",
+                "decision_authorized_by",
+                "material_lot",
+                "batch_execution__work_order",
+                "batch_execution__step",
                 "tenant",
             )
             .prefetch_related(
@@ -200,8 +211,14 @@ class NcrAdapter(ReportAdapter):
         )
 
         part = qd.part
-        work_order = part.work_order if part else None
+        batch = qd.batch_execution
+        # A batch disposition has no part; its load belongs to the batch's work order.
+        work_order = part.work_order if part else (batch.work_order if batch else None)
         part_type = part.part_type if part else None
+        batch_load = None
+        if batch is not None:
+            step = batch.step.name if batch.step_id else "Batch"
+            batch_load = f"{step} load of {batch.parts.count()} parts"
 
         quality_reports = [
             QualityReportRef(
@@ -235,6 +252,11 @@ class NcrAdapter(ReportAdapter):
             part_type_name=part_type.name if part_type else None,
             work_order_erp_id=work_order.ERP_id if work_order else None,
             step_name=qd.step.name if qd.step else None,
+            lot_number=qd.material_lot.lot_number if qd.material_lot_id else None,
+            batch_load=batch_load,
+
+            decision_authorized_by=_user_name(qd.decision_authorized_by),
+            decision_authorized_at=qd.decision_authorized_at,
 
             description=qd.description,
             quality_reports=quality_reports,

@@ -41,9 +41,11 @@ def part_passed_qa_here(part) -> bool:
     current visit."""
     if part.step_id is None:
         return False
+    # A superseded report (its capture voided, to be taken again) is no pass: the
+    # re-capture is (hunt 2026-11-10, N15).
     return part.error_reports.filter(  # tenant-safe: reverse FK from a scoped part
         archived=False, status__in=INSPECTED_OK, step_id=part.step_id,
-        created_at__gte=_visit_start(part),
+        created_at__gte=_visit_start(part), superseded_at__isnull=True,
     ).exists()
 
 
@@ -55,7 +57,7 @@ def with_qa_passed(qs):
              .order_by('-visit_number').values('entered_at')[:1])
     passed = QualityReports.unscoped.filter(  # tenant-safe: correlated to the outer scoped part
         part=OuterRef('pk'), step=OuterRef('step'), status__in=INSPECTED_OK, archived=False,
-        created_at__gte=OuterRef('_qa_visit_start'))
+        superseded_at__isnull=True, created_at__gte=OuterRef('_qa_visit_start'))
     return (qs.annotate(_qa_visit_start=Coalesce(Subquery(visit), Value(_EPOCH)))
               .annotate(_qa_passed=Exists(passed)))
 

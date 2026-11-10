@@ -118,13 +118,26 @@ class _TrainingRecordImport(BaseCSVImportSerializer):
 def _not_superseded(qs):
     """Drop records the person has since renewed: a later record of the same training
     type replaces it, so the old one's expiry is no reminder (walk 2026-10-20 — a
-    renewed L1 kept showing under Expiring Soon)."""
-    from django.db.models import Exists, OuterRef
+    renewed L1 kept showing under Expiring Soon).
+
+    The same training means the same type LINEAGE: a renewal recorded against a newer
+    version of the type replaces one against the old version (hunt #16 — matching the
+    exact version left the old record expiring beside its renewal)."""
     from Tracker.models import TrainingRecord
-    newer = TrainingRecord.unscoped.filter(  # tenant-safe: correlated to the scoped outer row
-        user=OuterRef('user'), training_type=OuterRef('training_type'),
-        completed_date__gt=OuterRef('completed_date'), archived=False)
-    return qs.exclude(Exists(newer))
+    from Tracker.services.training import training_type_lineage
+    rows = list(TrainingRecord.unscoped.filter(  # tenant-safe: the users of the scoped qs
+        user_id__in=qs.values('user_id'), archived=False)
+        .values_list('id', 'user_id', 'training_type_id', 'completed_date', 'tenant_id'))
+    lineages = {t: training_type_lineage(t) for t in {r[4] for r in rows}}
+    latest = {}
+    for _id, user_id, tt_id, done, tenant_id in rows:
+        key = (user_id, lineages[tenant_id].get(tt_id, tt_id))
+        if done is not None and (latest.get(key) is None or done > latest[key]):
+            latest[key] = done
+    superseded = [
+        _id for _id, user_id, tt_id, done, tenant_id in rows
+        if done is not None and done < latest[(user_id, lineages[tenant_id].get(tt_id, tt_id))]]
+    return qs.exclude(id__in=superseded)
 
 @extend_schema_view(
     list=extend_schema(

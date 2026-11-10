@@ -101,8 +101,19 @@ def exposure_for(record) -> CalibrationExposure:
         readings = readings.filter(recorded_at__gte=start)
     read_visits = set(readings.exclude(step_execution__isnull=True)
                       .values_list('step_execution_id', flat=True))
+    # A receiving inspection's visit has a lot for its subject, not a part, and its
+    # report is keyed to the lot — not to the visit. Those readings showed no report and
+    # no lot (hunt 2026-11-10, R2).
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import MaterialLot, StepExecution
+    lot_ct = ContentType.objects.get_for_model(MaterialLot)
+    lot_of_visit = {
+        se_id: lot_id for se_id, lot_id in
+        StepExecution.objects.filter(  # tenant-safe: .objects auto-scopes
+            pk__in=read_visits, subject_content_type=lot_ct).values_list('pk', 'subject_id')}
     reports = (QualityReports.objects  # tenant-safe: .objects auto-scopes
-               .filter(Q(equipment_links__equipment_id__in=chain) | Q(step_execution_id__in=read_visits),
+               .filter(Q(equipment_links__equipment_id__in=chain) | Q(step_execution_id__in=read_visits)
+                       | Q(material_lot_id__in=set(lot_of_visit.values())),
                        archived=False, created_at__lt=end)
                .select_related('part', 'material_lot', 'step', 'detected_by')
                .prefetch_related('personnel_links__user')
@@ -145,6 +156,10 @@ def exposure_for(record) -> CalibrationExposure:
     # Readings with no report on their visit: one row per visit (or load), failed if
     # any reading was out of spec.
     reported = {qr.step_execution_id for qr in reports if qr.step_execution_id}
+    reported_lots = {str(qr.material_lot_id) for qr in reports if qr.material_lot_id}
+    reported |= {se_id for se_id, lot_id in lot_of_visit.items() if str(lot_id) in reported_lots}
+    lots = {str(lot.pk): lot for lot in MaterialLot.objects.filter(  # tenant-safe: .objects auto-scopes
+        pk__in=set(lot_of_visit.values()))}
     by_visit = {}
     for m in (readings.select_related('step_execution__part', 'step_execution__step',
                                       'batch_execution__step', 'recorded_by')
@@ -156,12 +171,15 @@ def exposure_for(record) -> CalibrationExposure:
         if row is None:
             ex = m.step_execution or m.batch_execution
             part = getattr(ex, 'part', None)
+            lot = lots.get(str(lot_of_visit.get(m.step_execution_id))) if m.step_execution_id else None
             who = m.recorded_by
             by_visit[key] = row = {
                 # The reading's own id: the API types `id` as a UUID, and a made-up
                 # "reading-<pk>" made the client reject the whole list.
-                'id': str(m.pk), 'part': part.ERP_id if part else '',
+                'id': str(m.pk),
+                'part': part.ERP_id if part else (lot.lot_number if lot else ''),
                 'part_id': str(part.pk) if part else None,
+                'material_lot_id': str(lot.pk) if lot else None,
                 'step': ex.step.name if getattr(ex, 'step_id', None) else '',
                 'created_at': m.recorded_at,
                 'inspector': (who.get_full_name() or who.email) if who else '', 'failed': False}
@@ -169,7 +187,7 @@ def exposure_for(record) -> CalibrationExposure:
     for row in by_visit.values():
         rows.append(ExposedReport(
             id=row['id'], report_number='', part=row['part'], part_id=row['part_id'],
-            material_lot_id=None, step=row['step'], created_at=row['created_at'],
+            material_lot_id=row['material_lot_id'], step=row['step'], created_at=row['created_at'],
             inspector=row['inspector'], status='FAIL' if row['failed'] else 'PASS', role='GAUGE'))
     rows.sort(key=lambda r: r.created_at)
 

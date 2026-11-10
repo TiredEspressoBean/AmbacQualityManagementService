@@ -455,9 +455,10 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             })
 
         # Calculate spec limits
-        nominal = float(definition.nominal) if definition.nominal else None
-        upper_tol = float(definition.upper_tol) if definition.upper_tol else None
-        lower_tol = float(definition.lower_tol) if definition.lower_tol else None
+        # A nominal or tolerance of 0 is a value, not a missing one (hunt #10).
+        nominal = float(definition.nominal) if definition.nominal is not None else None
+        upper_tol = float(definition.upper_tol) if definition.upper_tol is not None else None
+        lower_tol = float(definition.lower_tol) if definition.lower_tol is not None else None
 
         if nominal is None or upper_tol is None or lower_tol is None:
             return Response({

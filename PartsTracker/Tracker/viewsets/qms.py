@@ -905,7 +905,9 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
             'initiated_by', 'assigned_to', 'verified_by', 'approved_by',
             'part', 'step', 'work_order',
         ).prefetch_related(
-            'tasks', 'rca_records', 'verifications'
+            # Deleted (archived) tasks aren't the CAPA's: the nested `tasks` listed them.
+            models.Prefetch('tasks', queryset=CapaTasks.objects.filter(archived=False)),  # tenant-safe: FK to scoped CAPAs
+            'rca_records', 'verifications'
         )
 
         # Filter for overdue CAPAs if requested
@@ -991,7 +993,8 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
     def completion_percentage(self, request, pk=None):
         """Get completion percentage of CAPA tasks"""
         capa = self.get_object()
-        percentage = capa.get_completion_percentage()
+        # `get_completion_percentage` doesn't exist: this was a 500 (hunt #17).
+        percentage = capa.calculate_completion_percentage()
         return Response({'completion_percentage': percentage})
 
     @extend_schema(
@@ -1051,10 +1054,12 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
             'PENDING_VERIFICATION': 0,
             'CLOSED': 0,
         }
+        # Keyed by the stored severity, as the schema and the page read it. Lowercase
+        # keys never matched a CAPA, so the severity bar never rendered (hunt #11).
         by_severity = {
-            'critical': 0,
-            'major': 0,
-            'minor': 0,
+            'CRITICAL': 0,
+            'MAJOR': 0,
+            'MINOR': 0,
         }
         overdue_count = 0
 
@@ -1453,6 +1458,7 @@ class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMi
         request={"application/json": {"type": "object", "properties": {
             "effectiveness_result": {"type": "string", "enum": ["CONFIRMED", "NOT_EFFECTIVE"]},
             "notes": {"type": "string", "description": "Findings / justification. Required (>=10 chars) for self-verification."},
+            "verification_date": {"type": "string", "format": "date", "description": "When the verification was done (may be earlier than today; not in the future, not before the CAPA opened). Today when omitted."},
             "cosign_email": {"type": "string", "description": "Email of an authorized verifier co-signing (when the caller lacks verify_capa)"},
             "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verification is attributed to them."},
         }, "required": ["effectiveness_result"]}},
@@ -1474,6 +1480,18 @@ class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMi
                  'code': 'verify_result_required'},
                 status=status.HTTP_400_BAD_REQUEST)
 
+        verification_date = None
+        raw_date = request.data.get('verification_date')
+        if raw_date:
+            from django.utils.dateparse import parse_date
+            try:
+                verification_date = parse_date(str(raw_date))
+            except ValueError:
+                verification_date = None
+            if verification_date is None:
+                return Response({'detail': "verification_date must be a date (YYYY-MM-DD).",
+                                 'code': 'verify_invalid'}, status=status.HTTP_400_BAD_REQUEST)
+
         signer, err_response = self._resolve_signer(request)
         if err_response is not None:
             return err_response
@@ -1481,6 +1499,7 @@ class CapaVerificationViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMi
         try:
             verify_capa_effectiveness(
                 verification, signer, result == 'CONFIRMED', request.data.get('notes', ''),
+                verification_date=verification_date,
             )
         except DjangoValidationError as e:
             return Response({'detail': '; '.join(e.messages), 'code': 'verify_invalid'},

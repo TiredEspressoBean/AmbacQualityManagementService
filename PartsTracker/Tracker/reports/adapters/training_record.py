@@ -147,7 +147,8 @@ class TrainingRecordAdapter(ReportAdapter):
 
         records_qs = (
             TrainingRecord.objects
-            .filter(tenant=tenant, user=employee)
+            # Deleted (archived) records aren't the employee's training (hunt N7).
+            .filter(tenant=tenant, user=employee, archived=False)
             .select_related("training_type", "trainer")
             .order_by("-completed_date")
         )

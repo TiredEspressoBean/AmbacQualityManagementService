@@ -48,6 +48,10 @@ def open_scar(*, supplier, problem_statement, severity="MAJOR",
         )
         if quality_report is not None:
             capa.quality_reports.add(quality_report)
+            # The report's CAPA decision is this SCAR, as for any CAPA raised from a
+            # report — it kept reading undecided (hunt #13).
+            from Tracker.services.qms.capa_decision import stamp_promoted
+            stamp_promoted(capa, user)
     return capa
 
 

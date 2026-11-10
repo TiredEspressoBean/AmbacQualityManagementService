@@ -39,6 +39,13 @@ def contain_failed_batch(report) -> None:
     if batch is None:
         return
 
+    # Once per report, as for a part's FAIL: a report that already produced its
+    # disposition (in any state) doesn't contain the load again. Any later save of the
+    # report — a "no CAPA needed", a claim — re-quarantined members already released
+    # by the closed disposition and opened a bare new one (hunt 2026-11-10, N10).
+    if report.dispositions.exists():
+        return
+
     # Idempotency: one open disposition per batch.
     if QuarantineDisposition.objects.filter(archived=False,
         batch_execution=batch, current_state__in=["OPEN", "IN_PROGRESS"],

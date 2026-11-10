@@ -75,6 +75,9 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
         api.api_CapaVerifications_verify_create({
             effectiveness_result: formData.effectiveness_result as "CONFIRMED" | "NOT_EFFECTIVE",
             notes: formData.verification_notes || undefined,
+            // When it was verified — may be an earlier day (not future, not before the
+            // CAPA opened; the server checks). Ignored before: today was stamped.
+            verification_date: formData.verification_date || undefined,
             ...(cosign ? { cosign_email: cosign.email, cosign_password: cosign.password } : {}),
         }, {
             params: { id: verificationId },
@@ -278,8 +281,12 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
                         <Input
                             type="date"
                             value={formData.verification_date}
+                            max={format(new Date(), "yyyy-MM-dd")}
                             onChange={(e) => updateField("verification_date", e.target.value)}
                         />
+                        <p className="text-xs text-muted-foreground">
+                            The day the verification was done — earlier than today if it was.
+                        </p>
                     </div>
 
                     <div className="space-y-2">

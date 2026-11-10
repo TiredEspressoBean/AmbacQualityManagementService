@@ -126,6 +126,10 @@ def on_report_failed(report, prior_status) -> bool:
     return True
 
 
+_NOT_QUARANTINED_ON_FAIL = (PartsStatus.SHIPPED, PartsStatus.SCRAPPED, PartsStatus.CANCELLED,
+                            PartsStatus.COMPLETED)
+
+
 def _apply_fail_consequences(report) -> None:
     # A report with no part (a receiving lot, an OSP return) has no sampling state or
     # part to quarantine — the lot/shipment flow contains it — but is still an NCR.
@@ -133,8 +137,12 @@ def _apply_fail_consequences(report) -> None:
         SamplingTriggerManager(report.part, "FAIL").update_state()
     _trigger_sampling_fallback(report)
     if report.part:
-        report.part.part_status = PartsStatus.QUARANTINED
-        report.part.save(update_fields=["part_status"])
+        # A part already shipped, scrapped, cancelled or completed isn't put back in
+        # quarantine: that rewrote where it is (hunt #18). The finding still stands —
+        # NCR and disposition — and decides what happens to it.
+        if report.part.part_status not in _NOT_QUARANTINED_ON_FAIL:
+            report.part.part_status = PartsStatus.QUARANTINED
+            report.part.save(update_fields=["part_status"])
         _notify_step_failure(report)
     _emit_ncr_opened(report)
 

@@ -68,6 +68,11 @@
   field("Work Order", data.work_order_erp_id),
   field("Step", data.step_name),
 
+  // A receiving lot's or a failed batch cycle's NCR names its lot / load.
+  ..if data.lot_number != none or data.batch_load != none {
+    (field("Lot", data.lot_number), field("Batch Load", data.batch_load))
+  },
+
   field("Rework Attempt", str(data.rework_attempt_at_step)),
   field("Opened", fmt-dt(data.created_at)),
 
@@ -153,6 +158,16 @@
 ]
 
 = Disposition & Resolution
+
+// Who decided the disposition, and when — the authority behind it.
+#grid(
+  columns: (1fr, 1fr),
+  column-gutter: 16pt,
+  row-gutter: 6pt,
+  field("Decision Authorized By", data.decision_authorized_by),
+  field("Decision Authorized At", fmt-dt(data.decision_authorized_at)),
+)
+#v(6pt)
 
 #if data.resolution_notes == "" [
   #text(fill: muted, style: "italic")[No resolution notes recorded.]

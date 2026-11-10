@@ -20561,6 +20561,7 @@ const PatchedCapaVerificationRequest = z
 const api_CapaVerifications_verify_create_Body = z.object({
   effectiveness_result: z.enum(["CONFIRMED", "NOT_EFFECTIVE"]),
   notes: z.string().optional(),
+  verification_date: z.string().optional(),
   cosign_email: z.string().optional(),
   cosign_password: z.string().optional(),
 });

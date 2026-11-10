@@ -272,9 +272,15 @@ def void_fpi_pass(fpi: FPIRecord, user, reason: str) -> FPIRecord:
         QaApproval.objects.filter(  # tenant-safe: scoped FKs
             step_id=fpi.step_id, work_order_id=fpi.work_order_id, archived=False,
         ).update(archived=True, updated_at=timezone.now())
+        # The re-inspection is made on a part at the step: the voided pass's first piece
+        # has often moved on, and Pass needs the designated part at the FPI step — a
+        # copy of it left an FPI nobody could pass, only waive (hunt 2026-11-10, N16).
+        from Tracker.services.qms.fpi_scope import context_of_record
+        designated = _first_piece_in(fpi.work_order, fpi.step, context_of_record(fpi),
+                                     prefer=fpi.designated_part)
         fresh = FPIRecord.objects.create(
             tenant=fpi.tenant, work_order=fpi.work_order, step=fpi.step, part_type=fpi.part_type,
-            designated_part=fpi.designated_part, equipment=fpi.equipment,
+            designated_part=designated or fpi.designated_part, equipment=fpi.equipment,
             shift_date=fpi.shift_date, status=FPIStatus.PENDING,
             notes=f"Re-inspection: the pass on {fpi.inspected_at:%Y-%m-%d} was voided — {reason}"
                   if fpi.inspected_at else f"Re-inspection: an earlier pass was voided — {reason}")

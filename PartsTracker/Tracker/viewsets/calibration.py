@@ -179,7 +179,9 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
         today = tenant_today(self.tenant)
 
         qs = self._latest(self.get_queryset())
-        qs = qs.filter(due_date__lt=today)
+        # A gauge whose latest calibration FAILED is counted as failed, not overdue —
+        # as the stats card counts it; listed here too, the list and card disagreed (N8).
+        qs = qs.filter(due_date__lt=today).exclude(result='FAIL')
         qs = qs.order_by('due_date')
 
         page = self.paginate_queryset(qs)

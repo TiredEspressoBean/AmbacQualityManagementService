@@ -277,7 +277,7 @@ class CapaReportAdapter(ReportAdapter):
                 completed_date=t.completed_date,
                 status=t.status,
             )
-            for t in capa.tasks.all()
+            for t in capa.tasks.filter(archived=False)
         ]
 
         # ---- RCA — use the most recent record ----
@@ -287,8 +287,9 @@ class CapaReportAdapter(ReportAdapter):
             rca_ctx = _build_rca(rca_record)
 
         # ---- Verification — use the most recent record ----
+        # (`verifications.first()` was the oldest — hunt #19.)
         verification_ctx = None
-        verification = capa.verifications.first()
+        verification = capa.latest_verification
         if verification is not None:
             verification_ctx = VerificationContext(
                 verification_method=verification.verification_method or "",
@@ -314,7 +315,9 @@ class CapaReportAdapter(ReportAdapter):
             capa_number=capa.capa_number,
             capa_type=capa.capa_type,
             severity=capa.severity,
-            status=capa.status,
+            # The status the app shows — derived from tasks, RCA and verification. The
+            # stored field lags it (a CAPA in progress printed Open: hunt N2).
+            status=capa.computed_status,
             initiated_date=capa.initiated_date,
             due_date=capa.due_date,
             completed_date=capa.completed_date,

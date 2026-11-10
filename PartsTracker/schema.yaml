@@ -4635,6 +4635,12 @@ paths:
                   type: string
                   description: Findings / justification. Required (>=10 chars) for
                     self-verification.
+                verification_date:
+                  type: string
+                  format: date
+                  description: When the verification was done (may be earlier than
+                    today; not in the future, not before the CAPA opened). Today when
+                    omitted.
                 cosign_email:
                   type: string
                   description: Email of an authorized verifier co-signing (when the

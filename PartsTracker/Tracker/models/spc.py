@@ -214,21 +214,26 @@ class SPCBaseline(SecureModel):
 
     @property
     def control_limits(self):
-        """Return control limits as a dictionary matching frontend types."""
+        """Return control limits as a dictionary matching frontend types.
+
+        A limit of 0 is a limit (the range chart's LCL is 0 for small subgroups); only
+        a missing one is None (hunt 2026-11-10, N12)."""
+        def f(v):
+            return float(v) if v is not None else None
         if self.chart_type == ChartType.I_MR.value:
             return {
-                'individualUCL': float(self.individual_ucl) if self.individual_ucl else None,
-                'individualLCL': float(self.individual_lcl) if self.individual_lcl else None,
-                'individualCL': float(self.individual_cl) if self.individual_cl else None,
-                'mrUCL': float(self.mr_ucl) if self.mr_ucl else None,
-                'mrCL': float(self.mr_cl) if self.mr_cl else None,
+                'individualUCL': f(self.individual_ucl),
+                'individualLCL': f(self.individual_lcl),
+                'individualCL': f(self.individual_cl),
+                'mrUCL': f(self.mr_ucl),
+                'mrCL': f(self.mr_cl),
             }
         else:
             return {
-                'xBarUCL': float(self.xbar_ucl) if self.xbar_ucl else None,
-                'xBarLCL': float(self.xbar_lcl) if self.xbar_lcl else None,
-                'xBarCL': float(self.xbar_cl) if self.xbar_cl else None,
-                'rangeUCL': float(self.range_ucl) if self.range_ucl else None,
-                'rangeLCL': float(self.range_lcl) if self.range_lcl else None,
-                'rangeCL': float(self.range_cl) if self.range_cl else None,
+                'xBarUCL': f(self.xbar_ucl),
+                'xBarLCL': f(self.xbar_lcl),
+                'xBarCL': f(self.xbar_cl),
+                'rangeUCL': f(self.range_ucl),
+                'rangeLCL': f(self.range_lcl),
+                'rangeCL': f(self.range_cl),
             }

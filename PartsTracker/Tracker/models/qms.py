@@ -749,8 +749,18 @@ class MeasurementResult(SecureModel):
         if self.definition.type == "NUMERIC":
             if self.value_numeric is None:
                 return False
-            return (
-                    self.definition.nominal - self.definition.lower_tol <= self.value_numeric <= self.definition.nominal + self.definition.upper_tol)
+            d = self.definition
+            # A one-sided spec judges its one side; no nominal, nothing to judge against.
+            # (None arithmetic here was a TypeError on every such reading: hunt #20.)
+            if d.nominal is None:
+                return True
+            from decimal import Decimal
+            v = Decimal(str(self.value_numeric))
+            if d.lower_tol is not None and v < d.nominal - d.lower_tol:
+                return False
+            if d.upper_tol is not None and v > d.nominal + d.upper_tol:
+                return False
+            return True
         if self.definition.type == "PASS_FAIL":
             return self.value_pass_fail == "PASS"
         return False
@@ -1605,11 +1615,17 @@ class CAPA(SecureModel):
         return (self.rca_records.first().root_cause_verification_status
                 == RootCauseVerificationStatus.VERIFIED)
 
+    def _live_tasks(self):
+        """The CAPA's tasks, less deleted ones. Deleting a task archives it, and every
+        reader below counted it still — a CAPA with a deleted open task could never
+        reach verification (hunt 2026-11-10, N1)."""
+        return self.tasks.filter(archived=False)
+
     def all_tasks_completed(self):
         """Check if all tasks are completed"""
         if not hasattr(self, 'tasks'):
             return True
-        return not self.tasks.exclude(status='COMPLETED').exists()
+        return not self._live_tasks().exclude(status='COMPLETED').exists()
 
     def has_confirmed_verification(self):
         """Check if there's a verification with CONFIRMED effectiveness"""
@@ -1634,11 +1650,11 @@ class CAPA(SecureModel):
         # Check if ready for verification
         if self.all_tasks_completed() and self.rca_verified():
             # Has tasks and they're all done, plus RCA is complete
-            if hasattr(self, 'tasks') and self.tasks.exists():
+            if hasattr(self, 'tasks') and self._live_tasks().exists():
                 return CapaStatus.PENDING_VERIFICATION
 
         # Check if work has started
-        has_tasks = hasattr(self, 'tasks') and self.tasks.exists()
+        has_tasks = hasattr(self, 'tasks') and self._live_tasks().exists()
         has_rca = hasattr(self, 'rca_records') and self.rca_records.exists()
         if has_tasks or has_rca:
             return CapaStatus.IN_PROGRESS
@@ -1674,8 +1690,8 @@ class CAPA(SecureModel):
         # capa=OuterRef('pk'), and the outer queryset is already scoped
         confirmed = CapaVerification.objects.filter(
             capa=OuterRef('pk'), effectiveness_result='CONFIRMED')
-        any_task = CapaTasks.objects.filter(capa=OuterRef('pk'))
-        open_task = CapaTasks.objects.filter(capa=OuterRef('pk')).exclude(
+        any_task = CapaTasks.objects.filter(capa=OuterRef('pk'), archived=False)
+        open_task = CapaTasks.objects.filter(capa=OuterRef('pk'), archived=False).exclude(
             status=CapaTaskStatus.COMPLETED)
         # Mirrors rca_verified(): a non-blank summary AND a verified root cause.
         rca_done = RcaRecord.objects.filter(
@@ -1703,8 +1719,11 @@ class CAPA(SecureModel):
         several (`verifications`); code that read a singular `capa.verification` never
         found one — it raised in the verification-complete notification and silently
         dropped the verification quarter of the completion percentage."""
+        # An undecided plan has no date: Postgres sorts NULL first descending, which
+        # made it "latest" ahead of the decided verification.
+        from django.db.models import F
         return (self.verifications.filter(archived=False, is_current_version=True)
-                .order_by('-verification_date', '-created_at').first())
+                .order_by(F('verification_date').desc(nulls_last=True), '-created_at').first())
 
     def calculate_completion_percentage(self):
         """Calculate overall CAPA completion progress
@@ -1718,9 +1737,9 @@ class CAPA(SecureModel):
         if self.rca_complete():
             progress += 25
 
-        if hasattr(self, 'tasks') and self.tasks.exists():
-            completed = self.tasks.filter(status=CapaTaskStatus.COMPLETED).count()
-            total = self.tasks.count()
+        if hasattr(self, 'tasks') and self._live_tasks().exists():
+            completed = self._live_tasks().filter(status=CapaTaskStatus.COMPLETED).count()
+            total = self._live_tasks().count()
             progress += int((completed / total) * 50)
 
         verification = self.latest_verification
@@ -1742,7 +1761,7 @@ class CAPA(SecureModel):
             blockers.append("Root cause not verified")
 
         if hasattr(self, 'tasks'):
-            incomplete_tasks = self.tasks.exclude(status='COMPLETED')
+            incomplete_tasks = self._live_tasks().exclude(status='COMPLETED')
             if incomplete_tasks.exists():
                 blockers.append(f"{incomplete_tasks.count()} task(s) still pending")
 
@@ -2728,25 +2747,27 @@ class TrainingRequirement(SecureModel):
         verbose_name = 'Training Requirement'
         verbose_name_plural = 'Training Requirements'
         constraints = [
-            # Prevent duplicate training requirements for same target
+            # Prevent duplicate training requirements for same target. Live ones only:
+            # removing a requirement archives it, and an archived row blocked adding it
+            # back for good (hunt 2026-11-10, N5).
             models.UniqueConstraint(
                 fields=['training_type', 'step'],
-                condition=models.Q(step__isnull=False),
+                condition=models.Q(step__isnull=False, archived=False),
                 name='unique_training_per_step'
             ),
             models.UniqueConstraint(
                 fields=['training_type', 'process'],
-                condition=models.Q(process__isnull=False),
+                condition=models.Q(process__isnull=False, archived=False),
                 name='unique_training_per_process'
             ),
             models.UniqueConstraint(
                 fields=['training_type', 'equipment_type'],
-                condition=models.Q(equipment_type__isnull=False),
+                condition=models.Q(equipment_type__isnull=False, archived=False),
                 name='unique_training_per_equipment_type'
             ),
             models.UniqueConstraint(
                 fields=['training_type', 'job_role'],
-                condition=models.Q(job_role__isnull=False),
+                condition=models.Q(job_role__isnull=False, archived=False),
                 name='unique_training_per_job_role'
             ),
         ]
