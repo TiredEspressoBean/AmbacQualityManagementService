@@ -78,9 +78,16 @@ Log in as Priya. **Purchasing** links **Shortages**, **Material outlook**, **Exp
 3. Enter the PO number and line, the quantity, and the supplier's promised date (it
    defaults to today plus the lead time). **Record 1 expected receipt**.
 
-The line leaves the list: the shortage is now covered by something expected. Until
-an order is recorded here, nothing can tell anyone it's late, and the shortage
-surprises the floor instead.
+The line stays, and **Incoming** now reads *due &lt;date&gt;* with **after need**. The
+order-by date had already passed, so a delivery one lead time out lands after the
+work needs it. A delivery covers a shortage only if it's promised by the need-by
+date; one promised later is recorded but still leaves the work short on the day.
+That makes it the order to expedite: chase the supplier for an earlier date
+(module 3), and if there isn't one, tell the planner the work will wait for it.
+Had the promise been in time, the line would have left the list.
+
+Until an order is recorded here, nothing can tell anyone it's late, and the
+shortage surprises the floor instead.
 
 **Keyed it wrong?** A promised date already past warns you: *That date has passed —
 the delivery counts as late from the start.* If one gets through, don't fix it with

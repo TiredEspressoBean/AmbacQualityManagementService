@@ -211,8 +211,11 @@ You can give one **PO number** for the whole set (optional), then per row a **qu
 from today), a **supplier** (pre-filled with the preferred one) and a **PO
 line**. It records every row or none.
 
-The shortage then reads as covered, because the expected receipts now exist as
-incoming supply.
+A delivery covers the shortage only if it's promised by the row's **need-by**
+date. One promised later is still recorded, and **Incoming** shows its date with
+**after need**, but the row stays: the work is still short on the day it needs the
+material. That row is the one to expedite, either by asking the supplier for an
+earlier date or by telling the planner the work will wait for it.
 
 !!! important "Nothing is purchased here"
     This closes the loop between *what we are short of* and *what we are
