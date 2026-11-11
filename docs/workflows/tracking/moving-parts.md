@@ -240,12 +240,16 @@ Five kinds of block can be bypassed:
 - QA sign-off
 - first-piece inspection
 - sampling
-- a missing or out-of-spec measurement
+- an out-of-spec measurement
+
+A bypass clears only the kind of block it was requested for.
 
 These can't:
 
 - **Training.** Use the supervisor override when the work starts.
 - **Life limits.** These need a limit extension.
+- **A required step of the work instruction that isn't done**, including a
+  measurement not yet taken. Do the step.
 
 Requests land under **Bypass requests**, on the QA inbox and on the QA Manager's
 and Tenant Admin's home pages. A holder of `approve_stepoverride` (by default QA

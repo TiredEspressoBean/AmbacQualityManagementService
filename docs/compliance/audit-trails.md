@@ -57,6 +57,24 @@ tenant's audit log.
 - Timestamp
 - Signature meaning
 
+### Production Gate Decisions
+
+Each check a part clears on a step is recorded:
+- **when work starts:** training, holds, quarantine, temporary changes;
+- **when the part leaves the step:** QA sign-off, first piece, measurements, sampling.
+
+Each record holds:
+- the check;
+- whether the part passed it or was let past by a supervisor override or an
+  approved bypass request;
+- who, when and the reason.
+
+A refusal that is later cleared is not kept. The record that remains is how the
+part got through.
+
+There is no screen for these records yet. They can be read through the API
+(`/api/GateDecisions/`, filtered by step visit or part).
+
 ### Permission Changes
 - Group assignments
 - Permission grants/revocations — in the group's history, as a change to

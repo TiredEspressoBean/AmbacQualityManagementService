@@ -16,6 +16,26 @@ The player opens on the first part you checked. After you complete a part's
 step, it moves to the next checked part automatically, so you can work through
 a batch without going back to the work order.
 
+### What can stop you starting
+
+Every way of starting a step runs the same checks: **Start Work**, starting a
+load, and any other route into the step. Some refusals nobody on the floor can
+override. Their owner has to act first:
+
+| Refused because | Who clears it |
+|---|---|
+| The work order is on hold, cancelled or completed | Whoever holds the work order clears the hold |
+| The part is quarantined | QA, by deciding its disposition |
+| The work order runs a temporary change whose end date has passed | Change control: extend it, or move the order back to baseline |
+| A remanufactured unit is waiting on the customer's authorisation | The reman lead records the customer's answer |
+
+Others a supervisor can authorize: missing training (below), a repeat-visit
+rule, and a step assigned to someone else.
+
+You can't record work on a step nobody has started: *"Start Work on … before
+recording work on it."* Correcting a voided result on a finished step is the
+exception. That is a re-capture, not new work.
+
 ## If you're not qualified for the step
 
 Steps can carry training requirements. If you don't hold the training, the
@@ -81,9 +101,13 @@ independently."*
 A load has three phases:
 
 1. **Loading.** **Start a load — select its units**: tick the units going in and
-   **Start load**. A held unit is greyed out and can't be loaded. Then do the
-   **Loading checks — captured once for the whole load** and **Confirm for
-   batch**.
+   **Start load**. A held unit is greyed out and can't be loaded. Starting the
+   load starts the step for every unit in it, in your name, with the same checks
+   as **Start Work** run for each one. If any unit is refused, nothing starts. If
+   the refusal is one a supervisor can authorize (training, a repeat visit, a
+   unit assigned to someone else), the supervisor sign-in opens. **Authorize &
+   start load** starts it. Then do the **Loading checks — captured once for the
+   whole load** and **Confirm for batch**.
 2. **Running.** The load seals at the point the instruction says — the panel
    tells you which: *Confirming “Start the wash cycle” seals the load.* —
    and confirming it reads *Captured "Start the wash cycle": the load is sealed
@@ -126,7 +150,9 @@ what's in the load can be put right, with no reason asked:
 - **Add parts** lists the other units at the step on this work order that aren't
   held and aren't in another open load: *"In the basket but not on the load? Tick
   them. They ride this load's cycle."* **Add N to the load** puts them in, and
-  they carry the load's checks: *Added to the load*. It isn't shown when there's
+  they carry the load's checks: *Added to the load*. A unit that can't be started
+  (its work order on hold, the unit quarantined, an ended temporary change) is
+  refused. It isn't shown when there's
   nothing to add.
 
 Each change is listed under the chips — *"INJ-OPS-014 taken out by Mike Rodriguez

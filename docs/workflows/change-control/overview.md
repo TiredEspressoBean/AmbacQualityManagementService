@@ -206,6 +206,9 @@ for work that was authorised in advance.
     > *PCR-… is a temporary change that ended on … Extend it through change
     > control, or move … back to the baseline, before more work is done.*
 
+    Work started before the end date can still be finished and move on. Only
+    new starts are refused.
+
     This cannot be overridden by a supervisor. There are two ways on:
 
     - **Extend…** on the PCR page raises a new PCR, *"Extend PCR-… to
