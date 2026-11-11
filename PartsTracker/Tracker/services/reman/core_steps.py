@@ -52,9 +52,8 @@ def on_step_started(part, operator=None) -> None:
     """A step has begun on this unit. The first one on a RECEIVED core starts teardown."""
     core = core_of(part)
     if core is not None and core.status == 'RECEIVED':
-        from Tracker.services.life_tracking.reman_cycles import count_reman_start
+        # Judged and counted there, as every route into a reman is.
         from Tracker.services.reman.core import start_core_disassembly
-        count_reman_start(core)
         start_core_disassembly(core, operator)
 
 

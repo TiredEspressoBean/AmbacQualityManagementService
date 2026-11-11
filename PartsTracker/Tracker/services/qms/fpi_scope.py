@@ -169,6 +169,20 @@ def made_under_old_setup(step, work_order, part) -> bool:
         status=FPIStatus.SUPERSEDED, setup_ended_at__gt=started).exists()
 
 
+def part_released(step, work_order, part) -> bool:
+    """Has `part` the step's QA sign-off and first piece, in its own context — or was it
+    made under a setup since superseded, whose first piece covers it?"""
+    if made_under_old_setup(step, work_order, part):
+        return True
+    if step.requires_qa_signoff and not qa_released(step, work_order, part=part):
+        return False
+    if step.requires_first_piece_inspection:
+        status = step.get_fpi_status(work_order, part=part)['status']
+        if status not in ('PASSED', 'WAIVED', 'NOT_REQUIRED'):
+            return False
+    return True
+
+
 def qa_released(step, work_order, part=None) -> bool:
     """Whether `part` has the step's QA release on `work_order`. A direct step sign-off
     releases the work order; a first-piece pass releases its own context only, so on a

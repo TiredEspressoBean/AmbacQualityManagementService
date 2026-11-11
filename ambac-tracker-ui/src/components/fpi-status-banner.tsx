@@ -263,7 +263,12 @@ export function FpiStatusBanner({
         ? ` First piece: ${pieces.length} of ${quantity} parts started${pieces.length ? ` (${pieces.map((p) => p.label).join(", ")})` : ""}.`
         : "";
     const partLabel = fpiStatus.designated_part_label;
-    const firstPiece = partLabel ? `first piece ${partLabel}` : "first piece";
+    // Every piece of it, not just the first started.
+    const pieceLabels = pieces.length ? pieces.map((p) => p.label) : (
+        fpiStatus.designated_part_label ? [fpiStatus.designated_part_label] : []);
+    const firstPiece = pieceLabels.length ? `first piece (${pieceLabels.join(", ")})` : "first piece";
+    // Places still open in the set: those parts may start now as part of it.
+    const openPlaces = Math.max(0, quantity - pieces.length);
 
     const isPending = fpiStatus.has_pending;
     const ready = fpiStatus.first_piece_ready;
@@ -300,12 +305,14 @@ export function FpiStatusBanner({
         // First piece designated but its inspection isn't finished yet.
         icon = <Clock className="h-5 w-5 text-amber-600" />;
         title = "First Piece Inspection in progress";
-        detail = `Complete the ${firstPiece} inspection below — other parts can't start until it's bought off.${piecesNote}`;
+        detail = openPlaces > 0
+            ? `${openPlaces} more part${openPlaces === 1 ? "" : "s"} can start as part of the first piece; the rest wait for QA's buy-off.${piecesNote}`
+            : `Complete the ${firstPiece} inspection below — other parts can't start until it's bought off.${piecesNote}`;
         actions = compact ? <Badge variant="secondary">FPI in progress</Badge> : null;
     } else if (canSignOff) {
         // First piece complete; this user may buy off.
         icon = <PenLine className="h-5 w-5 text-blue-600" />;
-        title = "First piece complete — ready for buy-off";
+        title = "First piece ready for buy-off";
         detail = `Review the ${firstPiece} results below, then sign off to release the run.`;
         actions = !compact ? (
             <div className="flex items-center gap-2">
@@ -330,7 +337,7 @@ export function FpiStatusBanner({
         // First piece complete; this user is not an approver.
         icon = <Clock className="h-5 w-5 text-amber-600" />;
         title = "First piece complete — awaiting buy-off";
-        detail = `${partLabel ?? "The first piece"} is ready for an authorized sign-off before the run can proceed.`;
+        detail = `${pieceLabels.length ? `The first piece (${pieceLabels.join(", ")})` : "The first piece"} is ready for an authorized sign-off before the run can proceed.`;
         actions = compact ? <Badge variant="secondary">Awaiting buy-off</Badge> : null;
     }
 

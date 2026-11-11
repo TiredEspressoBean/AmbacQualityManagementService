@@ -13,13 +13,28 @@ from Tracker.services.reman.core_part import sync_part_status
 
 
 def start_core_disassembly(core: Core, user) -> Core:
-    """Transition a Core from RECEIVED to IN_DISASSEMBLY.
+    """Transition a Core from RECEIVED to IN_DISASSEMBLY: its reman starts.
+
+    Every way a reman starts comes here — the first step's Start Work, the Start
+    teardown buttons, an advance — so this is where its start is judged and counted
+    (gate review 2026-11-11, complete mediation): the start floor (holds, life limits
+    including the reman-cycle count) refuses it, and a start that goes ahead counts one
+    more reman on the core's reman-cycle limits.
 
     Raises:
         ValueError: core is not in RECEIVED status.
+        gates.StartRefused: a start gate refuses it.
     """
     if core.status != 'RECEIVED':
         raise ValueError(f"Cannot start disassembly - core is {core.status}")
+    from Tracker.services.life_tracking.reman_cycles import count_reman_start
+    from Tracker.services.mes.gates import StartContext, StartRefused, floor_blockers
+    part = core.part
+    refused = floor_blockers(StartContext(part=part, step=part.step,
+                                          work_order=part.work_order, operator=user))
+    if refused:
+        raise StartRefused(refused)
+    count_reman_start(core)
     core.status = 'IN_DISASSEMBLY'
     core.disassembly_started_at = timezone.now()
     core.save()

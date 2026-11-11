@@ -127,5 +127,5 @@ class StepGateRowTests(TenantTestCase):
         new = self.step.create_new_version(change_description="test", user=self.user_a)
         set_gates_from_flags(new, requires_first_piece_inspection=True, fpi_scope='PER_SHIFT')
         changes = _diff_gates(self.step, new)
-        self.assertEqual(changes['gate:first_piece'], {'from': 'off', 'to': 'on (Per Shift)'})
+        self.assertEqual(changes['gate:first_piece'], {'from': 'off', 'to': 'on (Per shift)'})
         self.assertEqual(set(changes), {'gate:first_piece'})

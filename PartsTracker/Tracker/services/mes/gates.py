@@ -315,8 +315,9 @@ def _life_limit_refusals(part) -> list[str]:
         # (from the serial's history) so a refusal has a tracking to extend.
         from Tracker.services.life_tracking.reman_cycles import ensure_reman_trackings
         ensure_reman_trackings(core)
-    return [f"Life limit reached: {lt.definition.name} ({lt.current_value:g} of "
-            f"{lt.effective_hard_limit:g}) — it needs an approved extension to start."
+    from Tracker.services.life_tracking.life_tracking import amount
+    return [f"Life limit reached: {lt.definition.name} ({amount(lt.current_value)} of "
+            f"{amount(lt.effective_hard_limit)}) — it needs an approved extension to start."
             for lt in _life_trackings(part)
             # A tracking against a superseded version of its limit doesn't refuse: the
             # current version's spec does (the revision may have raised it).

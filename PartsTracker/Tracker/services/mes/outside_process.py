@@ -100,6 +100,8 @@ def build_ready_to_ship_groups():
     parts = (Parts.objects  # tenant-safe: .objects auto-scopes (request context)
              .filter(archived=False, step_id__in=osp_step_ids, part_status__in=_READY_TO_SHIP_STATUSES)
              .exclude(Exists(been_out))
+             # Not ready while its work order can't take work: sending out is refused.
+             .exclude(work_order__workorder_status__in=["ON_HOLD", "CANCELLED", "COMPLETED"])
              .select_related("step", "step__outside_supplier", "work_order"))
     for p in parts:
         by_step[p.step_id].append(p)
@@ -148,18 +150,23 @@ def _refuse_unworkable(step, parts, user) -> None:
     work order, or a quarantined part, refuses it — honouring the step's gate rows.
     Raises `StartRefused` naming every part refused."""
     from Tracker.models import StepExecution
-    from Tracker.services.mes.gates import StartContext, StartRefused, floor_blockers
-    refused = []
+    from Tracker.services.mes.gates import Blocker, StartContext, StartRefused, floor_blockers
+    # One refusal per reason, naming the parts it holds back (a held order's reason
+    # repeated once per part said nothing more).
+    by_reason: dict = {}
     for part in parts:
         ex = (StepExecution.objects  # tenant-safe: .objects auto-scopes
               .filter(archived=False, part=part, step=step,
                       status__in=["PENDING", "CLAIMED", "IN_PROGRESS"])
               .order_by("-entered_at").first())
-        refused += floor_blockers(StartContext(
-            part=part, step=step, work_order=part.work_order, operator=user,
-            execution=ex))
-    if refused:
-        raise StartRefused(refused)
+        for b in floor_blockers(StartContext(part=part, step=step, work_order=part.work_order,
+                                             operator=user, execution=ex)):
+            by_reason.setdefault((b.code, b.message), []).append(part.ERP_id)
+    if by_reason:
+        raise StartRefused([
+            Blocker(code, f"Can't send out {', '.join(names)}: "
+                          f"{message.replace('before starting work', 'before sending parts out')}")
+            for (code, message), names in by_reason.items()])
 
 
 def send_parts_out(*, step, parts, supplier=None, reference="", user=None):

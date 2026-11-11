@@ -28,6 +28,8 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from decimal import Decimal
 
+from Tracker.services.life_tracking.life_tracking import amount
+
 UNIT_PARTS, UNIT_CYCLES, UNIT_HOURS = 'parts', 'cycles', 'hours'
 TOOL_ROLES = ('TOOL', 'FIXTURE')
 
@@ -110,7 +112,7 @@ def at_hard_limit(equipment) -> list:
 
 def _limit_text(equipment, tracking) -> str:
     return (f"{equipment.name} has reached its life limit ({tracking.definition.name}: "
-            f"{tracking.current_value:g} of {tracking.effective_hard_limit:g} "
+            f"{amount(tracking.current_value)} of {amount(tracking.effective_hard_limit)} "
             f"{tracking.definition.unit_label.lower()}) — reset it after refurbishment, "
             "or get an extension approved.")
 
@@ -219,7 +221,7 @@ def capture(execution, equipment, role) -> list[str]:
     if execution is not None and stamp(execution, equipment, role):
         count_start(execution, equipment)
     return [f"{equipment.name} is near its life limit ({t.definition.name}: "
-            f"{t.current_value:g} of {t.effective_hard_limit:g}) — tell tooling."
+            f"{amount(t.current_value)} of {amount(t.effective_hard_limit)}) — tell tooling."
             for t in _trackings(equipment) if t.status == 'WARNING']
 
 
@@ -277,10 +279,9 @@ def _notify_soft_limit(tracking, equipment) -> None:
         id=str(tracking.id), tenant_id=str(tracking.tenant_id),
         equipment_id=str(equipment.id), equipment_name=equipment.name,
         limit_name=tracking.definition.name,
-        current=f"{tracking.current_value:g}",
-        soft_limit=f"{tracking.effective_soft_limit:g}",
-        hard_limit=(f"{tracking.effective_hard_limit:g}"
-                    if tracking.effective_hard_limit is not None else ''),
+        current=amount(tracking.current_value),
+        soft_limit=amount(tracking.effective_soft_limit),
+        hard_limit=amount(tracking.effective_hard_limit),
     )
     key = f"tool_life.warning:{tracking.id}:{tracking.updated_at.isoformat()}"
     transaction.on_commit(lambda: emit('tool_life.warning', tenant=tracking.tenant,

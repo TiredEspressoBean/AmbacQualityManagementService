@@ -103,8 +103,19 @@ function rethrow(e: unknown, what: string): never {
     const body = apiErrorBody(e);
     const detail = typeof body === "object" && body !== null
         ? (body as { detail?: unknown }).detail : undefined;
-    if (typeof detail === "string" && detail) throw new Error(detail);
+    if (typeof detail === "string" && detail) throw new Error(detail + waitingOn(body));
     throw new Error(`${what}: ${describeApiError(e)}`);
+}
+
+/** A start gate's refusal says who the floor is waiting on (the andon, user decision
+ *  2026-11-11): " Waiting on: QA to buy off the first piece." — one line per who. */
+export function waitingOn(body: unknown): string {
+    const blockers = (body as { blockers?: unknown } | null)?.blockers;
+    if (!Array.isArray(blockers)) return "";
+    const whom = [...new Set(blockers
+        .map((b) => (b as { waiting_on?: unknown }).waiting_on)
+        .filter((w): w is string => typeof w === "string" && w.length > 0))];
+    return whom.length ? `\nWaiting on: ${whom.join("; ")}.` : "";
 }
 
 export async function ensureStepExecution(

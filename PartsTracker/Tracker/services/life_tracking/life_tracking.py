@@ -13,6 +13,14 @@ from django.utils import timezone
 from Tracker.models import LifeTracking
 
 
+def amount(value) -> str:
+    """A count or limit as people write it: 2, 2.5 — not 2.00."""
+    if value is None:
+        return ''
+    text = f"{Decimal(str(value)).normalize():f}"
+    return text
+
+
 def carried_count(obj, definition):
     """What `obj` has used against earlier versions of `definition`: the newest earlier
     version's tracking's count, or None. A revised limit (raised, say) is the same

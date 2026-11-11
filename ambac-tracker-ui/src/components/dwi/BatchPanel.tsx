@@ -51,6 +51,7 @@ import { apiErrorMessage } from "@/lib/api/describeApiError";
 import {
     gateFrom,
     TrainingGateError,
+    waitingOn,
     type OverrideCredentials,
     type TrainingGateInfo,
 } from "@/hooks/useEnsureStepExecution";
@@ -563,8 +564,27 @@ function LoadMembers({ batch, labels, candidates, onChange }: {
     const [adding, setAdding] = useState(false);
     const [picked, setPicked] = useState<Set<string>>(new Set());
     const members = (batch.parts ?? []).map(String);
-    const say = (err: unknown) => toast.error("The load's parts didn't change", {
-        description: (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Try again.",
+    const say = (err: unknown) => {
+        const data = (err as { response?: { data?: { detail?: string } } })?.response?.data;
+        toast.error("The load's parts didn't change", {
+            description: data?.detail ? data.detail + waitingOn(data) : "Try again.",
+        });
+    };
+    // Adding a part starts it: a training / revisit / reassignment refusal opens the
+    // supervisor sign-in, as Start load does.
+    const [gate, setGate] = useState<TrainingGateInfo | null>(null);
+    const addParts = (override?: OverrideCredentials) => add.mutateAsync(
+        { id: batch.id, parts: [...picked], override },
+    ).then(() => {
+        setAdding(false); setPicked(new Set()); setGate(null); onChange?.();
+    }).catch((err: unknown) => {
+        const refused = gateFrom(err);
+        if (refused) {
+            if (override) throw new TrainingGateError(refused);
+            setGate(refused);
+            return;
+        }
+        say(err);
     });
     const changes = batch.membership_changes ?? [];
 
@@ -612,14 +632,19 @@ function LoadMembers({ batch, labels, candidates, onChange }: {
                         ))}
                     </div>
                     <Button type="button" size="sm" disabled={!picked.size || add.isPending}
-                        onClick={() => add.mutate({ id: batch.id, parts: [...picked] }, {
-                            onSuccess: () => { setAdding(false); setPicked(new Set()); onChange?.(); },
-                            onError: say,
-                        })}>
+                        onClick={() => { void addParts(); }}>
                         Add {picked.size || ""} to the load
                     </Button>
                 </div>
             )}
+            <SupervisorOverrideDialog
+                gate={gate}
+                onGateChange={setGate}
+                onCancel={() => setGate(null)}
+                onAuthorize={(override) => addParts(override)}
+                submitLabel="Authorize & add to the load"
+            />
+
             {changes.length > 0 && (
                 <ul className="space-y-0.5 text-[11px] text-muted-foreground">
                     {changes.map((c, i) => (

@@ -131,7 +131,10 @@ def diff_has_changes(diff: Dict[str, Any] | None) -> bool:
 def _gate_setting(row) -> str:
     """How a step's gate row is set, in words, for the diff."""
     if row.gate == 'first_piece':
-        scope = (row.fpi_scope or 'PER_WORKORDER').replace('_', ' ').title()
+        # The editor's words for the scope, so the diff reads as the screen does.
+        scope = {'PER_WORKORDER': 'Per work order', 'PER_SHIFT': 'Per shift',
+                 'PER_EQUIPMENT': 'Per equipment'}.get(row.fpi_scope or 'PER_WORKORDER',
+                                                       row.fpi_scope)
         pieces = f", {row.fpi_quantity} pieces" if (row.fpi_quantity or 1) > 1 else ''
         signed = ", buy-off signature + password" if row.qa_assurance == 'PASSWORD' else ''
         return f"on ({scope}{pieces}{signed})"

@@ -1164,16 +1164,13 @@ class Steps(SecureModel):
         if ready_for_next / total < step.pass_threshold:
             return False
 
-        # Import here to avoid circular import
-        from .qms import QaApproval
-        if step.requires_qa_signoff and not QaApproval.objects.filter(step=step, work_order=work_order,
-                                                                      archived=False).exists():
-            return False
-
-        # Check First Piece Inspection requirement
-        if step.requires_first_piece_inspection:
-            fpi_status = step.get_fpi_status(work_order)
-            if fpi_status['status'] not in ('PASSED', 'WAIVED'):
+        # QA sign-off and the first piece, judged for each part in its own context (its
+        # shift, its machine) and its own setup — never the clock's shift, which left a
+        # lot finished after a shift change waiting on a first piece that could never
+        # exist (gate review 2026-11-11).
+        if step.requires_qa_signoff or step.requires_first_piece_inspection:
+            from Tracker.services.qms.fpi_scope import part_released
+            if not all(part_released(step, work_order, p) for p in parts):
                 return False
 
         return True

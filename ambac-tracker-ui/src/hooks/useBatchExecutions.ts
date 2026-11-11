@@ -145,9 +145,20 @@ export function useCompleteBatchExecution() {
 /** Put forgotten pieces into a load, until the parts' step is completed. No reason. */
 export function useAddBatchParts() {
     const qc = useQueryClient();
-    return useMutation<unknown, unknown, { id: string; parts: string[] }>({
-        mutationFn: ({ id, parts }) =>
-            api.api_BatchExecutions_add_parts_create({ parts }, {
+    // Adding a part starts it, so a training / revisit / reassignment refusal takes a
+    // supervisor's sign-in, as Start load does (`override`).
+    return useMutation<unknown, unknown, {
+        id: string; parts: string[]; override?: { email: string; password: string; reason: string };
+    }>({
+        mutationFn: ({ id, parts, override }) =>
+            api.api_BatchExecutions_add_parts_create({
+                parts,
+                ...(override ? {
+                    override_email: override.email,
+                    override_password: override.password,
+                    override_reason: override.reason,
+                } : {}),
+            }, {
                 params: { id },
                 headers: csrfHeaders(),
             }),
