@@ -48,6 +48,13 @@ import {
 } from "@/components/dwi/shared/OperatorResponseContext";
 import { buildCaptures, findMissingRequired } from "@/lib/dwi/build-captures";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
+import {
+    gateFrom,
+    TrainingGateError,
+    type OverrideCredentials,
+    type TrainingGateInfo,
+} from "@/hooks/useEnsureStepExecution";
+import { SupervisorOverrideDialog } from "@/components/workorder/SupervisorOverrideDialog";
 import { api } from "@/lib/api/generated";
 import { batchCompletionsOptions } from "@/components/dwi/StepCompletionsList";
 import { draftsSettled, useDraftAutosave } from "@/lib/dwi/capture-draft-saver";
@@ -130,24 +137,40 @@ export function BatchPanel({
             allFreshSelected ? new Set() : new Set(freshParts.map((p) => p.id)),
         );
 
-    const handleStart = () => {
+    // Starting a load starts its parts' work, through the same gates as Start Work: a
+    // training / revisit / reassignment refusal opens the supervisor sign-in.
+    const [gate, setGate] = useState<TrainingGateInfo | null>(null);
+    const [pendingParts, setPendingParts] = useState<string[]>([]);
+
+    const startLoad = async (parts: string[], override?: OverrideCredentials) => {
+        try {
+            await createBatch.mutateAsync({ work_order: workOrderId, step: stepId, parts, override });
+        } catch (err) {
+            const refused = gateFrom(err);
+            if (refused) throw new TrainingGateError(refused);
+            throw err;
+        }
+        setSelectedIds(new Set());
+        setGate(null);
+        onChange?.();
+    };
+
+    const handleStart = async () => {
         const parts = availableParts.filter((p) => !p.held).map((p) => p.id).filter((id) => selectedIds.has(id));
         if (parts.length === 0) {
             toast.error("Select at least one part for this load.");
             return;
         }
-        createBatch.mutate(
-            { work_order: workOrderId, step: stepId, parts },
-            {
-                onSuccess: () => {
-                    setSelectedIds(new Set());
-                    onChange?.();
-                },
-                onError: (err: unknown) => {
-                    toast.error(apiErrorMessage(err) ?? "Could not start batch.");
-                },
-            },
-        );
+        try {
+            await startLoad(parts);
+        } catch (err) {
+            if (err instanceof TrainingGateError) {
+                setPendingParts(parts);
+                setGate(err.gate);
+            } else {
+                toast.error(apiErrorMessage(err) ?? "Could not start batch.");
+            }
+        }
     };
 
     const handleSeal = (id: string) => {
@@ -452,6 +475,13 @@ export function BatchPanel({
                     </Button>
                 </div>
             </div>
+            <SupervisorOverrideDialog
+                gate={gate}
+                onGateChange={setGate}
+                onCancel={() => setGate(null)}
+                onAuthorize={(override) => startLoad(pendingParts, override)}
+                submitLabel="Authorize & start load"
+            />
         </div>
     );
 }

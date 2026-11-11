@@ -70,6 +70,7 @@ from .mes_lite import (
     ProcessWithStepsViewSet,
     StepsViewSet,
     StepExecutionViewSet,
+    GateDecisionViewSet,
     OutsideProcessShipmentViewSet,
     PartTypeViewSet,
 
@@ -337,6 +338,7 @@ __all__ = [
     'ProcessWithStepsViewSet',
     'StepsViewSet',
     'StepExecutionViewSet',
+    'GateDecisionViewSet',
     'OutsideProcessShipmentViewSet',
     'PartTypeViewSet',
 

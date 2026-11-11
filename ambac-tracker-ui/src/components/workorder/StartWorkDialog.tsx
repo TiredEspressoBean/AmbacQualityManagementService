@@ -33,9 +33,8 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { useRetrieveParts } from "@/hooks/parts";
+import { SupervisorOverrideDialog } from "@/components/workorder/SupervisorOverrideDialog";
 import {
     useEnsureStepExecution,
     TrainingGateError,
@@ -224,10 +223,6 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
     // details here and open the supervisor re-authorization panel — a DIFFERENT
     // supervisor must sign in to authorize (never the operator themselves).
     const [gate, setGate] = useState<TrainingGateInfo | null>(null);
-    const [supEmail, setSupEmail] = useState("");
-    const [supPassword, setSupPassword] = useState("");
-    const [overrideReason, setOverrideReason] = useState("");
-    const [overriding, setOverriding] = useState(false);
 
     // The gate prompt is its own dialog. Opened over this one it could sit behind it, so
     // a refused start (assigned to someone else, not qualified) looked like nothing
@@ -237,12 +232,7 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
         setGate(g);
     };
 
-    const resetOverride = () => {
-        setGate(null);
-        setSupEmail("");
-        setSupPassword("");
-        setOverrideReason("");
-    };
+    const resetOverride = () => setGate(null);
 
     /** Ensure the first part's execution, then route into the runtime. Shared
      *  by the normal start and the supervisor-override retry. */
@@ -311,36 +301,6 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
             }
         } finally {
             setSubmitting(false);
-        }
-    };
-
-    const overrideReady =
-        supEmail.trim() !== "" && supPassword !== "" && overrideReason.trim() !== "";
-
-    const handleOverride = async () => {
-        if (!overrideReady) return;
-        setOverriding(true);
-        try {
-            await launch({
-                override: {
-                    email: supEmail.trim(),
-                    password: supPassword,
-                    reason: overrideReason.trim(),
-                },
-            });
-        } catch (e) {
-            if (e instanceof TrainingGateError) {
-                // Keep the panel open with the specific reason (bad password,
-                // not a supervisor, same person, throttled…).
-                setGate(e.gate);
-                toast.error(e.gate.detail);
-            } else {
-                toast.error("Override failed", {
-                    description: e instanceof Error ? e.message : undefined,
-                });
-            }
-        } finally {
-            setOverriding(false);
         }
     };
 
@@ -507,116 +467,14 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
                 </DialogFooter>
             </DialogContent>
 
-            {/* Training gate — block on missing competency; a DIFFERENT
-                supervisor re-authenticates to authorize (second-person). */}
-            <Dialog
-                open={!!gate}
-                onOpenChange={(v) => {
-                    if (overriding) return;
-                    if (!v) resetOverride();
-                }}
-            >
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <ShieldAlert className="h-5 w-5 text-destructive" />
-                            {gate?.code === "assigned_to_other"
-                                ? "Assigned to someone else"
-                                : gate?.code === "revisit_rule"
-                                    ? "Repeat visit rule"
-                                    : "Not qualified for this step"}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {gate?.code === "assigned_to_other"
-                                ? "This step is assigned to another operator. A supervisor must sign in below to reassign it — logged against their name."
-                                : gate?.code === "revisit_rule"
-                                    ? `${gate.detail} A supervisor can sign in below to authorize it anyway — logged against their name.`
-                                    : "The operator isn't qualified. A supervisor must sign in below to authorize this work — logged against their name."}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    {gate?.missing && gate.missing.length > 0 && (
-                        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-                            <p className="text-xs font-medium text-destructive mb-1.5">
-                                Missing training
-                            </p>
-                            <ul className="space-y-1 text-sm">
-                                {gate.missing.map((m, i) => (
-                                    <li key={i} className="flex justify-between gap-3">
-                                        <span className="font-medium">{m.training}</span>
-                                        <span className="text-xs text-muted-foreground">
-                                            {m.reason}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-
-                    {gate?.code === "assigned_to_other" && gate.assigned_to_name && (
-                        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-                            Currently assigned to{" "}
-                            <span className="font-medium">{gate.assigned_to_name}</span>.
-                        </div>
-                    )}
-
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">
-                            Supervisor authorization
-                        </p>
-                        <Input
-                            type="email"
-                            autoComplete="off"
-                            value={supEmail}
-                            onChange={(e) => setSupEmail(e.target.value)}
-                            placeholder="Supervisor email"
-                        />
-                        <Input
-                            type="password"
-                            autoComplete="off"
-                            value={supPassword}
-                            onChange={(e) => setSupPassword(e.target.value)}
-                            placeholder="Supervisor password"
-                        />
-                        <Textarea
-                            value={overrideReason}
-                            onChange={(e) => setOverrideReason(e.target.value)}
-                            placeholder={
-                                gate?.code === "assigned_to_other"
-                                    ? "Reason for reassignment (required)"
-                                    : gate?.code === "revisit_rule"
-                                        ? "Reason (required — e.g. nobody else on shift is trained)"
-                                        : "Reason (required — e.g. line-down, trainee under direct supervision)"
-                            }
-                            rows={2}
-                        />
-                    </div>
-
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={resetOverride}
-                            disabled={overriding}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleOverride}
-                            disabled={!overrideReady || overriding}
-                        >
-                            {overriding ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                                    Authorizing…
-                                </>
-                            ) : (
-                                "Authorize & start"
-                            )}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Training / reassignment / revisit gate: a DIFFERENT supervisor
+                re-authenticates to authorize (second-person). */}
+            <SupervisorOverrideDialog
+                gate={gate}
+                onGateChange={setGate}
+                onCancel={resetOverride}
+                onAuthorize={(override) => launch({ override })}
+            />
         </Dialog>
     );
 }

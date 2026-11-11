@@ -2,8 +2,9 @@
 
 A temporary change is approved for the work orders it names (MIGRATE_SELECTED) and is
 never current: the baseline stays in force for everything else. After its end date
-its work can't start or advance until an extension PCR moves the date, or the work
-order goes back to the baseline. See services/change_control/temporary.py.
+its work can't start until an extension PCR moves the date, or the work order goes
+back to the baseline; work started inside the window may still finish. See
+services/change_control/temporary.py.
 """
 from datetime import timedelta
 

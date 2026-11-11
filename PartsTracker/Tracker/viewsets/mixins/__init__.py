@@ -11,6 +11,8 @@ Reusable ViewSet mixins.
 from .csv_import import CSVImportMixin
 from .data_export import DataExportMixin
 from .second_person import SecondPersonMixin
+from .start_gate import StartGateMixin
 from .version_history import VersionHistoryMixin
 
-__all__ = ['CSVImportMixin', 'DataExportMixin', 'SecondPersonMixin', 'VersionHistoryMixin']
+__all__ = ['CSVImportMixin', 'DataExportMixin', 'SecondPersonMixin', 'StartGateMixin',
+           'VersionHistoryMixin']

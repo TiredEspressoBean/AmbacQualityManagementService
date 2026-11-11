@@ -141,6 +141,72 @@ def assert_no_open_batch_overlap(*, step, parts) -> None:
         )
 
 
+def start_load(*, work_order, step, parts, user, authorizer=None, reason=None,
+               notes="") -> "BatchExecution":
+    """Start a load: N parts starting at once (user decision 2026-11-11). Every member's
+    visit at the step is started for `user`, the load's holder, through the one start
+    decision (`lifecycle.start_execution` → `gates.decide_start`), so each member's own
+    gates run: the floor, its revisit rule, reassignment if someone else holds it,
+    competence.
+
+    Floor refusals are gathered across all members and raised together
+    (`gates.StartRefused`). A supervisor-overridable refusal raises its
+    `StartGateError`; the caller asks for a supervisor and calls again with
+    `authorizer`, which then covers every member. All or nothing: any refusal leaves
+    no load and no started visit.
+
+    Raises:
+        ValidationError: a held member (quarantined or on hold), a part already in an
+            open load at the step, or a floor refusal.
+        lifecycle.StartGateError: training / revisit / reassignment, for a supervisor.
+    """
+    from Tracker.models import BatchExecution, Parts, StepExecution
+    from Tracker.services.mes.gates import (
+        StartRefused, context_for_execution, floor_blockers,
+    )
+    from Tracker.services.mes.lifecycle import start_execution
+
+    part_ids = [getattr(p, 'id', p) for p in parts]
+    with transaction.atomic():
+        # Lock the candidate part rows, then check, then create — two concurrent loads
+        # that share a part serialize on its lock, and the loser's overlap check sees
+        # the winner's open load. Without this the disjoint-membership invariant is a
+        # check-then-act race (no DB constraint backs it).
+        locked = list(Parts.objects.select_for_update().filter(id__in=part_ids).order_by('ERP_id'))  # tenant-safe: .objects auto-scopes
+        # A held unit isn't loadable: sealing the load would carry it past its hold (a
+        # core awaiting the customer's answer, a quarantined part) — Operator walk
+        # 2026-10-21.
+        held = sorted(p.ERP_id for p in locked if p.part_status in ("QUARANTINED", "ON_HOLD"))
+        if held:
+            raise ValidationError(
+                f"{', '.join(held)} {'is' if len(held) == 1 else 'are'} held "
+                "(quarantined or on hold) and can't go into a load.")
+        assert_no_open_batch_overlap(step=step, parts=locked)
+
+        visits = []
+        for p in locked:
+            visit = (StepExecution.objects  # tenant-safe: FK-correlated to a scoped part
+                     .filter(part=p, step=step, exited_at__isnull=True, archived=False)
+                     .order_by('-entered_at').first())
+            if visit is None:
+                visit = StepExecution.objects.create(
+                    tenant=p.tenant, part=p, step=step, status='PENDING',
+                    visit_number=StepExecution.get_visit_count(p, step) + 1)
+            visits.append(visit)
+
+        refused = [b for v in visits for b in floor_blockers(context_for_execution(v, user))]
+        if refused:
+            raise StartRefused(refused)
+        for v in visits:
+            start_execution(v, user, authorizer=authorizer, reason=reason)
+
+        batch = BatchExecution.objects.create(
+            tenant=work_order.tenant, work_order=work_order, step=step, started_by=user,
+            notes=notes or '')
+        batch.parts.set(locked)
+    return batch
+
+
 def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
     """Seal a load: it's loaded, its load-phase substeps are done, and the machine
     runs. Locks membership; does NOT advance the parts (complete_batch does). Raises
@@ -331,6 +397,13 @@ def add_parts_to_batch(*, batch: "BatchExecution", parts, user: "User", reason: 
         if BatchExecution.objects.filter(archived=False, step=batch.step, completed_at__isnull=True,
                                          parts__in=new).exclude(pk=batch.pk).exists():
             raise ValidationError("A selected part is already in another open load at this step.")
+        # A part joining a running load starts work: the start gates nobody on the floor
+        # overrides apply to it as to the load's first members.
+        from Tracker.services.mes.gates import StartContext, StartRefused, floor_blockers
+        refused = [b for p in new for b in floor_blockers(StartContext(
+            part=p, step=batch.step, work_order=batch.work_order, operator=user))]
+        if refused:
+            raise StartRefused(refused)
 
         batch.parts.add(*new)
         for p in new:

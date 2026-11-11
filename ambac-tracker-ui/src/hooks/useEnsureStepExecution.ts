@@ -84,8 +84,10 @@ type EnsureResult = {
  * server gate (competence + reassignment) and record the worker.
  */
 
-/** The gate answers with a structured body; pick it out of a thrown error. */
-function gateFrom(e: unknown): TrainingGateInfo | null {
+/** The gate answers with a structured body; pick it out of a thrown error. Any start
+ *  surface (Start Work, starting a load) reads its supervisor-overridable refusals
+ *  through this. */
+export function gateFrom(e: unknown): TrainingGateInfo | null {
     const body = apiErrorBody(e);
     if (typeof body !== "object" || body === null) return null;
     const code = (body as Record<string, unknown>).code;

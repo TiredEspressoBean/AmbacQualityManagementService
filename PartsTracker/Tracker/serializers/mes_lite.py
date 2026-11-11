@@ -1931,6 +1931,23 @@ class StepExecutionListSerializer(SecureModelMixin):
         return None
 
 
+class GateDecisionSerializer(serializers.ModelSerializer):
+    """One gate's outcome for one visit: the decision log (services/mes/gates.py)."""
+    decided_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        from Tracker.models import GateDecision
+        model = GateDecision
+        fields = ('id', 'step_execution', 'gate', 'stage', 'outcome', 'decided_by',
+                  'decided_by_name', 'decided_at', 'reason', 'reference')
+        read_only_fields = fields
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_decided_by_name(self, obj):
+        u = obj.decided_by
+        return (u.get_full_name().strip() or u.get_username()) if u else None
+
+
 class WIPSummarySerializer(serializers.Serializer):
     """Serializer for WIP summary by step."""
     step_id = serializers.UUIDField()

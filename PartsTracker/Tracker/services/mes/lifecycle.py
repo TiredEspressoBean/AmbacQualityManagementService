@@ -320,46 +320,16 @@ def check_revisit_rule(part, step, operator, *, visit_number, authorizer=None,
 
 
 def assert_startable(part, work_order) -> None:
-    """Every refusal that stands before a step is started, whoever asks — none of them
-    is a start-gate refusal a supervisor can override. Both start paths call this
-    (start_execution, and creating an execution IN_PROGRESS), so neither can skip one.
-
-    - a reman unit parked on the customer's authorisation (assert_workable);
-    - an expired temporary change (assert_in_date);
-    - a held, cancelled or completed work order (work_order.start_refusal);
-    - a QUARANTINED part: it waits for its disposition, which decides what happens to
-      it (user decision 2026-10-20). Rework is routed by the disposition's split, not a
-      plain start, and containment is recorded on the disposition, so neither is
-      blocked by this.
+    """The start refusals nobody on the floor can override (`gates.floor_blockers`),
+    for callers that only need the floor. Start paths call `gates.decide_start`.
 
     Raises:
-        ValidationError: naming why.
+        gates.StartRefused (a ValidationError): naming every refusal.
     """
-    from django.core.exceptions import ValidationError
-    if part is not None:
-        from Tracker.services.reman.core_steps import assert_workable
-        assert_workable(part)
-        from Tracker.models import PartsStatus
-        from Tracker.services.qms.report_supersede import awaiting_recapture
-        # A voided result is re-captured before QA closes the disposition — the one
-        # piece of work a held part may take (re-walk 2026-10-22: the UI allowed it,
-        # this gate refused the claim).
-        if part.part_status == PartsStatus.QUARANTINED and not awaiting_recapture(part):
-            from Tracker.models import QuarantineDisposition
-            disp = (QuarantineDisposition.objects  # tenant-safe: FK-correlated to a scoped part
-                    .filter(part=part, archived=False).exclude(current_state='CLOSED')
-                    .order_by('-created_at').first())
-            raise ValidationError(
-                f"{part.ERP_id} is quarantined — "
-                + (f"{disp.disposition_number} decides what happens to it; work it from there."
-                   if disp else "it needs a disposition before any work starts."))
-    if work_order is not None:
-        from Tracker.services.change_control.temporary import assert_in_date
-        assert_in_date(work_order)
-        from Tracker.services.mes.work_order import start_refusal
-        held_or_ended = start_refusal(work_order)
-        if held_or_ended:
-            raise ValidationError(held_or_ended)
+    from Tracker.services.mes.gates import StartContext, StartRefused, floor_blockers
+    refused = floor_blockers(StartContext(part=part, step=None, work_order=work_order, operator=None))
+    if refused:
+        raise StartRefused(refused)
 
 
 REASSIGNABLE_STATUSES = ('PENDING', 'CLAIMED', 'IN_PROGRESS')
@@ -486,52 +456,37 @@ def _load_has_others(execution, to) -> bool:
 def start_execution(execution, operator, *, authorizer=None, reason=None):
     """Apply the waiting -> in-process transition to an existing execution.
 
-    Runs the reassignment gate (if the row is another operator's) then the
-    competence gate, records both on the snapshot, sets assigned_to / status,
-    and saves. Raises `StartGateError` subclasses; the row is untouched on any
-    raise (all checks precede the save).
+    The gates are `gates.decide_start` (floor, revisit rule, reassignment if the row
+    is another operator's, competence); the outcome is kept on the snapshot and in
+    the decision log. Raises `StartRefused` / `StartGateError` subclasses; the row is
+    untouched on any raise (all checks precede the save).
     """
-    # Refusals no supervisor override reaches past (see assert_startable).
-    assert_startable(execution.part if execution.part_id else None, execution.subject_work_order)
+    from Tracker.services.mes.gates import (
+        StartRefused, context_for_execution, decide_start, floor_blockers, record_start,
+    )
+    ctx = context_for_execution(execution, operator)
     # Resuming your own visit (Start Work on a part you already started) isn't a new
     # start: re-running the gates replaced the start record, dropping the supervisor
     # override / reassignment / revisit override given at the real start — it fell off
     # the Training Overrides review, and an operator started under an override was
-    # "not qualified" again (hunt 2026-11-05). The held/ended refusals above still apply.
+    # "not qualified" again (hunt 2026-11-05). The floor refusals still apply.
     if execution.status == 'IN_PROGRESS' and execution.assigned_to_id == operator.id:
+        refused = floor_blockers(ctx)
+        if refused:
+            raise StartRefused(refused)
         return execution
-    # The step's revisit rule on a repeat visit; a supervisor can authorize past it.
-    revisit_override = check_revisit_rule(
-        execution.part if execution.part_id else None, execution.step, operator,
-        visit_number=execution.visit_number or 1, authorizer=authorizer, reason=reason)
 
-    reassignment = None
-    if execution.assigned_to_id and execution.assigned_to_id != operator.id:
-        prior = execution.assigned_to
-        if authorizer is None:
-            raise NeedsReassignment(current_operator=prior)
-        if not (reason or '').strip():
-            raise OverrideReasonRequired(detail="A reason is required to reassign.")
-        reassignment = build_reassignment(
-            prior=prior, operator=operator, authorizer=authorizer, reason=reason,
-        )
-
-    process = getattr(execution.subject_work_order, 'process', None)
-    snapshot = authorize_start(
-        operator, execution.step, process, authorizer=authorizer, reason=reason,
-    )
-    if reassignment is not None:
-        snapshot['reassignment'] = reassignment.to_dict()
-    if revisit_override is not None:
-        snapshot['revisit_override'] = revisit_override
+    decision = decide_start(ctx, authorizer=authorizer, reason=reason)
+    reassigned = 'reassignment' in decision.snapshot
 
     execution.assigned_to = operator
     execution.status = 'IN_PROGRESS'
-    execution.training_authorization = snapshot
+    execution.training_authorization = decision.snapshot
     execution.save()
+    record_start(execution, decision, by=operator)
     # Taking over a part in an open load takes the load: its other visits come too.
-    if reassignment is not None:
-        carry_to_load(execution, to=operator, snapshot=snapshot)
+    if reassigned:
+        carry_to_load(execution, to=operator, snapshot=decision.snapshot)
     # Work has actually begun, so the work order is no longer merely pending. No-op
     # once it is past PENDING. Distinct from release, which authorizes it (release.py).
     from Tracker.services.mes.work_order import mark_started

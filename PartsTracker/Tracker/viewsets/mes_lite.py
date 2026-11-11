@@ -39,7 +39,7 @@ from Tracker.serializers.mes_lite import (
     ProcessWithStepsSerializer, EquipmentsSerializer, EquipmentTypeSerializer,
     BulkAddPartsSerializer, BulkRemovePartsSerializer,
     StepAdvancementSerializer, BulkStepAdvancementSerializer,
-    StepExecutionSerializer, StepExecutionCreateSerializer,
+    StepExecutionSerializer, StepExecutionCreateSerializer, GateDecisionSerializer,
     InFlightSerializer, StepExecutionListSerializer, WIPSummarySerializer,
     OutsideProcessShipmentSerializer, ReadyToShipGroupSerializer,
     # Digital Traveler serializers
@@ -58,7 +58,7 @@ from Tracker.serializers.csv_import import (
     create_import_serializer_for_model,
 )
 from .base import TenantScopedMixin
-from .mixins import CSVImportMixin, DataExportMixin, SecondPersonMixin, VersionHistoryMixin
+from .mixins import CSVImportMixin, DataExportMixin, SecondPersonMixin, StartGateMixin, VersionHistoryMixin
 
 # Note: Most viewsets can now use CSVImportMixin and DataExportMixin for automatic
 # CSV import/export based on model introspection. Just add the mixins to get:
@@ -695,6 +695,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             'step_name': serializers.CharField(allow_null=True),
             'blockers': inline_serializer('PartBlocker', many=True, fields={
                 'message': serializers.CharField(),
+                'code': serializers.CharField(help_text="The gate's stable code (services/mes/gates.GateCode)."),
                 'block_type': serializers.CharField(allow_null=True),
                 'bypassed': serializers.BooleanField(),
                 'request_id': serializers.UUIDField(allow_null=True),
@@ -3399,12 +3400,31 @@ class StepsViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, Da
 
 # ===== STEP EXECUTION VIEWSET =====
 
+class GateDecisionViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
+    """The gate decision log, read-only: how each gate was cleared for each visit —
+    passed, overridden by a supervisor, bypassed by an approved request (written by
+    services/mes/gates.py). Filter by visit, part, gate, stage or outcome."""
+    from Tracker.models import GateDecision
+    queryset = GateDecision.unscoped.select_related('decided_by')
+    serializer_class = GateDecisionSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = {
+        'step_execution': ['exact'],
+        'step_execution__part': ['exact'],
+        'gate': ['exact', 'in'],
+        'stage': ['exact'],
+        'outcome': ['exact', 'in'],
+    }
+    ordering_fields = ['decided_at']
+    ordering = ['decided_at']
+
+
 @extend_schema_view(
     # create() reads the second-person override credentials off request.data,
     # outside the serializer -- see StepExecutionCreateSerializer.
     create=extend_schema(request=StepExecutionCreateSerializer),
 )
-class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
+class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
                            viewsets.ModelViewSet):
     """
     ViewSet for step execution tracking (workflow engine).
@@ -3517,122 +3537,8 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'execution_id': str(ex.id), 'flagged': True})
 
-    # ------------------------------------------------------------------
-    # Training authorization gate (warn + supervisor override)
-    # ------------------------------------------------------------------
-    def _gate_process_for(self, data):
-        """Best-effort Process context for the gate, from the part's work order.
-
-        Step-level requirements are always enforced (we have the step);
-        process-level ones need the WorkOrder's process. Returns None when it
-        can't be resolved (e.g. a core teardown), leaving step-level intact.
-        """
-        part_id = data.get('part')
-        if not part_id:
-            return None
-        # part_id is request-supplied, so the auto-scoping is also the
-        # protection: another tenant's pk resolves to None and the gate
-        # falls back to step-level requirements.
-        # tenant-safe: .objects auto-scopes via the request tenant ContextVar
-        part = Parts.objects.filter(pk=part_id).select_related('work_order__process').first()
-        wo = getattr(part, 'work_order', None) if part else None
-        return getattr(wo, 'process', None) if wo else None
-
-    # Wording kept verbatim from before this gate was extracted into
-    # `SecondPersonMixin` — it is already on screen in production, and the
-    # extraction must not silently reword it. Codes stay `override_*` for the
-    # same reason: the frontend handles those.
-    _SUPERVISOR_MESSAGES = {
-        'auth_failed': 'Supervisor authorization failed - check the email and password.',
-        'self': 'The authorizing supervisor must be a different person than the operator.',
-        'not_permitted': 'That user is not authorized to override.',
-    }
-
-    def _verify_supervisor(self, request):
-        """Verify a second-person supervisor from `override_email`/`override_password`
-        WITHOUT logging them in. Shared by the training gate and the reassignment
-        check, and memoized per request so one supervisor login clears both (and
-        the throttle only decrements once).
-
-        Delegates to `SecondPersonMixin`; behaviour pinned by
-        `Tracker/tests/test_second_person_throttle.py`.
-
-        Returns ``(authorizer, error)``:
-          - ``(User, None)``  — a *different*, active user who holds
-            `override_training_gate` in this tenant.
-          - ``(None, (detail, code, http_status))`` — creds supplied but invalid.
-          - ``(None, None)`` — no creds supplied at all.
-        """
-        return self.verify_second_person(
-            request,
-            permission='override_training_gate',
-            throttle_prefix='tgate_fail',
-            code_prefix='override',
-            email_field='override_email',
-            password_field='override_password',
-            messages=self._SUPERVISOR_MESSAGES,
-        )
-
-    def _supervisor_error_response(self, err):
-        """Translate a `_verify_supervisor` failure tuple → Response."""
-        return self.second_person_error_response(err)
-
-    def _start_gate_error_response(self, exc):
-        """Translate a work-start domain error (`services/mes/lifecycle`) → Response."""
-        from Tracker.services.mes.lifecycle import (
-            NotQualified, NeedsReassignment, OverrideReasonRequired, RevisitRefused,
-        )
-        if isinstance(exc, NeedsReassignment):
-            who = (exc.current_operator.get_full_name()
-                   or exc.current_operator.get_username())
-            return Response({
-                'detail': f"Assigned to {who}. A supervisor must reassign it.",
-                'code': 'assigned_to_other',
-                'assigned_to_name': who,
-            }, status=status.HTTP_409_CONFLICT)
-        if isinstance(exc, NotQualified):
-            return Response({
-                'detail': 'You are not qualified for this step.',
-                'code': 'training_not_authorized',
-                'missing': exc.missing,
-            }, status=status.HTTP_409_CONFLICT)
-        if isinstance(exc, RevisitRefused):
-            # The step's revisit rule (DIFFERENT / ROLE) on a repeat visit.
-            return Response({'detail': exc.detail, 'code': 'revisit_rule'},
-                            status=status.HTTP_409_CONFLICT)
-        if isinstance(exc, OverrideReasonRequired):
-            body = {'detail': exc.detail, 'code': 'override_reason_required'}
-            if exc.missing is not None:
-                body['missing'] = exc.missing
-            return Response(body, status=status.HTTP_400_BAD_REQUEST)
-        raise exc
-
-    def _gated_start(self, request, apply):
-        """Run a work-start op, escalating to a second-person supervisor override
-        ONLY when the unauthorized attempt is actually blocked.
-
-        `apply(authorizer)` calls the lifecycle service (authorize_start or
-        start_execution). We try it with no authorizer first: if it succeeds the
-        operator was authorized and no supervisor is consulted (so stray/invalid
-        override creds on an otherwise-authorized start are ignored, and the
-        password throttle isn't touched). Only on a StartGateError do we verify
-        a supervisor and retry. Returns ``(result, error_response)`` — exactly
-        one is non-None.
-        """
-        from Tracker.services.mes.lifecycle import StartGateError
-        try:
-            return apply(None), None
-        except StartGateError as first:
-            authorizer, verr = self._verify_supervisor(request)
-            if verr is not None:
-                return None, self._supervisor_error_response(verr)
-            if authorizer is None:
-                # No credentials supplied → return the original block.
-                return None, self._start_gate_error_response(first)
-            try:
-                return apply(authorizer), None
-            except StartGateError as second:
-                return None, self._start_gate_error_response(second)
+    # The training / revisit / reassignment supervisor escape on every start path:
+    # `StartGateMixin` (viewsets/mixins/start_gate.py).
 
     def create(self, request, *args, **kwargs):
         # Gate the transition INTO active work. `useEnsureStepExecution` (the
@@ -3640,38 +3546,27 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
         # that's the real authorization point. A part merely arriving at a step
         # (PENDING) isn't gated; nobody is working it yet. The workflow engine
         # creates executions via the ORM, not this HTTP path, so it is untouched.
-        from Tracker.services.mes.lifecycle import authorize_start
-        self._pending_training_snapshot = None
+        from Tracker.services.mes.gates import StartContext, decide_start
+        self._pending_start = None
         if str(request.data.get('status', '')).upper() == 'IN_PROGRESS':
-            # A unit parked for the customer's authorisation is not started, whoever
-            # asks (services/reman/core_steps.assert_workable).
             part = Parts.objects.filter(pk=request.data.get('part')).first() if request.data.get('part') else None  # tenant-safe: .objects auto-scopes to the request tenant
-            if part is not None:
-                # The same refusals as start_execution: held/ended WO, quarantined part,
-                # expired temporary change, a reman unit awaiting authorisation.
-                from Tracker.services.mes.lifecycle import assert_startable
-                assert_startable(part, part.work_order if part.work_order_id else None)
             step = Steps.objects.filter(pk=request.data.get('step')).first()
             if step is not None:
-                from Tracker.services.mes.lifecycle import check_revisit_rule
-                process = self._gate_process_for(request.data)
+                # The one start decision, as on every start path: the floor (held/ended
+                # WO, quarantined part, expired deviation, a reman unit awaiting
+                # authorisation), then a repeat visit's revisit rule and competence —
+                # one supervisor sign-in covers both.
+                ctx = StartContext(
+                    part=part, step=step,
+                    work_order=part.work_order if part is not None and part.work_order_id else None,
+                    operator=request.user,
+                    visit_number=StepExecution.get_visit_count(part, step) + 1 if part is not None else 1)
                 reason = request.data.get('override_reason')
-                visit = StepExecution.get_visit_count(part, step) + 1 if part is not None else 1
-
-                def _gate(auth):
-                    # A fresh row can still be a repeat visit: the step's revisit rule
-                    # first, then competence — one supervisor sign-in covers both.
-                    revisit = check_revisit_rule(part, step, request.user, visit_number=visit,
-                                                 authorizer=auth, reason=reason)
-                    snap = authorize_start(request.user, step, process, authorizer=auth, reason=reason)
-                    if revisit is not None:
-                        snap['revisit_override'] = revisit
-                    return snap
-
-                snapshot, err = self._gated_start(request, _gate)
+                decision, err = self._gated_start(
+                    request, lambda auth: decide_start(ctx, authorizer=auth, reason=reason))
                 if err is not None:
                     return err
-                self._pending_training_snapshot = snapshot
+                self._pending_start = decision
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
@@ -3687,12 +3582,15 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
         if execution.status == 'IN_PROGRESS' and execution.assigned_to_id is None:
             execution.assigned_to = self.request.user
             fields.append('assigned_to')
-        snapshot = getattr(self, '_pending_training_snapshot', None)
-        if snapshot is not None:
-            execution.training_authorization = snapshot
+        decision = getattr(self, '_pending_start', None)
+        if decision is not None:
+            execution.training_authorization = decision.snapshot
             fields.append('training_authorization')
         if fields:
             execution.save(update_fields=fields)
+        if decision is not None:
+            from Tracker.services.mes.gates import record_start
+            record_start(execution, decision, by=self.request.user)
         # What every other way of opening and starting a visit does (the engine's
         # creators in parts.py, lifecycle.start_execution). A first Start Work on a new
         # order's step 1 came here and skipped them: the order stayed Pending while
@@ -3712,34 +3610,36 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
                 on_step_started(execution.part, self.request.user)
 
     def update(self, request, *args, **kwargs):
-        # Close the PATCH bypass: flipping an existing row to IN_PROGRESS is the
-        # same "operator takes up the work" transition as create/claim, so it
-        # runs the same competence gate via the lifecycle service.
-        from Tracker.services.mes.lifecycle import authorize_start
-        self._pending_training_snapshot = None
+        # Flipping an existing row to IN_PROGRESS is the same "operator takes up the
+        # work" transition as create/claim, so it runs the same start decision — the
+        # floor included (it used to run competence only).
+        from Tracker.services.mes.gates import context_for_execution, decide_start
+        self._pending_start = None
         execution = self.get_object()
         new_status = str(request.data.get('status', '')).upper()
         if new_status == 'IN_PROGRESS' and execution.status != 'IN_PROGRESS':
-            process = getattr(execution.subject_work_order, 'process', None)
+            ctx = context_for_execution(execution, request.user)
             reason = request.data.get('override_reason')
-            snapshot, err = self._gated_start(
-                request,
-                lambda auth: authorize_start(
-                    request.user, execution.step, process, authorizer=auth, reason=reason,
-                ),
-            )
+            decision, err = self._gated_start(
+                request, lambda auth: decide_start(ctx, authorizer=auth, reason=reason))
             if err is not None:
                 return err
-            self._pending_training_snapshot = snapshot
+            self._pending_start = decision
         return super().update(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         super().perform_update(serializer)
-        snapshot = getattr(self, '_pending_training_snapshot', None)
-        if snapshot is not None:
+        decision = getattr(self, '_pending_start', None)
+        if decision is not None:
             execution = serializer.instance
-            execution.training_authorization = snapshot
-            execution.save(update_fields=['training_authorization'])
+            execution.training_authorization = decision.snapshot
+            fields = ['training_authorization']
+            if execution.assigned_to_id is None:
+                execution.assigned_to = self.request.user
+                fields.append('assigned_to')
+            execution.save(update_fields=fields)
+            from Tracker.services.mes.gates import record_start
+            record_start(execution, decision, by=self.request.user)
 
     @extend_schema(
         responses={200: WIPSummarySerializer(many=True)},

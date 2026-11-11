@@ -83,6 +83,9 @@ IMMUTABLE_MODELS = {
     # updated) by services.qms.quality_gate.evaluate_step_gate, never via a role's
     # CRUD. view_ is granted (STAFF_VIEW_PERMISSIONS); add/change/delete are not.
     'stepgatefiring',
+    # The gate decision log: written by services/mes/gates.py at start and release,
+    # read-only over the API.
+    'gatedecision',
 }
 
 # add_ is performed by services / the runtime, never via a role's CRUD.
@@ -97,6 +100,7 @@ SYSTEM_WRITTEN_MODELS = {
     'stepgatefiring',   # created by the quality-gate engine, not via role CRUD
     'shiftnoteack',     # written by the acknowledge action, not via role CRUD
     'scheduledtask',    # rows are written by the solver; change_ (pin/dispatch) is granted
+    'gatedecision',     # the gate decision log, written by services/mes/gates.py
 }
 
 # Granted to NO role as deliberate policy (not a gap to burn down). Maps

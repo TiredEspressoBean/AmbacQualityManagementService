@@ -15,32 +15,23 @@ from django.utils import timezone
 
 from Tracker.models import OverrideStatus, StepOverride
 from Tracker.models.qms import BlockType
+from Tracker.services.mes.gates import BYPASS_BLOCK_TYPE, Blocker, release_blockers
 
-# The gate's blocker text -> the block type a bypass of it names. Only these can be
-# bypassed by request: the gate raises nothing else a StepOverride clears. Training
-# is the supervisor override at start, life limits a limit extension, rollback its
-# own flow (services/mes/parts.py).
-_BYPASSABLE = (
-    ('quarantine', BlockType.QUARANTINE),
-    ('qa signoff', BlockType.QA_SIGNOFF),
-    ('first piece', BlockType.FPI_REQUIRED),
-    ('sampling', BlockType.SAMPLING_REQUIRED),
-    ('measurement', BlockType.MEASUREMENT_FAILED),
-)
-BYPASSABLE_TYPES = frozenset(bt for _, bt in _BYPASSABLE)
+# Only the release gates in BYPASS_BLOCK_TYPE can be bypassed by request, keyed on the
+# gate's code — never its message: matching message text let a substep titled
+# "Measurement check" be cleared by a measurement bypass. Training is the supervisor
+# override at start, life limits a limit extension, rollback its own flow
+# (services/mes/parts.py).
+BYPASSABLE_TYPES = frozenset(BYPASS_BLOCK_TYPE.values())
 
 
-def block_type_for(blocker: str) -> str | None:
+def block_type_for(blocker: Blocker) -> str | None:
     """The block type a bypass of this gate blocker would name, or None if it can't be
     bypassed by request."""
-    text = (blocker or '').lower()
-    for fragment, block_type in _BYPASSABLE:
-        if fragment in text:
-            return block_type
-    return None
+    return BYPASS_BLOCK_TYPE.get(blocker.code)
 
 
-def _live_bypasses(step_execution):
+def live_bypasses(step_execution):
     """Approved bypasses on this execution still in force: unused and unexpired."""
     from django.db.models import Q
     return StepOverride.objects.filter(
@@ -48,9 +39,9 @@ def _live_bypasses(step_execution):
     ).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now()))
 
 
-def clear_bypassed(step_execution, blockers: list[str]) -> list[str]:
+def clear_bypassed(step_execution, blockers: list[Blocker]) -> list[Blocker]:
     """`blockers` less those an approved, unexpired bypass on the execution covers."""
-    live = set(_live_bypasses(step_execution).values_list('block_type', flat=True))
+    live = set(live_bypasses(step_execution).values_list('block_type', flat=True))
     if not live:
         return blockers
     return [b for b in blockers if block_type_for(b) not in live]
@@ -63,17 +54,18 @@ def part_blockers(part) -> dict | None:
     se = StepExecution.get_current_execution(part)
     if se is None or se.step is None:
         return None
-    _, raw = se.step.can_advance_from_step(se, part.work_order, apply_overrides=False)
+    raw = release_blockers(se.step, se, part.work_order)
     requests = {}
     for o in StepOverride.objects.filter(step_execution=se).order_by('requested_at'):
         requests[o.block_type] = o  # latest per type wins
-    live = set(_live_bypasses(se).values_list('block_type', flat=True))
+    live = set(live_bypasses(se).values_list('block_type', flat=True))
     rows = []
-    for message in raw:
-        bt = block_type_for(message)
+    for blocker in raw:
+        bt = block_type_for(blocker)
         req = requests.get(bt) if bt else None
         rows.append({
-            'message': message,
+            'message': blocker.message,
+            'code': str(blocker.code),
             'block_type': bt,
             'bypassed': bool(bt and bt in live),
             'request_id': req.id if req else None,

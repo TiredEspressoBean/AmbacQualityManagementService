@@ -3782,6 +3782,45 @@ export type FixtureRequest = {
   Array<string> | undefined;
   archived?: boolean | undefined;
 };
+export type GateDecision = {
+  id: string;
+  step_execution: string;
+  /**
+   * Stable gate code (services.mes.gates.GateCode).
+   */
+  gate: string;
+  stage: StageEnum;
+  outcome: GateDecisionOutcomeEnum;
+  /**
+   * Who cleared it: the supervisor or approver for an escape, the person starting or moving the work for a pass.
+   */
+  decided_by: number | null;
+  decided_by_name: string | null;
+  decided_at: string;
+  reason: string;
+  /**
+   * The escape's own record, e.g. a StepOverride id.
+   */
+  reference: string;
+};
+export type StageEnum =
+  /**
+   * * `START` - Start
+   * `RELEASE` - Release
+   *
+   * @enum START, RELEASE
+   */
+  "START" | "RELEASE";
+export type GateDecisionOutcomeEnum =
+  /**
+   * * `PASSED` - Passed
+   * `OVERRIDDEN` - Supervisor override
+   * `WAIVED` - Waived
+   * `BYPASSED` - Bypass approved
+   *
+   * @enum PASSED, OVERRIDDEN, WAIVED, BYPASSED
+   */
+  "PASSED" | "OVERRIDDEN" | "WAIVED" | "BYPASSED";
 export type GeneratedReport = {
   id: string;
   /**
@@ -6982,6 +7021,25 @@ export type PaginatedFixtureList = {
     (string | null)
     | undefined;
   results: Array<Fixture>;
+};
+export type PaginatedGateDecisionList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<GateDecision>;
 };
 export type PaginatedHarvestedComponentList = {
   /**
@@ -12779,6 +12837,10 @@ export type PartBlockers = {
 };
 export type PartBlocker = {
   message: string;
+  /**
+   * The gate's stable code (services/mes/gates.GateCode).
+   */
+  code: string;
   block_type: string | null;
   bypassed: boolean;
   request_id: string | null;
@@ -20049,11 +20111,14 @@ const PaginatedBatchExecutionList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(BatchExecution),
 });
-const BatchExecutionRequest = z.object({
+const BatchExecutionStartRequest = z.object({
   work_order: z.string().uuid(),
   step: z.string().uuid(),
   parts: z.array(z.string().uuid()).optional(),
   notes: z.string().optional(),
+  override_email: z.string().min(1).email().optional(),
+  override_password: z.string().min(1).optional(),
+  override_reason: z.string().optional(),
 });
 const AddBatchPartsRequestRequest = z.object({
   parts: z.array(z.string().uuid()),
@@ -22208,6 +22273,31 @@ const PatchedFixtureRequest = z
     archived: z.boolean(),
   })
   .partial();
+const StageEnum = z.enum(["START", "RELEASE"]);
+const GateDecisionOutcomeEnum = z.enum([
+  "PASSED",
+  "OVERRIDDEN",
+  "WAIVED",
+  "BYPASSED",
+]);
+const GateDecision = z.object({
+  id: z.string().uuid(),
+  step_execution: z.string().uuid(),
+  gate: z.string(),
+  stage: StageEnum,
+  outcome: GateDecisionOutcomeEnum,
+  decided_by: z.number().int().nullable(),
+  decided_by_name: z.string().nullable(),
+  decided_at: z.string().datetime({ offset: true }),
+  reason: z.string(),
+  reference: z.string(),
+});
+const PaginatedGateDecisionList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(GateDecision),
+});
 const HarvestedComponentRequest = z.object({
   core: z.string().uuid(),
   component_type: z.string().uuid(),
@@ -24326,6 +24416,7 @@ const PatchedPartsRequest = z
   .partial();
 const PartBlocker = z.object({
   message: z.string(),
+  code: z.string(),
   block_type: z.string().nullable(),
   bypassed: z.boolean(),
   request_id: z.string().uuid().nullable(),
@@ -30784,7 +30875,7 @@ export const schemas = {
   BatchMembershipChange,
   BatchExecution,
   PaginatedBatchExecutionList,
-  BatchExecutionRequest,
+  BatchExecutionStartRequest,
   AddBatchPartsRequestRequest,
   AddBatchPartsResponse,
   AddBatchPartsError,
@@ -31026,6 +31117,10 @@ export const schemas = {
   PaginatedFixtureList,
   FixtureRequest,
   PatchedFixtureRequest,
+  StageEnum,
+  GateDecisionOutcomeEnum,
+  GateDecision,
+  PaginatedGateDecisionList,
   HarvestedComponentRequest,
   PatchedHarvestedComponentRequest,
   HarvestedComponentAcceptRequest,
@@ -33304,17 +33399,17 @@ for advancement.`,
     method: "post",
     path: "/api/BatchExecutions/",
     alias: "api_BatchExecutions_create",
-    description: `BatchExecution rows + seal lifecycle action.
-
-GET endpoints expose membership / status; the only state-changing
-action in this iteration is &#x60;POST {id}/seal/&#x60; which closes the batch
-for advancement.`,
+    description: `Start a load: its parts start at once, each through the one start decision
+(services/dwi/batch_lifecycle.start_load). A training / revisit / reassignment
+refusal is cleared by a supervisor signing in (&#x60;override_email&#x60;,
+&#x60;override_password&#x60;, &#x60;override_reason&#x60;), as on Start Work; a floor refusal
+(held order, quarantined part, expired deviation…) has no escape here.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: BatchExecutionRequest,
+        schema: BatchExecutionStartRequest,
       },
     ],
     response: BatchExecution,
@@ -41461,6 +41556,87 @@ today — the operator home&#x27;s sent → seen → verdict strip
   },
   {
     method: "get",
+    path: "/api/GateDecisions/",
+    alias: "api_GateDecisions_list",
+    description: `The gate decision log, read-only: how each gate was cleared for each visit —
+passed, overridden by a supervisor, bypassed by an approved request (written by
+services/mes/gates.py). Filter by visit, part, gate, stage or outcome.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "gate",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "gate__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "outcome",
+        type: "Query",
+        schema: z
+          .enum(["BYPASSED", "OVERRIDDEN", "PASSED", "WAIVED"])
+          .optional(),
+      },
+      {
+        name: "outcome__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
+        name: "stage",
+        type: "Query",
+        schema: z.enum(["RELEASE", "START"]).optional(),
+      },
+      {
+        name: "step_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step_execution__part",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedGateDecisionList,
+  },
+  {
+    method: "get",
+    path: "/api/GateDecisions/:id/",
+    alias: "api_GateDecisions_retrieve",
+    description: `The gate decision log, read-only: how each gate was cleared for each visit —
+passed, overridden by a supervisor, bypassed by an approved request (written by
+services/mes/gates.py). Filter by visit, part, gate, stage or outcome.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: GateDecision,
+  },
+  {
+    method: "get",
     path: "/api/HarvestedComponents/",
     alias: "api_HarvestedComponents_list",
     description: `Harvested component management.
@@ -42115,7 +42291,10 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
       },
     ],
     response: PaginatedIntegrationSyncLogList,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/integration-sync-logs/:id/",
@@ -42156,10 +42335,7 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: PaginatedIntegrationConfigListList,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "post",
     path: "/api/integrations/",
@@ -46370,7 +46546,10 @@ let customers self-manage their digest cadence.`,
       },
     ],
     response: PaginatedPersonalScheduleList,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/notifications/schedules/personal/",
@@ -46408,10 +46587,7 @@ let customers self-manage their digest cadence.`,
       },
     ],
     response: PersonalSchedule,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "put",
     path: "/api/notifications/schedules/personal/:id/",
@@ -51544,7 +51720,10 @@ Usage:
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/Processes/",
@@ -51664,10 +51843,7 @@ Usage:
       },
     ],
     response: Processes,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Processes/:id/",
@@ -56773,7 +56949,10 @@ Response:
       },
     ],
     response: StepExecutionMeasurement,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepExecutionMeasurements/bulk-record/",
@@ -56803,10 +56982,7 @@ Response:
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutionMeasurements/metadata/",
@@ -62525,7 +62701,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: PaginatedTrainingRecordList,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingRecords/stats/",
@@ -62595,10 +62774,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: PaginatedTrainingRequirementList,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/TrainingRequirements/",

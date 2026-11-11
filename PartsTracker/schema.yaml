@@ -2337,24 +2337,24 @@ paths:
     post:
       operationId: api_BatchExecutions_create
       description: |-
-        BatchExecution rows + seal lifecycle action.
-
-        GET endpoints expose membership / status; the only state-changing
-        action in this iteration is `POST {id}/seal/` which closes the batch
-        for advancement.
+        Start a load: its parts start at once, each through the one start decision
+        (services/dwi/batch_lifecycle.start_load). A training / revisit / reassignment
+        refusal is cleared by a supervisor signing in (`override_email`,
+        `override_password`, `override_reason`), as on Start Work; a floor refusal
+        (held order, quarantined part, expired deviation…) has no escape here.
       tags:
       - api
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BatchExecutionRequest'
+              $ref: '#/components/schemas/BatchExecutionStartRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/BatchExecutionRequest'
+              $ref: '#/components/schemas/BatchExecutionStartRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/BatchExecutionRequest'
+              $ref: '#/components/schemas/BatchExecutionStartRequest'
         required: true
       security:
       - cookieAuth: []
@@ -13152,6 +13152,127 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/GateDecisions/:
+    get:
+      operationId: api_GateDecisions_list
+      description: |-
+        The gate decision log, read-only: how each gate was cleared for each visit —
+        passed, overridden by a supervisor, bypassed by an approved request (written by
+        services/mes/gates.py). Filter by visit, part, gate, stage or outcome.
+      parameters:
+      - in: query
+        name: gate
+        schema:
+          type: string
+      - in: query
+        name: gate__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: outcome
+        schema:
+          type: string
+          enum:
+          - BYPASSED
+          - OVERRIDDEN
+          - PASSED
+          - WAIVED
+        description: |-
+          * `PASSED` - Passed
+          * `OVERRIDDEN` - Supervisor override
+          * `WAIVED` - Waived
+          * `BYPASSED` - Bypass approved
+      - in: query
+        name: outcome__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: stage
+        schema:
+          type: string
+          enum:
+          - RELEASE
+          - START
+        description: |-
+          * `START` - Start
+          * `RELEASE` - Release
+      - in: query
+        name: step_execution
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step_execution__part
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedGateDecisionList'
+          description: ''
+  /api/GateDecisions/{id}/:
+    get:
+      operationId: api_GateDecisions_retrieve
+      description: |-
+        The gate decision log, read-only: how each gate was cleared for each visit —
+        passed, overridden by a supervisor, bypassed by an approved request (written by
+        services/mes/gates.py). Filter by visit, part, gate, stage or outcome.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Gate Decision.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GateDecision'
           description: ''
   /api/HarvestedComponents/:
     get:
@@ -53029,12 +53150,13 @@ components:
       - started_by
       - step
       - work_order
-    BatchExecutionRequest:
+    BatchExecutionStartRequest:
       type: object
       description: |-
-        BatchExecution shape for the lifecycle viewset: create (parts named at the
-        start), list/retrieve, and the lifecycle actions. No update: a load's parts change
-        only through the service (Add parts / remove-part).
+        Starting a load, with the optional supervisor sign-in that clears a training /
+        revisit / reassignment refusal for its parts (as on Start Work). Declared so the
+        generated client keeps the override fields — zod strips undeclared keys.
+        Referenced only from `@extend_schema(request=...)`.
       properties:
         work_order:
           type: string
@@ -53053,6 +53175,18 @@ components:
         notes:
           type: string
           description: Operator notes captured at batch start / during the run.
+        override_email:
+          type: string
+          format: email
+          writeOnly: true
+          minLength: 1
+        override_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        override_reason:
+          type: string
+          writeOnly: true
       required:
       - step
       - work_order
@@ -60328,6 +60462,74 @@ components:
       description: |-
         * `EXCHANGE` - Exchange — customer gets a unit from stock
         * `REPAIR_RETURN` - Repair & return — this unit goes back to them
+    GateDecision:
+      type: object
+      description: 'One gate''s outcome for one visit: the decision log (services/mes/gates.py).'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        step_execution:
+          type: string
+          format: uuid
+          readOnly: true
+        gate:
+          type: string
+          readOnly: true
+          description: Stable gate code (services.mes.gates.GateCode).
+        stage:
+          allOf:
+          - $ref: '#/components/schemas/StageEnum'
+          readOnly: true
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/GateDecisionOutcomeEnum'
+          readOnly: true
+        decided_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: 'Who cleared it: the supervisor or approver for an escape,
+            the person starting or moving the work for a pass.'
+        decided_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+        reason:
+          type: string
+          readOnly: true
+        reference:
+          type: string
+          readOnly: true
+          description: The escape's own record, e.g. a StepOverride id.
+      required:
+      - decided_at
+      - decided_by
+      - decided_by_name
+      - gate
+      - id
+      - outcome
+      - reason
+      - reference
+      - stage
+      - step_execution
+    GateDecisionOutcomeEnum:
+      enum:
+      - PASSED
+      - OVERRIDDEN
+      - WAIVED
+      - BYPASSED
+      type: string
+      description: |-
+        * `PASSED` - Passed
+        * `OVERRIDDEN` - Supervisor override
+        * `WAIVED` - Waived
+        * `BYPASSED` - Bypass approved
     GateMetricEnum:
       enum:
       - CONSECUTIVE_FAILS
@@ -67105,6 +67307,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Fixture'
+    PaginatedGateDecisionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/GateDecision'
     PaginatedHarvestedComponentList:
       type: object
       required:
@@ -69205,6 +69430,9 @@ components:
       properties:
         message:
           type: string
+        code:
+          type: string
+          description: The gate's stable code (services/mes/gates.GateCode).
         block_type:
           type: string
           nullable: true
@@ -69223,6 +69451,7 @@ components:
       required:
       - block_type
       - bypassed
+      - code
       - message
       - request_id
       - request_reason
@@ -82459,6 +82688,14 @@ components:
         * `QUANTITY` - Quantity
         * `OPERATION` - Operation
         * `REWORK` - Rework
+    StageEnum:
+      enum:
+      - START
+      - RELEASE
+      type: string
+      description: |-
+        * `START` - Start
+        * `RELEASE` - Release
     StartCycleCountRequest:
       type: object
       description: 'What to count: one location, or one material or part type wherever

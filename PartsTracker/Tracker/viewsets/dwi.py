@@ -39,10 +39,13 @@ from Tracker.serializers.dwi import (
     SubstepCompletionSerializer,
     SubstepGateCompletionSerializer,
     SubstepResponseSerializer,
+    BatchExecutionSerializer,
+    BatchExecutionStartSerializer,
 )
 from Tracker.models import StepExecution
 from Tracker.services.dwi.operator_capture import submit_substep
 from .base import TenantScopedMixin
+from .mixins import StartGateMixin
 
 
 _substep_process_param = OpenApiParameter(
@@ -709,7 +712,7 @@ class SubstepResponseViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     ordering_fields = ['responded_at']
     ordering = ['-responded_at']
 
-class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+class BatchExecutionViewSet(TenantScopedMixin, StartGateMixin, viewsets.ModelViewSet):
     """BatchExecution rows + seal lifecycle action.
 
     GET endpoints expose membership / status; the only state-changing
@@ -740,43 +743,27 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         from Tracker.serializers.dwi import BatchExecutionSerializer
         return BatchExecutionSerializer
 
-    def perform_create(self, serializer):
-        """Stamp the operator and enforce the disjoint-membership invariant
-        (3c): a part may be in at most one open batch per step. Multiple open
-        batches per (WO, step) are allowed (furnace/wash loads) as long as
-        their parts don't overlap."""
-        from django.core.exceptions import ValidationError as DjangoValidationError
-        from django.db import transaction
-        from rest_framework.exceptions import ValidationError as DRFValidationError
-        from Tracker.models import Parts
-        from Tracker.services.dwi.batch_lifecycle import assert_no_open_batch_overlap
+    @extend_schema(request=BatchExecutionStartSerializer,
+                   responses={201: BatchExecutionSerializer})
+    def create(self, request, *args, **kwargs):
+        """Start a load: its parts start at once, each through the one start decision
+        (services/dwi/batch_lifecycle.start_load). A training / revisit / reassignment
+        refusal is cleared by a supervisor signing in (`override_email`,
+        `override_password`, `override_reason`), as on Start Work; a floor refusal
+        (held order, quarantined part, expired deviation…) has no escape here."""
+        from Tracker.services.dwi.batch_lifecycle import start_load
 
-        step = serializer.validated_data.get('step')
-        parts = serializer.validated_data.get('parts') or []
-        part_ids = [getattr(p, 'id', p) for p in parts]
-        try:
-            # Lock the candidate part rows, then check overlap, then create —
-            # all in one transaction. Two concurrent creates that share a part
-            # serialize on its lock; the loser's overlap check then sees the
-            # winner's committed open batch and is rejected. Without this the
-            # disjoint-membership invariant is a check-then-act race (no DB
-            # constraint backs it).
-            with transaction.atomic():
-                if part_ids:
-                    # Materialize the locked rows (FOR UPDATE) before the check.
-                    locked = list(Parts.objects.select_for_update().filter(id__in=part_ids))
-                    # A held unit isn't loadable: sealing the load would carry it past
-                    # its hold (a core awaiting the customer's answer, a quarantined
-                    # part) — Operator walk 2026-10-21.
-                    held = sorted(p.ERP_id for p in locked if p.part_status in ("QUARANTINED", "ON_HOLD"))
-                    if held:
-                        raise DjangoValidationError(
-                            f"{', '.join(held)} {'is' if len(held) == 1 else 'are'} held "
-                            "(quarantined or on hold) and can't go into a load.")
-                assert_no_open_batch_overlap(step=step, parts=parts)
-                serializer.save(started_by=self.request.user)
-        except DjangoValidationError as exc:
-            raise DRFValidationError({'detail': exc.messages})
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        reason = request.data.get('override_reason')
+        batch, err = self._gated_start(request, lambda auth: start_load(
+            work_order=data.get('work_order'), step=data.get('step'),
+            parts=data.get('parts') or [], user=request.user, authorizer=auth, reason=reason,
+            notes=data.get('notes') or ''))
+        if err is not None:
+            return err
+        return Response(self.get_serializer(batch).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT},

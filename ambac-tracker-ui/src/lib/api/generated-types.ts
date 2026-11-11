@@ -670,11 +670,11 @@ export interface paths {
         get: operations["api_BatchExecutions_list"];
         put?: never;
         /**
-         * @description BatchExecution rows + seal lifecycle action.
-         *
-         *     GET endpoints expose membership / status; the only state-changing
-         *     action in this iteration is `POST {id}/seal/` which closes the batch
-         *     for advancement.
+         * @description Start a load: its parts start at once, each through the one start decision
+         *     (services/dwi/batch_lifecycle.start_load). A training / revisit / reassignment
+         *     refusal is cleared by a supervisor signing in (`override_email`,
+         *     `override_password`, `override_reason`), as on Start Work; a floor refusal
+         *     (held order, quarantined part, expired deviation…) has no escape here.
          */
         post: operations["api_BatchExecutions_create"];
         delete?: never;
@@ -4945,6 +4945,48 @@ export interface paths {
         };
         /** @description Return searchable/filterable/orderable field information with filter options. */
         get: operations["api_Fixtures_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/GateDecisions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The gate decision log, read-only: how each gate was cleared for each visit —
+         *     passed, overridden by a supervisor, bypassed by an approved request (written by
+         *     services/mes/gates.py). Filter by visit, part, gate, stage or outcome.
+         */
+        get: operations["api_GateDecisions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/GateDecisions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The gate decision log, read-only: how each gate was cleared for each visit —
+         *     passed, overridden by a supervisor, bypassed by an approved request (written by
+         *     services/mes/gates.py). Filter by visit, part, gate, stage or outcome.
+         */
+        get: operations["api_GateDecisions_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -22526,11 +22568,12 @@ export interface components {
             readonly membership_changes: components["schemas"]["BatchMembershipChange"][];
         };
         /**
-         * @description BatchExecution shape for the lifecycle viewset: create (parts named at the
-         *     start), list/retrieve, and the lifecycle actions. No update: a load's parts change
-         *     only through the service (Add parts / remove-part).
+         * @description Starting a load, with the optional supervisor sign-in that clears a training /
+         *     revisit / reassignment refusal for its parts (as on Start Work). Declared so the
+         *     generated client keeps the override fields — zod strips undeclared keys.
+         *     Referenced only from `@extend_schema(request=...)`.
          */
-        BatchExecutionRequest: {
+        BatchExecutionStartRequest: {
             /**
              * Format: uuid
              * @description The WorkOrder whose parts make up this batch.
@@ -22545,6 +22588,10 @@ export interface components {
             parts?: string[];
             /** @description Operator notes captured at batch start / during the run. */
             notes?: string;
+            /** Format: email */
+            override_email?: string;
+            override_password?: string;
+            override_reason?: string;
         };
         BatchMembershipChange: {
             serial: string;
@@ -25972,6 +26019,33 @@ export interface components {
          * @enum {string}
          */
         FulfilmentModeEnum: "EXCHANGE" | "REPAIR_RETURN";
+        /** @description One gate's outcome for one visit: the decision log (services/mes/gates.py). */
+        GateDecision: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly step_execution: string;
+            /** @description Stable gate code (services.mes.gates.GateCode). */
+            readonly gate: string;
+            readonly stage: components["schemas"]["StageEnum"];
+            readonly outcome: components["schemas"]["GateDecisionOutcomeEnum"];
+            /** @description Who cleared it: the supervisor or approver for an escape, the person starting or moving the work for a pass. */
+            readonly decided_by: number | null;
+            readonly decided_by_name: string | null;
+            /** Format: date-time */
+            readonly decided_at: string;
+            readonly reason: string;
+            /** @description The escape's own record, e.g. a StepOverride id. */
+            readonly reference: string;
+        };
+        /**
+         * @description * `PASSED` - Passed
+         *     * `OVERRIDDEN` - Supervisor override
+         *     * `WAIVED` - Waived
+         *     * `BYPASSED` - Bypass approved
+         * @enum {string}
+         */
+        GateDecisionOutcomeEnum: "PASSED" | "OVERRIDDEN" | "WAIVED" | "BYPASSED";
         /**
          * @description * `CONSECUTIVE_FAILS` - Consecutive failures
          *     * `FAIL_RATE_PCT` - Failure rate (%)
@@ -29208,6 +29282,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Fixture"][];
         };
+        PaginatedGateDecisionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["GateDecision"][];
+        };
         PaginatedHarvestedComponentList: {
             /** @example 123 */
             count: number;
@@ -30551,6 +30640,8 @@ export interface components {
         PartApprovalTypeEnum: "PPAP" | "FAI";
         PartBlocker: {
             message: string;
+            /** @description The gate's stable code (services/mes/gates.GateCode). */
+            code: string;
             block_type: string | null;
             bypassed: boolean;
             /** Format: uuid */
@@ -37406,6 +37497,12 @@ export interface components {
          * @enum {string}
          */
         SplitReasonEnum: "QUANTITY" | "OPERATION" | "REWORK";
+        /**
+         * @description * `START` - Start
+         *     * `RELEASE` - Release
+         * @enum {string}
+         */
+        StageEnum: "START" | "RELEASE";
         /** @description What to count: one location, or one material or part type wherever it's kept. */
         StartCycleCountRequest: {
             /** @description The location's id, code or name (a scanned LOC: label is fine). */
@@ -43633,9 +43730,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BatchExecutionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["BatchExecutionRequest"];
-                "multipart/form-data": components["schemas"]["BatchExecutionRequest"];
+                "application/json": components["schemas"]["BatchExecutionStartRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["BatchExecutionStartRequest"];
+                "multipart/form-data": components["schemas"]["BatchExecutionStartRequest"];
             };
         };
         responses: {
@@ -51668,6 +51765,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_GateDecisions_list: {
+        parameters: {
+            query?: {
+                gate?: string;
+                /** @description Multiple values may be separated by commas. */
+                gate__in?: string[];
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description * `PASSED` - Passed
+                 *     * `OVERRIDDEN` - Supervisor override
+                 *     * `WAIVED` - Waived
+                 *     * `BYPASSED` - Bypass approved
+                 */
+                outcome?: "BYPASSED" | "OVERRIDDEN" | "PASSED" | "WAIVED";
+                /** @description Multiple values may be separated by commas. */
+                outcome__in?: string[];
+                /**
+                 * @description * `START` - Start
+                 *     * `RELEASE` - Release
+                 */
+                stage?: "RELEASE" | "START";
+                step_execution?: string;
+                step_execution__part?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedGateDecisionList"];
+                };
+            };
+        };
+    };
+    api_GateDecisions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Gate Decision. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateDecision"];
                 };
             };
         };

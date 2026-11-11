@@ -151,6 +151,12 @@ def submit_substep(
     is_batch = batch_execution is not None
     if is_batch:
         _assert_batch_phase_open(batch_execution, substep)
+    # Work is recorded on a started visit: one nobody has started never passed the
+    # start gates (user decision 2026-11-11). A COMPLETED visit is the correction flow
+    # — a voided result re-captured — not new work.
+    if step_execution is not None and step_execution.status not in ('IN_PROGRESS', 'COMPLETED'):
+        who = step_execution.part.ERP_id if step_execution.part_id else "this step"
+        raise ValidationError(f"Start Work on {who} before recording work on it.")
 
     # Server-side sequencing gate. `Steps.sequencing_mode='sequential'` means a
     # substep can't be completed until the earlier *required* substeps are done —

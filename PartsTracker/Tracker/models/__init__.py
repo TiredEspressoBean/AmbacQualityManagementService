@@ -133,6 +133,8 @@ from .mes_lite import (
     # Step requirements (workflow engine)
     RequirementType,
     StepRequirement,
+    GateDecision,
+    GateDecisionOutcome,
     DecisionDataMissing,
 )
 
@@ -472,6 +474,8 @@ __all__ = [
     'CustomerShipment',
     'RequirementType',
     'StepRequirement',
+    'GateDecision',
+    'GateDecisionOutcome',
     'DecisionDataMissing',
 
     # MES Standard (Full Traceability & Compliance)

@@ -1202,20 +1202,12 @@ class Steps(SecureModel):
 
     def can_advance_from_step(self, step_execution, work_order, apply_overrides=True):
         """
-        Comprehensive gating function for step advancement.
+        Release gate: what holds the part at this step, after any approved bypass.
+        Thin delegate to `services.mes.gates.release_blockers`, the one release decision.
 
-        Checks all requirements that must be satisfied before a part can advance
-        from this step. Returns a tuple of (can_advance: bool, blockers: list).
-
-        Blockers list contains human-readable descriptions of what's blocking advancement.
-
-        Checks performed:
-        1. Sampling requirement (QualityReport exists if required)
-        2. QA signoff (QaApproval exists if required)
-        3. FPI status (passed if required)
-        4. Mandatory measurements (all recorded and within spec)
-        5. Hard blocks (quarantine, regulatory holds)
-        6. Override status (valid override if blocked)
+        An expired deviation is not re-checked here: it is a start gate, and work done
+        inside the deviation's window is not refused for finishing after it (user
+        decision 2026-11-11).
 
         Args:
             step_execution: StepExecution instance for the part at this step
@@ -1226,127 +1218,12 @@ class Steps(SecureModel):
         Returns:
             tuple: (can_advance: bool, blockers: list of str)
         """
-        from .qms import QaApproval, QualityReports, FPIRecord
-
-        blockers = []
-        part = step_execution.part  # May be None for Core (teardown) executions.
-
-        # 0. An expired temporary change (deviation) stops its work orders until change
-        #    control extends it or they return to the baseline.
-        from Tracker.services.change_control.temporary import refusal as temporary_refusal
-        expired = temporary_refusal(work_order) if work_order is not None else None
-        if expired:
-            blockers.append(expired)
-
-        # 1. Check quarantine status (Parts-only — Cores don't carry quarantine state).
-        if part is not None and part.part_status == PartsStatus.QUARANTINED:
-            if self.block_on_quarantine:
-                blockers.append("Part is quarantined and step blocks on quarantine")
-
-        # 1.5. Life-limit gate (Parts-only). A life-limited part whose usage has
-        # passed its hard limit is ineligible to advance. Read from the live
-        # `is_blocked` property, NOT the possibly-stale `cached_status`, so
-        # calendar-based (shelf-life) expiries are caught too. NOT clearable by a
-        # StepOverride — the domain-correct release is a formally-approved limit
-        # extension (`LifeTracking.apply_override`), which is audited. Gates on the
-        # part's own tracking; installed-component life (AssemblyUsage) is a later
-        # enhancement.
-        if part is not None:
-            from django.contrib.contenttypes.models import ContentType
-            from .life_tracking import LifeTracking
-            part_ct = ContentType.objects.get_for_model(part)
-            for lt in LifeTracking.objects.filter(  # tenant-safe: generic FK to a scoped part
-                content_type=part_ct, object_id=part.pk,
-            ).select_related('definition'):
-                if lt.is_blocked:
-                    blockers.append(f"Life limit exceeded: {lt.definition.name}")
-
-        # 2. Check QA signoff requirement
-        if self.requires_qa_signoff:
-            # An archived approval was withdrawn (an FPI pass voided): it releases nothing.
-            # A first-piece release covers its own context only (round-1 #7).
-            from Tracker.services.qms.fpi_scope import qa_released
-            if not qa_released(self, work_order, part=part):
-                blockers.append("QA signoff required but not received")
-
-        # 3. Check FPI requirement (Parts-only — FPI doesn't apply to teardown).
-        if part is not None and self.requires_first_piece_inspection:
-            fpi_status = self.get_fpi_status(work_order, part=part)
-            if fpi_status['status'] not in ('PASSED', 'WAIVED', 'NOT_REQUIRED'):
-                ctx = fpi_status.get('context_label')
-                blockers.append(f"First Piece Inspection required{f' for {ctx}' if ctx else ''}: "
-                                f"{fpi_status['status']}")
-
-        # 4. Check sampling requirement (Parts-only — sampling doesn't apply to teardown).
-        if part is not None and self.sampling_required and part.requires_sampling:
-            quality_report = QualityReports.objects.filter(
-                part=part,
-                step=self,
-                archived=False
-            ).first()
-            if not quality_report:
-                blockers.append("Sampling inspection required but not completed")
-            elif quality_report.status == 'FAIL':
-                blockers.append("Sampling inspection failed - disposition required")
-
-        # 5. Block on out-of-spec measurement (the step's "Block on out-of-spec
-        # measurement" switch): a reading outside its limits at this visit holds the
-        # part until it is dealt with. Whether a value was captured at all is the work
-        # instruction's required nodes (operator_capture.find_missing_required + the
-        # substep advancement gate) — the step-level required_measurements check that
-        # used to sit here had no authoring surface and is gone (user decision 2026-10-29).
-        if self.block_on_measurement_failure:
-            from .qms import StepExecutionMeasurement
-            failed_measurements = StepExecutionMeasurement.objects.filter(
-                step_execution=step_execution,
-                is_within_spec=False
-            ).exists()
-            if failed_measurements:
-                blockers.append("One or more measurements are out of specification")
-
-        # 6. Check StepRequirement model entries
-        for req in self.requirements.filter(is_mandatory=True, archived=False):
-            if not req.is_satisfied(step_execution):
-                blockers.append(f"Requirement not met: {req.name}")
-
-        # 7. Check substep completion (Parts-only; behind per-tenant flag).
-        if part is not None:
-            from Tracker.services.dwi.advancement_gate import substep_completion_blockers
-            blockers.extend(
-                substep_completion_blockers(self, step_execution, work_order)
-            )
-
-        # 7.5. Competence gate (backstops the start gate on the advancement
-        # surface). An execution that NEVER passed a start gate has no
-        # `training_authorization` snapshot; such an execution must not advance a
-        # step carrying training requirements unless the recorded operator is
-        # qualified. Executions gated at start (snapshot present — authorized OR
-        # supervisor-override) are trusted and skipped, so already-authorized
-        # work is never re-blocked here (e.g. a cert that lapses mid-step). This
-        # is what closes `complete_step`/`increment`/`advance_lot` recording
-        # unqualified work directly through the ORM engine.
-        if step_execution.training_authorization is None:
-            from Tracker.services.training import (
-                get_required_training, check_training_authorization,
-            )
-            process = getattr(work_order, 'process', None)
-            if get_required_training(self, process):
-                worker = step_execution.assigned_to
-                if worker is None:
-                    blockers.append(
-                        "No qualified operator recorded for a step that requires training"
-                    )
-                elif not check_training_authorization(worker, self, process=process).authorized:
-                    who = worker.get_full_name() or worker.get_username()
-                    blockers.append(f"Operator {who} is not qualified for this step")
-
-        # 8. An approved, unexpired bypass clears the blocker it names
-        #    (services/mes/step_override.py holds the blocker -> block type map).
+        from Tracker.services.mes.gates import release_blockers
+        blockers = release_blockers(self, step_execution, work_order)
         if blockers and apply_overrides:
             from Tracker.services.mes.step_override import clear_bypassed
             blockers = clear_bypassed(step_execution, blockers)
-
-        return (len(blockers) == 0, blockers)
+        return (len(blockers) == 0, [b.message for b in blockers])
 
 
 class DecisionDataMissing(ValueError):
@@ -1506,6 +1383,47 @@ class StepRequirement(SecureModel):
 
         # Default: DOCUMENT / CUSTOM remain advisory (satisfied out-of-band).
         return True
+
+
+class GateDecisionOutcome(models.TextChoices):
+    PASSED = 'PASSED', 'Passed'
+    OVERRIDDEN = 'OVERRIDDEN', 'Supervisor override'
+    WAIVED = 'WAIVED', 'Waived'
+    BYPASSED = 'BYPASSED', 'Bypass approved'
+
+
+class GateDecision(SecureModel):
+    """The decision log: how one gate was cleared for one visit (user decision
+    2026-11-11). One row per visit per gate per stage, written when the visit starts
+    (START) or leaves the step (RELEASE), for passes and escapes alike. A refusal that
+    is later cleared is not kept — the row records what the work went ahead on.
+    Gate codes are `services.mes.gates.GateCode`."""
+
+    step_execution = models.ForeignKey(
+        'Tracker.StepExecution', on_delete=models.CASCADE, related_name='gate_decisions')
+    gate = models.CharField(max_length=40, help_text="Stable gate code (services.mes.gates.GateCode).")
+    stage = models.CharField(max_length=10, choices=[('START', 'Start'), ('RELEASE', 'Release')])
+    outcome = models.CharField(max_length=12, choices=GateDecisionOutcome.choices)
+    decided_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, null=True, blank=True, related_name='gate_decisions',
+        help_text="Who cleared it: the supervisor or approver for an escape, the person "
+                  "starting or moving the work for a pass.")
+    decided_at = models.DateTimeField()
+    reason = models.TextField(blank=True, default='')
+    reference = models.CharField(max_length=64, blank=True, default='',
+                                 help_text="The escape's own record, e.g. a StepOverride id.")
+
+    class Meta:
+        verbose_name = 'Gate Decision'
+        verbose_name_plural = 'Gate Decisions'
+        ordering = ['decided_at']
+        constraints = [
+            models.UniqueConstraint(fields=['step_execution', 'gate', 'stage'],
+                                    name='gatedecision_visit_gate_stage_uniq'),
+        ]
+
+    def __str__(self):
+        return f"{self.gate} {self.stage} {self.outcome}"
 
 
 # ===== GRAPH STRUCTURE (Process-Step relationships) =====

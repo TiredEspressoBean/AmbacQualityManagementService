@@ -83,7 +83,14 @@ def custom_exception_handler(exc, context):
     # this it reached the client as a bare 500. Views that catch it themselves are
     # unaffected; this covers the ones that let it propagate.
     if isinstance(exc, DjangoValidationError):
-        exc = DRFValidationError({'detail': '; '.join(exc.messages)})
+        body = {'detail': '; '.join(exc.messages)}
+        # A start gate's refusal carries each blocker's stable code, who clears it and
+        # what the floor is waiting on (services/mes/gates.py), for the operator screen.
+        blockers = getattr(exc, 'blockers', None)
+        if blockers:
+            body['code'] = str(blockers[0].code)
+            body['blockers'] = [b.to_dict() for b in blockers]
+        exc = DRFValidationError(body)
 
     # Handle Django's Http404
     if isinstance(exc, Http404):

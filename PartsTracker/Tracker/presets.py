@@ -70,7 +70,7 @@ STAFF_VIEW_PERMISSIONS = [
     # Production exceptions & runtime records
     'view_workorderhold',
     'view_stepoverride', 'view_fpirecord', 'view_batchexecution',
-    'view_steprequirement',
+    'view_steprequirement', 'view_gatedecision',
     # Shift notes (all floor staff read; authoring is a lead grant)
     'view_shiftnote', 'view_shiftnoteack',
     # BOM & Materials

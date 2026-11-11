@@ -477,3 +477,17 @@ class BatchExecutionSerializer(SecureModelMixin):
         # started_by is stamped from request.user in the viewset, not sent by
         # the client; sealed/completed timestamps are lifecycle-service-owned.
         read_only_fields = ['id', 'started_by', 'started_at', 'sealed_at', 'completed_at', 'completed_by']
+
+
+class BatchExecutionStartSerializer(BatchExecutionSerializer):
+    """Starting a load, with the optional supervisor sign-in that clears a training /
+    revisit / reassignment refusal for its parts (as on Start Work). Declared so the
+    generated client keeps the override fields — zod strips undeclared keys.
+    Referenced only from `@extend_schema(request=...)`."""
+    override_email = serializers.EmailField(required=False, write_only=True)
+    override_password = serializers.CharField(required=False, write_only=True)
+    override_reason = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
+    class Meta(BatchExecutionSerializer.Meta):
+        fields = BatchExecutionSerializer.Meta.fields + [
+            'override_email', 'override_password', 'override_reason']

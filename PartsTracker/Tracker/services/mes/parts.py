@@ -291,6 +291,11 @@ def advance_part_step(
     next_step = part.get_next_step(decision_result)
 
     if current_execution:
+        # The release went through: log each gate it was cleared on (passed, or the
+        # approved bypass that cleared it) — services/mes/gates.py.
+        if part.work_order:
+            from Tracker.services.mes.gates import record_release
+            record_release(current_execution, part.work_order, by=operator)
         current_execution.exited_at = timezone.now()
         # Who did the work, not who moved the part on: a QA sign-off, an override
         # approval, a batch seal, a split, auto-advance or a cohort's Complete step all

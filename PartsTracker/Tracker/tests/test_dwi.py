@@ -95,11 +95,13 @@ class DwiPhase1BaseTestCase(TestCase):
             work_order=cls.work_order,
             step=cls.step,
         )
+        # Started: work is only recorded on a visit someone has started.
         cls.step_execution = StepExecution.objects.create(
             tenant=cls.tenant,
             part=cls.part,
             step=cls.step,
             visit_number=1,
+            status="IN_PROGRESS",
         )
 
         cls.equipment_type = EquipmentType.objects.create(
@@ -1012,6 +1014,7 @@ class QualityReportProvenanceTests(DwiPhase3BaseTestCase):
         """The same part back at the same step — a rework loop."""
         return StepExecution.objects.create(
             tenant=self.tenant, part=self.part, step=self.step, visit_number=2,
+            status="IN_PROGRESS",
         )
 
     def test_capture_records_its_provenance(self):

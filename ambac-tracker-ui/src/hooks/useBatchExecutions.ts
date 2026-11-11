@@ -60,16 +60,31 @@ type CreateBatchInput = {
     step: string;
     parts: string[];
     notes?: string;
+    /** A supervisor's sign-in clearing a training / revisit / reassignment refusal
+     *  for the load's parts, as on Start Work. */
+    override?: { email: string; password: string; reason: string };
 };
 
 export function useCreateBatchExecution() {
     const qc = useQueryClient();
     return useMutation<BatchExecutionRow, unknown, CreateBatchInput>({
-        mutationFn: (data) =>
-            api.api_BatchExecutions_create(data, { headers: csrfHeaders() }),
+        mutationFn: ({ override, ...data }) =>
+            api.api_BatchExecutions_create(
+                override
+                    ? {
+                        ...data,
+                        override_email: override.email,
+                        override_password: override.password,
+                        override_reason: override.reason,
+                    }
+                    : data,
+                { headers: csrfHeaders() },
+            ),
         onSuccess: () => invalidateBatches(qc),
         meta: {
-            errorMessage: "Couldn't start batch",
+            // The panel handles a refusal itself: a supervisor-overridable one opens
+            // the sign-in, anything else gets its own toast.
+            suppressGlobalError: true,
             successMessage: "Batch started",
         },
     });
