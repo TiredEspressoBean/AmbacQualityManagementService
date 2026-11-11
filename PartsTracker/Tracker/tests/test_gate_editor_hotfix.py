@@ -26,7 +26,7 @@ class RevisitRoleRuleTests(TenantTestCase):
         return [{'gate': g} for g in FLOOR_GATES] + [{'gate': 'revisit_rule', **revisit}]
 
     def test_a_role_rule_without_its_role_is_refused(self):
-        with self.assertRaisesMessage(ValidationError, "needs its role"):
+        with self.assertRaisesMessage(ValidationError, "need the role picked"):
             set_step_gates(self.step, self._rows(revisit_assignment='ROLE'))
 
     def test_a_role_from_another_company_is_refused(self):
@@ -45,6 +45,17 @@ class RevisitRoleRuleTests(TenantTestCase):
         set_step_gates(self.step, [{'gate': g} for g in FLOOR_GATES]
                        + [{'gate': 'first_piece'}, {'gate': 'qa_signoff', 'qa_assurance': 'PASSWORD'}])
         self.assertEqual(Steps.objects.get(pk=self.step.pk).first_piece_assurance, 'PASSWORD')
+
+    def test_a_copied_rule_whose_role_is_gone_is_carried_as_it_stands(self):
+        """A rebase copies existing gates; an orphaned role rule doesn't fail it."""
+        rows = [{'gate': g} for g in FLOOR_GATES] + [{'gate': 'revisit_rule',
+                                                      'revisit_assignment': 'ROLE'}]
+        set_step_gates(self.step, rows, copied=True)
+        self.assertTrue(StepRequirement.objects.filter(step=self.step, gate='revisit_rule').exists())
+
+    def test_a_gate_that_is_not_an_object_is_refused(self):
+        with self.assertRaisesMessage(ValidationError, "Each gate is an object"):
+            set_step_gates(self.step, ['qa_signoff'])
 
     def test_a_rule_whose_role_is_gone_fails_closed(self):
         set_step_gates(self.step, self._rows(revisit_assignment='ROLE', revisit_role=self.role.id))

@@ -258,6 +258,9 @@ def waive_fpi(fpi: FPIRecord, user, reason: str, performed_by=None, *,
     fpi.waive_reason = reason
     fpi.performed_by = performed_by
     fpi.signature_data = signature_data or None
+    # When it was decided: the operator's home strip and the decision times read it,
+    # as for a pass or fail.
+    fpi.inspected_at = fpi.inspected_at or timezone.now()
     fpi.save()
     _ensure_qa_approval(fpi, user, password_proven=proven, ip_address=ip_address)
     notify_fpi_decided(fpi)
@@ -402,6 +405,10 @@ def start_fpi(work_order, step, user, *, part=None, equipment=None, shift=None, 
                 reason="Corrected by a new first piece", edited_by=user)
             latest.status = FPIStatus.SUPERSEDED
             latest.save(update_fields=['status', 'updated_at'])
+            # Its release goes with it, as on a void: the new first piece decides.
+            from Tracker.models import QaApproval
+            QaApproval.objects.filter(fpi_record=latest, archived=False).update(  # tenant-safe: scoped FK
+                archived=True, updated_at=timezone.now())
         fpi = FPIRecord.objects.create(
             tenant=work_order.tenant, work_order=work_order, step=step,
             # Steps.part_type is non-null (PROTECT); WorkOrder has none of its own.

@@ -950,17 +950,21 @@ class BatchExecutionViewSet(TenantScopedMixin, StartGateMixin, viewsets.ModelVie
     @extend_schema(
         request=inline_serializer(name='AddBatchPartsRequest', fields={
             'parts': drf_serializers.ListField(child=drf_serializers.UUIDField()),
-            'reason': drf_serializers.CharField(required=False, allow_blank=True)}),
+            'reason': drf_serializers.CharField(required=False, allow_blank=True),
+            'override_email': drf_serializers.CharField(required=False, allow_blank=True),
+            'override_password': drf_serializers.CharField(required=False, allow_blank=True),
+            'override_reason': drf_serializers.CharField(required=False, allow_blank=True)}),
         responses={
             200: inline_serializer(name='AddBatchPartsResponse', fields={
                 'batch_id': drf_serializers.UUIDField(),
                 'added': drf_serializers.ListField(child=drf_serializers.CharField())}),
-            400: inline_serializer(name='AddBatchPartsError', fields={
-                'detail': drf_serializers.CharField()}),
+            400: OpenApiTypes.OBJECT,
         },
         description="Put forgotten pieces into a load until the step is completed (loading or "
-                    "running). Same checks as starting a load. They ride the load: its "
-                    "captures cover them, their visits follow the load's holder, and a load "
+                    "running). Adding a part starts it for the load's holder through the one "
+                    "start decision; a training / revisit / reassignment refusal takes a "
+                    "supervisor's sign-in (`override_*`), a floor refusal answers with `code` "
+                    "and `blockers`. They ride the load: its captures cover them, and a load "
                     "already contained by a failed cycle holds them too.",
     )
     @action(detail=True, methods=['post'], url_path='add-parts')
@@ -973,11 +977,22 @@ class BatchExecutionViewSet(TenantScopedMixin, StartGateMixin, viewsets.ModelVie
         parts = list(Parts.objects.filter(pk__in=ids))  # tenant-safe: .objects auto-scopes
         if len(parts) != len(set(ids)):
             return Response({'detail': 'A part was not found.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Adding a part starts it: the start decision runs, and a training / revisit /
+        # reassignment refusal is cleared by a supervisor signing in, as on Start load.
+        # A floor refusal (StartRefused) answers with its code and blockers.
+        override_reason = request.data.get('override_reason')
         try:
-            added = add_parts_to_batch(batch=batch, parts=parts, user=request.user,
-                                       reason=request.data.get('reason', ''))
+            added, err = self._gated_start(request, lambda auth: add_parts_to_batch(
+                batch=batch, parts=parts, user=request.user,
+                reason=request.data.get('reason', ''),
+                authorizer=auth, override_reason=override_reason))
         except ValidationError as exc:
+            from Tracker.services.mes.gates import StartRefused
+            if isinstance(exc, StartRefused):
+                raise  # the API handler answers with its code and blockers
             return Response({'detail': '; '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        if err is not None:
+            return err
         return Response({'batch_id': str(batch.id), 'added': [p.ERP_id for p in added]})
 
 

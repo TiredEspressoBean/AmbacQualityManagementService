@@ -3612,35 +3612,31 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
 
     def update(self, request, *args, **kwargs):
         # Flipping an existing row to IN_PROGRESS is the same "operator takes up the
-        # work" transition as create/claim, so it runs the same start decision — the
-        # floor included (it used to run competence only).
-        from Tracker.services.mes.gates import context_for_execution, decide_start
-        self._pending_start = None
+        # work" transition as claim, so it IS that transition: lifecycle.start_execution
+        # — the start decision, the reassignment it may make, and the start's side
+        # effects (work order started, teardown begun, load carried). It used to run
+        # the decision and skip the rest.
+        from Tracker.services.mes.lifecycle import start_execution
         execution = self.get_object()
         new_status = str(request.data.get('status', '')).upper()
         if new_status == 'IN_PROGRESS' and execution.status != 'IN_PROGRESS':
-            ctx = context_for_execution(execution, request.user)
             reason = request.data.get('override_reason')
-            decision, err = self._gated_start(
-                request, lambda auth: decide_start(ctx, authorizer=auth, reason=reason))
+            _, err = self._gated_start(
+                request, lambda auth: start_execution(execution, request.user,
+                                                      authorizer=auth, reason=reason))
             if err is not None:
                 return err
-            self._pending_start = decision
+            rest = {k: v for k, v in request.data.items()
+                    if k not in ('status', 'override_reason', 'override_email',
+                                 'override_password', 'override_signature')}
+            if not rest:
+                execution.refresh_from_db()
+                return Response(self.get_serializer(execution).data)
+            serializer = self.get_serializer(execution, data=rest, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
         return super().update(request, *args, **kwargs)
-
-    def perform_update(self, serializer):
-        super().perform_update(serializer)
-        decision = getattr(self, '_pending_start', None)
-        if decision is not None:
-            execution = serializer.instance
-            execution.training_authorization = decision.snapshot
-            fields = ['training_authorization']
-            if execution.assigned_to_id is None:
-                execution.assigned_to = self.request.user
-                fields.append('assigned_to')
-            execution.save(update_fields=fields)
-            from Tracker.services.mes.gates import record_start
-            record_start(execution, decision, by=self.request.user)
 
     @extend_schema(
         responses={200: WIPSummarySerializer(many=True)},

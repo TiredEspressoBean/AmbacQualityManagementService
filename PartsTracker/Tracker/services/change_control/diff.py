@@ -133,7 +133,8 @@ def _gate_setting(row) -> str:
     if row.gate == 'first_piece':
         scope = (row.fpi_scope or 'PER_WORKORDER').replace('_', ' ').title()
         pieces = f", {row.fpi_quantity} pieces" if (row.fpi_quantity or 1) > 1 else ''
-        return f"on ({scope}{pieces})"
+        signed = ", buy-off signature + password" if row.qa_assurance == 'PASSWORD' else ''
+        return f"on ({scope}{pieces}{signed})"
     if row.gate == 'qa_signoff':
         return f"on ({'signature + password' if row.qa_assurance == 'PASSWORD' else 'check off'})"
     if row.gate == 'revisit_rule':

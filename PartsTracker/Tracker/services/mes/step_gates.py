@@ -109,6 +109,8 @@ def gate_signature(rows) -> frozenset:
 def clean_gate_row(row: dict) -> dict:
     """One row's fields, validated: only its own kind's settings kept."""
     from django.core.exceptions import ValidationError
+    if not isinstance(row, dict):
+        raise ValidationError("Each gate is an object naming its `gate`.")
     gate = row.get('gate')
     if gate not in COMPOSABLE_GATES:
         raise ValidationError(f"'{gate}' isn't a gate a step can carry.")
@@ -148,9 +150,13 @@ def clean_gate_row(row: dict) -> dict:
     return out
 
 
-def set_step_gates(step, rows: list[dict]) -> None:
+def set_step_gates(step, rows: list[dict], *, copied: bool = False) -> None:
     """Replace `step`'s gates with `rows` (the editor's whole list). A gate left out no
-    longer applies to the step; one listed twice is refused."""
+    longer applies to the step; one listed twice is refused.
+
+    `copied`: the rows are existing gates carried onto another version (a rebase), not
+    an engineer's edit — written as they stand, a rule whose role was since deleted
+    included (it fails closed at start)."""
     from django.core.exceptions import ValidationError
     from Tracker.models import StepRequirement
     cleaned = [clean_gate_row(r) for r in rows]
@@ -161,8 +167,9 @@ def set_step_gates(step, rows: list[dict]) -> None:
     # Without its role a Specific Role rule let anyone through: refused when written.
     # (Checked here, not in clean_gate_row, so comparing a step's existing gates —
     # one whose role was since deleted — never fails.)
-    if any(r['revisit_assignment'] == 'ROLE' and not r['revisit_role_id'] for r in cleaned):
-        raise ValidationError("A repeat-visit rule of Specific Role needs its role.")
+    if not copied and any(r['revisit_assignment'] == 'ROLE' and not r['revisit_role_id']
+                          for r in cleaned):
+        raise ValidationError("Repeat visits by \"Someone in a role\" need the role picked.")
     roles = {r['revisit_role_id'] for r in cleaned if r['revisit_role_id']}
     if roles:
         from Tracker.models import TenantGroup

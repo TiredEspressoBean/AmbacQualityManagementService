@@ -715,7 +715,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Put forgotten pieces into a load until the step is completed (loading or running). Same checks as starting a load. They ride the load: its captures cover them, their visits follow the load's holder, and a load already contained by a failed cycle holds them too. */
+        /** @description Put forgotten pieces into a load until the step is completed (loading or running). Adding a part starts it for the load's holder through the one start decision; a training / revisit / reassignment refusal takes a supervisor's sign-in (`override_*`), a floor refusal answers with `code` and `blockers`. They ride the load: its captures cover them, and a load already contained by a failed cycle holds them too. */
         post: operations["api_BatchExecutions_add_parts_create"];
         delete?: never;
         options?: never;
@@ -21742,12 +21742,12 @@ export interface components {
             B: components["schemas"]["ClassAccuracy"];
             C: components["schemas"]["ClassAccuracy"];
         };
-        AddBatchPartsError: {
-            detail: string;
-        };
         AddBatchPartsRequestRequest: {
             parts: string[];
             reason?: string;
+            override_email?: string;
+            override_password?: string;
+            override_reason?: string;
         };
         AddBatchPartsResponse: {
             /** Format: uuid */
@@ -33252,8 +33252,6 @@ export interface components {
             visit_number?: number;
             /** Format: date-time */
             exited_at?: string | null;
-            /** @description Operator assigned to this step execution */
-            assigned_to?: number | null;
             /** @description Operator who completed this step */
             completed_by?: number | null;
             /**
@@ -37835,7 +37833,7 @@ export interface components {
             /** Format: double */
             readonly duration_seconds: number | null;
             /** @description Operator assigned to this step execution */
-            assigned_to?: number | null;
+            readonly assigned_to: number | null;
             readonly assigned_to_info: {
                 [key: string]: unknown;
             } | null;
@@ -37896,8 +37894,6 @@ export interface components {
             visit_number?: number;
             /** Format: date-time */
             exited_at?: string | null;
-            /** @description Operator assigned to this step execution */
-            assigned_to?: number | null;
             /** @description Operator who completed this step */
             completed_by?: number | null;
             /**
@@ -38066,8 +38062,6 @@ export interface components {
             visit_number?: number;
             /** Format: date-time */
             exited_at?: string | null;
-            /** @description Operator assigned to this step execution */
-            assigned_to?: number | null;
             /** @description Operator who completed this step */
             completed_by?: number | null;
             /**
@@ -43874,7 +43868,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AddBatchPartsError"];
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

@@ -10458,12 +10458,10 @@ export type StepExecution = {
   entered_at: string;
   exited_at?: (string | null) | undefined;
   duration_seconds: number | null;
-  assigned_to?:
-    | /**
-     * Operator assigned to this step execution
-     */
-    (number | null)
-    | undefined;
+  /**
+   * Operator assigned to this step execution
+   */
+  assigned_to: number | null;
   assigned_to_info: {};
   completed_by?:
     | /**
@@ -15316,10 +15314,6 @@ export type PatchedStepExecutionRequest = Partial<{
   visit_number: number;
   exited_at: string | null;
   /**
-   * Operator assigned to this step execution
-   */
-  assigned_to: number | null;
-  /**
    * Operator who completed this step
    */
   completed_by: number | null;
@@ -17978,12 +17972,6 @@ export type StepExecutionCreateRequest = {
    */
   number | undefined;
   exited_at?: (string | null) | undefined;
-  assigned_to?:
-    | /**
-     * Operator assigned to this step execution
-     */
-    (number | null)
-    | undefined;
   completed_by?:
     | /**
      * Operator who completed this step
@@ -18033,12 +18021,6 @@ export type StepExecutionRequest = {
    */
   number | undefined;
   exited_at?: (string | null) | undefined;
-  assigned_to?:
-    | /**
-     * Operator assigned to this step execution
-     */
-    (number | null)
-    | undefined;
   completed_by?:
     | /**
      * Operator who completed this step
@@ -20142,12 +20124,14 @@ const BatchExecutionStartRequest = z.object({
 const AddBatchPartsRequestRequest = z.object({
   parts: z.array(z.string().uuid()),
   reason: z.string().optional(),
+  override_email: z.string().optional(),
+  override_password: z.string().optional(),
+  override_reason: z.string().optional(),
 });
 const AddBatchPartsResponse = z.object({
   batch_id: z.string().uuid(),
   added: z.array(z.string()),
 });
-const AddBatchPartsError = z.object({ detail: z.string() });
 const BatchCompleteResponse = z.object({
   batch_id: z.string(),
   completed_at: z.string(),
@@ -26655,7 +26639,6 @@ const StepExecutionCreateRequest = z.object({
   step: z.string().uuid(),
   visit_number: z.number().int().gte(0).lte(2147483647).optional(),
   exited_at: z.string().datetime({ offset: true }).nullish(),
-  assigned_to: z.number().int().nullish(),
   completed_by: z.number().int().nullish(),
   next_step: z.string().uuid().nullish(),
   decision_result: z.string().max(50).optional(),
@@ -26675,7 +26658,7 @@ const StepExecution = z.object({
   entered_at: z.string().datetime({ offset: true }),
   exited_at: z.string().datetime({ offset: true }).nullish(),
   duration_seconds: z.number().nullable(),
-  assigned_to: z.number().int().nullish(),
+  assigned_to: z.number().int().nullable(),
   assigned_to_info: z.object({}).partial().passthrough().nullable(),
   completed_by: z.number().int().nullish(),
   completed_by_info: z.object({}).partial().passthrough().nullable(),
@@ -26694,7 +26677,6 @@ const StepExecutionRequest = z.object({
   step: z.string().uuid(),
   visit_number: z.number().int().gte(0).lte(2147483647).optional(),
   exited_at: z.string().datetime({ offset: true }).nullish(),
-  assigned_to: z.number().int().nullish(),
   completed_by: z.number().int().nullish(),
   next_step: z.string().uuid().nullish(),
   decision_result: z.string().max(50).optional(),
@@ -26707,7 +26689,6 @@ const PatchedStepExecutionRequest = z
     step: z.string().uuid(),
     visit_number: z.number().int().gte(0).lte(2147483647),
     exited_at: z.string().datetime({ offset: true }).nullable(),
-    assigned_to: z.number().int().nullable(),
     completed_by: z.number().int().nullable(),
     next_step: z.string().uuid().nullable(),
     decision_result: z.string().max(50),
@@ -30954,7 +30935,6 @@ export const schemas = {
   BatchExecutionStartRequest,
   AddBatchPartsRequestRequest,
   AddBatchPartsResponse,
-  AddBatchPartsError,
   BatchCompleteResponse,
   BatchCompleteError,
   DiscardBatchRequestRequest,
@@ -33518,7 +33498,7 @@ for advancement.`,
     method: "post",
     path: "/api/BatchExecutions/:id/add-parts/",
     alias: "api_BatchExecutions_add_parts_create",
-    description: `Put forgotten pieces into a load until the step is completed (loading or running). Same checks as starting a load. They ride the load: its captures cover them, their visits follow the load&#x27;s holder, and a load already contained by a failed cycle holds them too.`,
+    description: `Put forgotten pieces into a load until the step is completed (loading or running). Adding a part starts it for the load&#x27;s holder through the one start decision; a training / revisit / reassignment refusal takes a supervisor&#x27;s sign-in (&#x60;override_*&#x60;), a floor refusal answers with &#x60;code&#x60; and &#x60;blockers&#x60;. They ride the load: its captures cover them, and a load already contained by a failed cycle holds them too.`,
     requestFormat: "json",
     parameters: [
       {
@@ -33536,7 +33516,7 @@ for advancement.`,
     errors: [
       {
         status: 400,
-        schema: z.object({ detail: z.string() }),
+        schema: z.object({}).partial().passthrough(),
       },
     ],
   },

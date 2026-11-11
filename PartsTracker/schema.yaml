@@ -2399,8 +2399,10 @@ paths:
     post:
       operationId: api_BatchExecutions_add_parts_create
       description: 'Put forgotten pieces into a load until the step is completed (loading
-        or running). Same checks as starting a load. They ride the load: its captures
-        cover them, their visits follow the load''s holder, and a load already contained
+        or running). Adding a part starts it for the load''s holder through the one
+        start decision; a training / revisit / reassignment refusal takes a supervisor''s
+        sign-in (`override_*`), a floor refusal answers with `code` and `blockers`.
+        They ride the load: its captures cover them, and a load already contained
         by a failed cycle holds them too.'
       parameters:
       - in: path
@@ -2438,7 +2440,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AddBatchPartsError'
+                type: object
+                additionalProperties: {}
           description: ''
   /api/BatchExecutions/{id}/capture-state/:
     get:
@@ -51359,13 +51362,6 @@ components:
       - B
       - C
       - month
-    AddBatchPartsError:
-      type: object
-      properties:
-        detail:
-          type: string
-      required:
-      - detail
     AddBatchPartsRequestRequest:
       type: object
       properties:
@@ -51375,6 +51371,12 @@ components:
             type: string
             format: uuid
         reason:
+          type: string
+        override_email:
+          type: string
+        override_password:
+          type: string
+        override_reason:
           type: string
       required:
       - parts
@@ -74152,10 +74154,6 @@ components:
           type: string
           format: date-time
           nullable: true
-        assigned_to:
-          type: integer
-          nullable: true
-          description: Operator assigned to this step execution
         completed_by:
           type: integer
           nullable: true
@@ -83356,6 +83354,7 @@ components:
           readOnly: true
         assigned_to:
           type: integer
+          readOnly: true
           nullable: true
           description: Operator assigned to this step execution
         assigned_to_info:
@@ -83411,6 +83410,7 @@ components:
         archived:
           type: boolean
       required:
+      - assigned_to
       - assigned_to_info
       - completed_by_info
       - created_at
@@ -83463,10 +83463,6 @@ components:
           type: string
           format: date-time
           nullable: true
-        assigned_to:
-          type: integer
-          nullable: true
-          description: Operator assigned to this step execution
         completed_by:
           type: integer
           nullable: true
@@ -83761,10 +83757,6 @@ components:
           type: string
           format: date-time
           nullable: true
-        assigned_to:
-          type: integer
-          nullable: true
-          description: Operator assigned to this step execution
         completed_by:
           type: integer
           nullable: true

@@ -581,9 +581,11 @@ def _record(step_execution, stage: Stage, outcomes: list[Outcome], *, by=None, a
     if step_execution is None or step_execution.pk is None:
         return
     at = at or timezone.now()
-    for o in outcomes:
-        GateDecision.objects.update_or_create(  # tenant-safe: keyed to a scoped visit
-            step_execution=step_execution, gate=str(o.code), stage=str(stage),
-            defaults={'tenant_id': step_execution.tenant_id, 'outcome': o.outcome,
-                      'decided_by': o.by if o.by is not None else by, 'decided_at': at,
-                      'reason': o.reason or '', 'reference': o.reference or ''})
+    # Appended, never overwritten: a takeover's start doesn't erase the override the
+    # visit was first started on.
+    GateDecision.objects.bulk_create([  # tenant-safe: keyed to a scoped visit
+        GateDecision(tenant_id=step_execution.tenant_id, step_execution=step_execution,
+                     gate=str(o.code), stage=str(stage), outcome=o.outcome,
+                     decided_by=o.by if o.by is not None else by, decided_at=at,
+                     reason=o.reason or '', reference=o.reference or '')
+        for o in outcomes])

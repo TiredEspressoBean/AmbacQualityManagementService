@@ -393,7 +393,7 @@ def _apply_intent_to_process(
             description=source.description,
         )
         # The gates its author composed, not just the floor a new step is given.
-        set_step_gates(added, rows_of(source))
+        set_step_gates(added, rows_of(source), copied=True)
 
     for entry in steps_block.get('modified', []):
         identity = entry['identity_id']
@@ -429,7 +429,7 @@ def _apply_intent_to_process(
                 drafted = {r['gate']: r for r in rows_of(ps_draft.step)} if ps_draft else {}
                 rows = [r for r in rows_of(new_version) if r['gate'] not in gate_codes]
                 rows += [drafted[g] for g in gate_codes if g in drafted]
-                set_step_gates(new_version, rows)
+                set_step_gates(new_version, rows, copied=True)
 
     # Edge changes — fully rebuild affected edges on the fresh process.
     # `create_new_process_version` copied edges from current_approved

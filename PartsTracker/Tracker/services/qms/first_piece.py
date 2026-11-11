@@ -58,6 +58,10 @@ def start_blocker(step, work_order, part, execution=None):
     pieces (already one, or a place still open in the set)."""
     if part is None or work_order is None or not step.has_gate('first_piece'):
         return None
+    # A visit already started (a takeover) was judged when it started: it is in the
+    # set, or it was made under a setup since superseded. It isn't refused again.
+    if execution is not None and execution.pk and execution.status == 'IN_PROGRESS':
+        return None
     from Tracker.models import FPIStatus
     from Tracker.services.mes.gates import Blocker, GateCode
     from Tracker.services.qms.fpi_scope import records_for
@@ -115,6 +119,19 @@ def join_on_start(execution) -> None:
                 run.save(update_fields=['designated_part', 'updated_at'])
     if created is not None:
         transaction.on_commit(lambda: notify_fpi_requested(created))
+
+
+def pieces_missing(fpi) -> int:
+    """How many more pieces the first piece needs before it can be bought off: it is
+    bought off as a whole, all N (fewer only when the work order hasn't N parts)."""
+    from Tracker.models import Parts
+    if fpi.step is None:
+        return 0
+    wanted = quantity(fpi.step)
+    if fpi.work_order_id:
+        wanted = min(wanted, Parts.objects.filter(  # tenant-safe: .objects auto-scopes
+            work_order_id=fpi.work_order_id, archived=False).count() or wanted)
+    return max(0, wanted - len(first_piece_part_ids(fpi)))
 
 
 def first_piece_part_ids(fpi) -> list:

@@ -1345,9 +1345,10 @@ class GateDecisionOutcome(models.TextChoices):
 
 class GateDecision(SecureModel):
     """The decision log: how one gate was cleared for one visit (user decision
-    2026-11-11). One row per visit per gate per stage, written when the visit starts
-    (START) or leaves the step (RELEASE), for passes and escapes alike. A refusal that
-    is later cleared is not kept — the row records what the work went ahead on.
+    2026-11-11). Written when the visit starts (START) or leaves the step (RELEASE),
+    for passes and escapes alike. Append-only: a later start of the same visit (a
+    takeover) adds rows, so an earlier supervisor override stays on record. A refusal
+    that is later cleared is not kept — a row records what the work went ahead on.
     Gate codes are `services.mes.gates.GateCode`."""
 
     step_execution = models.ForeignKey(
@@ -1368,10 +1369,8 @@ class GateDecision(SecureModel):
         verbose_name = 'Gate Decision'
         verbose_name_plural = 'Gate Decisions'
         ordering = ['decided_at']
-        constraints = [
-            models.UniqueConstraint(fields=['step_execution', 'gate', 'stage'],
-                                    name='gatedecision_visit_gate_stage_uniq'),
-        ]
+        indexes = [models.Index(fields=['step_execution', 'gate', 'stage'],
+                                name='gatedecision_visit_gate_idx')]
 
     def __str__(self):
         return f"{self.gate} {self.stage} {self.outcome}"

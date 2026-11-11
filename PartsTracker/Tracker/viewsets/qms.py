@@ -2197,7 +2197,14 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         # sign-off blockers, both of which THIS pass clears. What's left says whether
         # each piece actually finished its substeps / measurements / sampling here.
         from Tracker.models import Parts
-        from Tracker.services.qms.first_piece import first_piece_part_ids
+        from Tracker.services.qms.first_piece import first_piece_part_ids, pieces_missing
+        # Bought off as a whole: all N pieces made, not the first of them.
+        missing = pieces_missing(fpi)
+        if missing:
+            return Response(
+                {"detail": f"The first piece is {missing} more piece{'s' if missing > 1 else ''} "
+                           "short — each nest's piece is made before the buy-off."},
+                status=status.HTTP_400_BAD_REQUEST)
         remaining = []
         for piece in Parts.objects.filter(id__in=first_piece_part_ids(fpi)).order_by('ERP_id'):  # tenant-safe: .objects auto-scopes
             se = StepExecution.get_current_execution(piece)
@@ -2615,14 +2622,14 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         # The first piece's parts (the first N started in the context). Ready for a
         # buy-off when every one has finished the step's inspection — the same test
         # `pass_inspection` applies, so the buttons show exactly when Pass would succeed.
-        from Tracker.services.qms.first_piece import first_piece_part_ids, quantity
+        from Tracker.services.qms.first_piece import first_piece_part_ids, pieces_missing, quantity
         pieces = []
         first_piece_ready = False
         if pending_fpi is not None:
             from Tracker.models import StepExecution
             pieces = list(Parts.objects.filter(  # tenant-safe: .objects auto-scopes
                 id__in=first_piece_part_ids(pending_fpi)).order_by('ERP_id'))
-            first_piece_ready = bool(pieces)
+            first_piece_ready = bool(pieces) and not pieces_missing(pending_fpi)
             for piece in pieces:
                 se = StepExecution.get_current_execution(piece)
                 if (se is None or str(se.step_id) != str(step_id)

@@ -1,9 +1,12 @@
 """Two new floor gates — a part on hold, a machine down (gate redesign S4, user
 decisions 2026-11-11) — and the life limit moves to the start.
 
-Every step that kept the floor (it still carries the work-order gate) is given the two
-new gates, so existing routings refuse a held part or a down machine as new ones do.
-A step whose engineer removed the floor is left as they composed it.
+Every existing step is given the two new gates, so existing routings refuse a held
+part or a down machine as new ones do. (No step had been composed in the gates editor
+yet, so every step still carried the floor these join.)
+
+Backward removes every row of the two gates, including any a later step was given
+with the floor; the deployment only migrates forward.
 """
 from django.db import migrations, models
 
@@ -12,19 +15,19 @@ NEW_FLOOR = ('part_on_hold', 'equipment_down')
 
 def forwards(apps, schema_editor):
     StepRequirement = apps.get_model('Tracker', 'StepRequirement')
+    Steps = apps.get_model('Tracker', 'Steps')
     rows = StepRequirement._base_manager.filter(archived=False)
-    floor_steps = set(rows.filter(gate='work_order_not_workable').values_list('step_id', flat=True))
     have = set(rows.filter(gate__in=NEW_FLOOR).values_list('step_id', 'gate'))
     last = {}
     for step_id, order in rows.values_list('step_id', 'order'):
         last[step_id] = max(order, last.get(step_id, 0))
-    tenants = dict(rows.filter(step_id__in=floor_steps).values_list('step_id', 'tenant_id'))
+    tenants = dict(Steps._base_manager.values_list('id', 'tenant_id'))
     batch = []
-    for step_id in floor_steps:
+    for step_id in tenants:
         for i, gate in enumerate(NEW_FLOOR, start=1):
             if (step_id, gate) not in have:
                 batch.append(StepRequirement(tenant_id=tenants[step_id], step_id=step_id,
-                                             gate=gate, order=last[step_id] + i))
+                                             gate=gate, order=last.get(step_id, 0) + i))
     StepRequirement._base_manager.bulk_create(batch, batch_size=2000)
 
 

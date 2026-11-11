@@ -38,8 +38,10 @@ _load_runs: ContextVar[list | None] = ContextVar('tool_life_load_runs', default=
 
 
 @contextmanager
-def one_cycle_per_load():
-    """Starting a load's members: count its tools once every member has started."""
+def one_cycle_per_load(*, cycle_counted: bool = False):
+    """Starting a load's members: count its tools once every member has started.
+    `cycle_counted`: parts joining a load already running — its cycle was counted
+    when it started, so only their parts count."""
     token = _load_runs.set([])
     try:
         yield
@@ -48,7 +50,8 @@ def one_cycle_per_load():
         _load_runs.reset(token)
     cycles_counted: set = set()
     for execution, equipment in runs:
-        count_start(execution, equipment, cycles_counted=cycles_counted)
+        count_start(execution, equipment, cycles_counted=cycles_counted,
+                    skip_cycles=cycle_counted)
 
 
 def _unit(tracking) -> str:
@@ -161,7 +164,8 @@ def _counted_part_before(equipment, execution) -> bool:
             .exclude(step_execution=execution).exists())
 
 
-def count_start(execution, equipment, *, cycles_counted: set | None = None) -> None:
+def count_start(execution, equipment, *, cycles_counted: set | None = None,
+                skip_cycles: bool = False) -> None:
     """A run with `equipment` began on this visit: count its parts and cycles. Inside a
     load start it is queued until the load has started (`one_cycle_per_load`)."""
     pending = _load_runs.get()
@@ -178,6 +182,8 @@ def count_start(execution, equipment, *, cycles_counted: set | None = None) -> N
             if not repeat_part:
                 _count(tracking, equipment, 1)
         elif unit == UNIT_CYCLES:
+            if skip_cycles:
+                continue
             if seen is not None:
                 if tracking.id in seen:
                     continue

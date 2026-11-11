@@ -197,16 +197,19 @@ def start_load(*, work_order, step, parts, user, authorizer=None, reason=None,
         # the winner's open load. Without this the disjoint-membership invariant is a
         # check-then-act race (no DB constraint backs it).
         locked = list(Parts.objects.select_for_update().filter(id__in=part_ids).order_by('ERP_id'))  # tenant-safe: .objects auto-scopes
-        # A held unit isn't loadable: sealing the load would carry it past its hold (a
-        # core awaiting the customer's answer, a quarantined part) — Operator walk
-        # 2026-10-21.
-        held = sorted(p.ERP_id for p in locked if p.part_status in ("QUARANTINED", "ON_HOLD"))
-        if held:
+        # Only the work order's parts waiting at this step go into its load; elsewhere a
+        # second open visit would be made for a part that's somewhere else.
+        astray = sorted(p.ERP_id for p in locked
+                        if p.step_id != step.id or p.work_order_id != work_order.id)
+        if astray:
             raise ValidationError(
-                f"{', '.join(held)} {'is' if len(held) == 1 else 'are'} held "
-                "(quarantined or on hold) and can't go into a load.")
+                f"{', '.join(astray)} {'is' if len(astray) == 1 else 'are'} not at "
+                f"{step.name} on {work_order.ERP_id}, so can't go into this load.")
+        # A held member (quarantined, on hold, a core awaiting authorisation) is refused
+        # by the start decision below, as the step's gates say — not a status list here.
         assert_no_open_batch_overlap(step=step, parts=locked)
 
+        from Tracker.services.mes.parts import _stamp_production_equipment
         visits = []
         for p in locked:
             visit = (StepExecution.objects  # tenant-safe: FK-correlated to a scoped part
@@ -216,6 +219,9 @@ def start_load(*, work_order, step, parts, user, authorizer=None, reason=None,
                 visit = StepExecution.objects.create(
                     tenant=p.tenant, part=p, step=step, status='PENDING',
                     visit_number=StepExecution.get_visit_count(p, step) + 1)
+            # Its machine, as every other way of opening a visit records it: the start
+            # gates (machine in service, a Per Equipment first piece) judge it.
+            _stamp_production_equipment(visit)
             visits.append(visit)
 
         refused = [b for v in visits for b in floor_blockers(context_for_execution(v, user))]
@@ -392,19 +398,26 @@ def _record_membership(batch, user, *, added=None, removed=None, reason=""):
         reason=(reason or "").strip() or OPEN_LOAD_CORRECTION, edited_by=user)
 
 
-def add_parts_to_batch(*, batch: "BatchExecution", parts, user: "User", reason: str = "") -> list:
+def add_parts_to_batch(*, batch: "BatchExecution", parts, user: "User", reason: str = "",
+                       authorizer=None, override_reason=None) -> list:
     """Put forgotten pieces into a load that isn't completed yet — loading or running
     (user decision 2026-11-03: until Complete load the operator corrects membership
     freely; no reason needed). The same checks as starting a load: at the load's step,
-    on its work order, not held, not in another open load. An added part rides the load:
-    its captures cover it (the advancement gate reads them through membership), its
-    visit at the step follows the load's holder, and if the load's FAIL containment has
-    already fired it is quarantined with the load.
+    on its work order, not in another open load.
 
-    Returns the parts added. Raises ValidationError naming why not.
+    Adding a part IS starting it (gate review 2026-11-11, complete mediation): its visit
+    is started for the load's holder through `lifecycle.start_execution`, so every start
+    gate runs — holds, first piece, training, repeat visits — with the same supervisor
+    override as Start load (`authorizer`, `override_reason`). An added part rides the
+    load: its captures cover it, and if the load's FAIL containment has already fired it
+    is quarantined with the load.
+
+    Returns the parts added. Raises ValidationError / StartRefused naming why not, or a
+    lifecycle.StartGateError for a supervisor.
     """
     from Tracker.models import BatchExecution, PartsStatus, QuarantineDisposition, StepExecution
-    from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
+    from Tracker.services.mes.lifecycle import start_execution
+    from Tracker.services.mes.parts import TERMINAL_PART_STATUSES, _stamp_production_equipment
 
     with transaction.atomic():
         batch = BatchExecution.objects.select_for_update().get(pk=batch.id)
@@ -420,44 +433,43 @@ def add_parts_to_batch(*, batch: "BatchExecution", parts, user: "User", reason: 
                 problems.append(f"{p.ERP_id} isn't at {batch.step.name}.")
             elif p.work_order_id != batch.work_order_id:
                 problems.append(f"{p.ERP_id} is on another work order.")
-            elif p.part_status in ("QUARANTINED", "ON_HOLD") or p.part_status in TERMINAL_PART_STATUSES:
-                problems.append(f"{p.ERP_id} is held or finished and can't go into a load.")
+            elif p.part_status in TERMINAL_PART_STATUSES:
+                problems.append(f"{p.ERP_id} is finished and can't go into a load.")
         if problems:
             raise ValidationError(problems)
         if BatchExecution.objects.filter(archived=False, step=batch.step, completed_at__isnull=True,
                                          parts__in=new).exclude(pk=batch.pk).exists():
             raise ValidationError("A selected part is already in another open load at this step.")
-        # A part joining a running load starts work: the start gates nobody on the floor
-        # overrides apply to it as to the load's first members.
-        from Tracker.services.mes.gates import StartContext, StartRefused, floor_blockers
-        refused = [b for p in new for b in floor_blockers(StartContext(
-            part=p, step=batch.step, work_order=batch.work_order, operator=user))]
-        if refused:
-            raise StartRefused(refused)
 
-        batch.parts.add(*new)
-        for p in new:
-            _record_membership(batch, user, added=p, reason=reason)
-
-        # Its visit follows the load's holder: the one holding most of the others.
+        # The load's holder: whoever holds most of its visits, else who started it.
         held = list(StepExecution.objects  # tenant-safe: FK-correlated to a scoped load's parts
                     .filter(step_id=batch.step_id, part_id__in=current, exited_at__isnull=True,
                             archived=False, assigned_to__isnull=False))
         if held:
             from collections import Counter
             top = Counter(v.assigned_to_id for v in held).most_common(1)[0][0]
-            model_visit = next(v for v in held if v.assigned_to_id == top)
-            for v in (StepExecution.objects  # tenant-safe: FK-correlated to the added scoped parts
-                      .filter(step_id=batch.step_id, part__in=new, exited_at__isnull=True,
-                              archived=False).exclude(assigned_to_id=top)):
-                snap = {k: val for k, val in (model_visit.training_authorization or {}).items()
-                        if k != 'previous'}
-                snap['carried_with'] = str(model_visit.id)
-                if v.training_authorization:
-                    snap['previous'] = v.training_authorization
-                v.assigned_to_id = top
-                v.training_authorization = snap or None
-                v.save(update_fields=['assigned_to', 'training_authorization', 'updated_at'])
+            holder = next(v.assigned_to for v in held if v.assigned_to_id == top)
+        else:
+            holder = batch.started_by
+
+        # Each newcomer's visit is started for the holder through the one start
+        # decision. Its tools count its parts; the load's cycle was counted already.
+        from Tracker.services.life_tracking.tool_life import one_cycle_per_load
+        with one_cycle_per_load(cycle_counted=True):
+            for p in new:
+                visit = (StepExecution.objects  # tenant-safe: FK-correlated to a scoped part
+                         .filter(part=p, step_id=batch.step_id, exited_at__isnull=True,
+                                 archived=False).order_by('-entered_at').first())
+                if visit is None:
+                    visit = StepExecution.objects.create(
+                        tenant=p.tenant, part=p, step_id=batch.step_id, status='PENDING',
+                        visit_number=StepExecution.get_visit_count(p, batch.step) + 1)
+                _stamp_production_equipment(visit)
+                start_execution(visit, holder, authorizer=authorizer, reason=override_reason)
+
+        batch.parts.add(*new)
+        for p in new:
+            _record_membership(batch, user, added=p, reason=reason)
 
         # A load already contained by its failed cycle holds the newcomer too.
         if QuarantineDisposition.objects.filter(archived=False, batch_execution=batch,

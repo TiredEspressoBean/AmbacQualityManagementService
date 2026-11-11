@@ -70,6 +70,14 @@ class FirstPieceStartGateTests(TenantTestCase):
         with self.assertRaises(StartRefused):
             self._start(2)
 
+    def test_the_first_piece_is_bought_off_as_a_whole(self):
+        from Tracker.services.qms.first_piece import pieces_missing
+        self._gates(quantity=2)
+        self._start(0)
+        self.assertEqual(pieces_missing(self._record()), 1)  # one nest's piece not made
+        self._start(1)
+        self.assertEqual(pieces_missing(self._record()), 0)
+
     def test_after_the_pass_the_rest_start(self):
         self._start(0)
         record = self._record()

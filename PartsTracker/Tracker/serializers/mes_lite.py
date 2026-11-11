@@ -1798,6 +1798,10 @@ class StepExecutionSerializer(SecureModelMixin):
             'assigned_to_info', 'completed_by_info', 'duration_seconds', 'is_active',
             # Server-computed competence snapshot / override log — never client-set.
             'training_authorization',
+            # Who holds the visit is set by its start (to whoever starts it) or by the
+            # supervised reassign action — a write here handed work to someone else
+            # with no supervisor (gate review 2026-11-11).
+            'assigned_to',
         )
 
 
