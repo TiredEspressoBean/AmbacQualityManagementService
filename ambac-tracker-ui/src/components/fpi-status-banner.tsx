@@ -5,7 +5,15 @@ import { ShieldCheck, AlertTriangle, Lock, CheckCircle, Clock, PenLine } from "l
 import { useFpiCheckStatus, useFpiGetOrCreate, useFpiNewSetup, useFpiVoidPass } from "@/hooks/useFpiRecords";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import { FpiSignOffDialog, type FpiVerdict } from "@/components/fpi-sign-off-dialog";
+
+/** The step's production machines: a Per Equipment first piece is waived for one. */
+const waiveMachinesOptions = (stepId: string | undefined) => queryOptions({
+    queryKey: ["step-machines", stepId] as const,
+    queryFn: () => api.api_Steps_machines_retrieve({ params: { id: stepId! } }),
+});
 import {
     Dialog,
     DialogContent,
@@ -71,6 +79,14 @@ export function FpiStatusBanner({
     // A first piece waived before any part is made (qualified fixtures): the record
     // opened for the waiver.
     const [waiverId, setWaiverId] = useState<string | null>(null);
+    // A Per Equipment first piece with no machine known yet is waived for a machine
+    // the operator names (gate review 2026-11-11: qualified fixtures, before any part).
+    const [waiveMachine, setWaiveMachine] = useState<string>("");
+    const { data: waiveMachinesResp } = useQuery({
+        ...waiveMachinesOptions(stepId),
+        enabled: !!stepId && fpiStatus?.context_known === false && !!fpiStatus?.can_sign_off,
+    });
+    const waiveMachines = waiveMachinesResp?.machines ?? [];
 
     const afterChange = () => {
         refetch();
@@ -115,7 +131,8 @@ export function FpiStatusBanner({
     const handleWaiveBeforeParts = async () => {
         try {
             const res = await getOrCreateMutation.mutateAsync({
-                work_order: workOrderId, step: stepId, part: partId, for_waiver: true });
+                work_order: workOrderId, step: stepId, part: partId, for_waiver: true,
+                ...(waiveMachine ? { equipment: waiveMachine } : {}) });
             setWaiverId(String(res.fpi.id));
             setVerdict("WAIVE");
         } catch (e: unknown) {
@@ -283,8 +300,27 @@ export function FpiStatusBanner({
     if (fpiStatus.context_known === false) {
         // Per Equipment, and nothing says which machine this part runs on.
         title = "First Piece Inspection Required — machine not recorded";
-        detail = "This step needs a first piece per machine. Record the machine this part runs on, then start the FPI.";
-        actions = compact ? <Badge variant="secondary">FPI required</Badge> : null;
+        detail = "This step needs a first piece per machine. Pick the machine at Start Work; the first part started on it opens its first piece.";
+        actions = compact ? <Badge variant="secondary">FPI required</Badge> : (
+            canSignOff && waiveMachines.length > 0 ? (
+                <div className="flex items-center gap-2">
+                    <Select value={waiveMachine} onValueChange={setWaiveMachine}>
+                        <SelectTrigger className="h-8 w-44" aria-label="Machine to waive for">
+                            <SelectValue placeholder="Machine…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {waiveMachines.map((m) => (
+                                <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button size="sm" variant="outline" onClick={handleWaiveBeforeParts}
+                        disabled={!waiveMachine || getOrCreateMutation.isPending}>
+                        Waive for this machine
+                    </Button>
+                </div>
+            ) : null
+        );
     } else if (!isPending) {
         detail = "Starting the first part opens the first piece and calls QA; the rest wait for the buy-off.";
         actions = !compact ? (

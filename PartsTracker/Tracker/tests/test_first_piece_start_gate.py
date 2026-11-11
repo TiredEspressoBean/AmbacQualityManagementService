@@ -147,6 +147,17 @@ class FirstPieceStartGateTests(TenantTestCase):
                      .values_list('part__ERP_id', flat=True))
         self.assertEqual(failed, {"FP-1"})
 
+    def test_after_a_fail_the_failed_piece_is_not_the_next_first_piece(self):
+        """A held part can't start: a set holding the quarantined failed piece would stop
+        the run for good."""
+        from Tracker.services.qms.fpi import fail_fpi, start_fpi
+        self._start(0)
+        fail_fpi(self._record(), self.user_b, notes="bore oversize")
+        Parts.objects.filter(pk=self.parts[0].pk).update(part_status="QUARANTINED")
+        record, _ = start_fpi(self.wo, self.step, self.user_a)
+        self.assertNotEqual(record.designated_part_id, self.parts[0].id)
+        self.assertNotIn(self.parts[0].id, list(record.first_piece_parts.values_list('id', flat=True)))
+
     def test_per_shift_context_is_the_visits_start(self):
         from Tracker.services.qms.fpi_scope import context_for
         self._gates(scope="PER_SHIFT")

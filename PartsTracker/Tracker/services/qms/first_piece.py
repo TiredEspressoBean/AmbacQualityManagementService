@@ -90,6 +90,16 @@ def start_blocker(step, work_order, part, execution=None, machine=None):
         f"{part.ERP_id} starts."))
 
 
+def lock_first_piece(work_order) -> None:
+    """Serialize opening a first piece on `work_order`. Locking the context's records
+    locks nothing while there are none, so two first starts each opened a PENDING record
+    and one part more than N started (gate review 2026-11-11). The work order's row
+    always exists; holding it until the transaction ends makes the second start see
+    the first one's record."""
+    from Tracker.models import WorkOrder
+    WorkOrder.objects.select_for_update().filter(pk=work_order.pk).first()  # tenant-safe: .objects auto-scopes
+
+
 def join_on_start(execution) -> None:
     """After a start at a first-piece step: the part joins its context's first piece
     while there's a place, and the first such start opens the PENDING record — the call
@@ -106,6 +116,7 @@ def join_on_start(execution) -> None:
         return
     created = None
     with transaction.atomic():
+        lock_first_piece(work_order)
         records = records_for(step, work_order, ctx).select_for_update()
         if _released(records):
             return

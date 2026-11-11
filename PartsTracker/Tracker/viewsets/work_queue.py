@@ -103,6 +103,9 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             if step is None or wo is None or not step.has_gate("first_piece") or row["is_held"]:
                 continue
             if step.fpi_scope == PER_EQUIPMENT and not row["machine"]:
+                # Machine not known yet: at most a first piece's worth can start on
+                # whichever machine it lands on — never the whole lot.
+                row["qty_startable"] = min(row["qty_ready"], quantity(step))
                 continue
             machine = None
             if step.fpi_scope == PER_EQUIPMENT:
@@ -113,9 +116,15 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             if records.filter(status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]).exists():
                 continue
             run = records.filter(status=FPIStatus.PENDING).first()
-            started = run.first_piece_parts.count() if run else 0
+            # Places taken by pieces already STARTED: a piece named but not started yet
+            # is among the ready parts, and it may still start.
+            started = (StepExecution.unscoped.filter(  # tenant-safe: explicit tenant filter
+                tenant=self.tenant, step=step, part__in=run.first_piece_parts.all(),
+                status__in=["IN_PROGRESS", "COMPLETED"]).values("part").distinct().count()
+                if run else 0)
             row["qty_startable"] = max(0, min(row["qty_ready"], quantity(step) - started))
-            if row["qty_startable"] == 0 and row["qty_ready"] > 0:
+            # Your own first piece in progress leads Up next; the row isn't "waiting".
+            if row["qty_startable"] == 0 and row["qty_ready"] > 0 and not row.get("qty_mine"):
                 row["readiness"] = "waiting_fpi"
 
     def _rows(self):

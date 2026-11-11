@@ -316,8 +316,11 @@ def void_fpi_pass(fpi: FPIRecord, user, reason: str) -> FPIRecord:
             shift_date=fpi.shift_date, shift=fpi.shift, status=FPIStatus.PENDING,
             notes=f"Re-inspection: the pass on {fpi.inspected_at:%Y-%m-%d} was voided — {reason}"
                   if fpi.inspected_at else f"Re-inspection: an earlier pass was voided — {reason}")
-        if fresh.designated_part_id:
-            fresh.first_piece_parts.add(fresh.designated_part_id)
+        # Only a part that can be the piece takes a place in the set: the old designated
+        # part may have moved on or be held, and a place it holds is one no part fills.
+        # With none, the next start at the step joins the set (first_piece.join_on_start).
+        if designated is not None:
+            fresh.first_piece_parts.add(designated)
         transaction.on_commit(lambda: notify_fpi_requested(fresh))
     return fresh
 
@@ -325,12 +328,18 @@ def void_fpi_pass(fpi: FPIRecord, user, reason: str) -> FPIRecord:
 def _first_piece_in(work_order, step, ctx, prefer=None):
     """The part a first piece for `ctx` is made against: `prefer` when it is at the step
     and in the context, else the first part to enter the step in the context (earliest
-    open visit), else the lowest-numbered such part. None if there is none."""
+    open visit), else the lowest-numbered such part. None if there is none.
+
+    A held part (quarantined — a failed first piece, say — or on hold) is never the
+    first piece: it can't start, so a set holding it would stop the run for good (gate
+    review 2026-11-11)."""
     from Tracker.models import Parts, StepExecution
     from Tracker.services.qms.fpi_scope import PER_EQUIPMENT, machine_of
 
     def fits(part):
         if part is None or part.work_order_id != work_order.id or part.step_id != step.id:
+            return False
+        if part.part_status in ('QUARANTINED', 'ON_HOLD'):
             return False
         if ctx.scope == PER_EQUIPMENT:
             m = machine_of(part, step)
@@ -380,6 +389,8 @@ def start_fpi(work_order, step, user, *, part=None, equipment=None, shift=None, 
         raise ValueError("This step needs a first piece per machine, and the machine this "
                          "part runs on isn't recorded. Set the machine, then start the FPI.")
     with transaction.atomic():
+        from Tracker.services.qms.first_piece import lock_first_piece
+        lock_first_piece(work_order)  # two openers can't both find no record
         records = records_for(step, work_order, ctx).select_for_update()
         latest = records.first()
         if latest is not None and latest.status == FPIStatus.PENDING:

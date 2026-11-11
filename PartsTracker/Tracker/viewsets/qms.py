@@ -2602,10 +2602,25 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             return Response({"detail": "Work order not found"}, status=status.HTTP_404_NOT_FOUND)
         part_id = request.query_params.get('part')
         part = Parts.objects.filter(tenant=tenant, id=part_id).first() if part_id else None
-        ctx = context_for(step, work_order, part=part)
+        # The context the part's start would be in — for a part not started yet, the
+        # machine planned for it now (first_piece.start_context), as the start judges it.
+        if part is not None:
+            from Tracker.models import StepExecution
+            from Tracker.services.qms.first_piece import start_context
+            visit = StepExecution.get_current_execution(part)
+            if visit is not None and str(visit.step_id) != str(step.id):
+                visit = None
+            ctx = start_context(step, work_order, part, visit)
+        else:
+            ctx = context_for(step, work_order, part=part)
         records = records_for(step, work_order, ctx)
         latest = records.first()
         passed_fpi = records.filter(status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]).exists()
+        # A part made before a declared new setup is covered by that setup's first piece
+        # (user ruling 2026-11-11): it isn't "required" again.
+        if not passed_fpi and part is not None:
+            from Tracker.services.qms.fpi_scope import made_under_old_setup
+            passed_fpi = made_under_old_setup(step, work_order, part)
         # The pass a buy-off authority may void if it was given in error.
         passed_id = (records.filter(status=FPIStatus.PASSED)
                      .values_list('id', flat=True).first())
