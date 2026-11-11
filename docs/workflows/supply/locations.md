@@ -203,6 +203,10 @@ it, or it's refused (*Say where you found it first (the location box).*). Once a
 it reads *&lt;lot&gt; found at &lt;location&gt; — added to the count.* An item count
 takes only that item; a location count, anything found there.
 
+A count lists the stock it can correct: lots that are accepted or in use. Lots still
+under receiving inspection, held or rejected aren't lines, even when they sit at the
+location. Their quantity is settled by their own decision, not by a count.
+
 **Save** as you go, then **Submit count**.
 
 !!! important "A blank line is not a zero"
