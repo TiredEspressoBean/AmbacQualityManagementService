@@ -109,26 +109,68 @@ The properties panel covers:
 | **Terminal step** | The routing ends here |
 | **Expected duration** | Planned duration |
 | **Max visits (rework limit)** | How many times a part may revisit the step |
-| **Repeat visits are worked by** | Who may work a part's second and later visits to the step: *Anyone qualified* (the default — no rule), *Whoever worked the last visit* (the repeat visit is assigned to them), *Someone else* (anyone but whoever worked an earlier visit), or *Someone with a role* (pick the role). A first visit is never constrained. *Checked when the visit is started; a supervisor can authorize past it with a reason.* Also shown on a Rework step, beside **Max visits before escalation** |
-| **QA signoff** | Whether a lot needs QA to release it off this step, and how firmly that release is signed — *Not required*, *Check off* (recorded under their login), or *Signature + password* (they re-enter their own password). At every level, the sign-off is refused to anyone who signed one of the step's substeps on that work order, or who is assigned to or completed a part's open visit to the step on it — *"Segregation of duties: you completed work on this step — a different qualified inspector has to sign it off."* |
+| **Gates** | The checks this step runs before work starts and before a part moves on. See [Gates](#gates) |
 | **Sampling required** | Sampling applies at this step |
 | **Min sampling rate (%)** | Shown once sampling is required: the minimum percentage of parts sampled at this step |
-| **Requires first-piece inspection** | FPI gates the step |
-| **FPI scope** | Shown once FPI is required: what one first piece releases — see [FPI Scope](#fpi-scope) |
-| **Block on quarantine** | *A quarantined part can't move on from this step until its quarantine is decided.* **Off by default** |
-| **Block on out-of-spec measurement** | *A part with an out-of-spec reading at this step can't move on until it's dealt with.* The part is held with *"One or more measurements are out of specification"*. **Off by default** |
 | **Sequencing** | The order the step's substeps are worked in — *Sequential* or *Free order*. See [Sequencing](../../workflows/dwi/authoring.md#sequencing) |
 | **Move lot as a unit** | Parts advance as a cohort rather than individually |
 | **Batch ready threshold (% of lot ready to advance)** | Shown once **Move lot as a unit** is on — see [Moving a lot as a unit](#moving-a-lot-as-a-unit) |
 
-!!! warning "Block on quarantine is off unless you set it"
-    This is the setting people assume is global behaviour. A quarantined part
-    can **never ship** — that is unconditional. But it keeps moving from step to
-    step unless the step it is at has this flag.
+### Gates
 
-    So if your procedure is "a held part stops at the next operation", arm it on
-    the operations where that matters, and be ready to say which ones have it.
-    Arming every step is also legitimate; the default simply is not that.
+A step's **Gates** list is every check the step runs. You compose it per step.
+A gate the step doesn't carry isn't checked at all. Each gate shows when it is
+checked:
+- **Before start**: when someone starts work on a part at the step, or starts a
+  load.
+- **To move on**: when the part leaves the step.
+
+It's in the flow editor's step panel under **Advanced**, and on the step form
+(**Edit Step**). **Add a gate** lists the gates the step doesn't have yet. **×**
+removes one.
+
+| Gate | Checked | What it does | Settings |
+|------|---------|--------------|----------|
+| **Work order workable** | Before start | *A held, cancelled or completed work order starts no work.* | — |
+| **Deviation in date** | Before start | *A temporary change past its end date starts no work until change control extends it.* | — |
+| **Part not quarantined** | Before start | *A quarantined part waits for its disposition.* | — |
+| **Customer authorisation** | Before start | *A reman unit parked for the customer's answer isn't worked.* | — |
+| **Operator trained** | Before start | *The operator holds the step's training; a supervisor can authorize past it.* | — |
+| **Repeat visits** | Before start | *Who may work a part that comes back to this step; a supervisor can authorize past it.* A first visit is never constrained. | **Repeat visits are worked by**: *The same operator as before*, *A different operator*, or *Someone in a role* (then pick the **Role**) |
+| **Work instruction done** | To move on | *The work instruction's required substeps are complete.* | — |
+| **Qualified operator on record** | To move on | *Work that never passed a start check needs a qualified operator recorded.* | — |
+| **Life limit** | To move on | *A part past its life limit doesn't move on without an approved extension.* | — |
+| **Quarantine hold** | To move on | *A quarantined part can't move on from this step until its quarantine is decided.* | — |
+| **QA sign-off** | To move on | *QA signs the step off before parts move on.* | **How the inspector signs**: *Check off — recorded under their login*, or *Signature + password — they re-enter their own password* |
+| **First piece** | To move on | *The first piece is bought off before the rest move on.* | **First piece covers**: *Per work order*, *Per shift* or *Per machine*. See [First Piece Inspection](#first-piece-inspection) |
+| **Readings in spec** | To move on | *A part with an out-of-spec reading at this step can't move on until it's dealt with.* The part is held with *"One or more measurements are out of specification"* | — |
+
+A new step starts with **Work order workable**, **Deviation in date**, **Part
+not quarantined**, **Customer authorisation**, **Operator trained**, **Work
+instruction done**, **Qualified operator on record** and **Life limit**. Any of
+them can be removed, so a step without **Operator trained** doesn't check
+training at all. Removing one is a deliberate decision, and it shows in the
+change history.
+
+Changing a step's gates is a change to the step, like any other edit. On an
+approved process it goes through a draft revision or a process change request.
+The PCR's changes list each one, e.g. *gate:first_piece — off → on (Per
+Shift)*.
+
+!!! warning "A quarantined part keeps moving unless the step has Quarantine hold"
+    A quarantined part can **never ship**; that is unconditional. **Part not
+    quarantined** (on every new step) stops work from *starting* on it. A part
+    that was quarantined after its work started can still move on to the next
+    step, unless the step it is at carries **Quarantine hold**.
+
+    So if your procedure is "a held part stops at the next operation", add
+    **Quarantine hold** on the operations where that matters, and be ready to
+    say which ones have it.
+
+QA sign-off at either level is refused to anyone who signed one of the step's
+substeps on that work order, or who is assigned to or completed a part's open
+visit to the step on it: *"Segregation of duties: you completed work on this
+step — a different qualified inspector has to sign it off."*
 
 ## Step Requirements
 
@@ -143,8 +185,7 @@ Link measurements to collect at this step:
 
 Whether a reading must be taken is set in the step's [work
 instructions](../../workflows/dwi/authoring.md), not here. A reading outside its
-limits holds the part only when the step's **Block on out-of-spec measurement**
-is on.
+limits holds the part only when the step carries the **Readings in spec** gate.
 
 ### Training Requirements
 
@@ -214,33 +255,26 @@ gate it: nothing checks that a document was opened before a part moves on.
 
 ### First Piece Inspection
 
-Enable FPI for this step:
+Add the **First piece** gate to the step. The first part must pass FPI, and the
+remaining parts are held until it does.
 
-1. Switch on **Requires first-piece inspection** in the step's **Advanced**
-   settings
-2. First part must pass FPI
-3. Remaining parts held until FPI passes
+#### What one first piece covers
 
-#### FPI Scope
+The gate's **First piece covers** setting decides what one passed or waived
+first piece releases. The editor shows its hint under the select.
 
-The **FPI scope** select decides what one passed or waived first piece releases.
-Each option is a real gate; the editor shows its hint under the select.
-
-| Scope | Hint | Effect |
+| Covers | Hint | Effect |
 |-------|------|--------|
-| **Per Work Order** | *One first piece releases this step for the whole work order.* | One buy-off releases the step for every part on the work order |
-| **Per Shift** | *Each shift day needs its own first piece on the work order.* | Keyed by the shop-floor date: a pass on another day does not release today's run |
-| **Per Equipment** | *Each machine needs its own first piece on the work order. A part with no machine recorded is held.* | Keyed by the production machine on the part's visit to the step — from the machine authored on the step or the live schedule, or set by the operator. A pass on another machine does not release this one |
+| **Per work order** | *One first piece releases this step for the whole work order.* | One buy-off releases the step for every part on the work order |
+| **Per shift** | *Each shift needs its own first piece on the work order: Day and Night on the same date are separate. The shift is whichever started most recently.* | Keyed by the shift on the shift calendar and the date it started. A night shift past midnight keeps its start date. Before or after every shift, the moment belongs to the shift that just ended. Editing a shift doesn't lose its first piece. With no shifts set up, it keys on the plant date |
+| **Per machine** | *Each machine needs its own first piece on the work order. A part with no machine recorded is held.* | Keyed by the production machine on the part's visit to the step — from the machine authored on the step or the live schedule, or set by the operator. A pass on another machine does not release this one |
 
 See [First Piece Inspection](../../workflows/work-orders/fpi.md).
 
 ### QA Sign-off Required
 
-Require QA approval to advance:
-
-1. Set **QA signoff** to *Check off* or *Signature + password* (it is a three-way choice, not a toggle)
-2. QA inspector must approve via QaApproval
-3. Parts wait for approval before advancing
+Add the **QA sign-off** gate and choose **How the inspector signs**. Parts wait
+at the step until a QA inspector approves the lot.
 
 ### Moving a lot as a unit
 
@@ -290,7 +324,6 @@ runs on the defaults below unless they are changed directly in the database.
 
 | Setting | Effect | Default |
 |---------|--------|---------|
-| **Block on measurement failure** | Parts cannot advance if any measurement is out of spec | Off |
 | **Block on SPC violation** | **Not enforced.** Setting it changes nothing; parts are not held for an out-of-control measurement | Off |
 | **Override expiry hours** | How long an override stays good before it must be re-approved | 24 |
 | **Undo window minutes** | How long after completing a step it can be undone without approval | 15 |

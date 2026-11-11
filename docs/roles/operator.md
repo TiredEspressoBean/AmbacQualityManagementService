@@ -379,8 +379,9 @@ Check for:
 - A QA sign-off the step needs, not given yet
 - FPI required but not passed
 - Another part in the lot still has outstanding work — the lot moves together
-- Part in quarantine, **where the step is set to block on quarantine** — most
-  steps are not, so a quarantined part often keeps moving
+- Part in quarantine, **where the step carries Quarantine hold**. Most steps
+  don't, so a part quarantined during your work can still move on. It can't be
+  started at the next step
 
 ### "Permission denied"
 

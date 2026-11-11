@@ -216,7 +216,8 @@ What a step asks of the people and machines working it:
 - Required training
 - Machines that can run it
 - Documents, for reference
-- QA signoff
+- Gates: the checks run before work starts and before a part moves on, such as
+  QA sign-off and first piece. See [Gates](steps.md#gates)
 
 ### Branching
 Conditional paths through a process, built on the

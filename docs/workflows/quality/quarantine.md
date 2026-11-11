@@ -76,10 +76,11 @@ Quarantined parts display:
     is re-capturing a result that was voided.
 
     A part quarantined **while its step was already under way** is the one
-    case a step's **Block on quarantine** flag still governs: with the flag off
-    (the default), completing that step can still move it on. If your procedure
-    expects such a part to stop dead, check the flag on the steps that matter.
-    It is authored on the step, so it is Engineering's to set.
+    case a step's **Quarantine hold** gate governs: without it (the default),
+    completing that step can still move it on. If your procedure expects such a
+    part to stop dead, add the gate on the steps that matter. A step's gates are
+    authored on the step, so it is Engineering's to set. See
+    [Gates](../../admin/processes/steps.md#gates).
 
 ## Quarantine Queue
 

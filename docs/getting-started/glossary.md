@@ -209,9 +209,10 @@ A record documenting a non-conformance or quality issue with a part. Requires di
 
 ### Quarantine
 A part status indicating the part is held for quality review. A quarantined part
-**can never ship**. Whether it also stops at the next step depends on that
-step's **Block on quarantine** setting, which is off by default — so a held part
-often keeps moving down the line until shipping.
+**can never ship**, and work can't start on it at a step carrying the **Part not
+quarantined** gate, which every step has unless removed. A part quarantined
+while its step was under way can still move on from that step unless the step
+carries **Quarantine hold**.
 
 ## R
 

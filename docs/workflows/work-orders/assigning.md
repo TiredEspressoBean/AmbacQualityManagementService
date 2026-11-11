@@ -64,14 +64,15 @@ and a reason.
 ### A step's rule for repeat visits
 
 A step can say who works a part's **repeat visits** to it — the second and later
-times a part comes back, after a failed test or a rework (**Repeat visits are worked
-by**, in the [step's settings](../../admin/processes/steps.md); *Anyone qualified* by
-default, which sets no rule). Starting a repeat visit that breaks it opens **Repeat
-visit rule**, saying why — *"This is visit 2 to Rework, and the step wants a different
-operator from whoever worked it before."*, or *"… a repeat visit needs the &lt;role&gt;
-role."* — and it's cleared the same way, by a supervisor with a reason. A repeat visit
-set to *Whoever worked the last visit* is assigned to them, so anyone else meets the
-take-over gate above. This authorisation is kept apart from training overrides: it
+times a part comes back, after a failed test or a rework. It's the **Repeat visits**
+gate in the [step's gates](../../admin/processes/steps.md#gates), whose **Repeat
+visits are worked by** is *The same operator as before*, *A different operator* or
+*Someone in a role*. A step without the gate sets no rule. Starting a repeat visit
+that breaks it opens **Repeat visit rule**, saying why — *"This is visit 2 to Rework,
+and the step wants a different operator from whoever worked it before."*, or *"… a
+repeat visit needs the &lt;role&gt; role."* — and it's cleared the same way, by a
+supervisor with a reason. A repeat visit set to *The same operator as before* is
+assigned to them, so anyone else meets the take-over gate above. This authorisation is kept apart from training overrides: it
 isn't on the **Training Overrides** list.
 
 The authorisation is written onto the step execution and stays there — who was

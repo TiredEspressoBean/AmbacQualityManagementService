@@ -179,8 +179,9 @@ Issue Flagged → Quarantine → Investigation → Disposition → Resolution
                     └── CAPA (if needed)
 ```
 
-1. **Quarantine**: the part is held — it can never ship, and it stops at the
-   next step **only if that step is set to block on quarantine**
+1. **Quarantine**: the part is held. It can never ship, and work can't start
+   on it at its next step. If its current step was already under way, it can
+   still move on from it **unless that step carries Quarantine hold**
 2. **Investigation**: Quality reviews
 3. **Disposition**: the decision — Use As Is, Rework, Repair, Scrap or Return to
    Supplier

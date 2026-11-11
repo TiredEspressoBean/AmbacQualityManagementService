@@ -9,10 +9,10 @@ the **first part** produced at a step, bought off by QA before the rest of the
 run may proceed. It is what catches a bad setup on part one instead of part
 two hundred.
 
-A step either requires it or it doesn't — the requirement is a setting on the
-step, not something a tool change or a shift handover raises on its own. The
-step's [FPI scope](#fpi-scope) decides how far one buy-off reaches: the whole
-work order, one shift day, or one machine.
+A step either requires it or it doesn't. The requirement is a gate on the step,
+not something a tool change or a shift handover raises on its own. The gate's
+[First piece covers](#what-one-first-piece-covers) setting decides how far one
+buy-off reaches: the whole work order, one shift, or one machine.
 
 ## Enabling FPI
 
@@ -20,26 +20,31 @@ FPI is configured per process step:
 
 1. Open the process in the **Process Flow** editor and turn on **Edit Mode**
 2. Click the step, then open **Advanced**
-3. Enable **Requires first-piece inspection**
-4. Set the **FPI scope** — when the requirement resets
+3. Under **Gates**, **Add a gate** › **First piece**
+4. Set **First piece covers**: what one first piece releases
 
-See [Step Configuration](../../admin/processes/steps.md).
+See [Gates](../../admin/processes/steps.md#gates).
 
 When enabled, the first part at that step triggers FPI workflow.
 
-### FPI scope
+### What one first piece covers
 
-The scope decides what one passed or waived first piece releases. Each scope is a
-real gate: a part at the step is held until a first piece **for its context** is
-passed or waived.
+This setting decides what one passed or waived first piece releases. A part at
+the step is held until a first piece **for its context** is passed or waived.
 
-| Scope | One buy-off releases | A part is held when |
+| Covers | One buy-off releases | A part is held when |
 |-------|----------------------|---------------------|
-| **Per Work Order** | The step for the whole work order | No first piece at the step on the work order has passed or been waived |
-| **Per Shift** | The step for one shift day on the work order, keyed by the shop-floor date | Today's shift has no passed or waived first piece. A pass on another day does not release today's run |
-| **Per Equipment** | The step for one machine on the work order | The machine it runs on has no passed or waived first piece. A pass on another machine does not release this one |
+| **Per work order** | The step for the whole work order | No first piece at the step on the work order has passed or been waived |
+| **Per shift** | The step for one run of a shift on the work order: Day and Night on the same date are separate | The current shift has no passed or waived first piece. A pass on another shift does not release this one |
+| **Per machine** | The step for one machine on the work order | The machine it runs on has no passed or waived first piece. A pass on another machine does not release this one |
 
-Under **Per Equipment** the machine is the production machine on the part's visit
+Under **Per shift**, the shift is whichever started most recently on the shift
+calendar, overtime runs included. During a handover the incoming shift counts.
+Before or after every shift, the moment belongs to the shift that just ended. A
+night shift past midnight keeps the date it started. Editing a shift doesn't
+lose its first piece. With no shifts set up, it keys on the plant date.
+
+Under **Per machine** the machine is the production machine on the part's visit
 to the step — taken from the machine authored on the step or from the live
 schedule, or set by the operator. A part with **no machine recorded is held**:
 nothing says which first piece covers it. Record the machine, then start the FPI.
@@ -54,8 +59,8 @@ machine or shift the first piece is for.
 You meet FPI in three places. In the operator's step runtime, a banner that
 changes with the inspection's state (below). On the work order's **control**
 page, a *First piece waiting on QA* card for each pending first piece (titled
-with the step and, under a narrower scope, its context — *&lt;step&gt; for the &lt;date&gt;
-shift*), a *First piece failed at &lt;step&gt; for &lt;machine&gt; — run held* card for a
+with the step and, under a narrower scope, its context — *&lt;step&gt; for &lt;shift&gt; on &lt;date&gt;*,
+or *for the &lt;date&gt; shift* with no shift calendar), a *First piece failed at &lt;step&gt; for &lt;machine&gt; — run held* card for a
 held step, and — for people who can sign off a first piece — a *First piece
 waived at &lt;step&gt;* row for each waiver. On QA home, a *First piece waiting —
 &lt;step&gt; for &lt;machine&gt;* banner whose **Start check** opens the control page. A quality report also
@@ -208,7 +213,7 @@ corrected by a new first piece — see
 ## Viewing FPI Status
 
 The work order's control page shows a card for each step (and, under a narrower
-scope, each shift day or machine) whose first piece is waiting on QA or has
+scope, each shift or machine) whose first piece is waiting on QA or has
 failed. Once passed, nothing is shown there. A waived first piece shows as a row,
 with **Start a new first piece**, to people who can sign off a first piece.
 
@@ -232,7 +237,7 @@ step, not on it:
 |-------------------|------------------------|
 | Work order, step, part type | **The measurements** and every other capture |
 | The **designated part** | Photos and scans taken during the work |
-| Equipment and shift date (for the scoped variants) | The operator's own sign-offs |
+| Machine, or shift and its date (for the narrower scopes) | The operator's own sign-offs |
 | Status, result, notes | |
 | Who acknowledged it, and when | |
 | Who bought it off, and when — or who waived it, with the reason | |
@@ -253,8 +258,8 @@ whom; the step tells you what was actually measured.
 
 While FPI is pending:
 
-- Other parts at that step are held — under Per Shift or Per Equipment, the
-  parts of that shift day or machine
+- Other parts at that step are held — under Per shift or Per machine, the
+  parts of that shift or machine
 - Cannot proceed to next step
 - The banner and control-page card say the run is held
 

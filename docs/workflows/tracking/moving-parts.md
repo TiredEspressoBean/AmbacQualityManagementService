@@ -119,13 +119,14 @@ If an issue is found:
 3. The part enters quarantine
 
 !!! warning "Quarantine always stops a part shipping — it does not always stop it advancing"
-    A quarantined part can never leave the building. Whether it stops at the
-    **next step** depends on that step's **Block on quarantine** setting, which
-    is **off by default**. On a routing where nobody armed it, a quarantined
-    part keeps moving down the line until it reaches shipping.
+    A quarantined part can never leave the building, and work can't start on it
+    at a step carrying **Part not quarantined**, which every step has unless
+    removed. But a part quarantined while its step was under way can still
+    finish and move on from that step, unless the step carries **Quarantine
+    hold**, which is **off by default**.
 
-    If your procedure expects a hold to stop work immediately, check the flag on
-    the steps that matter. See [Quarantine](../quality/quarantine.md).
+    If your procedure expects a hold to stop work immediately, add **Quarantine
+    hold** on the steps that matter. See [Quarantine](../quality/quarantine.md).
 
 ## Handling Quarantined Parts
 
