@@ -72,13 +72,19 @@ def gauge_refusal(equipment) -> str | None:
     A measurement taken with an OUT_OF_SERVICE gauge is retroactively suspect
     product, so every write path refuses it at the source. The calibration result is
     checked as well as the status flag, which is a copy of it an edit could get out
-    of step with. Overdue is only a scheduling lapse: callers record and warn."""
+    of step with. A gauge past its calibration due date is refused too (user ruling
+    2026-11-11 — it used to be recorded with a warning)."""
     from Tracker.models.mes_standard import EquipmentStatus
     if equipment is None:
         return None
     if equipment.status == EquipmentStatus.OUT_OF_SERVICE or equipment.calibration_status == 'FAILED':
         return (f"Equipment '{equipment.name}' is OUT_OF_SERVICE (failed or "
                 f"missing calibration). Recalibrate or pick a different gauge.")
+    if equipment.calibration_status == 'OVERDUE':
+        due = equipment.next_calibration_due
+        when = f"was due {due:%d %b %Y}" if due else "has never been calibrated"
+        return (f"Equipment '{equipment.name}' is past its calibration — it {when}. "
+                f"Recalibrate it or pick a different gauge.")
     return None
 
 

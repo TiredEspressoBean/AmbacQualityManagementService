@@ -98,8 +98,12 @@ class EquipmentRosterRefusesUnusableGaugeTests(DwiPhase1BaseTestCase):
                            ])
         self.assertIn("OUT_OF_SERVICE", " ".join(ctx.exception.messages))
 
-    def test_an_overdue_gauge_is_recorded_with_a_warning(self):
+    def test_an_overdue_gauge_is_refused(self):
+        """Overdue calibration refuses the capture, like out-of-service (user ruling
+        2026-11-11; it used to be recorded with a warning). The refusal names the gauge
+        and its due date."""
         import datetime
+        from django.core.exceptions import ValidationError
         from django.utils import timezone
         from Tracker.models import CalibrationRecord, Equipments, EquipmentStatus, QualityReportEquipment
         from Tracker.services.dwi.operator_capture import submit_substep
@@ -110,14 +114,16 @@ class EquipmentRosterRefusesUnusableGaugeTests(DwiPhase1BaseTestCase):
         CalibrationRecord.objects.create(tenant=self.tenant, equipment=overdue,
                                          calibration_date=today - datetime.timedelta(days=400),
                                          due_date=today - datetime.timedelta(days=5), result='PASS')
-        result = submit_substep(substep=self.substep, step_execution=self.step_execution, user=self.user,
-                                captures=[
-                                    {"node_id": self.e_node, "kind": "equipment_roles",
-                                     "rows": [{"equipment_id": str(overdue.id), "role": "GAUGE"}]},
-                                    {"node_id": self.s_node, "kind": "status", "status": "PASS"},
-                                ])
-        self.assertTrue(QualityReportEquipment.objects.filter(equipment=overdue).exists())
-        self.assertTrue(any("past its calibration due date" in w for w in result.warnings), result.warnings)
+        with self.assertRaises(ValidationError) as ctx:
+            submit_substep(substep=self.substep, step_execution=self.step_execution, user=self.user,
+                           captures=[
+                               {"node_id": self.e_node, "kind": "equipment_roles",
+                                "rows": [{"equipment_id": str(overdue.id), "role": "GAUGE"}]},
+                               {"node_id": self.s_node, "kind": "status", "status": "PASS"},
+                           ])
+        self.assertIn("MIC-1", ctx.exception.messages[0])
+        self.assertIn("was due", ctx.exception.messages[0])
+        self.assertFalse(QualityReportEquipment.objects.filter(equipment=overdue).exists())
 
     def test_the_equipment_api_reports_calibration_status(self):
         """The pickers mark an overdue gauge before the reading (user decision

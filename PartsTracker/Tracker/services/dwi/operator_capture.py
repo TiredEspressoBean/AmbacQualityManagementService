@@ -823,9 +823,8 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
     value_string = cap.get("value_string") or ""
     equipment_id = cap.get("equipment_id")
     equipment = None
-    overdue_warning = None
     if equipment_id:
-        from Tracker.models import Equipments, EquipmentStatus
+        from Tracker.models import Equipments
         # A gauge id from another tenant resolves to None, so the capture
         # records no equipment rather than binding a foreign one.
         # tenant-safe: .objects auto-scopes via the tenant ContextVar (runs
@@ -838,20 +837,13 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
         # signal on a FAIL calibration is what sets this status; this is where
         # that flag becomes load-bearing.
         # The calibration result is checked too, not only the status flag: the
-        # flag is a copy of it that an edit could get out of step with.
-        if equipment and (equipment.status == EquipmentStatus.OUT_OF_SERVICE
-                          or equipment.calibration_status == 'FAILED'):
+        # flag is a copy of it that an edit could get out of step with. A gauge past
+        # its calibration due date is refused as well (user ruling 2026-11-11).
+        from Tracker.services.mes.equipment import gauge_refusal
+        refusal = gauge_refusal(equipment)
+        if refusal:
             from django.core.exceptions import ValidationError
-            raise ValidationError(
-                f"Equipment '{equipment.name}' is OUT_OF_SERVICE (failed or "
-                f"missing calibration). Recalibrate or pick a different gauge."
-            )
-        # Overdue is a scheduling lapse, not evidence the gauge is wrong: record the
-        # reading, but tell the operator (user decision 2026-10-07). A tenant setting
-        # for strict refusal can come later. A FAILED calibration stays refused above.
-        if equipment and equipment.calibration_status == 'OVERDUE':
-            overdue_warning = (f"{equipment.name} is past its calibration due date — the reading "
-                               f"was recorded; tell QA so the gauge gets recalibrated.")
+            raise ValidationError(refusal)
 
     record_dwi_measurement(
         step_execution=step_execution,
@@ -864,7 +856,7 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
         sample_number=sample_number,
         batch_execution=batch_execution,
     )
-    return overdue_warning
+    return None
 
 
 def _write_substep_response(*, substep, step_execution=None, batch_execution=None, user, cap) -> Optional[SubstepResponse]:
@@ -965,10 +957,10 @@ def _visits_of(step_execution, batch_execution) -> list:
 
 
 def _apply_equipment_roles(report: QualityReports, cap, visits=()) -> list[str]:
-    """The inspection's equipment roster. An OUT_OF_SERVICE or failed-calibration gauge
-    is refused here as it is on a measurement capture — this block was a second door
-    onto the record that skipped the check. An OVERDUE one is recorded with a warning,
-    as on a measurement (user decision 2026-10-07: any capture that names a gauge).
+    """The inspection's equipment roster. An OUT_OF_SERVICE, failed-calibration or
+    calibration-overdue gauge is refused here as it is on a measurement capture
+    (`gauge_refusal`; overdue refuses since user ruling 2026-11-11) — this block was a
+    second door onto the record that skipped the check.
 
     A TOOL or FIXTURE at its life limit is refused the same way, and one within life
     goes on the visits and is counted (services/life_tracking/tool_life.py) — a tool
@@ -982,8 +974,9 @@ def _apply_equipment_roles(report: QualityReports, cap, visits=()) -> list[str]:
 
 def _apply_equipment_rows(report, rows, valid_roles, visits) -> list[str]:
     from django.core.exceptions import ValidationError
-    from Tracker.models import Equipments, EquipmentStatus
+    from Tracker.models import Equipments
     from Tracker.services.life_tracking import tool_life
+    from Tracker.services.mes.equipment import gauge_refusal
     warnings: list[str] = []
     for row in rows:
         equipment_id = row.get("equipment_id")
@@ -994,13 +987,9 @@ def _apply_equipment_rows(report, rows, valid_roles, visits) -> list[str]:
         equipment = Equipments.objects.filter(pk=equipment_id).first()
         if equipment is None:
             continue  # another tenant's id: bind nothing
-        if equipment.status == EquipmentStatus.OUT_OF_SERVICE or equipment.calibration_status == 'FAILED':
-            raise ValidationError(
-                f"Equipment '{equipment.name}' is OUT_OF_SERVICE (failed or "
-                f"missing calibration). Recalibrate or pick a different gauge.")
-        if equipment.calibration_status == 'OVERDUE':
-            warnings.append(f"{equipment.name} is past its calibration due date — it was "
-                            f"recorded; tell QA so the gauge gets recalibrated.")
+        refusal = gauge_refusal(equipment)
+        if refusal:
+            raise ValidationError(refusal)
         if role in tool_life.TOOL_ROLES:
             for visit in (visits or [None]):
                 for w in tool_life.capture(visit, equipment, role):
