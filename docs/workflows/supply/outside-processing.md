@@ -36,6 +36,11 @@ If the step names a **Special process**, the vendor must hold an active
 qualification for it, or send-out is refused and nothing moves — see [Step
 Configuration](../../admin/processes/steps.md#outside-processing).
 
+Sending parts out starts their outside-process step, so the step's start checks
+apply. Parts can't be sent out while their work order is on hold, cancelled or
+completed, or while a part is quarantined. The refusal names each part, and
+nothing ships.
+
 The parts move to **At vendor**, and the schedule reflects that they're off-site.
 
 ## Getting parts back

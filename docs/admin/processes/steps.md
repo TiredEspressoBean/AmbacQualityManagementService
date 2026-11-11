@@ -136,13 +136,13 @@ removes one.
 | **Part not quarantined** | Before start | *A quarantined part waits for its disposition.* | — |
 | **Customer authorisation** | Before start | *A reman unit parked for the customer's answer isn't worked.* | — |
 | **Operator trained** | Before start | *The operator holds the step's training; a supervisor can authorize past it.* | — |
-| **Repeat visits** | Before start | *Who may work a part that comes back to this step; a supervisor can authorize past it.* A first visit is never constrained. | **Repeat visits are worked by**: *The same operator as before*, *A different operator*, or *Someone in a role* (then pick the **Role**) |
+| **Repeat visits** | Before start | *Who may work a part that comes back to this step; a supervisor can authorize past it.* A first visit is never constrained. | **Repeat visits are worked by**: *The same operator as before*, *A different operator*, or *Someone in a role* (then pick the **Role**, which is required) |
 | **Work instruction done** | To move on | *The work instruction's required substeps are complete.* | — |
 | **Qualified operator on record** | To move on | *Work that never passed a start check needs a qualified operator recorded.* | — |
 | **Life limit** | To move on | *A part past its life limit doesn't move on without an approved extension.* | — |
 | **Quarantine hold** | To move on | *A quarantined part can't move on from this step until its quarantine is decided.* | — |
 | **QA sign-off** | To move on | *QA signs the step off before parts move on.* | **How the inspector signs**: *Check off — recorded under their login*, or *Signature + password — they re-enter their own password* |
-| **First piece** | To move on | *The first piece is bought off before the rest move on.* | **First piece covers**: *Per work order*, *Per shift* or *Per machine*. See [First Piece Inspection](#first-piece-inspection) |
+| **First piece** | To move on | *The first piece is bought off before the rest move on.* | **First piece covers**: *Per work order*, *Per shift* or *Per machine*. **How the inspector signs the buy-off**: *Check off* or *Signature + password*. If the step's **QA sign-off** asks for a password, the buy-off does too. See [First Piece Inspection](#first-piece-inspection) |
 | **Readings in spec** | To move on | *A part with an out-of-spec reading at this step can't move on until it's dealt with.* The part is held with *"One or more measurements are out of specification"* | — |
 
 A new step starts with **Work order workable**, **Deviation in date**, **Part
@@ -166,6 +166,11 @@ Shift)*.
     So if your procedure is "a held part stops at the next operation", add
     **Quarantine hold** on the operations where that matters, and be ready to
     say which ones have it.
+
+If the role a **Someone in a role** rule names is later deleted, a repeat visit
+is refused (*"This is visit … to …, and its repeat-visit rule names a role that
+no longer exists."*) until a supervisor authorizes it or an engineer fixes the
+rule.
 
 QA sign-off at either level is refused to anyone who signed one of the step's
 substeps on that work order, or who is assigned to or completed a part's open

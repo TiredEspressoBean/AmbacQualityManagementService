@@ -164,6 +164,11 @@ taken with an overdue gauge) is sent back on **WO Control**: tick it and press
 back**, not deleted, and the part returns to the step it came from on a new visit.
 The rest of its lot waits for it, since unsplit parts move together.
 
+The part waits at that step **not started and not assigned**, like any part
+arriving there. Whoever works it presses **Start Work**, and the usual start
+checks apply to them: the step's repeat-visit rule, training and holds. A
+rollback is a correction, so those checks never refuse the rollback itself.
+
 The step the part is at now sets **how long** after the part arrived a rollback
 can be done directly (15 minutes by default), and whether every rollback needs
 approval — which is on by default:
@@ -180,7 +185,7 @@ request leaves the part where it is.
 
 A **held** part — quarantined, on hold, or waiting for rework — can be sent back
 too, and the rollback settles its hold: the part goes back in progress at the
-earlier step, and its open disposition is closed with no decision taken and the
+earlier step, waiting to be started, and its open disposition is closed with no decision taken and the
 rollback on the record — *"Settled by a rollback from &lt;step&gt; to &lt;step&gt;
 by &lt;name&gt;: &lt;reason&gt;"*. The same is true of an operator's **Undo**.
 

@@ -94,8 +94,8 @@ notes it lists the **first piece's readings**: each characteristic, the reading,
 its limits, and who took it and when. Those readings are what you are signing.
 
 - **Notes** are optional — gauges used, observations.
-- If the step is authored to need a **verified** signature, you re-enter **your
-  own** password.
+- If the step's **First piece** gate is set to *Signature + password*, or its
+  **QA sign-off** gate asks for a password, you re-enter **your own** password.
 
 !!! warning "You can't buy off a first piece you signed"
     The buy-off is a second person's judgement. If you signed any of the first
