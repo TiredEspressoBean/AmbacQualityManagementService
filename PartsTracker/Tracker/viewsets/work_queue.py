@@ -82,6 +82,42 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 }
         return meta
 
+    def _apply_first_piece(self, rows) -> None:
+        """At a first-piece step whose first piece isn't bought off, only its N pieces
+        may start: the row reports what can start (`qty_startable`) instead of promising
+        the whole lot, and `waiting_fpi` when none can (user decision 2026-11-11). The
+        context is now's shift, or the row's scheduled machine; with no machine known
+        on a Per Equipment step the row promises nothing it can't tell."""
+        from Tracker.models import FPIStatus, Steps
+        from Tracker.services.qms.first_piece import quantity
+        from Tracker.services.qms.fpi_scope import PER_EQUIPMENT, context_for, records_for
+        step_ids = {r["step"] for r in rows}
+        steps = {s.id: s for s in Steps.unscoped.filter(  # tenant-safe: ids from the tenant's own rows
+            tenant=self.tenant, id__in=step_ids).prefetch_related("requirements")}
+        orders = {wo.id: wo for wo in WorkOrder.unscoped.filter(  # tenant-safe: explicit tenant filter
+            tenant=self.tenant, id__in={r["work_order"] for r in rows})}
+        now = timezone.now()
+        for row in rows:
+            row["qty_startable"] = row["qty_ready"]
+            step, wo = steps.get(row["step"]), orders.get(row["work_order"])
+            if step is None or wo is None or not step.has_gate("first_piece") or row["is_held"]:
+                continue
+            if step.fpi_scope == PER_EQUIPMENT and not row["machine"]:
+                continue
+            machine = None
+            if step.fpi_scope == PER_EQUIPMENT:
+                from Tracker.models import Equipments
+                machine = Equipments.unscoped.filter(tenant=self.tenant, id=row["machine"]).first()  # tenant-safe: explicit tenant filter
+            ctx = context_for(step, wo, equipment=machine, at=now)
+            records = records_for(step, wo, ctx)
+            if records.filter(status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]).exists():
+                continue
+            run = records.filter(status=FPIStatus.PENDING).first()
+            started = run.first_piece_parts.count() if run else 0
+            row["qty_startable"] = max(0, min(row["qty_ready"], quantity(step) - started))
+            if row["qty_startable"] == 0 and row["qty_ready"] > 0:
+                row["readiness"] = "waiting_fpi"
+
     def _rows(self):
         """Compute the ranked aggregate as a Python list of row dicts."""
         tenant = self.tenant
@@ -264,6 +300,7 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             }
             for r in ranked
         ]
+        self._apply_first_piece(rows)
 
         # Stable re-rank onto the schedule: blocked still sink last; scheduled
         # rows lead, ordered by planned start; unscheduled rows keep their

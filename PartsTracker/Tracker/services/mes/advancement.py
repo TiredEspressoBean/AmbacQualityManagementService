@@ -293,6 +293,13 @@ def _evaluate_and_advance(
                 per_part_blockers[str(p.id)] = blockers
 
         if per_part_blockers:
+            # A lock-step lot waits for its slowest part. When that is another context's
+            # first piece (Day's pending first piece holding Night's passed parts), the
+            # passed parts say so — never auto-split (user decision 2026-11-11, E).
+            held_by = _first_piece_holding(cohort, per_part_blockers, step, wo)
+            if held_by:
+                for p in cohort:
+                    per_part_blockers.setdefault(str(p.id), [f"Lot held by {held_by}"])
             result.status = 'blocked'
             result.blockers_by_part = per_part_blockers
         else:
@@ -348,6 +355,19 @@ def _evaluate_and_advance(
         result.status = 'noop'
 
     return result
+
+
+def _first_piece_holding(cohort, blockers_by_part, step, wo) -> str:
+    """'<context>'s first piece' when a part of the lot is held only by its context's
+    pending first piece, for the parts it holds with it; '' otherwise."""
+    if not step.has_gate('first_piece'):
+        return ''
+    for p in cohort:
+        msgs = blockers_by_part.get(str(p.id)) or []
+        if msgs and all(m.startswith("First Piece Inspection required") for m in msgs):
+            label = step.get_fpi_status(wo, part=p).get('context_label') or ''
+            return f"{label}'s first piece" if label else "the first piece"
+    return ''
 
 
 def _report_staged(result, staged, step, wo) -> None:

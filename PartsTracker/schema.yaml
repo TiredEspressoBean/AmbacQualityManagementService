@@ -11919,6 +11919,14 @@ paths:
                 notes:
                   type: string
                   description: Required failure notes
+                bad_parts:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: The pieces that failed, for a first piece of more than
+                    one part. FAIL reports land on these only; the good ones release
+                    when the re-run passes.
                 cosign_email:
                   type: string
                   description: Email of an authorized QA person co-signing at this
@@ -12150,6 +12158,10 @@ paths:
                   type: string
                   format: date
                   description: 'Per Shift: the date the shift started (with shift)'
+                for_waiver:
+                  type: boolean
+                  description: Open the first piece with no part, to waive it before
+                    any part is made (qualified fixtures). Needs sign_off_fpi.
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -12275,6 +12287,36 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/MyFirstPiece'
+          description: ''
+  /api/FPIRecords/new-setup/:
+    post:
+      operationId: api_FPIRecords_new_setup_create
+      description: 'Declare a new setup (tool change, offset, crash, repair…): the
+        passed or waived first piece standing in the context is superseded and its
+        step release withdrawn; the next start begins a new first piece.'
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FpiNewSetupInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FpiNewSetupInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FpiNewSetupInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FpiNewSetupResponse'
           description: ''
   /api/Fishbone/:
     get:
@@ -59502,6 +59544,16 @@ components:
           items:
             type: integer
           readOnly: true
+        first_piece_parts_info:
+          type: array
+          items:
+            $ref: '#/components/schemas/FPIRecordPieceInfo'
+          readOnly: true
+        failed_parts_info:
+          type: array
+          items:
+            $ref: '#/components/schemas/FPIRecordFailedPieceInfo'
+          readOnly: true
         equipment:
           type: string
           format: uuid
@@ -59644,6 +59696,8 @@ components:
       - created_at
       - designated_part_info
       - equipment_info
+      - failed_parts_info
+      - first_piece_parts_info
       - first_piece_readings
       - first_piece_signer_ids
       - has_signature
@@ -59693,6 +59747,17 @@ components:
       required:
       - id
       - name
+    FPIRecordFailedPieceInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+      required:
+      - id
+      - label
     FPIRecordPartTypeInfo:
       type: object
       properties:
@@ -59704,6 +59769,17 @@ components:
       required:
       - id
       - name
+    FPIRecordPieceInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+      required:
+      - id
+      - label
     FPIRecordRequest:
       type: object
       description: Serializer for First Piece Inspection records.
@@ -60347,12 +60423,56 @@ components:
       - units
       - unplaceable
       - unplaceable_units
+    FpiNewSetupInputRequest:
+      type: object
+      properties:
+        work_order:
+          type: string
+          format: uuid
+        step:
+          type: string
+          format: uuid
+        part:
+          type: string
+          format: uuid
+          nullable: true
+          description: A part at the step, for its context (shift, machine)
+        equipment:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Per Equipment: the machine set up again'
+        reason_code:
+          $ref: '#/components/schemas/ReasonCodeEnum'
+        reason:
+          type: string
+      required:
+      - reason_code
+      - step
+      - work_order
+    FpiNewSetupResponse:
+      type: object
+      properties:
+        superseded_fpi_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+      required:
+      - status
+      - superseded_fpi_id
     FpiReading:
       type: object
       properties:
         id:
           type: string
           format: uuid
+        part_id:
+          type: string
+          format: uuid
+          nullable: true
+        part_label:
+          type: string
         label:
           type: string
         value:
@@ -60382,6 +60502,8 @@ components:
       - label
       - lower_limit
       - nominal
+      - part_id
+      - part_label
       - recorded_at
       - recorded_by_name
       - unit
@@ -78527,6 +78649,20 @@ components:
       - id
       - status
       - work_order
+    ReasonCodeEnum:
+      enum:
+      - TOOL_CHANGE
+      - OFFSET
+      - CRASH
+      - REPAIR
+      - OTHER
+      type: string
+      description: |-
+        * `TOOL_CHANGE` - TOOL_CHANGE
+        * `OFFSET` - OFFSET
+        * `CRASH` - CRASH
+        * `REPAIR` - REPAIR
+        * `OTHER` - OTHER
     ReassignMachineOption:
       type: object
       properties:
@@ -83625,6 +83761,10 @@ components:
         fpi_scope:
           type: string
           nullable: true
+        fpi_quantity:
+          type: integer
+          minimum: 1
+          description: 'first_piece: how many parts make up the first piece'
         qa_assurance:
           type: string
           nullable: true
@@ -83650,6 +83790,10 @@ components:
         fpi_scope:
           type: string
           nullable: true
+        fpi_quantity:
+          type: integer
+          minimum: 1
+          description: 'first_piece: how many parts make up the first piece'
         qa_assurance:
           type: string
           nullable: true
@@ -91778,6 +91922,8 @@ components:
         machine_name:
           type: string
           nullable: true
+        qty_startable:
+          type: integer
         readiness:
           type: string
         is_held:
@@ -91792,6 +91938,7 @@ components:
       - priority
       - qty_mine
       - qty_ready
+      - qty_startable
       - readiness
       - scheduled_start
       - step

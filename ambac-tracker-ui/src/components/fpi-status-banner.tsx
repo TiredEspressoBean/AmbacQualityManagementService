@@ -2,7 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, AlertTriangle, Lock, CheckCircle, Clock, PenLine } from "lucide-react";
-import { useFpiCheckStatus, useFpiGetOrCreate, useFpiVoidPass } from "@/hooks/useFpiRecords";
+import { useFpiCheckStatus, useFpiGetOrCreate, useFpiNewSetup, useFpiVoidPass } from "@/hooks/useFpiRecords";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { FpiSignOffDialog, type FpiVerdict } from "@/components/fpi-sign-off-dialog";
 import {
@@ -61,7 +62,15 @@ export function FpiStatusBanner({
     const { data: fpiStatus, isLoading, refetch } = useFpiCheckStatus(workOrderId, stepId, undefined, partId);
     const getOrCreateMutation = useFpiGetOrCreate();
     const voidMutation = useFpiVoidPass();
+    const newSetupMutation = useFpiNewSetup();
     const [restartOpen, setRestartOpen] = useState(false);
+    // A declared new setup re-opens the first piece (tool change, offset, crash…).
+    const [setupOpen, setSetupOpen] = useState(false);
+    const [setupCode, setSetupCode] = useState<string>("");
+    const [setupReason, setSetupReason] = useState("");
+    // A first piece waived before any part is made (qualified fixtures): the record
+    // opened for the waiver.
+    const [waiverId, setWaiverId] = useState<string | null>(null);
 
     const afterChange = () => {
         refetch();
@@ -84,6 +93,74 @@ export function FpiStatusBanner({
             toast.error(apiErrorMessage(e) ?? "Failed to start FPI");
         }
     };
+
+    const handleNewSetup = async () => {
+        if (!setupCode || (setupCode === "OTHER" && !setupReason.trim())) return;
+        try {
+            await newSetupMutation.mutateAsync({
+                work_order: workOrderId, step: stepId, part: partId,
+                reason_code: setupCode as "TOOL_CHANGE" | "OFFSET" | "CRASH" | "REPAIR" | "OTHER",
+                reason: setupReason.trim(),
+            });
+            toast.success("New setup recorded — the next part started is a new first piece");
+            setSetupOpen(false);
+            setSetupCode("");
+            setSetupReason("");
+            afterChange();
+        } catch (e: unknown) {
+            toast.error(apiErrorMessage(e) ?? "Couldn't record the new setup");
+        }
+    };
+
+    const handleWaiveBeforeParts = async () => {
+        try {
+            const res = await getOrCreateMutation.mutateAsync({
+                work_order: workOrderId, step: stepId, part: partId, for_waiver: true });
+            setWaiverId(String(res.fpi.id));
+            setVerdict("WAIVE");
+        } catch (e: unknown) {
+            toast.error(apiErrorMessage(e) ?? "Couldn't open the first piece to waive it");
+        }
+    };
+
+    const newSetupDialog = (
+        <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>New setup</DialogTitle>
+                    <DialogDescription>
+                        The setup the first piece verified has changed. Its sign-off{forContext} stays
+                        on record, marked superseded, and the next part started is a new first piece
+                        for QA to buy off.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2">
+                    <Select value={setupCode} onValueChange={setSetupCode}>
+                        <SelectTrigger aria-label="What changed"><SelectValue placeholder="What changed?" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="TOOL_CHANGE">Tool change</SelectItem>
+                            <SelectItem value="OFFSET">Offset adjusted</SelectItem>
+                            <SelectItem value="CRASH">Crash</SelectItem>
+                            <SelectItem value="REPAIR">Repair</SelectItem>
+                            <SelectItem value="OTHER">Other</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Textarea rows={2} value={setupReason} onChange={(e) => setSetupReason(e.target.value)}
+                        placeholder={setupCode === "OTHER" ? "What changed (required)" : "Details (optional)"}
+                        aria-label="Details" />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setSetupOpen(false)}
+                        disabled={newSetupMutation.isPending}>Cancel</Button>
+                    <Button onClick={handleNewSetup}
+                        disabled={!setupCode || (setupCode === "OTHER" && !setupReason.trim())
+                            || newSetupMutation.isPending}>
+                        {newSetupMutation.isPending ? "Recording…" : "Record new setup"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 
     // ---- Satisfied: run released --------------------------------------------
     if (fpiStatus.satisfied) {
@@ -116,6 +193,9 @@ export function FpiStatusBanner({
                                 : "Setup verified — all parts can proceed through this step."}
                         </p>
                     </div>
+                    <Button size="sm" variant="ghost" onClick={() => setSetupOpen(true)}>
+                        New setup
+                    </Button>
                     {voidable && (
                         <Button size="sm" variant="ghost" onClick={() => setVoidOpen(true)}>
                             Void pass
@@ -170,11 +250,18 @@ export function FpiStatusBanner({
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+                {newSetupDialog}
             </div>
         );
     }
 
     const pendingId = fpiStatus.pending_fpi_id;
+    // The parts making up the pending first piece, and how many it takes.
+    const pieces = fpiStatus.first_piece_parts ?? [];
+    const quantity = fpiStatus.quantity ?? 1;
+    const piecesNote = quantity > 1
+        ? ` First piece: ${pieces.length} of ${quantity} parts started${pieces.length ? ` (${pieces.map((p) => p.label).join(", ")})` : ""}.`
+        : "";
     const partLabel = fpiStatus.designated_part_label;
     const firstPiece = partLabel ? `first piece ${partLabel}` : "first piece";
 
@@ -194,16 +281,26 @@ export function FpiStatusBanner({
         detail = "This step needs a first piece per machine. Record the machine this part runs on, then start the FPI.";
         actions = compact ? <Badge variant="secondary">FPI required</Badge> : null;
     } else if (!isPending) {
+        detail = "Starting the first part opens the first piece and calls QA; the rest wait for the buy-off.";
         actions = !compact ? (
-            <Button size="sm" onClick={handleCreateFpi} disabled={getOrCreateMutation.isPending}>
-                Start FPI
-            </Button>
+            <div className="flex items-center gap-2">
+                <Button size="sm" onClick={handleCreateFpi} disabled={getOrCreateMutation.isPending}>
+                    Start FPI
+                </Button>
+                {/* A first piece may be waived before any part is made (qualified fixtures). */}
+                {canSignOff && (
+                    <Button size="sm" variant="outline" onClick={handleWaiveBeforeParts}
+                        disabled={getOrCreateMutation.isPending}>
+                        Waive
+                    </Button>
+                )}
+            </div>
         ) : <Badge variant="secondary">FPI required</Badge>;
     } else if (!ready) {
         // First piece designated but its inspection isn't finished yet.
         icon = <Clock className="h-5 w-5 text-amber-600" />;
         title = "First Piece Inspection in progress";
-        detail = `Complete the ${firstPiece} inspection below — the run is held until it's bought off.`;
+        detail = `Complete the ${firstPiece} inspection below — other parts can't start until it's bought off.${piecesNote}`;
         actions = compact ? <Badge variant="secondary">FPI in progress</Badge> : null;
     } else if (canSignOff) {
         // First piece complete; this user may buy off.
@@ -253,16 +350,16 @@ export function FpiStatusBanner({
                 </div>
             </div>
 
-            {verdict && pendingId && (
+            {verdict && (pendingId || waiverId) && (
                 <FpiSignOffDialog
                     key={verdict}
                     open
-                    onOpenChange={(v) => !v && setVerdict(null)}
-                    fpiId={pendingId}
+                    onOpenChange={(v) => { if (!v) { setVerdict(null); setWaiverId(null); } }}
+                    fpiId={(pendingId || waiverId)!}
                     canSignOff={canSignOff}
                     partLabel={partLabel ?? null}
                     verdict={verdict}
-                    onSigned={() => { setVerdict(null); afterChange(); }}
+                    onSigned={() => { setVerdict(null); setWaiverId(null); afterChange(); }}
                 />
             )}
         </>

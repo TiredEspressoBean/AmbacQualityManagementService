@@ -1896,6 +1896,18 @@ class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
 
 # ===== FPI (FIRST PIECE INSPECTION) VIEWSETS =====
 
+def _buy_off_blockers(fpi, se, piece) -> list[str]:
+    """What still holds one piece of a first piece at its step, less the first-piece
+    and QA sign-off blockers a buy-off itself clears (by code). Prefixed with the piece
+    when the first piece has more than one."""
+    from Tracker.services.mes.gates import GateCode, release_blockers
+    from Tracker.services.mes.step_override import clear_bypassed
+    left = [b for b in clear_bypassed(se, release_blockers(fpi.step, se, fpi.work_order))
+            if b.code not in (GateCode.FIRST_PIECE, GateCode.QA_SIGNOFF)]
+    multi = fpi.first_piece_parts.count() > 1
+    return [f"{piece.ERP_id}: {b.message}" if multi else b.message for b in left]
+
+
 @extend_schema_view(
     list=extend_schema(
         description="List FPI records with filtering",
@@ -1937,7 +1949,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
     # ApprovalRequestViewSet.submit_response; see the crud_exempt_actions note
     # in Tracker/permissions.py.
     crud_exempt_actions = {
-        'pass_inspection', 'fail_inspection', 'waive', 'acknowledge', 'void_pass',
+        'pass_inspection', 'fail_inspection', 'waive', 'acknowledge', 'void_pass', 'new_setup',
     }
 
     # Buy-off is an independent authority act requiring `sign_off_fpi`
@@ -1962,6 +1974,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         'acknowledge': ['sign_off_fpi'],
         # Withdrawing a buy-off is the buy-off authority's act.
         'void_pass': ['sign_off_fpi'],
+        # Declaring a new setup is the operator's: whoever records work at the step.
+        'new_setup': ['add_substepcompletion'],
     }
 
     def get_serializer_class(self):
@@ -2178,26 +2192,21 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Hard gate: the first piece must have completed THIS step's inspection.
-        se = StepExecution.get_current_execution(designated)
-        if se is None or str(se.step_id) != str(fpi.step_id):
-            return Response(
-                {"detail": "The first piece has not started this step's inspection yet."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        # Reuse the canonical advancement gate, but drop the FPI's own blocker
-        # AND the step-level "QA signoff required" blocker — both are circular
-        # here. The FPI blocker is always present (we're mid-buy-off). The
-        # QA-signoff blocker is what THIS Pass creates (via the QaApproval that
-        # `pass_fpi` writes). What's left tells us whether the first piece
-        # actually finished its substeps / measurements / sampling for this
-        # step.
-        _, blockers = fpi.step.can_advance_from_step(se, fpi.work_order)
-        remaining = [
-            b for b in blockers
-            if not b.startswith("First Piece Inspection required")
-            and not b.startswith("QA signoff required")
-        ]
+        # Hard gate: every piece of the first piece must have completed THIS step's
+        # inspection — reusing the release gate without its first-piece and QA
+        # sign-off blockers, both of which THIS pass clears. What's left says whether
+        # each piece actually finished its substeps / measurements / sampling here.
+        from Tracker.models import Parts
+        from Tracker.services.qms.first_piece import first_piece_part_ids
+        remaining = []
+        for piece in Parts.objects.filter(id__in=first_piece_part_ids(fpi)).order_by('ERP_id'):  # tenant-safe: .objects auto-scopes
+            se = StepExecution.get_current_execution(piece)
+            if se is None or str(se.step_id) != str(fpi.step_id):
+                return Response(
+                    {"detail": f"First piece {piece.ERP_id} has not started this step's inspection yet."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            remaining += _buy_off_blockers(fpi, se, piece)
         if remaining:
             return Response(
                 # The headline names no cause: the blockers ARE the causes. It used to
@@ -2253,6 +2262,10 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         description="Mark FPI as failed",
         request={"application/json": {"type": "object", "properties": {
             "notes": {"type": "string", "description": "Required failure notes"},
+            "bad_parts": {"type": "array", "items": {"type": "string", "format": "uuid"},
+                          "description": "The pieces that failed, for a first piece of more than one part. "
+                                         "FAIL reports land on these only; the good ones release when the "
+                                         "re-run passes."},
             "cosign_email": {"type": "string", "description": "Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi)"},
             "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."},
             "cosign_signature": {"type": "string", "description": "That person's drawn signature as a data URL (data:image/png;base64,…). Stored on the record once their password verifies."}
@@ -2278,7 +2291,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         notes = self._cosign_note(signer, request, request.data.get('notes', ''))
         try:
             fpi.fail_inspection(signer, notes, performed_by=self._performed_by(signer, request),
-                                signature_data=self._cosign_signature(signer, request))
+                                signature_data=self._cosign_signature(signer, request),
+                                bad_part_ids=request.data.get('bad_parts') or None)
         except ValueError as e:
             return Response({"detail": str(e), "code": "fpi_sod_violation"},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -2353,6 +2367,48 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         return Response({"id": str(fresh.id), "status": fresh.status}, status=status.HTTP_201_CREATED)
 
     @extend_schema(
+        description="Declare a new setup (tool change, offset, crash, repair…): the passed "
+                    "or waived first piece standing in the context is superseded and its "
+                    "step release withdrawn; the next start begins a new first piece.",
+        request=inline_serializer(name="FpiNewSetupInput", fields={
+            "work_order": serializers.UUIDField(),
+            "step": serializers.UUIDField(),
+            "part": serializers.UUIDField(required=False, allow_null=True,
+                                          help_text="A part at the step, for its context (shift, machine)"),
+            "equipment": serializers.UUIDField(required=False, allow_null=True,
+                                               help_text="Per Equipment: the machine set up again"),
+            "reason_code": serializers.ChoiceField(
+                choices=['TOOL_CHANGE', 'OFFSET', 'CRASH', 'REPAIR', 'OTHER']),
+            "reason": serializers.CharField(required=False, allow_blank=True),
+        }),
+        responses={200: inline_serializer(name="FpiNewSetupResponse", fields={
+            "superseded_fpi_id": serializers.UUIDField(), "status": serializers.CharField()})},
+    )
+    @action(detail=False, methods=['post'], url_path='new-setup')
+    def new_setup(self, request):
+        """Re-open a first piece: an operator's declared new setup."""
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.models import Equipments, Parts, Steps, WorkOrder
+        from Tracker.services.qms.first_piece import declare_new_setup
+        work_order = WorkOrder.objects.filter(tenant=self.tenant, id=request.data.get('work_order')).first()
+        step = Steps.objects.filter(tenant=self.tenant, id=request.data.get('step')).first()
+        if work_order is None or step is None:
+            return Response({"detail": "work_order and step are required"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        part = (Parts.objects.filter(tenant=self.tenant, id=request.data['part']).first()
+                if request.data.get('part') else None)
+        equipment = (Equipments.objects.filter(tenant=self.tenant, id=request.data['equipment']).first()
+                     if request.data.get('equipment') else None)
+        try:
+            superseded = declare_new_setup(
+                step=step, work_order=work_order, user=request.user,
+                reason_code=request.data.get('reason_code', ''), reason=request.data.get('reason', ''),
+                part=part, equipment=equipment)
+        except DjangoValidationError as e:
+            return Response({"detail": '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"superseded_fpi_id": str(superseded.id), "status": superseded.status})
+
+    @extend_schema(
         description="Acknowledge a pending FPI (QA is on it). Idempotent - the "
                     "first acknowledgment wins; the operator surface shows 'Seen by X'.",
         request=None,
@@ -2385,6 +2441,9 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
                                      "Omitted, the shift running now is used."},
             "shift_date": {"type": "string", "format": "date",
                            "description": "Per Shift: the date the shift started (with shift)"},
+            "for_waiver": {"type": "boolean",
+                           "description": "Open the first piece with no part, to waive it before any part "
+                                          "is made (qualified fixtures). Needs sign_off_fpi."},
         }}},
         responses={
             # Same body either way -- `created` is the discriminator, the status
@@ -2465,8 +2524,15 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             if shift is None:
                 return Response({"detail": "Shift not found"}, status=status.HTTP_404_NOT_FOUND)
         try:
+            # A first piece may be waived before any part is made (qualified fixtures):
+            # `for_waiver` opens the record with no part. Only a buy-off authority may.
+            for_waiver = str(request.data.get('for_waiver', '')).lower() in ('1', 'true', 'yes')
+            if for_waiver and not request.user.has_tenant_perm('sign_off_fpi'):
+                return Response({"detail": "Only someone who can sign off a first piece can waive one.",
+                                 "code": "fpi_refused"}, status=status.HTTP_403_FORBIDDEN)
             fpi, created = start_fpi(work_order, step, request.user, part=part,
-                                     equipment=equipment, shift=shift, shift_date=shift_date)
+                                     equipment=equipment, shift=shift, shift_date=shift_date,
+                                     for_waiver=for_waiver)
         except ValueError as e:
             message = str(e)
             code = "fpi_no_first_piece" if message.startswith("No part has reached") else "fpi_refused"
@@ -2546,25 +2612,23 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         # ("complete the inspection below" vs "awaiting buy-off"). Read-only —
         # we never designate here (that happens at get-or-create / pass).
         designated = pending_fpi.designated_part if pending_fpi else None
+        # The first piece's parts (the first N started in the context). Ready for a
+        # buy-off when every one has finished the step's inspection — the same test
+        # `pass_inspection` applies, so the buttons show exactly when Pass would succeed.
+        from Tracker.services.qms.first_piece import first_piece_part_ids, quantity
+        pieces = []
         first_piece_ready = False
-        if pending_fpi is not None and designated is not None:
+        if pending_fpi is not None:
             from Tracker.models import StepExecution
-            se = StepExecution.get_current_execution(designated)
-            if se is not None and str(se.step_id) == str(step_id):
-                wo = work_order
-                if wo is not None:
-                    _, blockers = step.can_advance_from_step(se, wo)
-                    # Match the filter in `pass_inspection` below: FPI Pass
-                    # clears both the FPI blocker AND the step-level QA
-                    # signoff blocker (via the QaApproval it creates). If we
-                    # only filter out the FPI one here, `first_piece_ready`
-                    # stays false and the UI never renders the buy-off
-                    # buttons, even though the Pass API would succeed.
-                    first_piece_ready = not [
-                        b for b in blockers
-                        if not b.startswith("First Piece Inspection required")
-                        and not b.startswith("QA signoff required")
-                    ]
+            pieces = list(Parts.objects.filter(  # tenant-safe: .objects auto-scopes
+                id__in=first_piece_part_ids(pending_fpi)).order_by('ERP_id'))
+            first_piece_ready = bool(pieces)
+            for piece in pieces:
+                se = StepExecution.get_current_execution(piece)
+                if (se is None or str(se.step_id) != str(step_id)
+                        or _buy_off_blockers(pending_fpi, se, piece)):
+                    first_piece_ready = False
+                    break
 
         return Response({
             "requires_fpi": True,
@@ -2574,6 +2638,9 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             "pending_fpi_id": str(pending_fpi.id) if pending_fpi else None,
             "designated_part_id": str(designated.id) if designated else None,
             "designated_part_label": designated.ERP_id if designated else None,
+            # Every part of the pending first piece, and how many it takes.
+            "first_piece_parts": [{"id": str(p.id), "label": p.ERP_id} for p in pieces],
+            "quantity": quantity(step),
             "first_piece_ready": first_piece_ready,
             # Whether THIS user may buy off (drives showing the sign-off action
             # vs an "awaiting buy-off" message to the operator).

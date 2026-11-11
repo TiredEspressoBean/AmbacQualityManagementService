@@ -38,16 +38,12 @@ def _reject_self_signoff(fpi: FPIRecord, user) -> None:
     completions on the designated part's current step-execution include
     any completed_by == user, block.
 
+    Every piece of a multi-piece first piece counts.
+
     Raises:
         ValueError: user already signed the first piece's substeps.
     """
-    from Tracker.models import StepExecution, SubstepCompletion
-    if fpi.designated_part_id is None:
-        return  # nothing to check against yet
-    se = StepExecution.get_current_execution(fpi.designated_part)
-    if se is None:
-        return
-    if SubstepCompletion.objects.filter(step_execution=se, completed_by=user).exists():
+    if user.id in first_piece_signer_ids(fpi):
         raise ValueError(
             "Segregation of duties: this user signed one or more of the first "
             "piece's inspection substeps. FPI buy-off must be signed by a "
@@ -151,7 +147,7 @@ def pass_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
 
 
 def fail_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
-             signature_data: str | None = None) -> FPIRecord:
+             signature_data: str | None = None, bad_part_ids=None) -> FPIRecord:
     """Mark FPI as failed.
 
     Blocks self-signoff (same SOD principle as `pass_fpi`). Does NOT create
@@ -159,9 +155,23 @@ def fail_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
     signoff should not be considered satisfied by a fail. See `pass_fpi` for
     the `user` / `performed_by` distinction.
 
+    A multi-piece first piece names its bad parts (`bad_part_ids`); FAIL reports land
+    on those only, and the good ones release when the re-run passes (user decision
+    2026-11-11). A one-piece first piece's bad part is that piece.
+
     Raises:
-        ValueError: user already signed the first piece's substeps.
+        ValueError: user already signed the first piece's substeps, or a multi-piece
+            first piece names no bad part or one that isn't among its pieces.
     """
+    from Tracker.services.qms.first_piece import first_piece_part_ids
+    pieces = [str(p) for p in first_piece_part_ids(fpi)]
+    bad = [str(p) for p in (bad_part_ids or [])]
+    if not bad and len(pieces) == 1:
+        bad = pieces
+    if len(pieces) > 1 and not bad:
+        raise ValueError("Name the pieces that failed.")
+    if any(b not in pieces for b in bad):
+        raise ValueError("A failed piece must be one of this first piece's parts.")
     _reject_self_signoff(fpi, user)
     fpi.status = FPIStatus.FAILED
     fpi.result = FPIResult.FAIL
@@ -172,6 +182,8 @@ def fail_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
     if notes:
         fpi.notes = notes
     fpi.save()
+    if bad:
+        fpi.failed_parts.set(bad)
     _record_first_piece_failure(fpi, user)
     notify_fpi_decided(fpi)
     return fpi
@@ -183,33 +195,41 @@ def _record_first_piece_failure(fpi: FPIRecord, user) -> None:
     inspection — the disposition (unassigned, the QA queue) from the report's save, and
     quarantine, the step-failure notice and ncr.opened from on_report_failed. The run
     stays held by the FPI itself. The FPI's own reason is the report's description, so
-    the disposition doesn't read "No description"."""
+    the disposition doesn't read "No description".
+
+    One report per failed piece (`failed_parts`); the record's own report link is the
+    designated piece's, kept for the buy-off history."""
     from Tracker.models import QualityReports
-    from Tracker.services.qms.quality_report import on_report_failed
-    if fpi.designated_part_id is None:
+    from Tracker.services.qms.quality_report import on_report_failed, sync_personnel
+    bad = list(fpi.failed_parts.all())
+    if not bad and fpi.designated_part_id is not None:
+        bad = [fpi.designated_part]
+    if not bad:
         return  # no first piece to hold
     step_name = fpi.step.name if fpi.step_id else "the step"
     description = (fpi.notes or "").strip() or f"First piece failed at {step_name}"
-    report = fpi.quality_report
-    if report is None:
-        report = QualityReports.objects.create(  # tenant-safe: tenant set explicitly
-            tenant=fpi.tenant, part=fpi.designated_part, step=fpi.step,
-            status="FAIL", detected_by=user, description=description,
-            sampling_method="fpi_fail")
-        from Tracker.services.qms.quality_report import sync_personnel
-        sync_personnel(report)
-        prior = None
-        fpi.quality_report = report
-        fpi.save(update_fields=["quality_report", "updated_at"])
-    else:
-        prior = report.status
-        if prior == "FAIL":
-            return
-        report.status = "FAIL"
-        if not (report.description or "").strip():
-            report.description = description
-        report.save(update_fields=["status", "description"])
-    on_report_failed(report, prior)
+    for piece in bad:
+        report = fpi.quality_report if (fpi.quality_report_id
+                                        and fpi.quality_report.part_id == piece.id) else None
+        if report is None:
+            report = QualityReports.objects.create(  # tenant-safe: tenant set explicitly
+                tenant=fpi.tenant, part=piece, step=fpi.step,
+                status="FAIL", detected_by=user, description=description,
+                sampling_method="fpi_fail")
+            sync_personnel(report)
+            prior = None
+            if fpi.quality_report_id is None or piece.id == fpi.designated_part_id:
+                fpi.quality_report = report
+                fpi.save(update_fields=["quality_report", "updated_at"])
+        else:
+            prior = report.status
+            if prior == "FAIL":
+                continue
+            report.status = "FAIL"
+            if not (report.description or "").strip():
+                report.description = description
+            report.save(update_fields=["status", "description"])
+        on_report_failed(report, prior)
 
 
 def waive_fpi(fpi: FPIRecord, user, reason: str, performed_by=None, *,
@@ -293,6 +313,8 @@ def void_fpi_pass(fpi: FPIRecord, user, reason: str) -> FPIRecord:
             shift_date=fpi.shift_date, shift=fpi.shift, status=FPIStatus.PENDING,
             notes=f"Re-inspection: the pass on {fpi.inspected_at:%Y-%m-%d} was voided — {reason}"
                   if fpi.inspected_at else f"Re-inspection: an earlier pass was voided — {reason}")
+        if fresh.designated_part_id:
+            fresh.first_piece_parts.add(fresh.designated_part_id)
         transaction.on_commit(lambda: notify_fpi_requested(fresh))
     return fresh
 
@@ -326,7 +348,8 @@ def _first_piece_in(work_order, step, ctx, prefer=None):
     return None
 
 
-def start_fpi(work_order, step, user, *, part=None, equipment=None, shift=None, shift_date=None):
+def start_fpi(work_order, step, user, *, part=None, equipment=None, shift=None, shift_date=None,
+              for_waiver=False):
     """Start a first piece for the context `part` (or the given machine / shift) needs
     under the step's scope. Returns ``(record, created)``.
 
@@ -335,6 +358,8 @@ def start_fpi(work_order, step, user, *, part=None, equipment=None, shift=None, 
     - After a waiver, a new first piece corrects it (B2): only a buy-off authority may
       start one, and the waiver is marked SUPERSEDED, with the person and reason kept.
     - After a fail, the new first piece is the recovery, as before.
+    - `for_waiver`: a first piece may be waived before any part is made (qualified
+      fixtures, user decision 2026-11-11), so the record opens with no part.
 
     Raises:
         ValueError: the context can't be told (a Per Equipment step with no machine),
@@ -363,8 +388,10 @@ def start_fpi(work_order, step, user, *, part=None, equipment=None, shift=None, 
             if not user.has_tenant_perm('sign_off_fpi'):
                 raise ValueError("Only someone who can sign off a first piece can replace a waiver "
                                  "with a new one.")
-        designated = _first_piece_in(work_order, step, ctx, prefer=part)
-        if designated is None:
+        # A record opened to be waived holds no piece: nothing has been made for QA to
+        # buy off, whatever is waiting at the step.
+        designated = None if for_waiver else _first_piece_in(work_order, step, ctx, prefer=part)
+        if designated is None and not for_waiver:
             raise ValueError("No part has reached this step yet — start the FPI from a part "
                              "at the step.")
         if latest is not None and latest.status == FPIStatus.WAIVED:
@@ -380,8 +407,12 @@ def start_fpi(work_order, step, user, *, part=None, equipment=None, shift=None, 
             # Steps.part_type is non-null (PROTECT); WorkOrder has none of its own.
             part_type=step.part_type, designated_part=designated, status=FPIStatus.PENDING,
             shift_date=ctx.shift_date, shift_id=ctx.shift_id, equipment_id=ctx.equipment_id)
-    # The andon call: a machine and operator may be idle from this moment.
-    notify_fpi_requested(fpi)
+        if designated is not None:
+            fpi.first_piece_parts.add(designated)
+    # The andon call: a machine and operator may be idle from this moment. A record
+    # opened only to be waived calls nobody.
+    if designated is not None:
+        notify_fpi_requested(fpi)
     return fpi, True
 
 
@@ -434,26 +465,26 @@ def first_piece_readings(fpi: FPIRecord) -> list[dict]:
     attests to. The designated part's latest visit to that step, one row per
     measurement as recorded (value, limits, in spec, who, when). Empty when no first
     piece is designated or nothing was measured; the buy-off dialog says so rather
-    than inviting an attestation made blind."""
-    from Tracker.models import StepExecution, StepExecutionMeasurement
-    if fpi.designated_part_id is None or fpi.step_id is None:
-        return []
-    execution = (StepExecution.objects  # tenant-safe: .objects auto-scopes; FK-correlated to the record
-                 .filter(part_id=fpi.designated_part_id, step_id=fpi.step_id)
-                 .order_by('-visit_number').first())
-    if execution is None:
+    than inviting an attestation made blind. Every piece of a multi-piece first piece,
+    each row naming its part."""
+    from Tracker.models import StepExecutionMeasurement
+    visits = {se.id: se for se in _piece_visits(fpi)}
+    if not visits:
         return []
     rows = []
-    for m in (StepExecutionMeasurement.objects  # tenant-safe: FK-correlated to a scoped execution
-              .filter(step_execution=execution)
+    for m in (StepExecutionMeasurement.objects  # tenant-safe: FK-correlated to scoped executions
+              .filter(step_execution_id__in=list(visits))
               .select_related('measurement_definition', 'recorded_by')
-              .order_by('recorded_at')):
+              .order_by('step_execution__part__ERP_id', 'recorded_at')):
         d = m.measurement_definition
         nominal = d.nominal if d else None
         lower = (nominal - d.lower_tol) if (nominal is not None and d.lower_tol is not None) else None
         upper = (nominal + d.upper_tol) if (nominal is not None and d.upper_tol is not None) else None
+        part = visits[m.step_execution_id].part
         rows.append({
             'id': str(m.id),
+            'part_id': str(part.id) if part else None,
+            'part_label': part.ERP_id if part else '',
             'label': d.label if d else '',
             'value': (str(m.value) if m.value is not None else (m.string_value or None)),
             'unit': (d.unit if d else '') or '',
@@ -467,17 +498,31 @@ def first_piece_readings(fpi: FPIRecord) -> list[dict]:
     return rows
 
 
-def first_piece_signer_ids(fpi: FPIRecord) -> list[int]:
-    """Users who signed the first piece's substeps at its current execution — the
-    people `_reject_self_signoff` refuses as buy-off signers. Lets the dialog say so
-    before the click instead of refusing after it."""
-    from Tracker.models import StepExecution, SubstepCompletion
-    if fpi.designated_part_id is None:
+def _piece_visits(fpi: FPIRecord) -> list:
+    """Each first piece's latest visit to the record's step, with its part."""
+    from Tracker.models import StepExecution
+    from Tracker.services.qms.first_piece import first_piece_part_ids
+    if fpi.step_id is None:
         return []
-    se = StepExecution.get_current_execution(fpi.designated_part)
-    if se is None:
+    visits = []
+    for part_id in first_piece_part_ids(fpi):
+        se = (StepExecution.objects  # tenant-safe: .objects auto-scopes; FK-correlated to the record
+              .filter(part_id=part_id, step_id=fpi.step_id).select_related('part')
+              .order_by('-visit_number').first())
+        if se is not None:
+            visits.append(se)
+    return visits
+
+
+def first_piece_signer_ids(fpi: FPIRecord) -> list[int]:
+    """Users who signed any first piece's substeps at the step — the people
+    `_reject_self_signoff` refuses as buy-off signers. Lets the dialog say so before
+    the click instead of refusing after it."""
+    from Tracker.models import SubstepCompletion
+    visits = _piece_visits(fpi)
+    if not visits:
         return []
     return sorted(set(
-        SubstepCompletion.objects  # tenant-safe: FK-correlated to a scoped execution
-        .filter(step_execution=se, completed_by__isnull=False)
+        SubstepCompletion.objects  # tenant-safe: FK-correlated to scoped executions
+        .filter(step_execution__in=visits, completed_by__isnull=False)
         .values_list('completed_by_id', flat=True)))

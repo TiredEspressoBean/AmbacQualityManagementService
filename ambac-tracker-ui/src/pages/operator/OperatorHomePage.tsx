@@ -340,6 +340,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     const heroRow: WorkQueueRow | undefined = readyRows[0];
     const thenRows = readyRows.slice(1, 7);
     const blockedRows = queueRows.filter((r) => r.readiness === "blocked");
+    // Pieces wait while their first piece isn't bought off: only its N pieces start.
+    const waitingFpiRows = queueRows.filter((r) => r.readiness === "waiting_fpi");
     // WorkOrder.priority is IntegerChoices (1=Urgent, 2=High, 3=Normal, 4=Low —
     // the number IS the sort rank).
     const priorityLabel = (n: number | null | undefined) =>
@@ -562,6 +564,9 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                     {(heroRow.qty_ready > 0 || heroRow.qty_mine === 0) && (
                                         <><b className="text-foreground">{heroRow.qty_ready}</b> pc{heroRow.qty_ready === 1 ? "" : "s"} waiting</>
                                     )}
+                                    {heroRow.qty_startable < heroRow.qty_ready && (
+                                        <> · <b className="text-foreground">{heroRow.qty_startable}</b> can start until QA buys off the first piece</>
+                                    )}
                                 </div>
                             </div>
                             <div className="mt-4 flex gap-2">
@@ -590,6 +595,11 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                             {blockedRows.length > 0 && (
                                 <p className="max-w-xs text-xs">
                                     {blockedRows.length} job{blockedRows.length === 1 ? "" : "s"} blocked — waiting on holds to clear.
+                                </p>
+                            )}
+                            {waitingFpiRows.length > 0 && (
+                                <p className="max-w-xs text-xs">
+                                    {waitingFpiRows.length} job{waitingFpiRows.length === 1 ? "" : "s"} waiting on QA to buy off a first piece.
                                 </p>
                             )}
                         </div>
@@ -756,6 +766,11 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                         {blockedRows.length > 0 && (
                             <span className="text-xs text-muted-foreground">
                                 {blockedRows.length} job{blockedRows.length === 1 ? "" : "s"} blocked — waiting on holds
+                            </span>
+                        )}
+                        {waitingFpiRows.length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                                {waitingFpiRows.length} waiting on a first piece
                             </span>
                         )}
                         <button

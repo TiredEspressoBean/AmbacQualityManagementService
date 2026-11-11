@@ -77,42 +77,48 @@ def _stamp_production_equipment(execution) -> None:
     the PRODUCTION link then. Idempotent via get_or_create; an override replaces the
     link through the capture flow, not here.
     """
-    from Tracker.models import StepEquipmentAffinity, StepExecutionEquipment
+    from Tracker.models import StepExecutionEquipment
     from Tracker.models.qms import EquipmentRole
 
-    aff = StepEquipmentAffinity.Affinity
-    candidates = list(
-        StepEquipmentAffinity.objects.filter(archived=False,
-            step_id=execution.step_id,
-            affinity__in=[aff.DIALED_IN, aff.PREFERRED],
-        ).select_related('equipment')
-    )
-    chosen_equipment = None
-    if candidates:
-        chosen = next((c for c in candidates if c.affinity == aff.DIALED_IN), candidates[0])
-        chosen_equipment = chosen.equipment
-    elif execution.part_id is not None:
-        # No authored machine — record what the live schedule assigned to this
-        # part+step, so the solver's choice becomes the as-built machine.
-        # tenant-safe: .objects auto-scopes to the current tenant.
-        from Tracker.models import ScheduledTask
-        task = (
-            ScheduledTask.objects
-            .filter(archived=False, part_id=execution.part_id, step_id=execution.step_id,
-                    machine__isnull=False, schedule__is_active=True)
-            .select_related('machine')
-            .order_by('-start_time')
-            .first()
-        )
-        if task is not None:
-            chosen_equipment = task.machine
-
+    chosen_equipment = planned_production_machine(execution.step_id, execution.part_id)
     if chosen_equipment is None:
         return
     StepExecutionEquipment.objects.get_or_create(
         step_execution=execution, equipment=chosen_equipment,
         role=EquipmentRole.PRODUCTION,
     )
+
+
+def planned_production_machine(step_id, part_id):
+    """The machine a visit of `part_id` to `step_id` runs on before anyone records one:
+    the step's authored machine (dialed-in, else preferred), else what the live
+    schedule assigned to this part+step. None when neither says."""
+    from Tracker.models import StepEquipmentAffinity
+    aff = StepEquipmentAffinity.Affinity
+    candidates = list(
+        StepEquipmentAffinity.objects.filter(archived=False,
+            step_id=step_id,
+            affinity__in=[aff.DIALED_IN, aff.PREFERRED],
+        ).select_related('equipment')
+    )
+    if candidates:
+        chosen = next((c for c in candidates if c.affinity == aff.DIALED_IN), candidates[0])
+        return chosen.equipment
+    if part_id is None:
+        return None
+    # No authored machine — what the live schedule assigned to this part+step, so the
+    # solver's choice becomes the as-built machine.
+    # tenant-safe: .objects auto-scopes to the current tenant.
+    from Tracker.models import ScheduledTask
+    task = (
+        ScheduledTask.objects
+        .filter(archived=False, part_id=part_id, step_id=step_id,
+                machine__isnull=False, schedule__is_active=True)
+        .select_related('machine')
+        .order_by('-start_time')
+        .first()
+    )
+    return task.machine if task is not None else None
 
 
 def _cascade_work_order_completion(part: Parts) -> None:

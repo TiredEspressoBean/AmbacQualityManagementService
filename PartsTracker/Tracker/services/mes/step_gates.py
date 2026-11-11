@@ -80,6 +80,7 @@ def rows_of(step) -> list[dict]:
     """The step's live gates as the editor's dicts — for writing them onto another step
     with `set_step_gates`."""
     return [{'gate': r.gate, 'order': r.order, 'fpi_scope': r.fpi_scope,
+             'fpi_quantity': r.fpi_quantity,
              'qa_assurance': r.qa_assurance, 'revisit_assignment': r.revisit_assignment,
              'revisit_role_id': r.revisit_role_id}
             for r in step.requirements.filter(archived=False).order_by('order')]
@@ -91,7 +92,8 @@ def gate_signature(rows) -> frozenset:
     out = set()
     for r in rows:
         d = r if isinstance(r, dict) else {
-            'gate': r.gate, 'fpi_scope': r.fpi_scope, 'qa_assurance': r.qa_assurance,
+            'gate': r.gate, 'fpi_scope': r.fpi_scope, 'fpi_quantity': r.fpi_quantity,
+            'qa_assurance': r.qa_assurance,
             'revisit_assignment': r.revisit_assignment, 'revisit_role_id': r.revisit_role_id}
         c = clean_gate_row(d)
         out.add(tuple((k, str(v) if v is not None else '') for k, v in sorted(c.items())))
@@ -104,8 +106,8 @@ def clean_gate_row(row: dict) -> dict:
     gate = row.get('gate')
     if gate not in COMPOSABLE_GATES:
         raise ValidationError(f"'{gate}' isn't a gate a step can carry.")
-    out = {'gate': gate, 'fpi_scope': '', 'qa_assurance': '', 'revisit_assignment': '',
-           'revisit_role_id': None}
+    out = {'gate': gate, 'fpi_scope': '', 'fpi_quantity': 1, 'qa_assurance': '',
+           'revisit_assignment': '', 'revisit_role_id': None}
     if gate == 'first_piece':
         scope = row.get('fpi_scope') or 'PER_WORKORDER'
         if scope not in FPI_SCOPES:
@@ -117,6 +119,13 @@ def clean_gate_row(row: dict) -> dict:
         if assurance not in QA_ASSURANCES:
             raise ValidationError(f"'{assurance}' isn't a sign-off assurance.")
         out['qa_assurance'] = assurance
+        try:
+            qty = int(row.get('fpi_quantity') or 1)
+        except (TypeError, ValueError):
+            raise ValidationError("A first piece's quantity is a whole number of parts.")
+        if qty < 1:
+            raise ValidationError("A first piece is at least one part.")
+        out['fpi_quantity'] = qty
     elif gate == 'qa_signoff':
         assurance = row.get('qa_assurance') or 'NONE'
         if assurance not in QA_ASSURANCES:

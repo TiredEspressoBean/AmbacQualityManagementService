@@ -9,6 +9,7 @@ import { Plus, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
     Select,
@@ -23,6 +24,7 @@ export type StepGate = {
     gate: string;
     order?: number;
     fpi_scope?: string | null;
+    fpi_quantity?: number;
     qa_assurance?: string | null;
     revisit_assignment?: string | null;
     revisit_role?: string | null;
@@ -100,7 +102,7 @@ const REVISIT_OPTIONS = [
 const STAGE_LABEL: Record<Stage, string> = { START: "Before start", RELEASE: "To move on" };
 
 function defaultsFor(gate: string): StepGate {
-    if (gate === "first_piece") return { gate, fpi_scope: "PER_WORKORDER", qa_assurance: "NONE" };
+    if (gate === "first_piece") return { gate, fpi_scope: "PER_WORKORDER", fpi_quantity: 1, qa_assurance: "NONE" };
     if (gate === "qa_signoff") return { gate, qa_assurance: "NONE" };
     if (gate === "revisit_rule") return { gate, revisit_assignment: "DIFFERENT", revisit_role: null };
     return { gate };
@@ -188,6 +190,29 @@ export function StepGatesField({
                                         editable={editable}
                                         onChange={(v) => update(g.gate, { qa_assurance: v })}
                                     />
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-normal text-muted-foreground">
+                                            Pieces in the first piece
+                                        </Label>
+                                        {editable ? (
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                className="h-8 w-24"
+                                                aria-label="Pieces in the first piece"
+                                                value={g.fpi_quantity ?? 1}
+                                                onChange={(e) => update(g.gate, {
+                                                    fpi_quantity: Math.max(1, parseInt(e.target.value) || 1),
+                                                })}
+                                            />
+                                        ) : (
+                                            <p className="text-xs">{g.fpi_quantity ?? 1}</p>
+                                        )}
+                                        <p className="text-xs text-muted-foreground">
+                                            The first parts started make up the first piece — one per
+                                            fixture nest. Until QA buys it off, only these may start.
+                                        </p>
+                                    </div>
                                 </>
                             )}
                             {g.gate === "qa_signoff" && (

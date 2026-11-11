@@ -3588,9 +3588,6 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
             fields.append('training_authorization')
         if fields:
             execution.save(update_fields=fields)
-        if decision is not None:
-            from Tracker.services.mes.gates import record_start
-            record_start(execution, decision, by=self.request.user)
         # What every other way of opening and starting a visit does (the engine's
         # creators in parts.py, lifecycle.start_execution). A first Start Work on a new
         # order's step 1 came here and skipped them: the order stayed Pending while
@@ -3602,6 +3599,10 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
             from Tracker.services.mes.parts import _stamp_production_equipment
             evaluate_substep_sampling(execution)
             _stamp_production_equipment(execution)
+        # Logged after the machine is stamped: a Per Equipment first piece reads it.
+        if decision is not None:
+            from Tracker.services.mes.gates import record_start
+            record_start(execution, decision, by=self.request.user)
         if execution.status == 'IN_PROGRESS':
             from Tracker.services.mes.work_order import mark_started
             mark_started(execution.subject_work_order)

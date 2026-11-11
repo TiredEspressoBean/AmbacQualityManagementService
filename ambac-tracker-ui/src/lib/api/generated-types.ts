@@ -4645,6 +4645,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/FPIRecords/new-setup/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Declare a new setup (tool change, offset, crash, repair…): the passed or waived first piece standing in the context is superseded and its step release withdrawn; the next start begins a new first piece. */
+        post: operations["api_FPIRecords_new_setup_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Fishbone/": {
         parameters: {
             query?: never;
@@ -25574,6 +25591,8 @@ export interface components {
             readonly designated_part_info: components["schemas"]["FPIRecordDesignatedPartInfo"] | null;
             readonly first_piece_readings: components["schemas"]["FpiReading"][];
             readonly first_piece_signer_ids: number[];
+            readonly first_piece_parts_info: components["schemas"]["FPIRecordPieceInfo"][];
+            readonly failed_parts_info: components["schemas"]["FPIRecordFailedPieceInfo"][];
             /**
              * Format: uuid
              * @description Equipment being used (for per-equipment FPI)
@@ -25654,9 +25673,19 @@ export interface components {
             id: string;
             name: string | null;
         };
+        FPIRecordFailedPieceInfo: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+        };
         FPIRecordPartTypeInfo: {
             id: string;
             name: string | null;
+        };
+        FPIRecordPieceInfo: {
+            /** Format: uuid */
+            id: string;
+            label: string;
         };
         /** @description Serializer for First Piece Inspection records. */
         FPIRecordRequest: {
@@ -25969,9 +25998,35 @@ export interface components {
             labor_hours: number;
             unplaceable: components["schemas"]["UnplaceableForecast"][];
         };
+        FpiNewSetupInputRequest: {
+            /** Format: uuid */
+            work_order: string;
+            /** Format: uuid */
+            step: string;
+            /**
+             * Format: uuid
+             * @description A part at the step, for its context (shift, machine)
+             */
+            part?: string | null;
+            /**
+             * Format: uuid
+             * @description Per Equipment: the machine set up again
+             */
+            equipment?: string | null;
+            reason_code: components["schemas"]["ReasonCodeEnum"];
+            reason?: string;
+        };
+        FpiNewSetupResponse: {
+            /** Format: uuid */
+            superseded_fpi_id: string;
+            status: string;
+        };
         FpiReading: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            part_id: string | null;
+            part_label: string;
             label: string;
             value: string | null;
             unit: string;
@@ -35519,6 +35574,15 @@ export interface components {
             work_order: string | null;
             status: string;
         };
+        /**
+         * @description * `TOOL_CHANGE` - TOOL_CHANGE
+         *     * `OFFSET` - OFFSET
+         *     * `CRASH` - CRASH
+         *     * `REPAIR` - REPAIR
+         *     * `OTHER` - OTHER
+         * @enum {string}
+         */
+        ReasonCodeEnum: "TOOL_CHANGE" | "OFFSET" | "CRASH" | "REPAIR" | "OTHER";
         ReassignMachineOption: {
             id: string;
             name: string;
@@ -37992,6 +38056,8 @@ export interface components {
             gate: components["schemas"]["GateEnum"];
             order?: number;
             fpi_scope?: string | null;
+            /** @description first_piece: how many parts make up the first piece */
+            fpi_quantity?: number;
             qa_assurance?: string | null;
             revisit_assignment?: string | null;
             /** Format: uuid */
@@ -38005,6 +38071,8 @@ export interface components {
             gate: components["schemas"]["GateEnum"];
             order?: number;
             fpi_scope?: string | null;
+            /** @description first_piece: how many parts make up the first piece */
+            fpi_quantity?: number;
             qa_assurance?: string | null;
             revisit_assignment?: string | null;
             /** Format: uuid */
@@ -41879,6 +41947,7 @@ export interface components {
             /** Format: uuid */
             machine: string | null;
             machine_name: string | null;
+            qty_startable: number;
             readiness: string;
             is_held: boolean;
         };
@@ -50713,6 +50782,8 @@ export interface operations {
                 "application/json": {
                     /** @description Required failure notes */
                     notes?: string;
+                    /** @description The pieces that failed, for a first piece of more than one part. FAIL reports land on these only; the good ones release when the re-run passes. */
+                    bad_parts?: string[];
                     /** @description Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi) */
                     cosign_email?: string;
                     /** @description That person's password. Verified inline; they are never logged in, and the verdict is attributed to them. */
@@ -50898,6 +50969,8 @@ export interface operations {
                      * @description Per Shift: the date the shift started (with shift)
                      */
                     shift_date?: string;
+                    /** @description Open the first piece with no part, to waive it before any part is made (qualified fixtures). Needs sign_off_fpi. */
+                    for_waiver?: boolean;
                 };
             };
         };
@@ -50991,6 +51064,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MyFirstPiece"][];
+                };
+            };
+        };
+    };
+    api_FPIRecords_new_setup_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FpiNewSetupInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["FpiNewSetupInputRequest"];
+                "multipart/form-data": components["schemas"]["FpiNewSetupInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FpiNewSetupResponse"];
                 };
             };
         };

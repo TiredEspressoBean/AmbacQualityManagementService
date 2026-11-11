@@ -1303,6 +1303,9 @@ class StepRequirement(SecureModel):
         max_length=20, blank=True, default='',
         choices=[('PER_WORKORDER', 'Per Work Order'), ('PER_SHIFT', 'Per Shift'),
                  ('PER_EQUIPMENT', 'Per Equipment')])
+    # first_piece: how many parts make up the first piece (one per fixture nest).
+    fpi_quantity = models.PositiveSmallIntegerField(
+        default=1, help_text="first_piece: how many parts make up the first piece")
     # qa_signoff: how the inspector's identity is proven at the sign-off.
     qa_assurance = models.CharField(
         max_length=16, blank=True, default='',

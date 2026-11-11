@@ -46,6 +46,7 @@ class Stage(StrEnum):
 class Escape(StrEnum):
     NONE = 'NONE'                          # its owner acts upstream; nobody on the floor clears it
     SUPERVISOR_OVERRIDE = 'SUPERVISOR_OVERRIDE'
+    SIGNED_WAIVER = 'SIGNED_WAIVER'        # reason + segregation of duties + signature
     BYPASS_REQUEST = 'BYPASS_REQUEST'      # a StepOverride someone else approves
     LIMIT_EXTENSION = 'LIMIT_EXTENSION'    # life limits: an approved extension
 
@@ -56,6 +57,8 @@ class GateCode(StrEnum):
     DEVIATION_EXPIRED = 'deviation_expired'
     WORK_ORDER_NOT_WORKABLE = 'work_order_not_workable'
     PART_QUARANTINED = 'part_quarantined'
+    # --- START: a QA waiver
+    FIRST_PIECE_PENDING = 'first_piece_pending'
     # --- START: supervisor override (the codes the API already answers with)
     REVISIT_RULE = 'revisit_rule'
     ASSIGNED_TO_OTHER = 'assigned_to_other'
@@ -90,6 +93,8 @@ _SPECS = [
              "Production manager", "the work order's hold to clear"),
     GateSpec(GateCode.PART_QUARANTINED, Stage.START, Escape.NONE,
              "QA", "the part's disposition"),
+    GateSpec(GateCode.FIRST_PIECE_PENDING, Stage.START, Escape.SIGNED_WAIVER,
+             "QA", "QA to buy off the first piece"),
     GateSpec(GateCode.REVISIT_RULE, Stage.START, Escape.SUPERVISOR_OVERRIDE,
              "Supervisor", "a supervisor to authorise the repeat visit"),
     GateSpec(GateCode.ASSIGNED_TO_OTHER, Stage.START, Escape.SUPERVISOR_OVERRIDE,
@@ -264,9 +269,16 @@ def decide_start(ctx: StartContext, *, authorizer=None, reason=None) -> StartDec
     )
 
     refused = floor_blockers(ctx)
+    # The first piece: only its N pieces start until QA buys it off (or waives it).
+    from Tracker.services.qms.first_piece import start_blocker
+    first_piece = start_blocker(ctx.step, ctx.work_order, ctx.part, ctx.execution)
+    if first_piece is not None:
+        refused.append(first_piece)
     if refused:
         raise StartRefused(refused)
     outcomes = [Outcome(c, 'PASSED') for c in _floor_applies(ctx)]
+    if ctx.part is not None and ctx.work_order is not None and ctx.step.has_gate('first_piece'):
+        outcomes.append(Outcome(GateCode.FIRST_PIECE_PENDING, 'PASSED'))
 
     revisit = check_revisit_rule(ctx.part, ctx.step, ctx.operator, visit_number=ctx.visit_number,
                                  authorizer=authorizer, reason=reason)
@@ -302,8 +314,11 @@ def decide_start(ctx: StartContext, *, authorizer=None, reason=None) -> StartDec
 
 
 def record_start(execution, decision: StartDecision, *, by=None, at=None) -> None:
-    """Log the start's gate outcomes against the visit."""
+    """Log the start's gate outcomes against the visit, and let a first-piece start join
+    (or open) its context's first piece — the call to QA."""
     _record(execution, Stage.START, decision.outcomes, by=by, at=at)
+    from Tracker.services.qms.first_piece import join_on_start
+    join_on_start(execution)
 
 
 # ============================================================================

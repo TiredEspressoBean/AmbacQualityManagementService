@@ -1974,6 +1974,23 @@ class FPIRecordSerializer(SecureModelMixin):
     # Whether the co-signer's drawing was kept — a flag rather than the image, which
     # would put a base64 PNG in every list row.
     has_signature = serializers.SerializerMethodField()
+    # The parts the first piece is made of (the first N started in its context), and
+    # which of them a FAIL verdict named.
+    first_piece_parts_info = serializers.SerializerMethodField()
+    failed_parts_info = serializers.SerializerMethodField()
+
+    @extend_schema_field(inline_serializer(name='FPIRecordPieceInfo', many=True, fields={
+        'id': serializers.UUIDField(), 'label': serializers.CharField()}))
+    def get_first_piece_parts_info(self, obj):
+        from Tracker.models import Parts
+        from Tracker.services.qms.first_piece import first_piece_part_ids
+        return [{'id': p.id, 'label': p.ERP_id} for p in
+                Parts.objects.filter(id__in=first_piece_part_ids(obj)).order_by('ERP_id')]  # tenant-safe: .objects auto-scopes
+
+    @extend_schema_field(inline_serializer(name='FPIRecordFailedPieceInfo', many=True, fields={
+        'id': serializers.UUIDField(), 'label': serializers.CharField()}))
+    def get_failed_parts_info(self, obj):
+        return [{'id': p.id, 'label': p.ERP_id} for p in obj.failed_parts.order_by('ERP_id')]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1997,6 +2014,7 @@ class FPIRecordSerializer(SecureModelMixin):
             'step', 'step_info',
             'part_type', 'part_type_info',
             'designated_part', 'designated_part_info', 'first_piece_readings', 'first_piece_signer_ids',
+            'first_piece_parts_info', 'failed_parts_info',
             'equipment', 'equipment_info',
             'shift', 'shift_info', 'shift_date',
             'status', 'status_display',
@@ -2090,6 +2108,9 @@ class FPIRecordSerializer(SecureModelMixin):
 
     @extend_schema_field(inline_serializer('FpiReading', many=True, fields={
         'id': serializers.UUIDField(),
+        # Which piece of the first piece the reading was taken on.
+        'part_id': serializers.UUIDField(allow_null=True),
+        'part_label': serializers.CharField(),
         'label': serializers.CharField(),
         'value': serializers.CharField(allow_null=True),
         'unit': serializers.CharField(),

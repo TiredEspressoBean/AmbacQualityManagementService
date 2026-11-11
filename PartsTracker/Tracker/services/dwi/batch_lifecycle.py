@@ -141,6 +141,30 @@ def assert_no_open_batch_overlap(*, step, parts) -> None:
         )
 
 
+def _assert_one_machine_for_first_piece(step, visits) -> None:
+    """A Per Equipment first piece is per machine, so a load at such a step runs on one
+    known machine (user decision 2026-11-11): its parts' machines must all be recorded
+    and the same, or which first piece covers them can't be told."""
+    from Tracker.services.mes.parts import planned_production_machine
+    from Tracker.services.qms.fpi_scope import PER_EQUIPMENT, machine_of
+    if not step.has_gate('first_piece') or step.fpi_scope != PER_EQUIPMENT:
+        return
+    machines = {}
+    for v in visits:
+        m = machine_of(v.part, step) or planned_production_machine(step.id, v.part_id)
+        machines[v.part.ERP_id] = m
+    unknown = sorted(k for k, m in machines.items() if m is None)
+    if unknown:
+        raise ValidationError(
+            f"{step.name} needs a first piece per machine, and the machine isn't recorded for "
+            f"{', '.join(unknown)}. Record it, then start the load.")
+    if len({m.id for m in machines.values()}) > 1:
+        names = sorted({m.name for m in machines.values()})
+        raise ValidationError(
+            f"A load at {step.name} runs on one machine; these parts are on "
+            f"{', '.join(names)}. Load them separately.")
+
+
 def start_load(*, work_order, step, parts, user, authorizer=None, reason=None,
                notes="") -> "BatchExecution":
     """Start a load: N parts starting at once (user decision 2026-11-11). Every member's
@@ -197,6 +221,7 @@ def start_load(*, work_order, step, parts, user, authorizer=None, reason=None,
         refused = [b for v in visits for b in floor_blockers(context_for_execution(v, user))]
         if refused:
             raise StartRefused(refused)
+        _assert_one_machine_for_first_piece(step, visits)
         for v in visits:
             start_execution(v, user, authorizer=authorizer, reason=reason)
 

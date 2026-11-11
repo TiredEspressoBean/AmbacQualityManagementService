@@ -13,7 +13,11 @@ export type FpiCheckStatusResponse = {
     /** The part the buy-off is made against (first to enter the step). */
     designated_part_id: string | null;
     designated_part_label: string | null;
-    /** Designated first piece has completed the step's inspection — buy-off possible. */
+    /** Every part of the pending first piece (the first N started in its context). */
+    first_piece_parts?: { id: string; label: string }[];
+    /** How many parts make up the first piece (one per fixture nest). */
+    quantity?: number;
+    /** Every first piece has completed the step's inspection — buy-off possible. */
     first_piece_ready: boolean;
     /** Whether the current user holds sign_off_fpi (may pass/fail/waive). */
     can_sign_off: boolean;
@@ -122,6 +126,9 @@ export function useFpiGetOrCreate() {
             equipment?: string;
             shift?: string;
             shift_date?: string;
+            /** Open the first piece with no part, to waive it before any part is made
+             *  (qualified fixtures). Needs sign_off_fpi. */
+            for_waiver?: boolean;
         }) => api.api_FPIRecords_get_or_create_create(data, {
             headers: {
                 "X-CSRFToken": getCookie("csrftoken") ?? "",
@@ -184,11 +191,12 @@ export function useFpiFail() {
         // Every caller shows the server's reason itself.
         meta: { suppressGlobalError: true },
         /** `cosign_*`: the second-person path, as for pass. */
-        mutationFn: ({ id, notes, cosign_email, cosign_password, cosign_signature }: {
-            id: string; notes?: string;
+        /** `bad_parts`: the pieces that failed, for a first piece of more than one part. */
+        mutationFn: ({ id, notes, bad_parts, cosign_email, cosign_password, cosign_signature }: {
+            id: string; notes?: string; bad_parts?: string[];
             cosign_email?: string; cosign_password?: string; cosign_signature?: string;
         }) =>
-            api.api_FPIRecords_fail_create({ notes, cosign_email, cosign_password, cosign_signature }, {
+            api.api_FPIRecords_fail_create({ notes, bad_parts, cosign_email, cosign_password, cosign_signature }, {
                 params: { id },
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken") ?? "",
@@ -214,6 +222,29 @@ export function useFpiVoidPass() {
         mutationFn: ({ id, reason }: { id: string; reason: string }) =>
             api.api_FPIRecords_void_pass_create({ reason }, {
                 params: { id },
+                headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+            }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-records" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-status" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "parts" });
+        },
+    });
+}
+
+/** An operator's declared new setup (tool change, offset, crash, repair…): the passed
+ *  or waived first piece of the context is superseded, and the next start begins a new
+ *  one. */
+export function useFpiNewSetup() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        meta: { suppressGlobalError: true },
+        mutationFn: (data: {
+            work_order: string; step: string; part?: string; equipment?: string;
+            reason_code: "TOOL_CHANGE" | "OFFSET" | "CRASH" | "REPAIR" | "OTHER";
+            reason?: string;
+        }) =>
+            api.api_FPIRecords_new_setup_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             }),
         onSuccess: () => {

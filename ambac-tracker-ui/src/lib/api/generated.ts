@@ -3539,6 +3539,8 @@ export type FPIRecord = {
   designated_part_info: FPIRecordDesignatedPartInfo;
   first_piece_readings: Array<FpiReading>;
   first_piece_signer_ids: Array<number>;
+  first_piece_parts_info: Array<FPIRecordPieceInfo>;
+  failed_parts_info: Array<FPIRecordFailedPieceInfo>;
   equipment?:
     | /**
      * Equipment being used (for per-equipment FPI)
@@ -3643,6 +3645,8 @@ export type FPIRecordDesignatedPartInfo = {
 };
 export type FpiReading = {
   id: string;
+  part_id: string | null;
+  part_label: string;
   label: string;
   value: string | null;
   unit: string;
@@ -3652,6 +3656,14 @@ export type FpiReading = {
   within_spec: boolean | null;
   recorded_by_name: string;
   recorded_at: string;
+};
+export type FPIRecordPieceInfo = {
+  id: string;
+  label: string;
+};
+export type FPIRecordFailedPieceInfo = {
+  id: string;
+  label: string;
 };
 export type FPIRecordEquipmentInfo = {
   id: string;
@@ -3782,6 +3794,35 @@ export type FixtureRequest = {
   Array<string> | undefined;
   archived?: boolean | undefined;
 };
+export type FpiNewSetupInputRequest = {
+  work_order: string;
+  step: string;
+  part?:
+    | /**
+     * A part at the step, for its context (shift, machine)
+     */
+    (string | null)
+    | undefined;
+  equipment?:
+    | /**
+     * Per Equipment: the machine set up again
+     */
+    (string | null)
+    | undefined;
+  reason_code: ReasonCodeEnum;
+  reason?: string | undefined;
+};
+export type ReasonCodeEnum =
+  /**
+   * * `TOOL_CHANGE` - TOOL_CHANGE
+   * `OFFSET` - OFFSET
+   * `CRASH` - CRASH
+   * `REPAIR` - REPAIR
+   * `OTHER` - OTHER
+   *
+   * @enum TOOL_CHANGE, OFFSET, CRASH, REPAIR, OTHER
+   */
+  "TOOL_CHANGE" | "OFFSET" | "CRASH" | "REPAIR" | "OTHER";
 export type GateDecision = {
   id: string;
   step_execution: string;
@@ -8705,6 +8746,12 @@ export type StepGate = {
   gate: GateEnum;
   order?: number | undefined;
   fpi_scope?: (string | null) | undefined;
+  fpi_quantity?: /**
+   * first_piece: how many parts make up the first piece
+   *
+   * @minimum 1
+   */
+  number | undefined;
   qa_assurance?: (string | null) | undefined;
   revisit_assignment?: (string | null) | undefined;
   revisit_role?: (string | null) | undefined;
@@ -12798,6 +12845,7 @@ export type WorkQueueRow = {
   work_center_kind: string | null;
   machine: string | null;
   machine_name: string | null;
+  qty_startable: number;
   readiness: string;
   is_held: boolean;
 };
@@ -15405,6 +15453,12 @@ export type StepGateRequest = {
   gate: GateEnum;
   order?: number | undefined;
   fpi_scope?: (string | null) | undefined;
+  fpi_quantity?: /**
+   * first_piece: how many parts make up the first piece
+   *
+   * @minimum 1
+   */
+  number | undefined;
   qa_assurance?: (string | null) | undefined;
   revisit_assignment?: (string | null) | undefined;
   revisit_role?: (string | null) | undefined;
@@ -21961,6 +22015,8 @@ const FPIRecordDesignatedPartInfo = z.object({
 });
 const FpiReading = z.object({
   id: z.string().uuid(),
+  part_id: z.string().uuid().nullable(),
+  part_label: z.string(),
   label: z.string(),
   value: z.string().nullable(),
   unit: z.string(),
@@ -21970,6 +22026,14 @@ const FpiReading = z.object({
   within_spec: z.boolean().nullable(),
   recorded_by_name: z.string(),
   recorded_at: z.string().datetime({ offset: true }),
+});
+const FPIRecordPieceInfo = z.object({
+  id: z.string().uuid(),
+  label: z.string(),
+});
+const FPIRecordFailedPieceInfo = z.object({
+  id: z.string().uuid(),
+  label: z.string(),
 });
 const FPIRecordEquipmentInfo = z.object({
   id: z.string(),
@@ -22002,6 +22066,8 @@ const FPIRecord = z.object({
   designated_part_info: FPIRecordDesignatedPartInfo.nullable(),
   first_piece_readings: z.array(FpiReading),
   first_piece_signer_ids: z.array(z.number().int()),
+  first_piece_parts_info: z.array(FPIRecordPieceInfo),
+  failed_parts_info: z.array(FPIRecordFailedPieceInfo),
   equipment: z.string().uuid().nullish(),
   equipment_info: FPIRecordEquipmentInfo.nullable(),
   shift: z.string().uuid().nullish(),
@@ -22049,6 +22115,7 @@ const FPIRecordRequest = z.object({
 const api_FPIRecords_fail_create_Body = z
   .object({
     notes: z.string(),
+    bad_parts: z.array(z.string().uuid()),
     cosign_email: z.string(),
     cosign_password: z.string(),
     cosign_signature: z.string(),
@@ -22084,6 +22151,7 @@ const api_FPIRecords_get_or_create_create_Body = z
     equipment: z.string().uuid(),
     shift: z.string().uuid(),
     shift_date: z.string(),
+    for_waiver: z.boolean(),
   })
   .partial();
 const FPIGetOrCreateExisting = z.object({
@@ -22103,6 +22171,25 @@ const MyFirstPiece = z.object({
   acknowledged_by_name: z.string().nullable(),
   decided_by_name: z.string().nullable(),
   decided_at: z.string().datetime({ offset: true }).nullable(),
+});
+const ReasonCodeEnum = z.enum([
+  "TOOL_CHANGE",
+  "OFFSET",
+  "CRASH",
+  "REPAIR",
+  "OTHER",
+]);
+const FpiNewSetupInputRequest = z.object({
+  work_order: z.string().uuid(),
+  step: z.string().uuid(),
+  part: z.string().uuid().nullish(),
+  equipment: z.string().uuid().nullish(),
+  reason_code: ReasonCodeEnum,
+  reason: z.string().optional(),
+});
+const FpiNewSetupResponse = z.object({
+  superseded_fpi_id: z.string().uuid(),
+  status: z.string(),
 });
 const PaginatedFishboneList = z.object({
   count: z.number().int(),
@@ -24761,6 +24848,7 @@ const StepGate = z.object({
   gate: GateEnum,
   order: z.number().int().optional(),
   fpi_scope: z.string().nullish(),
+  fpi_quantity: z.number().int().gte(1).optional(),
   qa_assurance: z.string().nullish(),
   revisit_assignment: z.string().nullish(),
   revisit_role: z.string().uuid().nullish(),
@@ -26905,6 +26993,7 @@ const StepGateRequest = z.object({
   gate: GateEnum,
   order: z.number().int().optional(),
   fpi_scope: z.string().nullish(),
+  fpi_quantity: z.number().int().gte(1).optional(),
   qa_assurance: z.string().nullish(),
   revisit_assignment: z.string().nullish(),
   revisit_role: z.string().uuid().nullish(),
@@ -29167,6 +29256,7 @@ const WorkQueueRow = z.object({
   work_center_kind: z.string().nullable(),
   machine: z.string().uuid().nullable(),
   machine_name: z.string().nullable(),
+  qty_startable: z.number().int(),
   readiness: z.string(),
   is_held: z.boolean(),
 });
@@ -31037,6 +31127,8 @@ export const schemas = {
   FPIRecordPartTypeInfo,
   FPIRecordDesignatedPartInfo,
   FpiReading,
+  FPIRecordPieceInfo,
+  FPIRecordFailedPieceInfo,
   FPIRecordEquipmentInfo,
   FPIRecordShiftInfo,
   FPIRecordStatusEnum,
@@ -31053,6 +31145,9 @@ export const schemas = {
   FPIGetOrCreateExisting,
   FPIGetOrCreateCreated,
   MyFirstPiece,
+  ReasonCodeEnum,
+  FpiNewSetupInputRequest,
+  FpiNewSetupResponse,
   PaginatedFishboneList,
   FishboneRequest,
   PatchedFishboneRequest,
@@ -41502,6 +41597,21 @@ today — the operator home&#x27;s sent → seen → verdict strip
     response: z.array(MyFirstPiece),
   },
   {
+    method: "post",
+    path: "/api/FPIRecords/new-setup/",
+    alias: "api_FPIRecords_new_setup_create",
+    description: `Declare a new setup (tool change, offset, crash, repair…): the passed or waived first piece standing in the context is superseded and its step release withdrawn; the next start begins a new first piece.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: FpiNewSetupInputRequest,
+      },
+    ],
+    response: FpiNewSetupResponse,
+  },
+  {
     method: "get",
     path: "/api/GateDecisions/",
     alias: "api_GateDecisions_list",
@@ -42213,7 +42323,10 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
       },
     ],
     response: SignOffStepResult,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/integration-sync-logs/",
@@ -42238,10 +42351,7 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
       },
     ],
     response: PaginatedIntegrationSyncLogList,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/integration-sync-logs/:id/",
@@ -46459,7 +46569,10 @@ Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/notifications/schedules/personal/",
@@ -46493,10 +46606,7 @@ let customers self-manage their digest cadence.`,
       },
     ],
     response: PaginatedPersonalScheduleList,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/notifications/schedules/personal/",
@@ -51637,7 +51747,10 @@ Usage:
       },
     ],
     response: z.array(ProcessWithSteps),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/Processes_with_steps/export/:export_format/",
@@ -51667,10 +51780,7 @@ Usage:
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Processes/",
@@ -56881,7 +56991,10 @@ Response:
       },
     ],
     response: StepExecutionMeasurement,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutionMeasurements/:id/",
@@ -56896,10 +57009,7 @@ Response:
       },
     ],
     response: StepExecutionMeasurement,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepExecutionMeasurements/bulk-record/",
@@ -62596,7 +62706,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingRecords/my-training/",
@@ -62648,10 +62761,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: PaginatedTrainingRecordList,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingRecords/stats/",

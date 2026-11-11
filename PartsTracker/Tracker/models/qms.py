@@ -3151,6 +3151,16 @@ class FPIRecord(SecureModel):
         related_name='fpi_records',
         help_text='The part designated for FPI'
     )
+    # The first piece is the first N distinct parts started in the context (N is the
+    # first-piece gate row's quantity; one per fixture nest). `designated_part` is the
+    # first of them. Until the record passes or is waived, only these may start.
+    first_piece_parts = models.ManyToManyField(
+        'Tracker.Parts', blank=True, related_name='first_piece_runs',
+        help_text='The parts that make up this first piece (the first N started in its context)')
+    # A failed multi-piece first piece names the bad parts; FAIL reports land on those.
+    failed_parts = models.ManyToManyField(
+        'Tracker.Parts', blank=True, related_name='+',
+        help_text='The pieces of this first piece that failed (a FAIL verdict names them)')
     equipment = models.ForeignKey(
         'Tracker.Equipments',
         null=True,
@@ -3298,11 +3308,12 @@ class FPIRecord(SecureModel):
         return pass_fpi(self, user, notes=notes, performed_by=performed_by,
                         signature_data=signature_data, **assurance)
 
-    def fail_inspection(self, user, notes='', performed_by=None, signature_data=None):
+    def fail_inspection(self, user, notes='', performed_by=None, signature_data=None,
+                        bad_part_ids=None):
         """Thin wrapper — delegates to `services.qms.fpi.fail_fpi`."""
         from Tracker.services.qms.fpi import fail_fpi
         return fail_fpi(self, user, notes=notes, performed_by=performed_by,
-                        signature_data=signature_data)
+                        signature_data=signature_data, bad_part_ids=bad_part_ids)
 
     def waive(self, user, reason, performed_by=None, signature_data=None, **assurance):
         """Thin wrapper — delegates to `services.qms.fpi.waive_fpi`. See

@@ -31,11 +31,18 @@ export function FpiReadings({ fpiId }: { fpiId: string }) {
     const { data, isLoading } = useQuery(fpiRecordOptions(fpiId));
     const readings = data?.first_piece_readings ?? [];
     const outOfSpec = readings.filter((r) => r.within_spec === false).length;
+    // A first piece may be several parts (one per fixture nest): name them, and say
+    // which piece each reading was taken on.
+    const pieces = data?.first_piece_parts_info ?? [];
+    const multi = pieces.length > 1;
+    const heading = pieces.length > 0
+        ? pieces.map((p) => p.label).join(", ")
+        : data?.designated_part_info?.erp_id ?? "";
 
     return (
         <div className="space-y-1.5">
             <div className="text-sm font-medium">
-                First piece readings{data?.designated_part_info?.erp_id ? ` · ${data.designated_part_info.erp_id}` : ""}
+                First piece readings{heading ? ` · ${heading}` : ""}
             </div>
             {isLoading ? (
                 <p className="text-xs text-muted-foreground">Loading readings…</p>
@@ -50,6 +57,7 @@ export function FpiReadings({ fpiId }: { fpiId: string }) {
                         <table className="w-full text-xs">
                             <thead className="bg-muted/40 text-left text-muted-foreground">
                                 <tr>
+                                    {multi && <th className="p-1.5">Piece</th>}
                                     <th className="p-1.5">Characteristic</th>
                                     <th className="p-1.5 text-right">Reading</th>
                                     <th className="p-1.5 text-right">Limits</th>
@@ -59,6 +67,7 @@ export function FpiReadings({ fpiId }: { fpiId: string }) {
                             <tbody>
                                 {readings.map((r) => (
                                     <tr key={r.id} className={`border-t ${r.within_spec === false ? "bg-destructive/10 text-destructive" : ""}`}>
+                                        {multi && <td className="p-1.5">{r.part_label}</td>}
                                         <td className="p-1.5">{r.label}</td>
                                         <td className="p-1.5 text-right font-medium tabular-nums">
                                             {num(r.value) ?? "—"}{r.unit ? ` ${r.unit}` : ""}

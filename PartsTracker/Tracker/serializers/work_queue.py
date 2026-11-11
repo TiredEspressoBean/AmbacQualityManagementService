@@ -43,8 +43,13 @@ class WorkQueueRowSerializer(serializers.Serializer):
     machine = serializers.UUIDField(allow_null=True)
     machine_name = serializers.CharField(allow_null=True)
 
-    # v1 readiness bucket: 'blocked' when the WO has an active hold, else 'ready'.
-    # Upstream-done is implicit (open executions exist here); certified/cal/
-    # downtime/blocker predicates are separate concerns that layer on later.
+    # How many of the waiting pieces may start now. Less than qty_ready at a first-piece
+    # step whose first piece isn't bought off: only its N pieces may start until it is
+    # (user decision 2026-11-11). Equal to qty_ready otherwise.
+    qty_startable = serializers.IntegerField()
+
+    # Readiness bucket: 'blocked' when the WO has an active hold; 'waiting_fpi' when
+    # pieces are waiting but none may start until the first piece is bought off;
+    # else 'ready'. Upstream-done is implicit (open executions exist here).
     readiness = serializers.CharField()
     is_held = serializers.BooleanField()

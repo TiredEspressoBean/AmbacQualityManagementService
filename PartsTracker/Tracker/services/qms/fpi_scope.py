@@ -6,8 +6,11 @@ User decision 2026-10-28 (B1): the scope is a real gate.
 - **Per Shift** — each run of a shift (Day on the 12th, Night on the 12th) needs its
   own passed or waived first piece at the step on that work order. Which shift it is
   comes from the shift calendar (`scheduling.calendars.shift_at`: the shift that started
-  most recently); a night shift past midnight keeps its start date. A shift edited into
-  a new version is the same shift. With no shifts configured, the plant date stands in.
+  most recently) AT THE MOMENT THE PART'S VISIT STARTED — a recorded fact, never the
+  clock at check time (user decision 2026-11-11), so a part started on Day is Day's
+  even when it is checked on Night. A night shift past midnight keeps its start date.
+  A shift edited into a new version is the same shift. With no shifts configured, the
+  plant date stands in.
 - **Per Equipment** — each machine the work runs on needs its own. The machine is the
   PRODUCTION equipment on the part's visit to the step (stamped from the step's
   authored machine or the live schedule, or set by the operator). A part whose machine
@@ -88,17 +91,35 @@ def _shift_context(shift, shift_date) -> FpiContext:
                       shift_name=shift.name)
 
 
+def visit_started_at(part, step):
+    """When `part`'s current visit to `step` started, or None (not started, or not at
+    the step)."""
+    if part is None:
+        return None
+    from Tracker.models import StepExecution
+    se = StepExecution.get_current_execution(part)
+    if se is None or str(se.step_id) != str(step.id):
+        return None
+    return se.started_at
+
+
 def context_for(step, work_order, *, part=None, equipment=None, shift=None,
-                shift_date=None) -> FpiContext:
-    """The context `part` (or the given machine / shift) needs a first piece for. With
-    no shift given, a Per Shift step takes the shift running now."""
+                shift_date=None, at=None) -> FpiContext:
+    """The context `part` (or the given machine / shift) needs a first piece for.
+
+    Per Shift: the shift at `at` — given, else when the part's visit to the step
+    started, else now (a start being decided now)."""
     scope = step.fpi_scope or PER_WORKORDER
     if scope == PER_SHIFT:
         if shift is None and shift_date is None:
             from Tracker.services.scheduling.calendars import shift_at
-            running = shift_at(work_order.tenant)
+            when = at or visit_started_at(part, step)
+            running = shift_at(work_order.tenant, when)
             if running is not None:
                 shift, shift_date = running
+            elif when is not None:
+                from Tracker.services.core.clock import plant_tz
+                shift_date = when.astimezone(plant_tz(work_order.tenant)).date()
             else:
                 from Tracker.services.core.clock import tenant_today
                 shift_date = tenant_today(work_order.tenant)

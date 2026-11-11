@@ -241,6 +241,7 @@ def create_new_step_version(
                 gate=req.gate,
                 order=req.order,
                 fpi_scope=req.fpi_scope,
+                fpi_quantity=req.fpi_quantity,
                 qa_assurance=req.qa_assurance,
                 revisit_assignment=req.revisit_assignment,
                 revisit_role=req.revisit_role,

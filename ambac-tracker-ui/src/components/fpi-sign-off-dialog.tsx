@@ -33,6 +33,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,6 +105,12 @@ export function FpiSignOffDialog({
         confirmed: false,
     });
     const [error, setError] = useState<string | null>(null);
+    // A first piece of several parts: a fail names which ones failed (their FAIL
+    // reports; the good ones release when the re-run passes).
+    const pieces = record?.first_piece_parts_info ?? [];
+    const [badParts, setBadParts] = useState<string[]>([]);
+    const toggleBad = (id: string) =>
+        setBadParts((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
 
     const passMutation = useFpiPass();
     const failMutation = useFpiFail();
@@ -121,6 +128,7 @@ export function FpiSignOffDialog({
         setOwnPassword("");
         setCosignEmail("");
         setSignature({ signature_data: "", password: "", confirmed: false });
+        setBadParts([]);
         setError(null);
     };
 
@@ -134,6 +142,10 @@ export function FpiSignOffDialog({
 
         if (verdict === "FAIL" && !notes.trim()) {
             setError("Say what was wrong, so the setup can be corrected.");
+            return;
+        }
+        if (verdict === "FAIL" && pieces.length > 1 && badParts.length === 0) {
+            setError("Tick the pieces that failed.");
             return;
         }
         if (verdict === "WAIVE" && notes.trim().length < WAIVE_MIN) {
@@ -190,7 +202,11 @@ export function FpiSignOffDialog({
                 },
             };
         if (verdict === "FAIL") {
-            failMutation.mutate({ id: fpiId, notes: notes.trim(), ...signer }, callbacks);
+            failMutation.mutate({
+                id: fpiId, notes: notes.trim(),
+                ...(pieces.length > 1 ? { bad_parts: badParts } : {}),
+                ...signer,
+            }, callbacks);
         } else if (verdict === "WAIVE") {
             waiveMutation.mutate({ id: fpiId, reason: notes.trim(), ...signer }, callbacks);
         } else {
@@ -226,6 +242,27 @@ export function FpiSignOffDialog({
 
                 <div className="space-y-4">
                     <FpiReadings fpiId={fpiId} />
+                    {verdict === "FAIL" && pieces.length > 1 && (
+                        <div className="space-y-1.5">
+                            <Label>Which pieces failed?</Label>
+                            <div className="flex flex-wrap gap-3">
+                                {pieces.map((p) => (
+                                    <label key={p.id} className="flex items-center gap-1.5 text-sm">
+                                        <Checkbox
+                                            checked={badParts.includes(String(p.id))}
+                                            onCheckedChange={() => toggleBad(String(p.id))}
+                                            aria-label={`${p.label} failed`}
+                                        />
+                                        {p.label}
+                                    </label>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                The ticked pieces get a failed inspection; the others wait and
+                                release when the re-run first piece passes.
+                            </p>
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <Label>{NOTES_LABEL[verdict]}</Label>
                         <Textarea

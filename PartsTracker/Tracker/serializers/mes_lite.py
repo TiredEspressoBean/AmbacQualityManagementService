@@ -1490,6 +1490,8 @@ class StepGateSerializer(serializers.Serializer):
     gate = serializers.ChoiceField(choices=StepGateKind.choices)
     order = serializers.IntegerField(required=False)
     fpi_scope = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    fpi_quantity = serializers.IntegerField(required=False, min_value=1,
+                                            help_text="first_piece: how many parts make up the first piece")
     qa_assurance = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     revisit_assignment = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     revisit_role = serializers.UUIDField(required=False, allow_null=True, source='revisit_role_id')
