@@ -122,7 +122,12 @@ def create_core(*, tenant, work_order=None, step=None, core_number=None,
             order=order,
             part_status=part_status_for(stage, on_work_order=work_order is not None),
         )
-        return Core.objects.create(tenant=tenant, part=part, core_number=number, **fields)
+        core = Core.objects.create(tenant=tenant, part=part, core_number=number, **fields)
+        # Its reman-cycle count, from the unit's history: there before any work, so an
+        # over-limit unit's extension can be approved before its reman starts.
+        from Tracker.services.life_tracking.reman_cycles import ensure_reman_trackings
+        ensure_reman_trackings(core)
+        return core
 
 
 def move_core(core, *, work_order=..., step=...) -> None:

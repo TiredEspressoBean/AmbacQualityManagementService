@@ -8762,27 +8762,31 @@ export type GateEnum =
    * `deviation_expired` - Deviation in date
    * `part_quarantined` - Part not quarantined
    * `core_awaiting_authorisation` - Customer authorisation
+   * `part_on_hold` - Part not on hold
+   * `equipment_down` - Machine in service
+   * `life_limit` - Life limit
    * `training_not_authorized` - Operator trained
    * `revisit_rule` - Repeat visits
    * `substeps_incomplete` - Work instruction done
    * `qualified_operator` - Qualified operator on record
-   * `life_limit` - Life limit
    * `quarantine_hold` - Quarantine hold
    * `qa_signoff` - QA sign-off
    * `first_piece` - First piece
    * `measurement_out_of_spec` - Readings in spec
    *
-   * @enum work_order_not_workable, deviation_expired, part_quarantined, core_awaiting_authorisation, training_not_authorized, revisit_rule, substeps_incomplete, qualified_operator, life_limit, quarantine_hold, qa_signoff, first_piece, measurement_out_of_spec
+   * @enum work_order_not_workable, deviation_expired, part_quarantined, core_awaiting_authorisation, part_on_hold, equipment_down, life_limit, training_not_authorized, revisit_rule, substeps_incomplete, qualified_operator, quarantine_hold, qa_signoff, first_piece, measurement_out_of_spec
    */
   | "work_order_not_workable"
   | "deviation_expired"
   | "part_quarantined"
   | "core_awaiting_authorisation"
+  | "part_on_hold"
+  | "equipment_down"
+  | "life_limit"
   | "training_not_authorized"
   | "revisit_rule"
   | "substeps_incomplete"
   | "qualified_operator"
-  | "life_limit"
   | "quarantine_hold"
   | "qa_signoff"
   | "first_piece"
@@ -24834,11 +24838,13 @@ const GateEnum = z.enum([
   "deviation_expired",
   "part_quarantined",
   "core_awaiting_authorisation",
+  "part_on_hold",
+  "equipment_down",
+  "life_limit",
   "training_not_authorized",
   "revisit_rule",
   "substeps_incomplete",
   "qualified_operator",
-  "life_limit",
   "quarantine_hold",
   "qa_signoff",
   "first_piece",

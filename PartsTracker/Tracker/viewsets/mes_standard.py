@@ -211,11 +211,14 @@ class WorkCenterViewSet(VersionHistoryMixin, TenantScopedMixin, CSVImportMixin, 
             return Response({"detail": "`kind` must be MATERIAL or PART_TYPE."},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        line = svc(
-            self.tenant, data['work_order'], data['step'], data['material'],
-            qty, data.get('lots') or [], request.user,
-            qty_required=data.get('qty_required'), kind=kind,
-        )
+        try:
+            line = svc(
+                self.tenant, data['work_order'], data['step'], data['material'],
+                qty, data.get('lots') or [], request.user,
+                qty_required=data.get('qty_required'), kind=kind,
+            )
+        except ValueError as exc:  # a shelf-life expired lot
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({
             # Echo the subject back the way it was addressed. A Material and a PartTypes
             # can share a uuid, so the id alone does not identify what was picked.

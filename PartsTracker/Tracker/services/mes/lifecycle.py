@@ -254,8 +254,10 @@ def training_override_rows(executions, *, since=None, until=None, limit=500) -> 
     return rows[:limit]
 
 
-def authorize_start(operator, step, process, *, authorizer=None, reason=None):
-    """Competence rule for starting a step.
+def authorize_start(operator, step, process, *, authorizer=None, reason=None,
+                    equipment_type=None):
+    """Competence rule for starting a step — on its machine, when `equipment_type` (the
+    start machine's type) carries training of its own.
 
     Returns the authorization snapshot (dict for
     `StepExecution.training_authorization`), or raises `NotQualified` /
@@ -265,7 +267,8 @@ def authorize_start(operator, step, process, *, authorizer=None, reason=None):
     """
     from Tracker.services.training import check_training_authorization
 
-    result = check_training_authorization(operator, step, process=process)
+    result = check_training_authorization(operator, step, process=process,
+                                          equipment_type=equipment_type)
     if result.authorized:
         return authorization_snapshot(result)
 
@@ -420,8 +423,11 @@ def reassign_execution(execution, *, by, to, reason):
 
     may_authorize = by.id != to.id and by.has_tenant_perm('override_training_gate', execution.tenant)
     process = getattr(execution.subject_work_order, 'process', None)
+    from Tracker.services.mes.gates import start_machine
+    machine = start_machine(execution.step, execution.part, execution)
     snapshot = authorize_start(to, execution.step, process,
-                               authorizer=by if may_authorize else None, reason=reason)
+                               authorizer=by if may_authorize else None, reason=reason,
+                               equipment_type=getattr(machine, 'equipment_type', None))
     prior = execution.assigned_to
     if prior is not None:
         snapshot['reassignment'] = build_reassignment(

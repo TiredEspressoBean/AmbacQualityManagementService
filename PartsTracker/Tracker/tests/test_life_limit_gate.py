@@ -1,11 +1,10 @@
-"""Life-limit gate in the advancement engine.
+"""Life-limit gate, at START (gate redesign S4, user decision 2026-11-11).
 
 A part carrying a `LifeTracking` record past its hard limit (EXPIRED /
-`is_blocked`) must not advance. The gate reads the LIVE `is_blocked` property, so
+`is_blocked`) is not started. The gate reads the LIVE `is_blocked` property, so
 calendar-based shelf-life expiries are caught even when the cached status is
 stale. Release is a formal, audited limit extension (`apply_override`), not a
-`StepOverride`. Scope is the part's own tracking (installed-component life is a
-later enhancement). Mirrors the FPI-gate test setup (`test_fpi_gate.py`).
+`StepOverride`. Work already started is not stopped when it leaves the step.
 """
 from datetime import timedelta
 from decimal import Decimal
@@ -27,6 +26,8 @@ from Tracker.models import (
 )
 from Tracker.models.life_tracking import LifeLimitDefinition, LifeTracking
 from Tracker.services.mes.advancement import try_advance_lot
+from Tracker.services.mes.gates import GateCode, StartRefused
+from Tracker.services.mes.lifecycle import start_execution
 from Tracker.tests.base import TenantContextMixin
 
 
@@ -58,8 +59,8 @@ class LifeLimitGateTests(TenantContextMixin, TestCase):
             tenant=self.tenant, ERP_id="P-LIFE-1", part_type=self.pt,
             work_order=self.wo, step=self.step1,
         )
-        StepExecution.objects.create(
-            tenant=self.tenant, part=self.part, step=self.step1, visit_number=1, status="IN_PROGRESS",
+        self.visit = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.step1, visit_number=1, status="PENDING",
         )
         self.cycles_def = LifeLimitDefinition.objects.create(
             tenant=self.tenant, name="Injection Cycles", unit="cycles",
@@ -70,20 +71,23 @@ class LifeLimitGateTests(TenantContextMixin, TestCase):
             unit_label="Days", is_calendar_based=True, hard_limit=Decimal("365"),
         )
 
+    def _start(self):
+        return start_execution(StepExecution.objects.get(pk=self.visit.pk), self.user)
+
     def _advance(self):
         return try_advance_lot(
             work_order_id=str(self.wo.id), step_id=str(self.step1.id),
             tenant_id=str(self.tenant.id), operator=self.user,
         )
 
-    def _life_blocked(self, result):
-        return any(
-            "Life limit exceeded" in b
-            for lst in result.blockers_by_part.values() for b in lst
-        )
+    def _assert_refused(self):
+        with self.assertRaises(StartRefused) as ctx:
+            self._start()
+        self.assertEqual([b.code for b in ctx.exception.blockers], [GateCode.LIFE_LIMIT])
 
-    def test_advances_when_within_limit(self):
+    def test_starts_and_advances_when_within_limit(self):
         LifeTracking.for_object(self.part, self.cycles_def, accumulated=Decimal("500000"))
+        self._start()
         result = self._advance()
         self.assertEqual(result.status, "advanced")
         self.part.refresh_from_db()
@@ -91,17 +95,17 @@ class LifeLimitGateTests(TenantContextMixin, TestCase):
 
     def test_no_gate_without_life_tracking(self):
         # Baseline: a part with no life tracking is unaffected by the gate.
-        result = self._advance()
-        self.assertEqual(result.status, "advanced")
-        self.assertFalse(self._life_blocked(result))
+        self._start()
 
-    def test_blocked_when_accumulated_limit_exceeded(self):
+    def test_refused_at_start_when_accumulated_limit_exceeded(self):
         LifeTracking.for_object(self.part, self.cycles_def, accumulated=Decimal("1000001"))
-        result = self._advance()
-        self.assertEqual(result.status, "blocked")
-        self.assertTrue(self._life_blocked(result))
-        self.part.refresh_from_db()
-        self.assertEqual(self.part.step_id, self.step1.id, "expired part must not leave the step")
+        self._assert_refused()
+
+    def test_work_started_inside_the_limit_is_not_stopped_at_release(self):
+        tracking, _ = LifeTracking.for_object(self.part, self.cycles_def, accumulated=Decimal("999999"))
+        self._start()
+        tracking.increment(2)  # the limit is reached during the work
+        self.assertEqual(self._advance().status, "advanced")
 
     def test_blocked_when_calendar_shelf_life_expired_despite_stale_cache(self):
         # Reference date 400 days ago > 365-day hard limit → live is_blocked True.
@@ -112,9 +116,7 @@ class LifeLimitGateTests(TenantContextMixin, TestCase):
         # Force a stale cache (as if saved while still within limit): the gate
         # must NOT rely on cached_status.
         LifeTracking.objects.filter(pk=tracking.pk).update(cached_status="OK")
-        result = self._advance()
-        self.assertEqual(result.status, "blocked")
-        self.assertTrue(self._life_blocked(result))
+        self._assert_refused()
 
     def test_limit_extension_override_unblocks(self):
         tracking, _ = LifeTracking.for_object(
@@ -124,7 +126,4 @@ class LifeLimitGateTests(TenantContextMixin, TestCase):
         tracking.apply_override(
             hard_limit=Decimal("1200000"), reason="Engineering extension", approved_by=self.user,
         )
-        result = self._advance()
-        self.assertEqual(result.status, "advanced")
-        self.part.refresh_from_db()
-        self.assertEqual(self.part.step_id, self.step2.id)
+        self._start()

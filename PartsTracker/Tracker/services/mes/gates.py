@@ -57,6 +57,10 @@ class GateCode(StrEnum):
     DEVIATION_EXPIRED = 'deviation_expired'
     WORK_ORDER_NOT_WORKABLE = 'work_order_not_workable'
     PART_QUARANTINED = 'part_quarantined'
+    PART_ON_HOLD = 'part_on_hold'
+    EQUIPMENT_DOWN = 'equipment_down'
+    # --- START: an approved extension
+    LIFE_LIMIT = 'life_limit'
     # --- START: a QA waiver
     FIRST_PIECE_PENDING = 'first_piece_pending'
     # --- START: supervisor override (the codes the API already answers with)
@@ -65,7 +69,6 @@ class GateCode(StrEnum):
     TRAINING = 'training_not_authorized'
     # --- RELEASE
     QUARANTINE_HOLD = 'quarantine_hold'
-    LIFE_LIMIT = 'life_limit'
     QA_SIGNOFF = 'qa_signoff'
     FIRST_PIECE = 'first_piece'
     SAMPLING_REQUIRED = 'sampling_required'
@@ -93,6 +96,12 @@ _SPECS = [
              "Production manager", "the work order's hold to clear"),
     GateSpec(GateCode.PART_QUARANTINED, Stage.START, Escape.NONE,
              "QA", "the part's disposition"),
+    GateSpec(GateCode.PART_ON_HOLD, Stage.START, Escape.NONE,
+             "Supervisor", "the part's hold to be released"),
+    GateSpec(GateCode.EQUIPMENT_DOWN, Stage.START, Escape.NONE,
+             "Maintenance", "the machine to return to service"),
+    GateSpec(GateCode.LIFE_LIMIT, Stage.START, Escape.LIMIT_EXTENSION,
+             "Engineering", "an approved life-limit extension"),
     GateSpec(GateCode.FIRST_PIECE_PENDING, Stage.START, Escape.SIGNED_WAIVER,
              "QA", "QA to buy off the first piece"),
     GateSpec(GateCode.REVISIT_RULE, Stage.START, Escape.SUPERVISOR_OVERRIDE,
@@ -103,8 +112,6 @@ _SPECS = [
              "Supervisor", "a supervisor to authorise an operator without the training"),
     GateSpec(GateCode.QUARANTINE_HOLD, Stage.RELEASE, Escape.BYPASS_REQUEST,
              "QA", "the part's disposition"),
-    GateSpec(GateCode.LIFE_LIMIT, Stage.RELEASE, Escape.LIMIT_EXTENSION,
-             "Engineering", "an approved life-limit extension"),
     GateSpec(GateCode.QA_SIGNOFF, Stage.RELEASE, Escape.BYPASS_REQUEST,
              "QA", "QA's sign-off"),
     GateSpec(GateCode.FIRST_PIECE, Stage.RELEASE, Escape.BYPASS_REQUEST,
@@ -218,6 +225,20 @@ def floor_blockers(ctx: StartContext) -> list[Blocker]:
                 f"{part.ERP_id} is quarantined — "
                 + (f"{disp.disposition_number} decides what happens to it; work it from there."
                    if disp else "it needs a disposition before any work starts."))))
+    if part is not None and _carries(step, GateCode.PART_ON_HOLD):
+        from Tracker.models import PartsStatus
+        # REWORK_NEEDED is work to do, not a hold: it stays startable.
+        if part.part_status == PartsStatus.ON_HOLD:
+            out.append(Blocker(GateCode.PART_ON_HOLD,
+                               f"{part.ERP_id} is on hold — release the hold before starting it."))
+    if part is not None and _carries(step, GateCode.LIFE_LIMIT):
+        out += [Blocker(GateCode.LIFE_LIMIT, m) for m in _life_limit_refusals(part)]
+    if step is not None and _carries(step, GateCode.EQUIPMENT_DOWN):
+        machine = start_machine(step, part, ctx.execution)
+        if machine is not None and machine.status != 'IN_SERVICE':
+            out.append(Blocker(GateCode.EQUIPMENT_DOWN, (
+                f"{machine.name} is {machine.get_status_display().lower()} — it can't run "
+                "work until it is back in service.")))
     if wo is not None and _carries(step, GateCode.DEVIATION_EXPIRED):
         from Tracker.services.change_control.temporary import refusal as deviation_refusal
         expired = deviation_refusal(wo)
@@ -231,10 +252,42 @@ def floor_blockers(ctx: StartContext) -> list[Blocker]:
     return out
 
 
+def start_machine(step, part, execution=None):
+    """The machine a start runs on: the PRODUCTION machine recorded on the visit, else
+    the one it is planned for (the step's authored machine, else the schedule's)."""
+    if execution is not None and execution.pk:
+        from Tracker.models.qms import EquipmentRole, StepExecutionEquipment
+        link = (StepExecutionEquipment.objects  # tenant-safe: FK-correlated to a scoped visit
+                .filter(step_execution=execution, role=EquipmentRole.PRODUCTION)
+                .select_related('equipment').first())
+        if link is not None:
+            return link.equipment
+    from Tracker.services.mes.parts import planned_production_machine
+    return planned_production_machine(step.id, getattr(part, 'id', None))
+
+
+def _life_limit_refusals(part) -> list[str]:
+    """Each life limit the part (or the core it is) has reached. Read live, not the
+    cached status, so calendar expiries are caught."""
+    from Tracker.services.reman.core_steps import core_of
+    out = [f"Life limit reached: {lt.definition.name} ({lt.current_value:g} of "
+           f"{lt.effective_hard_limit:g}) — it needs an approved extension to start."
+           for lt in _life_trackings(part) if lt.is_blocked]
+    core = core_of(part)
+    if core is not None:
+        from Tracker.services.life_tracking.reman_cycles import untracked_over_limit
+        out += [f"Life limit reached: {d.name} — {part.ERP_id} has been remanned "
+                f"{d.hard_limit:g} times. It needs an approved extension to start."
+                for d in untracked_over_limit(core)]
+    return out
+
+
 def _floor_applies(ctx: StartContext) -> list[GateCode]:
     codes = []
     if ctx.part is not None:
-        codes += [GateCode.CORE_AWAITING_AUTHORISATION, GateCode.PART_QUARANTINED]
+        codes += [GateCode.CORE_AWAITING_AUTHORISATION, GateCode.PART_QUARANTINED,
+                  GateCode.PART_ON_HOLD, GateCode.LIFE_LIMIT]
+    codes.append(GateCode.EQUIPMENT_DOWN)
     if ctx.work_order is not None:
         codes += [GateCode.DEVIATION_EXPIRED, GateCode.WORK_ORDER_NOT_WORKABLE]
     return [c for c in codes if _carries(ctx.step, c)]
@@ -298,8 +351,10 @@ def decide_start(ctx: StartContext, *, authorizer=None, reason=None) -> StartDec
         outcomes.append(Outcome(GateCode.ASSIGNED_TO_OTHER, 'OVERRIDDEN', authorizer, reason or ''))
 
     if ctx.step.has_gate(str(GateCode.TRAINING)):
+        machine = start_machine(ctx.step, ctx.part, ctx.execution)
         snapshot = authorize_start(ctx.operator, ctx.step, ctx.process, authorizer=authorizer,
-                                   reason=reason)
+                                   reason=reason,
+                                   equipment_type=getattr(machine, 'equipment_type', None))
         outcomes.append(Outcome(GateCode.TRAINING, 'OVERRIDDEN', authorizer, reason or '')
                         if snapshot.get('override') else Outcome(GateCode.TRAINING, 'PASSED'))
     else:
@@ -335,14 +390,6 @@ def release_blockers(step: 'Steps', step_execution, work_order) -> list[Blocker]
     # Quarantine (Parts only — cores carry no quarantine state).
     if part is not None and part.part_status == PartsStatus.QUARANTINED and step.block_on_quarantine:
         out.append(Blocker(GateCode.QUARANTINE_HOLD, "Part is quarantined and step blocks on quarantine"))
-
-    # Life limit. Read the live `is_blocked`, not the possibly stale cached status, so
-    # calendar (shelf-life) expiries are caught. Released by an approved limit
-    # extension, not a bypass.
-    if part is not None and step.has_gate(str(GateCode.LIFE_LIMIT)):
-        for lt in _life_trackings(part):
-            if lt.is_blocked:
-                out.append(Blocker(GateCode.LIFE_LIMIT, f"Life limit exceeded: {lt.definition.name}"))
 
     # QA sign-off. A first-piece release covers its own context only.
     if step.requires_qa_signoff:
@@ -398,11 +445,17 @@ def release_blockers(step: 'Steps', step_execution, work_order) -> list[Blocker]
 
 
 def _life_trackings(part):
+    """The part's life trackings, and its core's when it is one (reman cycles are
+    counted on the core)."""
     from django.contrib.contenttypes.models import ContentType
+    from django.db.models import Q
     from Tracker.models import LifeTracking
-    return (LifeTracking.objects  # tenant-safe: generic FK to a scoped part
-            .filter(content_type=ContentType.objects.get_for_model(part), object_id=part.pk)
-            .select_related('definition'))
+    from Tracker.services.reman.core_steps import core_of
+    on = Q(content_type=ContentType.objects.get_for_model(part), object_id=part.pk)
+    core = core_of(part)
+    if core is not None:
+        on |= Q(content_type=ContentType.objects.get_for_model(core), object_id=core.pk)
+    return LifeTracking.objects.filter(on).select_related('definition')  # tenant-safe: generic FK to a scoped part
 
 
 def _needs_operator_backstop(step, step_execution, work_order) -> bool:
@@ -433,8 +486,6 @@ def _release_applies(step, step_execution, work_order) -> list[GateCode]:
     codes = []
     if part is not None and step.block_on_quarantine:
         codes.append(GateCode.QUARANTINE_HOLD)
-    if part is not None and step.has_gate(str(GateCode.LIFE_LIMIT)) and _life_trackings(part).exists():
-        codes.append(GateCode.LIFE_LIMIT)
     if step.requires_qa_signoff:
         codes.append(GateCode.QA_SIGNOFF)
     if part is not None and step.requires_first_piece_inspection:

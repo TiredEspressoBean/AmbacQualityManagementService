@@ -491,9 +491,17 @@ def record_pick(tenant, work_order_id, step_id, material_id, qty, lots, user,
 
     And it corrects the traceability record: `consume_for_step` reads these lots instead
     of re-deriving FEFO, so what the system says went into the unit is what did.
+
+    Raises ValueError for a shelf-life expired lot: it is refused at staging, not left
+    for consumption to skip silently (user decision 2026-11-11).
     """
     from django.utils import timezone
-    from Tracker.models import MaterialStaging, MaterialStagingLine
+    from Tracker.models import MaterialLot, MaterialStaging, MaterialStagingLine
+    from Tracker.services.life_tracking.shelf_life import assert_lot_usable
+
+    lot_ids = [l.get('lot_id') for l in (lots or []) if l.get('lot_id')]
+    for lot in MaterialLot.objects.filter(tenant=tenant, id__in=lot_ids):  # tenant-safe: explicit tenant filter
+        assert_lot_usable(lot)
 
     staging, _ = MaterialStaging.objects.get_or_create(
         tenant=tenant, work_order_id=work_order_id, step_id=step_id)

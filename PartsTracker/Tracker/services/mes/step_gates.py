@@ -21,13 +21,15 @@ START_GATES = (
     'deviation_expired',
     'part_quarantined',
     'core_awaiting_authorisation',
+    'part_on_hold',
+    'equipment_down',
+    'life_limit',
     'training_not_authorized',
     'revisit_rule',
 )
 RELEASE_GATES = (
     'substeps_incomplete',
     'qualified_operator',
-    'life_limit',
     'quarantine_hold',
     'qa_signoff',
     'first_piece',
@@ -36,16 +38,19 @@ RELEASE_GATES = (
 COMPOSABLE_GATES = START_GATES + RELEASE_GATES
 
 # On by default on a new step, and given to every step that existed before rows did:
-# these applied to every step whatever its flags said.
+# these applied to every step whatever its flags said. A machine down and a part on
+# hold joined the floor later (migrations/0305), given to every step that kept it.
 FLOOR_GATES = (
     'work_order_not_workable',
     'deviation_expired',
     'part_quarantined',
     'core_awaiting_authorisation',
+    'part_on_hold',
+    'equipment_down',
+    'life_limit',
     'training_not_authorized',
     'substeps_incomplete',
     'qualified_operator',
-    'life_limit',
 )
 
 FPI_SCOPES = ('PER_WORKORDER', 'PER_SHIFT', 'PER_EQUIPMENT')

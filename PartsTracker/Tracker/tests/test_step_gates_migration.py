@@ -19,6 +19,9 @@ from Tracker.services.mes.step_gates import (
 from Tracker.tests.base import TenantTestCase
 
 migration = importlib.import_module('Tracker.migrations.0302_step_gates_from_flags')
+# The floor as 0302 knew it: 0305 added a part on hold and a machine down later.
+FLOOR_AT_0302 = set(FLOOR_GATES) - set(
+    importlib.import_module('Tracker.migrations.0305_start_gates_s4').NEW_FLOOR)
 
 OFF = dict(requires_first_piece_inspection=False, fpi_scope='PER_WORKORDER',
            requires_qa_signoff=False, qa_signoff_assurance='NONE', block_on_quarantine=False,
@@ -33,7 +36,7 @@ class MigrationMappingTests(TenantTestCase):
     """The migration function against representative old flag combinations."""
 
     def test_a_step_with_no_flags_gets_the_floor_only(self):
-        self.assertEqual(set(gates_of(migration.rows_for_flags(**OFF))), set(FLOOR_GATES))
+        self.assertEqual(set(gates_of(migration.rows_for_flags(**OFF))), FLOOR_AT_0302)
 
     def test_each_flag_becomes_its_own_row_with_its_settings(self):
         rows = gates_of(migration.rows_for_flags(**{
@@ -44,7 +47,7 @@ class MigrationMappingTests(TenantTestCase):
         self.assertEqual(rows['qa_signoff'], {'qa_assurance': 'PASSWORD'})
         self.assertIn('quarantine_hold', rows)
         self.assertIn('measurement_out_of_spec', rows)
-        self.assertTrue(set(FLOOR_GATES) <= set(rows))
+        self.assertTrue(FLOOR_AT_0302 <= set(rows))
 
     def test_the_assurance_and_scope_ride_only_with_their_gate(self):
         """A step with QA sign-off off but a stale PASSWORD assurance (and an FPI scope
