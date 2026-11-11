@@ -6011,6 +6011,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/LifeTracking/{id}/request_extension/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Ask for this item's hard limit to be raised. It's an approval request: someone other than the requester, with life-limit authority, approves it, and only then is the limit raised (user ruling 2026-11-11). */
+        post: operations["api_LifeTracking_request_extension_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/LifeTracking/{id}/reset/": {
         parameters: {
             query?: never;
@@ -22167,9 +22184,10 @@ export interface components {
          *     * `PPAP` - PPAP
          *     * `FAI` - First Article (FAI / AS9102)
          *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+         *     * `LIFE_LIMIT_EXTENSION` - Life limit extension
          * @enum {string}
          */
-        ApprovalTypeEnum: "DOCUMENT_RELEASE" | "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "ECO" | "TRAINING_CERT" | "PROCESS_APPROVAL" | "PCR_APPROVAL" | "PCO_APPROVAL" | "PCN_RELEASE" | "PPAP" | "FAI" | "RECEIVING_ACCEPT_INCOMPLETE";
+        ApprovalTypeEnum: "DOCUMENT_RELEASE" | "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "ECO" | "TRAINING_CERT" | "PROCESS_APPROVAL" | "PCR_APPROVAL" | "PCO_APPROVAL" | "PCN_RELEASE" | "PPAP" | "FAI" | "RECEIVING_ACCEPT_INCOMPLETE" | "LIFE_LIMIT_EXTENSION";
         /**
          * @description Taking a component back out of the unit — fitted by mistake, or the wrong one.
          *     The reason is kept on the usage (Corrections #23).
@@ -27002,6 +27020,15 @@ export interface components {
             /** Format: date */
             expected_start: string | null;
         };
+        LifeExtensionRequestRequest: {
+            /** Format: decimal */
+            hard_limit: string;
+            reason: string;
+        };
+        LifeExtensionRequested: {
+            approval_number: string;
+            tracking: components["schemas"]["LifeTracking"];
+        };
         /** @description Life limit definition serializer */
         LifeLimitDefinition: {
             /** Format: uuid */
@@ -27127,6 +27154,13 @@ export interface components {
             /** @description Reason for limit override */
             readonly override_reason: string;
             readonly override_approved_by: number | null;
+            readonly override_approved_by_name: string | null;
+            /**
+             * Format: decimal
+             * @description Hard limit requested by an extension awaiting approval
+             */
+            readonly pending_hard_limit: string | null;
+            readonly pending_extension: string | null;
             /** @description History of resets/overhauls */
             readonly reset_history: unknown;
             /** @description Cached status, updated on save */
@@ -42102,8 +42136,9 @@ export interface operations {
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
                  *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+                 *     * `LIFE_LIMIT_EXTENSION` - Life limit extension
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "LIFE_LIMIT_EXTENSION" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 content_type?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -42306,8 +42341,9 @@ export interface operations {
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
                  *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+                 *     * `LIFE_LIMIT_EXTENSION` - Life limit extension
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "LIFE_LIMIT_EXTENSION" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 content_type?: number;
                 object_id?: string;
                 /** @description Which field to use when ordering the results. */
@@ -42444,8 +42480,9 @@ export interface operations {
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
                  *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+                 *     * `LIFE_LIMIT_EXTENSION` - Life limit extension
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "LIFE_LIMIT_EXTENSION" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 content_type?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -42546,8 +42583,9 @@ export interface operations {
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
                  *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+                 *     * `LIFE_LIMIT_EXTENSION` - Life limit extension
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "LIFE_LIMIT_EXTENSION" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 content_type?: number;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -42784,8 +42822,9 @@ export interface operations {
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
                  *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+                 *     * `LIFE_LIMIT_EXTENSION` - Life limit extension
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "LIFE_LIMIT_EXTENSION" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 /**
                  * @description * `OPTIONAL` - Optional
                  *     * `DISABLED` - Disabled
@@ -42997,8 +43036,9 @@ export interface operations {
                  *     * `PPAP` - PPAP
                  *     * `FAI` - First Article (FAI / AS9102)
                  *     * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+                 *     * `LIFE_LIMIT_EXTENSION` - Life limit extension
                  */
-                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
+                approval_type?: "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "DOCUMENT_RELEASE" | "ECO" | "FAI" | "LIFE_LIMIT_EXTENSION" | "PCN_RELEASE" | "PCO_APPROVAL" | "PCR_APPROVAL" | "PPAP" | "PROCESS_APPROVAL" | "RECEIVING_ACCEPT_INCOMPLETE" | "TRAINING_CERT";
                 /**
                  * @description * `OPTIONAL` - Optional
                  *     * `DISABLED` - Disabled
@@ -53929,6 +53969,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LifeTracking"];
+                };
+            };
+        };
+    };
+    api_LifeTracking_request_extension_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Life Tracking. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LifeExtensionRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LifeExtensionRequestRequest"];
+                "multipart/form-data": components["schemas"]["LifeExtensionRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LifeExtensionRequested"];
                 };
             };
         };

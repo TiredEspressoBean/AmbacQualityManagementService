@@ -6,9 +6,10 @@ ViewSets for life tracking models:
 - LifeTracking: Actual tracking records with increment/reset/override actions
 """
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework import viewsets, status
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
@@ -175,8 +176,11 @@ class LifeTrackingViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
     action_permissions = {
         'reset': ['change_lifelimitdefinition'],
         'apply_override': ['change_lifelimitdefinition'],
+        # Asking for an extension is open to staff; deciding it is life-limit
+        # authority, someone other than the requester (services/life_tracking/extension.py).
+        'request_extension': ['add_lifetracking'],
     }
-    crud_exempt_actions = {'reset', 'apply_override'}
+    crud_exempt_actions = {'reset', 'apply_override', 'request_extension'}
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['definition', 'cached_status', 'source', 'content_type', 'object_id']
     ordering_fields = ['accumulated', 'created_at', 'cached_status']
@@ -229,6 +233,35 @@ class LifeTrackingViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
         return Response(LifeTrackingSerializer(tracking, context={'request': request}).data)
 
     @extend_schema(
+        request=inline_serializer(name='LifeExtensionRequest', fields={
+            'hard_limit': serializers.DecimalField(max_digits=12, decimal_places=2),
+            'reason': serializers.CharField(),
+        }),
+        responses={201: inline_serializer(name='LifeExtensionRequested', fields={
+            'approval_number': serializers.CharField(),
+            'tracking': LifeTrackingSerializer(),
+        })},
+        description="Ask for this item's hard limit to be raised. It's an approval request: "
+                    "someone other than the requester, with life-limit authority, approves "
+                    "it, and only then is the limit raised (user ruling 2026-11-11).",
+    )
+    @action(detail=True, methods=['post'], url_path='request_extension')
+    def request_extension(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.life_tracking.extension import request_extension
+        tracking = self.get_object()
+        try:
+            approval = request_extension(tracking, request.user,
+                                         hard_limit=request.data.get('hard_limit'),
+                                         reason=request.data.get('reason', ''))
+        except DjangoValidationError as exc:
+            return Response({'detail': '; '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        tracking.refresh_from_db()
+        return Response({'approval_number': approval.approval_number,
+                         'tracking': LifeTrackingSerializer(tracking, context={'request': request}).data},
+                        status=status.HTTP_201_CREATED)
+
+    @extend_schema(
         parameters=[
             OpenApiParameter('content_type', str, required=True,
                              description='"app_label.model" (e.g. "tracker.equipments") or id'),
@@ -268,7 +301,15 @@ class LifeTrackingViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
             except ContentType.DoesNotExist:
                 return Response({'detail': 'Invalid content_type'}, status=status.HTTP_400_BAD_REQUEST)
 
-        tracking_records = self.get_queryset().filter(content_type=ct, object_id=object_id)
+        on = Q(content_type=ct, object_id=object_id)
+        # A part that is a reman core carries its life on the core (reman cycles, the
+        # core's hours…): shown with the part's own, the same set the start gate judges.
+        if ct.model_class() is not None and ct.model_class().__name__ == 'Parts':
+            from Tracker.models import Core
+            core = Core.objects.filter(part_id=object_id).first()  # tenant-safe: .objects auto-scopes
+            if core is not None:
+                on |= Q(content_type=ContentType.objects.get_for_model(Core), object_id=core.pk)
+        tracking_records = self.get_queryset().filter(on)
         return Response(LifeTrackingSerializer(tracking_records, many=True, context={'request': request}).data)
 
     @action(detail=False, methods=['get'])

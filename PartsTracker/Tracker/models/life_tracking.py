@@ -262,6 +262,12 @@ class LifeTracking(SecureModel):
         blank=True,
         help_text="Reason for limit override"
     )
+    # An extension asked for and not yet decided (services/life_tracking/extension.py):
+    # the hard limit it raises to once someone other than the requester approves it.
+    pending_hard_limit = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Hard limit requested by an extension awaiting approval",
+    )
     override_approved_by = models.ForeignKey(
         'Tracker.User',
         null=True,

@@ -1,0 +1,91 @@
+"""Extending one item's life limit — a tool, a part, a core (user ruling 2026-11-11).
+
+An extension is an approval request, the tier for accepting recorded work: whoever asks
+names the new hard limit and why; someone OTHER than the requester, holding life-limit
+authority (`change_lifelimitdefinition`), approves it; only then is the limit raised,
+with both on the record. No supervisor override, and the requester can't approve their
+own (this type isn't self-approvable). A reset after refurbishment stays direct.
+
+The asked-for limit waits on the tracking (`pending_hard_limit`); one request is open
+per tracking at a time.
+"""
+from __future__ import annotations
+
+from decimal import Decimal, InvalidOperation
+
+from django.core.exceptions import ValidationError
+from django.db import transaction
+
+EXTENSION_TYPE = 'LIFE_LIMIT_EXTENSION'
+AUTHORITY = 'change_lifelimitdefinition'
+
+
+def open_request(tracking):
+    """The tracking's extension request awaiting a decision, or None."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import ApprovalRequest
+    return (ApprovalRequest.objects  # tenant-safe: .objects auto-scopes
+            .filter(content_type=ContentType.objects.get_for_model(tracking),
+                    object_id=str(tracking.pk), approval_type=EXTENSION_TYPE, status='PENDING')
+            .order_by('-requested_at').first())
+
+
+def request_extension(tracking, user, *, hard_limit, reason: str):
+    """Ask for `tracking`'s hard limit to be raised to `hard_limit`. Returns the
+    ApprovalRequest. Raises ValidationError for a missing reason, a limit that doesn't
+    raise it, or a request already open."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import ApprovalRequest, GroupApproverAssignment, TenantGroup
+    from Tracker.services.core.approval import notify_approvers
+    from Tracker.services.life_tracking.life_tracking import amount
+
+    reason = (reason or '').strip()
+    if len(reason) < 10:
+        raise ValidationError("Say why it's safe to run longer (at least 10 characters).")
+    try:
+        new_limit = Decimal(str(hard_limit))
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValidationError("The new hard limit is a number.")
+    current = tracking.effective_hard_limit
+    if current is not None and new_limit <= current:
+        raise ValidationError(f"An extension raises the limit: it's {amount(current)} now.")
+    if open_request(tracking) is not None:
+        raise ValidationError("An extension for this limit is already waiting for approval.")
+
+    tenant = tracking.tenant
+    with transaction.atomic():
+        approval = ApprovalRequest.objects.create(
+            tenant=tenant,
+            approval_number=ApprovalRequest.generate_approval_number(tenant),
+            content_type=ContentType.objects.get_for_model(tracking),
+            object_id=str(tracking.pk),
+            approval_type=EXTENSION_TYPE,
+            requested_by=user if (user and user.is_authenticated) else None,
+            reason=f"{reason} (raise {tracking.definition.name} to {amount(new_limit)})",
+            flow_type="ANY",
+        )
+        for group in (TenantGroup.objects
+                      .filter(tenant=tenant, permissions__codename=AUTHORITY).distinct()):
+            GroupApproverAssignment.objects.create(approval_request=approval, group=group)
+        tracking.pending_hard_limit = new_limit
+        tracking.save(update_fields=['pending_hard_limit', 'updated_at'])
+    notify_approvers(approval)
+    return approval
+
+
+def decided(tracking, request, approved: bool) -> None:
+    """The cascade's call when an extension request is decided: approved, the hard
+    limit is raised (approved by the approver, the request keeping who asked);
+    otherwise the asked-for limit is dropped and nothing changes."""
+    from Tracker.services.life_tracking.life_tracking import apply_life_override
+    # The request's content_object may be a copy loaded before the limit was asked
+    # for (cached when the approvers were notified): read the row as it is now.
+    tracking.refresh_from_db()
+    pending = tracking.pending_hard_limit
+    tracking.pending_hard_limit = None
+    tracking.save(update_fields=['pending_hard_limit', 'updated_at'])
+    if approved and pending is not None:
+        apply_life_override(tracking, hard_limit=pending,
+                            soft_limit=tracking.soft_limit_override,  # kept as it was
+                            reason=(request.reason or '')[:200],
+                            approved_by=request.get_primary_approver())

@@ -149,6 +149,7 @@ class StartGatesS4Tests(TenantTestCase):
             resp = self.client.post(f"/api/StepExecutions/{self.visit.id}/claim/", {}, format='json')
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertEqual(resp.json()['blockers'][0]['waiting_on'], "the part's hold to be released")
+        self.assertNotIn(".;", resp.json()['detail'])
         tenant_id, calls, _hour = send.call_args.kwargs['args']
         self.assertEqual(tenant_id, str(self.tenant_a.id))
         self.assertEqual([c['gate'] for c in calls], ['part_on_hold'])
@@ -306,6 +307,17 @@ class StartGatesS4Tests(TenantTestCase):
         start_execution(self._core_visit(core), self.user_a)
         tracking.refresh_from_db()
         self.assertEqual(tracking.accumulated, Decimal(2))
+
+    def test_the_part_page_shows_its_cores_limits(self):
+        """A life_limit refusal leads to the part's page; a core's limits live on the
+        core, so the part's life list includes them (what the gate judges)."""
+        definition = self._reman_limit(3)
+        core = self._core("C-PAGE", "SN-PG")
+        self.authenticate_superuser(tenant=self.tenant_a)
+        resp = self.client.get("/api/LifeTracking/for_object/",
+                               {'content_type': 'tracker.parts', 'object_id': str(core.part_id)})
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual([r['definition'] for r in resp.json()], [str(definition.id)])
 
     def test_the_reman_that_reaches_the_limit_is_not_stopped_by_it(self):
         from Tracker.services.mes.gates import StartContext, floor_blockers

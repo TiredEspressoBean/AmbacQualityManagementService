@@ -2496,6 +2496,10 @@ class Approval_Type(models.TextChoices):
     # Accepting a receiving lot whose sample isn't finished (user decision 2026-11-10)
     RECEIVING_ACCEPT_INCOMPLETE = 'RECEIVING_ACCEPT_INCOMPLETE', 'Accept lot on an unfinished sample'
 
+    # Raising one item's life limit — a tool, a part, a core (user ruling 2026-11-11):
+    # someone other than the requester approves it.
+    LIFE_LIMIT_EXTENSION = 'LIFE_LIMIT_EXTENSION', 'Life limit extension'
+
 class Approval_Status_Type(models.TextChoices):
     NOT_REQUIRED = 'NOT_REQUIRED', 'Not Required'
     PENDING = 'PENDING', 'Pending'

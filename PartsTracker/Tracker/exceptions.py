@@ -88,6 +88,9 @@ def custom_exception_handler(exc, context):
         # what the floor is waiting on (services/mes/gates.py), for the operator screen.
         blockers = getattr(exc, 'blockers', None)
         if blockers:
+            # Each refusal is a sentence: joined as sentences, not "….; …".
+            body['detail'] = ' '.join(
+                m if m.rstrip().endswith(('.', '!', '?')) else f"{m}." for m in exc.messages)
             body['code'] = str(blockers[0].code)
             body['blockers'] = [b.to_dict() for b in blockers]
             # The andon: a refused start calls whoever clears it (services/mes/andon.py).

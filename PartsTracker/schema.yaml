@@ -20,6 +20,7 @@ paths:
           - DOCUMENT_RELEASE
           - ECO
           - FAI
+          - LIFE_LIMIT_EXTENSION
           - PCN_RELEASE
           - PCO_APPROVAL
           - PCR_APPROVAL
@@ -41,6 +42,7 @@ paths:
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
           * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+          * `LIFE_LIMIT_EXTENSION` - Life limit extension
       - in: query
         name: content_type
         schema:
@@ -291,6 +293,7 @@ paths:
           - DOCUMENT_RELEASE
           - ECO
           - FAI
+          - LIFE_LIMIT_EXTENSION
           - PCN_RELEASE
           - PCO_APPROVAL
           - PCR_APPROVAL
@@ -312,6 +315,7 @@ paths:
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
           * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+          * `LIFE_LIMIT_EXTENSION` - Life limit extension
       - in: query
         name: content_type
         schema:
@@ -503,6 +507,7 @@ paths:
           - DOCUMENT_RELEASE
           - ECO
           - FAI
+          - LIFE_LIMIT_EXTENSION
           - PCN_RELEASE
           - PCO_APPROVAL
           - PCR_APPROVAL
@@ -524,6 +529,7 @@ paths:
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
           * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+          * `LIFE_LIMIT_EXTENSION` - Life limit extension
       - in: query
         name: content_type
         schema:
@@ -661,6 +667,7 @@ paths:
           - DOCUMENT_RELEASE
           - ECO
           - FAI
+          - LIFE_LIMIT_EXTENSION
           - PCN_RELEASE
           - PCO_APPROVAL
           - PCR_APPROVAL
@@ -682,6 +689,7 @@ paths:
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
           * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+          * `LIFE_LIMIT_EXTENSION` - Life limit extension
       - in: query
         name: content_type
         schema:
@@ -998,6 +1006,7 @@ paths:
           - DOCUMENT_RELEASE
           - ECO
           - FAI
+          - LIFE_LIMIT_EXTENSION
           - PCN_RELEASE
           - PCO_APPROVAL
           - PCR_APPROVAL
@@ -1019,6 +1028,7 @@ paths:
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
           * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+          * `LIFE_LIMIT_EXTENSION` - Life limit extension
       - in: query
         name: delegation_policy
         schema:
@@ -1279,6 +1289,7 @@ paths:
           - DOCUMENT_RELEASE
           - ECO
           - FAI
+          - LIFE_LIMIT_EXTENSION
           - PCN_RELEASE
           - PCO_APPROVAL
           - PCR_APPROVAL
@@ -1300,6 +1311,7 @@ paths:
           * `PPAP` - PPAP
           * `FAI` - First Article (FAI / AS9102)
           * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+          * `LIFE_LIMIT_EXTENSION` - Life limit extension
       - in: query
         name: delegation_policy
         schema:
@@ -15838,6 +15850,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LifeTracking'
+          description: ''
+  /api/LifeTracking/{id}/request_extension/:
+    post:
+      operationId: api_LifeTracking_request_extension_create
+      description: 'Ask for this item''s hard limit to be raised. It''s an approval
+        request: someone other than the requester, with life-limit authority, approves
+        it, and only then is the limit raised (user ruling 2026-11-11).'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Life Tracking.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifeExtensionRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LifeExtensionRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LifeExtensionRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifeExtensionRequested'
           description: ''
   /api/LifeTracking/{id}/reset/:
     post:
@@ -52412,6 +52462,7 @@ components:
       - PPAP
       - FAI
       - RECEIVING_ACCEPT_INCOMPLETE
+      - LIFE_LIMIT_EXTENSION
       type: string
       description: |-
         * `DOCUMENT_RELEASE` - Document Release
@@ -52427,6 +52478,7 @@ components:
         * `PPAP` - PPAP
         * `FAI` - First Article (FAI / AS9102)
         * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+        * `LIFE_LIMIT_EXTENSION` - Life limit extension
     AssemblyRemoveRequest:
       type: object
       description: |-
@@ -62689,6 +62741,29 @@ components:
       - erp_id
       - expected_start
       - work_order_id
+    LifeExtensionRequestRequest:
+      type: object
+      properties:
+        hard_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - hard_limit
+      - reason
+    LifeExtensionRequested:
+      type: object
+      properties:
+        approval_number:
+          type: string
+        tracking:
+          $ref: '#/components/schemas/LifeTracking'
+      required:
+      - approval_number
+      - tracking
     LifeLimitDefinition:
       type: object
       description: Life limit definition serializer
@@ -62917,6 +62992,21 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        override_approved_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        pending_hard_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+          description: Hard limit requested by an extension awaiting approval
+        pending_extension:
+          type: string
+          nullable: true
+          readOnly: true
         reset_history:
           readOnly: true
           description: History of resets/overhauls
@@ -62951,7 +63041,10 @@ components:
       - is_blocked
       - object_id
       - override_approved_by
+      - override_approved_by_name
       - override_reason
+      - pending_extension
+      - pending_hard_limit
       - percent_used
       - remaining
       - remaining_to_soft_limit

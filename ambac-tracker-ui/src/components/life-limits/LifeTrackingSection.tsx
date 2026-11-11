@@ -53,7 +53,10 @@ export function LifeTrackingSection({ contentType, objectId }: {
 }) {
     const qc = useQueryClient();
     const { has } = usePermissionSet();
-    const canAct = has("change_lifelimitdefinition");
+    // Reset is life-limit authority; asking for an extension is open to staff — it's
+    // decided by someone else with that authority (an approval request).
+    const canReset = has("change_lifelimitdefinition");
+    const canAskExtension = has("add_lifetracking");
     const { data: rows = [] } = useQuery(trackingsOptions(contentType, objectId));
     const current = rows.filter((t) => t.definition_is_current);
     const earlier = rows.filter((t) => !t.definition_is_current);
@@ -72,12 +75,12 @@ export function LifeTrackingSection({ contentType, objectId }: {
             if (acting.kind === "reset") {
                 await api.api_LifeTracking_reset_create({ reason }, { params: { id }, headers });
             } else {
-                await api.api_LifeTracking_apply_override_create(
+                await api.api_LifeTracking_request_extension_create(
                     { hard_limit: hard, reason }, { params: { id }, headers });
             }
         },
         onSuccess: () => {
-            toast.success(acting?.kind === "reset" ? "Life reset" : "Limit extended");
+            toast.success(acting?.kind === "reset" ? "Life reset" : "Extension requested — waiting for approval");
             void qc.invalidateQueries(trackingsOptions(contentType, objectId));
             close();
         },
@@ -86,26 +89,61 @@ export function LifeTrackingSection({ contentType, objectId }: {
 
     if (rows.length === 0) return null;
 
+    const lastReset = (t: Tracking) => {
+        const h = (Array.isArray(t.reset_history) ? t.reset_history : []) as
+            { at?: string; by?: string; reason?: string }[];
+        return h.length ? h[h.length - 1] : null;
+    };
+
     const row = (t: Tracking) => (
-        <div key={String(t.id)} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b py-2 last:border-b-0">
+        <div key={String(t.id)} className="border-b py-2 last:border-b-0">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <div className="min-w-40 font-medium">{t.definition_name}</div>
             <div className="text-sm">
                 {n(t.current_value)} used · soft {n(t.effective_soft_limit)} · hard {n(t.effective_hard_limit)}
                 {t.definition_unit ? ` ${t.definition_unit.toLowerCase()}` : ""}
             </div>
             <Badge variant={STATUS_VARIANT[t.status] ?? "outline"}>{t.status}</Badge>
-            {t.definition_is_current && canAct && (
+            {t.definition_is_current && (canReset || canAskExtension) && (
                 <div className="ml-auto flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setActing({ t, kind: "reset" })}>
-                        Reset
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => {
-                        setHard(t.effective_hard_limit != null ? n(t.effective_hard_limit) : "");
-                        setActing({ t, kind: "extend" });
-                    }}>
-                        Extend
-                    </Button>
+                    {canReset && (
+                        <Button size="sm" variant="outline" onClick={() => setActing({ t, kind: "reset" })}>
+                            Reset
+                        </Button>
+                    )}
+                    {canAskExtension && !t.pending_extension && (
+                        <Button size="sm" variant="outline" onClick={() => {
+                            setHard("");
+                            setActing({ t, kind: "extend" });
+                        }}>
+                            Extend
+                        </Button>
+                    )}
                 </div>
+            )}
+        </div>
+            {/* What was done to it, and by whom: the record behind its numbers. */}
+            {(() => {
+                const r = lastReset(t);
+                return r ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Last reset {r.at ? new Date(r.at).toLocaleDateString() : ""}
+                        {r.by ? ` by ${r.by}` : ""}{r.reason ? ` — ${r.reason}` : ""}
+                    </p>
+                ) : null;
+            })()}
+            {t.pending_extension && (
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                    Extension to {n(t.pending_hard_limit)} requested ({t.pending_extension}) —
+                    waiting for approval.
+                </p>
+            )}
+            {t.hard_limit_override != null && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                    Extended to {n(t.hard_limit_override)}
+                    {t.override_approved_by_name ? `, approved by ${t.override_approved_by_name}` : ""}
+                    {t.override_reason ? ` — ${t.override_reason}` : ""}
+                </p>
             )}
         </div>
     );
@@ -133,12 +171,12 @@ export function LifeTrackingSection({ contentType, objectId }: {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>
-                            {acting?.kind === "reset" ? "Reset life" : "Extend the limit"}: {acting?.t.definition_name}
+                            {acting?.kind === "reset" ? "Reset life" : "Request an extension"}: {acting?.t.definition_name}
                         </DialogTitle>
                         <DialogDescription>
                             {acting?.kind === "reset"
                                 ? "Puts what it has used back to zero — after refurbishment or overhaul. Say what was done."
-                                : "Raises the hard limit for this item only. Say why it's safe to run longer."}
+                                : `Asks for this item's hard limit to be raised (now ${n(acting?.t.effective_hard_limit)}). Someone with life-limit authority, other than you, approves it; the limit rises only then. Say why it's safe to run longer.`}
                         </DialogDescription>
                     </DialogHeader>
                     {acting?.kind === "extend" && (
@@ -156,7 +194,7 @@ export function LifeTrackingSection({ contentType, objectId }: {
                         <Button variant="outline" onClick={close}>Cancel</Button>
                         <Button onClick={() => act.mutate()}
                             disabled={!reason.trim() || (acting?.kind === "extend" && !hard) || act.isPending}>
-                            {acting?.kind === "reset" ? "Reset" : "Extend"}
+                            {acting?.kind === "reset" ? "Reset" : "Request extension"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

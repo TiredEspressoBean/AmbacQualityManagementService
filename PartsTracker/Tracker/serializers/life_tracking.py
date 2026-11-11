@@ -102,6 +102,22 @@ class LifeTrackingSerializer(SecureModelMixin):
     # the gates judge the current version's (services/mes/gates.py).
     definition_is_current = serializers.BooleanField(source='definition.is_current_version',
                                                      read_only=True)
+    override_approved_by_name = serializers.SerializerMethodField()
+    # An extension asked for and awaiting approval: its request number.
+    pending_extension = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_pending_extension(self, obj):
+        if obj.pending_hard_limit is None:
+            return None
+        from Tracker.services.life_tracking.extension import open_request
+        req = open_request(obj)
+        return req.approval_number if req else None
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_override_approved_by_name(self, obj):
+        u = obj.override_approved_by
+        return (u.get_full_name() or u.get_username()) if u else None
 
     class Meta:
         model = LifeTracking
@@ -113,7 +129,8 @@ class LifeTrackingSerializer(SecureModelMixin):
             'percent_used', 'status', 'is_blocked',
             'effective_hard_limit', 'effective_soft_limit',
             'hard_limit_override', 'soft_limit_override',
-            'override_reason', 'override_approved_by',
+            'override_reason', 'override_approved_by', 'override_approved_by_name',
+            'pending_hard_limit', 'pending_extension',
             'reset_history', 'cached_status',
             'created_at', 'updated_at', 'archived'
         )
@@ -127,6 +144,8 @@ class LifeTrackingSerializer(SecureModelMixin):
             'effective_hard_limit', 'effective_soft_limit',
             'hard_limit_override', 'soft_limit_override',
             'override_reason', 'override_approved_by', 'reset_history',
+            # Set by an extension request, cleared by its decision (extension.py).
+            'pending_hard_limit',
         )
 
     def validate(self, attrs):

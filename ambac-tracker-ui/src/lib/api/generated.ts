@@ -291,8 +291,9 @@ export type ApprovalTypeEnum =
    * `PPAP` - PPAP
    * `FAI` - First Article (FAI / AS9102)
    * `RECEIVING_ACCEPT_INCOMPLETE` - Accept lot on an unfinished sample
+   * `LIFE_LIMIT_EXTENSION` - Life limit extension
    *
-   * @enum DOCUMENT_RELEASE, CAPA_APPROVAL, CAPA_CRITICAL, CAPA_MAJOR, ECO, TRAINING_CERT, PROCESS_APPROVAL, PCR_APPROVAL, PCO_APPROVAL, PCN_RELEASE, PPAP, FAI, RECEIVING_ACCEPT_INCOMPLETE
+   * @enum DOCUMENT_RELEASE, CAPA_APPROVAL, CAPA_CRITICAL, CAPA_MAJOR, ECO, TRAINING_CERT, PROCESS_APPROVAL, PCR_APPROVAL, PCO_APPROVAL, PCN_RELEASE, PPAP, FAI, RECEIVING_ACCEPT_INCOMPLETE, LIFE_LIMIT_EXTENSION
    */
   | "DOCUMENT_RELEASE"
   | "CAPA_APPROVAL"
@@ -306,7 +307,8 @@ export type ApprovalTypeEnum =
   | "PCN_RELEASE"
   | "PPAP"
   | "FAI"
-  | "RECEIVING_ACCEPT_INCOMPLETE";
+  | "RECEIVING_ACCEPT_INCOMPLETE"
+  | "LIFE_LIMIT_EXTENSION";
 export type ApprovalFlowTypeEnum =
   /**
    * * `ALL_REQUIRED` - All Required
@@ -4450,6 +4452,10 @@ export type LateDeliveryWorkOrder = {
   erp_id: string;
   expected_start: string | null;
 };
+export type LifeExtensionRequested = {
+  approval_number: string;
+  tracking: LifeTracking;
+};
 export type LifeTracking = {
   id: string;
   content_type: number;
@@ -4523,6 +4529,14 @@ export type LifeTracking = {
    */
   override_reason: string;
   override_approved_by: number | null;
+  override_approved_by_name: string | null;
+  /**
+   * Hard limit requested by an extension awaiting approval
+   *
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  pending_hard_limit: string | null;
+  pending_extension: string | null;
   /**
    * History of resets/overhauls
    */
@@ -19610,6 +19624,7 @@ const ApprovalTypeEnum = z.enum([
   "PPAP",
   "FAI",
   "RECEIVING_ACCEPT_INCOMPLETE",
+  "LIFE_LIMIT_EXTENSION",
 ]);
 const ApprovalFlowTypeEnum = z.enum(["ALL_REQUIRED", "THRESHOLD", "ANY"]);
 const ApprovalSequenceEnum = z.enum(["PARALLEL", "SEQUENTIAL"]);
@@ -22772,6 +22787,12 @@ const LifeTracking = z.object({
     .nullable(),
   override_reason: z.string(),
   override_approved_by: z.number().int().nullable(),
+  override_approved_by_name: z.string().nullable(),
+  pending_hard_limit: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullable(),
+  pending_extension: z.string().nullable(),
   reset_history: z.unknown(),
   cached_status: z.string(),
   created_at: z.string().datetime({ offset: true }),
@@ -22802,6 +22823,14 @@ const LifeTrackingOverrideRequest = z.object({
 });
 const LifeTrackingIncrementRequest = z.object({
   value: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+});
+const LifeExtensionRequestRequest = z.object({
+  hard_limit: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+  reason: z.string().min(1),
+});
+const LifeExtensionRequested = z.object({
+  approval_number: z.string(),
+  tracking: LifeTracking,
 });
 const LifeTrackingResetRequest = z.object({ reason: z.string().min(1) });
 const MasterWorkbookUploadRequestRequest = z.object({
@@ -31260,6 +31289,8 @@ export const schemas = {
   PatchedLifeTrackingRequest,
   LifeTrackingOverrideRequest,
   LifeTrackingIncrementRequest,
+  LifeExtensionRequestRequest,
+  LifeExtensionRequested,
   LifeTrackingResetRequest,
   MasterWorkbookUploadRequestRequest,
   MasterWorkbookTotals,
@@ -32315,6 +32346,7 @@ POST: Executes the query.`,
             "DOCUMENT_RELEASE",
             "ECO",
             "FAI",
+            "LIFE_LIMIT_EXTENSION",
             "PCN_RELEASE",
             "PCO_APPROVAL",
             "PCR_APPROVAL",
@@ -32499,6 +32531,7 @@ POST: Executes the query.`,
             "DOCUMENT_RELEASE",
             "ECO",
             "FAI",
+            "LIFE_LIMIT_EXTENSION",
             "PCN_RELEASE",
             "PCO_APPROVAL",
             "PCR_APPROVAL",
@@ -32633,6 +32666,7 @@ POST: Executes the query.`,
             "DOCUMENT_RELEASE",
             "ECO",
             "FAI",
+            "LIFE_LIMIT_EXTENSION",
             "PCN_RELEASE",
             "PCO_APPROVAL",
             "PCR_APPROVAL",
@@ -32750,6 +32784,7 @@ POST: Executes the query.`,
             "DOCUMENT_RELEASE",
             "ECO",
             "FAI",
+            "LIFE_LIMIT_EXTENSION",
             "PCN_RELEASE",
             "PCO_APPROVAL",
             "PCR_APPROVAL",
@@ -32978,6 +33013,7 @@ POST: Executes the query.`,
             "DOCUMENT_RELEASE",
             "ECO",
             "FAI",
+            "LIFE_LIMIT_EXTENSION",
             "PCN_RELEASE",
             "PCO_APPROVAL",
             "PCR_APPROVAL",
@@ -33149,6 +33185,7 @@ POST: Executes the query.`,
             "DOCUMENT_RELEASE",
             "ECO",
             "FAI",
+            "LIFE_LIMIT_EXTENSION",
             "PCN_RELEASE",
             "PCO_APPROVAL",
             "PCR_APPROVAL",
@@ -43661,6 +43698,26 @@ Supports increment, reset (overhaul), and per-instance limit overrides.`,
   },
   {
     method: "post",
+    path: "/api/LifeTracking/:id/request_extension/",
+    alias: "api_LifeTracking_request_extension_create",
+    description: `Ask for this item&#x27;s hard limit to be raised. It&#x27;s an approval request: someone other than the requester, with life-limit authority, approves it, and only then is the limit raised (user ruling 2026-11-11).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: LifeExtensionRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LifeExtensionRequested,
+  },
+  {
+    method: "post",
     path: "/api/LifeTracking/:id/reset/",
     alias: "api_LifeTracking_reset_create",
     description: `Reset accumulated value to zero (after rebuild/overhaul)`,
@@ -46646,7 +46703,10 @@ Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;
       },
     ],
     response: CustomerSchedule,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "delete",
     path: "/api/notifications/schedules/customer/:id/",
@@ -46663,10 +46723,7 @@ Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/notifications/schedules/personal/",
@@ -51809,7 +51866,10 @@ Usage:
       },
     ],
     response: SubmitProcessForApprovalResponse,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/Processes_with_steps/available/",
@@ -51841,10 +51901,7 @@ Usage:
       },
     ],
     response: z.array(ProcessWithSteps),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Processes_with_steps/export/:export_format/",
@@ -57070,7 +57127,10 @@ Response:
       },
     ],
     response: PaginatedStepExecutionMeasurementList,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepExecutionMeasurements/",
@@ -57085,10 +57145,7 @@ Response:
       },
     ],
     response: StepExecutionMeasurement,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutionMeasurements/:id/",
@@ -62796,7 +62853,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/TrainingRecords/import/",
@@ -62817,10 +62877,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.unknown(),
       },
     ],
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingRecords/metadata/",

@@ -143,6 +143,50 @@ class ToolLifeTests(TenantTestCase):
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual([r['definition_is_current'] for r in resp.json()], [False])
 
+    # --- an extension is an approval request (user ruling 2026-11-11)
+    def test_an_extension_waits_for_someone_else_to_approve_it(self):
+        from Tracker.services.core.approval import add_approver, submit_approval_response
+        from Tracker.services.life_tracking.extension import request_extension
+        definition = self._limit('parts', 2)
+        tracking = LifeTracking.for_object(self.die, definition, accumulated=Decimal(2))[0]
+        approval = request_extension(tracking, self.user_a, hard_limit=5,
+                                     reason="Re-inspected, edges within wear spec")
+        tracking.refresh_from_db()
+        self.assertEqual(tracking.pending_hard_limit, Decimal(5))
+        self.assertEqual(tracking.effective_hard_limit, Decimal(2))  # not raised yet
+        # The requester may even hold the authority: they still can't decide their own.
+        add_approver(approval, self.user_a, is_required=False)
+        with self.assertRaises(ValidationError):
+            submit_approval_response(approval, self.user_a, "APPROVED", comments="mine")
+        add_approver(approval, self.user_b)
+        submit_approval_response(approval, self.user_b, "APPROVED", comments="Agreed")
+        tracking.refresh_from_db()
+        self.assertEqual(tracking.effective_hard_limit, Decimal(5))
+        self.assertEqual(tracking.override_approved_by, self.user_b)
+        self.assertIsNone(tracking.pending_hard_limit)
+
+    def test_a_rejected_extension_changes_nothing(self):
+        from Tracker.services.core.approval import add_approver, submit_approval_response
+        from Tracker.services.life_tracking.extension import request_extension
+        definition = self._limit('parts', 2)
+        tracking = LifeTracking.for_object(self.die, definition, accumulated=Decimal(2))[0]
+        approval = request_extension(tracking, self.user_a, hard_limit=5,
+                                     reason="Re-inspected, edges within wear spec")
+        add_approver(approval, self.user_b)
+        submit_approval_response(approval, self.user_b, "REJECTED", comments="Edges worn")
+        tracking.refresh_from_db()
+        self.assertEqual(tracking.effective_hard_limit, Decimal(2))
+        self.assertIsNone(tracking.pending_hard_limit)
+
+    def test_an_extension_must_raise_the_limit_and_give_a_reason(self):
+        from Tracker.services.life_tracking.extension import request_extension
+        definition = self._limit('parts', 2)
+        tracking = LifeTracking.for_object(self.die, definition, accumulated=Decimal(2))[0]
+        with self.assertRaisesMessage(ValidationError, "raises the limit"):
+            request_extension(tracking, self.user_a, hard_limit=2, reason="Re-inspected and fine")
+        with self.assertRaisesMessage(ValidationError, "Say why"):
+            request_extension(tracking, self.user_a, hard_limit=5, reason="ok")
+
     # --- scheduling capacity
     def test_a_typed_fixture_schedules_the_items_in_service_and_within_life(self):
         parts = self._limit('parts', 10)

@@ -59,6 +59,8 @@ def reset_life_tracking(
         'from_value': float(tracking.accumulated),
         'reason': reason,
         'user_id': str(user.pk) if user else None,
+        # Shown on the item's Life section ("reset by … — why").
+        'by': (user.get_full_name() or user.get_username()) if user else '',
     }
     tracking.reset_history = tracking.reset_history + [history_entry]
     tracking.accumulated = Decimal('0')

@@ -395,6 +395,12 @@ def apply_approval_decision_to_content_object(request: ApprovalRequest, status):
             obj.approval_required = False
             obj.save(update_fields=['approval_status', 'approval_required'])
 
+    elif obj_type == 'LifeTracking' and request.approval_type == 'LIFE_LIMIT_EXTENSION':
+        # Approved: the item's hard limit is raised. Rejected: the asked-for limit drops.
+        from Tracker.services.life_tracking.extension import decided
+        if status in (Approval_Status_Type.APPROVED, Approval_Status_Type.REJECTED):
+            decided(obj, request, approved=status == Approval_Status_Type.APPROVED)
+
     elif obj_type == 'QualityReports' and request.approval_type == 'RECEIVING_ACCEPT_INCOMPLETE':
         # Approved: the lot is accepted, its report left without a verdict. Rejected:
         # nothing changes — the lot stays under inspection.
@@ -789,6 +795,10 @@ def withdraw_approval_request(request: ApprovalRequest, user, reason: str) -> Ap
         if type(obj).__name__ == 'Documents' and obj.status == 'UNDER_REVIEW':
             obj.status = 'DRAFT'
             obj.save(update_fields=['status'])
+        # A withdrawn life-limit extension: the asked-for limit drops.
+        if type(obj).__name__ == 'LifeTracking' and request.approval_type == 'LIFE_LIMIT_EXTENSION':
+            from Tracker.services.life_tracking.extension import decided
+            decided(obj, request, approved=False)
     return request
 
 
