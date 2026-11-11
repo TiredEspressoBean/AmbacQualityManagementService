@@ -25966,10 +25966,7 @@ export interface components {
             kind?: components["schemas"]["FixtureKindEnum"];
             /** @description How many of this resource exist (concurrency limit). */
             quantity?: number;
-            /**
-             * Format: uuid
-             * @description The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
-             */
+            /** Format: uuid */
             equipment_type?: string | null;
             readonly capacity: number;
             /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
@@ -26011,10 +26008,7 @@ export interface components {
             kind?: components["schemas"]["FixtureKindEnum"];
             /** @description How many of this resource exist (concurrency limit). */
             quantity?: number;
-            /**
-             * Format: uuid
-             * @description The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
-             */
+            /** Format: uuid */
             equipment_type?: string | null;
             /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
             lead_time_days?: number | null;
@@ -31947,10 +31941,7 @@ export interface components {
             kind?: components["schemas"]["FixtureKindEnum"];
             /** @description How many of this resource exist (concurrency limit). */
             quantity?: number;
-            /**
-             * Format: uuid
-             * @description The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
-             */
+            /** Format: uuid */
             equipment_type?: string | null;
             /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
             lead_time_days?: number | null;

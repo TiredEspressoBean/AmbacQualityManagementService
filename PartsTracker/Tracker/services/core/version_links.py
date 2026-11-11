@@ -85,6 +85,10 @@ LINKS = {
     # --- EquipmentType (master data) ---------------------------------------------------
     'Equipments.equipment_type': FOLLOWS,
     'SubstepResource.equipment_type': FOLLOWS,
+    # Tool life (S5): a limit on a tooling type, and a scheduling Fixture pooled from a
+    # type's items — both mean the same type, updated.
+    'LifeLimitDefinition.equipment_type': FOLLOWS,
+    'Fixture.equipment_type': FOLLOWS,
     'TrainingRequirement.equipment_type': FOLLOWS,
 
     # --- Equipments (master data: everything follows) ----------------------------------

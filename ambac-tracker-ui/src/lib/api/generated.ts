@@ -3729,12 +3729,7 @@ export type Fixture = {
    * @maximum 2147483647
    */
   number | undefined;
-  equipment_type?:
-    | /**
-     * The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
-     */
-    (string | null)
-    | undefined;
+  equipment_type?: (string | null) | undefined;
   capacity: number;
   lead_time_days?:
     | /**
@@ -3786,12 +3781,7 @@ export type FixtureRequest = {
    * @maximum 2147483647
    */
   number | undefined;
-  equipment_type?:
-    | /**
-     * The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
-     */
-    (string | null)
-    | undefined;
+  equipment_type?: (string | null) | undefined;
   lead_time_days?:
     | /**
      * Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report.
@@ -13897,9 +13887,6 @@ export type PatchedFixtureRequest = Partial<{
    * @maximum 2147483647
    */
   quantity: number;
-  /**
-   * The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
-   */
   equipment_type: string | null;
   /**
    * Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report.

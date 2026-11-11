@@ -60404,8 +60404,6 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The equipment type whose items are this resource. When set,
-            capacity is how many are in service and within life; otherwise `quantity`.
         capacity:
           type: integer
           readOnly: true
@@ -60483,8 +60481,6 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The equipment type whose items are this resource. When set,
-            capacity is how many are in service and within life; otherwise `quantity`.
         lead_time_days:
           type: integer
           maximum: 2147483647
@@ -72060,8 +72056,6 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: The equipment type whose items are this resource. When set,
-            capacity is how many are in service and within life; otherwise `quantity`.
         lead_time_days:
           type: integer
           maximum: 2147483647

@@ -9,6 +9,8 @@ from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 
 from Tracker.serializers.core import SecureModelMixin
+from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
+from Tracker.models import EquipmentType
 from Tracker.models import LaborCalendarBlock, OvertimeWindow, PlantCalendarException
 from Tracker.models.scheduling import (
     Fixture, OptimizationConfig, ScheduledTask, ScheduleResult,
@@ -25,6 +27,9 @@ class FixtureSerializer(serializers.ModelSerializer):
     life (`capacity`), and `quantity` is not used."""
     step_names = serializers.SerializerMethodField()
     capacity = serializers.SerializerMethodField()
+    # Tenant-scoped: another company's equipment type id is refused.
+    equipment_type = TenantScopedPrimaryKeyRelatedField(
+        queryset=EquipmentType.unscoped.all(), required=False, allow_null=True)
 
     class Meta:
         model = Fixture
