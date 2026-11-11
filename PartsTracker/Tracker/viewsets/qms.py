@@ -1917,7 +1917,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
     FPI ensures the first piece of a production run meets quality standards
     before batch production proceeds. Configurable per step via fpi_scope:
     - per_workorder: One FPI per work order per step
-    - per_shift: One FPI per shift per step
+    - per_shift: One FPI per run of a shift per step
     - per_equipment: One FPI per equipment per step
     """
     from Tracker.models import FPIRecord
@@ -1927,7 +1927,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
     # `archived` — either lifted a waiver with no reason (B2, 2026-10-28). Nothing in
     # the product edits one.
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['work_order', 'step', 'status', 'part_type', 'equipment', 'shift_date']
+    filterset_fields = ['work_order', 'step', 'status', 'part_type', 'equipment', 'shift', 'shift_date']
     ordering_fields = ['created_at', 'shift_date', 'inspected_at']
     ordering = ['-created_at']
     # Recording an FPI verdict does not *create* an FPI — the record already
@@ -2380,7 +2380,11 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             "work_order": {"type": "string", "format": "uuid"},
             "step": {"type": "string", "format": "uuid"},
             "equipment": {"type": "string", "format": "uuid", "description": "Required for per_equipment scope"},
-            "shift_date": {"type": "string", "format": "date", "description": "Required for per_shift scope"},
+            "shift": {"type": "string", "format": "uuid",
+                      "description": "Per Shift: the shift the first piece is for (with shift_date). "
+                                     "Omitted, the shift running now is used."},
+            "shift_date": {"type": "string", "format": "date",
+                           "description": "Per Shift: the date the shift started (with shift)"},
         }}},
         responses={
             # Same body either way -- `created` is the discriminator, the status
@@ -2454,9 +2458,15 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             if shift_date is None:
                 return Response({"detail": "shift_date must be YYYY-MM-DD"},
                                 status=status.HTTP_400_BAD_REQUEST)
+        shift = None
+        if request.data.get('shift'):
+            from Tracker.models import Shift
+            shift = Shift.objects.filter(tenant=tenant, id=request.data['shift']).first()
+            if shift is None:
+                return Response({"detail": "Shift not found"}, status=status.HTTP_404_NOT_FOUND)
         try:
             fpi, created = start_fpi(work_order, step, request.user, part=part,
-                                     equipment=equipment, shift_date=shift_date)
+                                     equipment=equipment, shift=shift, shift_date=shift_date)
         except ValueError as e:
             message = str(e)
             code = "fpi_no_first_piece" if message.startswith("No part has reached") else "fpi_refused"

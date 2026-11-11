@@ -76,7 +76,7 @@ export const FPI_SCOPE_OPTIONS = [
 /** What one passed (or waived) first piece releases, per scope. */
 const FPI_SCOPE_HINT = {
   PER_WORKORDER: "One first piece releases this step for the whole work order.",
-  PER_SHIFT: "Each shift day needs its own first piece on the work order.",
+  PER_SHIFT: "Each shift needs its own first piece on the work order: Day and Night on the same date are separate. The shift is whichever started most recently.",
   PER_EQUIPMENT: "Each machine needs its own first piece on the work order. A part with no machine recorded is held.",
 } as const;
 

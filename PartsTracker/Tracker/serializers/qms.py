@@ -1970,6 +1970,7 @@ class FPIRecordSerializer(SecureModelMixin):
     waived_by_info = serializers.SerializerMethodField()
     acknowledged_by_info = serializers.SerializerMethodField()
     equipment_info = serializers.SerializerMethodField()
+    shift_info = serializers.SerializerMethodField()
     # Whether the co-signer's drawing was kept — a flag rather than the image, which
     # would put a base64 PNG in every list row.
     has_signature = serializers.SerializerMethodField()
@@ -1980,7 +1981,7 @@ class FPIRecordSerializer(SecureModelMixin):
         # another work order, step, machine, shift or part would move its buy-off
         # onto work it never covered.
         if self.instance is not None:
-            for name in ('work_order', 'step', 'part_type', 'designated_part', 'equipment', 'shift_date'):
+            for name in ('work_order', 'step', 'part_type', 'designated_part', 'equipment', 'shift', 'shift_date'):
                 self.fields[name].read_only = True
 
     @extend_schema_field(serializers.BooleanField())
@@ -1997,7 +1998,7 @@ class FPIRecordSerializer(SecureModelMixin):
             'part_type', 'part_type_info',
             'designated_part', 'designated_part_info', 'first_piece_readings', 'first_piece_signer_ids',
             'equipment', 'equipment_info',
-            'shift_date',
+            'shift', 'shift_info', 'shift_date',
             'status', 'status_display',
             'result', 'result_display',
             'inspected_by', 'inspected_by_info',
@@ -2168,6 +2169,22 @@ class FPIRecordSerializer(SecureModelMixin):
                 'id': str(obj.equipment.id),
                 'name': obj.equipment.name,
             }
+        return None
+
+    @extend_schema_field(
+        inline_serializer(
+            name='FPIRecordShiftInfo',
+            fields={
+                'id': serializers.CharField(),
+                'name': serializers.CharField(),
+                'code': serializers.CharField(),
+            },
+            allow_null=True,
+        )
+    )
+    def get_shift_info(self, obj):
+        if obj.shift:
+            return {'id': str(obj.shift.id), 'name': obj.shift.name, 'code': obj.shift.code}
         return None
 
 

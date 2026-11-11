@@ -11766,6 +11766,11 @@ paths:
           type: string
           format: uuid
       - in: query
+        name: shift
+        schema:
+          type: string
+          format: uuid
+      - in: query
         name: shift_date
         schema:
           type: string
@@ -12136,10 +12141,15 @@ paths:
                   type: string
                   format: uuid
                   description: Required for per_equipment scope
+                shift:
+                  type: string
+                  format: uuid
+                  description: 'Per Shift: the shift the first piece is for (with
+                    shift_date). Omitted, the shift running now is used.'
                 shift_date:
                   type: string
                   format: date
-                  description: Required for per_shift scope
+                  description: 'Per Shift: the date the shift started (with shift)'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -12207,6 +12217,11 @@ paths:
           type: string
       - in: query
         name: part_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: shift
         schema:
           type: string
           format: uuid
@@ -59363,6 +59378,16 @@ components:
           - $ref: '#/components/schemas/FPIRecordEquipmentInfo'
           nullable: true
           readOnly: true
+        shift:
+          type: string
+          format: uuid
+          nullable: true
+          description: Shift for per-shift FPI (null when no shift calendar was configured)
+        shift_info:
+          allOf:
+          - $ref: '#/components/schemas/FPIRecordShiftInfo'
+          nullable: true
+          readOnly: true
         shift_date:
           type: string
           format: date
@@ -59500,6 +59525,7 @@ components:
       - quality_report
       - result
       - result_display
+      - shift_info
       - status
       - status_display
       - step
@@ -59567,6 +59593,11 @@ components:
           format: uuid
           nullable: true
           description: Equipment being used (for per-equipment FPI)
+        shift:
+          type: string
+          format: uuid
+          nullable: true
+          description: Shift for per-shift FPI (null when no shift calendar was configured)
         shift_date:
           type: string
           format: date
@@ -59588,6 +59619,19 @@ components:
         * `PASS` - Pass
         * `FAIL` - Fail
         * `CONDITIONAL` - Conditional Pass
+    FPIRecordShiftInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+      required:
+      - code
+      - id
+      - name
     FPIRecordStatusEnum:
       enum:
       - NOT_REQUIRED

@@ -323,3 +323,40 @@ def get_operator_unavailability(tenant, horizon,
             continue
         out.setdefault(e.user_id, []).append((e.start_time, end))
     return {uid: _merge_intervals(iv) for uid, iv in out.items()}
+
+
+# --- Which shift is it ------------------------------------------------------------
+
+def shift_at(tenant, at: datetime | None = None):
+    """The shift `at` (default now) belongs to, as ``(shift, start_date)``: the shift —
+    a regular run or an overtime run of it — that STARTED most recently, and the plant
+    date it started on. None when no shift is configured or none ran in the last week.
+
+    One rule covers the awkward moments: during a handover the incoming shift has
+    started most recently, so it is the current one; out of every shift (staying late,
+    in early) the moment belongs to the shift that just ended. A night shift past
+    midnight keeps the date it started. Closures don't matter: work done during one
+    was still done by whoever was on.
+    """
+    from Tracker.models import Shift
+    from Tracker.services.scheduling.data import HorizonData
+
+    at = at or timezone.now()
+    tz = plant_tz(tenant)
+    lo = at - timedelta(days=8)
+    hi = at + timedelta(microseconds=1)  # a run starting exactly now has started
+    shifts = {s.id: s for s in Shift.objects.filter(
+        archived=False, tenant=tenant, is_active=True, is_current_version=True)}
+    if not shifts:
+        return None
+    overtime = get_overtime_windows(tenant, HorizonData(start=lo, end=hi, frozen_end=lo, slushy_end=lo))
+    best = None
+    for sid, shift in shifts.items():
+        runs = _expand_shifts([shift], lo, hi, tz) + overtime.get(sid, [])
+        for start, _end in runs:
+            # A run clipped at the lookback edge started earlier than we can see.
+            if lo < start <= at and (best is None or (start, str(sid)) > (best[0], str(best[1].id))):
+                best = (start, shift)
+    if best is None:
+        return None
+    return best[1], timezone.localtime(best[0], tz).date()

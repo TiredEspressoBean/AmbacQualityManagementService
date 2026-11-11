@@ -3546,6 +3546,13 @@ export type FPIRecord = {
     (string | null)
     | undefined;
   equipment_info: FPIRecordEquipmentInfo;
+  shift?:
+    | /**
+     * Shift for per-shift FPI (null when no shift calendar was configured)
+     */
+    (string | null)
+    | undefined;
+  shift_info: FPIRecordShiftInfo;
   shift_date?:
     | /**
      * Date of the shift for per-shift FPI
@@ -3649,6 +3656,11 @@ export type FpiReading = {
 export type FPIRecordEquipmentInfo = {
   id: string;
   name: string | null;
+};
+export type FPIRecordShiftInfo = {
+  id: string;
+  name: string;
+  code: string;
 };
 export type FPIRecordStatusEnum =
   /**
@@ -21962,6 +21974,11 @@ const FPIRecordEquipmentInfo = z.object({
   id: z.string(),
   name: z.string().nullable(),
 });
+const FPIRecordShiftInfo = z.object({
+  id: z.string(),
+  name: z.string(),
+  code: z.string(),
+});
 const FPIRecordStatusEnum = z.enum([
   "NOT_REQUIRED",
   "PENDING",
@@ -21986,6 +22003,8 @@ const FPIRecord = z.object({
   first_piece_signer_ids: z.array(z.number().int()),
   equipment: z.string().uuid().nullish(),
   equipment_info: FPIRecordEquipmentInfo.nullable(),
+  shift: z.string().uuid().nullish(),
+  shift_info: FPIRecordShiftInfo.nullable(),
   shift_date: z.string().nullish(),
   status: FPIRecordStatusEnum,
   status_display: z.string(),
@@ -22022,6 +22041,7 @@ const FPIRecordRequest = z.object({
   part_type: z.string().uuid(),
   designated_part: z.string().uuid().nullish(),
   equipment: z.string().uuid().nullish(),
+  shift: z.string().uuid().nullish(),
   shift_date: z.string().nullish(),
   archived: z.boolean().optional(),
 });
@@ -22061,6 +22081,7 @@ const api_FPIRecords_get_or_create_create_Body = z
     work_order: z.string().uuid(),
     step: z.string().uuid(),
     equipment: z.string().uuid(),
+    shift: z.string().uuid(),
     shift_date: z.string(),
   })
   .partial();
@@ -30979,6 +31000,7 @@ export const schemas = {
   FPIRecordDesignatedPartInfo,
   FpiReading,
   FPIRecordEquipmentInfo,
+  FPIRecordShiftInfo,
   FPIRecordStatusEnum,
   FPIRecordResultEnum,
   FPIRecord,
@@ -41155,6 +41177,11 @@ operations against the quantity available (cumulative capacity).`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "shift",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "shift_date",
         type: "Query",
         schema: z.string().optional(),
@@ -41391,6 +41418,11 @@ today — the operator home&#x27;s sent → seen → verdict strip
       },
       {
         name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "shift",
         type: "Query",
         schema: z.string().uuid().optional(),
       },

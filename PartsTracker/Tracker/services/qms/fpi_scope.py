@@ -3,8 +3,11 @@
 User decision 2026-10-28 (B1): the scope is a real gate.
 
 - **Per Work Order** — one buy-off releases the step for the whole work order.
-- **Per Shift** — each shift (keyed by the shop-floor date, as records always were)
-  needs its own passed or waived first piece at the step on that work order.
+- **Per Shift** — each run of a shift (Day on the 12th, Night on the 12th) needs its
+  own passed or waived first piece at the step on that work order. Which shift it is
+  comes from the shift calendar (`scheduling.calendars.shift_at`: the shift that started
+  most recently); a night shift past midnight keeps its start date. A shift edited into
+  a new version is the same shift. With no shifts configured, the plant date stands in.
 - **Per Equipment** — each machine the work runs on needs its own. The machine is the
   PRODUCTION equipment on the part's visit to the step (stamped from the step's
   authored machine or the live schedule, or set by the operator). A part whose machine
@@ -29,16 +32,23 @@ PER_EQUIPMENT = 'PER_EQUIPMENT'
 class FpiContext:
     """The slice of FPI records that covers one part (or the step, for Per Work Order).
 
-    `known` is False for a Per Equipment step when the machine isn't recorded."""
+    `known` is False for a Per Equipment step when the machine isn't recorded.
+    `shift_ids` is every version of the shift, so an edit to the shift mid-run doesn't
+    lose its first piece; empty when no shift calendar applies (keyed by date alone)."""
     scope: str
     shift_date: object = None
+    shift_id: object = None
+    shift_ids: tuple = ()
+    shift_name: str = ''
     equipment_id: object = None
     equipment_name: str = ''
     known: bool = True
 
     def filters(self) -> dict:
         if self.scope == PER_SHIFT:
-            return {'shift_date': self.shift_date}
+            if self.shift_ids:
+                return {'shift_date': self.shift_date, 'shift_id__in': self.shift_ids}
+            return {'shift_date': self.shift_date, 'shift__isnull': True}
         if self.scope == PER_EQUIPMENT:
             return {'equipment_id': self.equipment_id}
         return {}
@@ -47,6 +57,8 @@ class FpiContext:
     def label(self) -> str:
         """Who the first piece is for, as the banner and cards say it ("" for a WO)."""
         if self.scope == PER_SHIFT and self.shift_date:
+            if self.shift_name:
+                return f"{self.shift_name} on {self.shift_date:%d %b}"
             return f"the {self.shift_date:%d %b} shift"
         if self.scope == PER_EQUIPMENT:
             return self.equipment_name or ("an unrecorded machine" if not self.known else "")
@@ -68,14 +80,32 @@ def machine_of(part, step):
     return link.equipment if link else None
 
 
-def context_for(step, work_order, *, part=None, equipment=None, shift_date=None) -> FpiContext:
-    """The context `part` (or the given machine / shift) needs a first piece for."""
+def _shift_context(shift, shift_date) -> FpiContext:
+    if shift is None:
+        return FpiContext(scope=PER_SHIFT, shift_date=shift_date)
+    return FpiContext(scope=PER_SHIFT, shift_date=shift_date, shift_id=shift.id,
+                      shift_ids=tuple(v.id for v in shift.get_version_history()),
+                      shift_name=shift.name)
+
+
+def context_for(step, work_order, *, part=None, equipment=None, shift=None,
+                shift_date=None) -> FpiContext:
+    """The context `part` (or the given machine / shift) needs a first piece for. With
+    no shift given, a Per Shift step takes the shift running now."""
     scope = step.fpi_scope or PER_WORKORDER
     if scope == PER_SHIFT:
-        if shift_date is None:
+        if shift is None and shift_date is None:
+            from Tracker.services.scheduling.calendars import shift_at
+            running = shift_at(work_order.tenant)
+            if running is not None:
+                shift, shift_date = running
+            else:
+                from Tracker.services.core.clock import tenant_today
+                shift_date = tenant_today(work_order.tenant)
+        elif shift_date is None:
             from Tracker.services.core.clock import tenant_today
             shift_date = tenant_today(work_order.tenant)
-        return FpiContext(scope=scope, shift_date=shift_date)
+        return _shift_context(shift, shift_date)
     if scope == PER_EQUIPMENT:
         machine = equipment if equipment is not None else machine_of(part, step)
         if machine is None:
@@ -88,7 +118,7 @@ def context_of_record(fpi) -> FpiContext:
     """The context an existing record covers."""
     scope = fpi.step.fpi_scope or PER_WORKORDER
     if scope == PER_SHIFT:
-        return FpiContext(scope=scope, shift_date=fpi.shift_date)
+        return _shift_context(fpi.shift, fpi.shift_date)
     if scope == PER_EQUIPMENT:
         return FpiContext(scope=scope, equipment_id=fpi.equipment_id,
                           equipment_name=fpi.equipment.name if fpi.equipment else '',

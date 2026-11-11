@@ -183,6 +183,7 @@ LINKS = {
 
     # --- Shift (master data) -------------------------------------------------------------
     'Equipments.operating_shifts': FOLLOWS,
+    'FPIRecord.shift': STAYS,          # history; fpi_scope matches every version
     'OvertimeWindow.shift': MODEL,     # services.mes.shifts
     'ScheduleSlot.shift': FOLLOWS,
     'User.default_shift': MODEL,       # services.mes.shifts

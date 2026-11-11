@@ -25534,6 +25534,12 @@ export interface components {
             equipment?: string | null;
             readonly equipment_info: components["schemas"]["FPIRecordEquipmentInfo"] | null;
             /**
+             * Format: uuid
+             * @description Shift for per-shift FPI (null when no shift calendar was configured)
+             */
+            shift?: string | null;
+            readonly shift_info: components["schemas"]["FPIRecordShiftInfo"] | null;
+            /**
              * Format: date
              * @description Date of the shift for per-shift FPI
              */
@@ -25624,6 +25630,11 @@ export interface components {
              */
             equipment?: string | null;
             /**
+             * Format: uuid
+             * @description Shift for per-shift FPI (null when no shift calendar was configured)
+             */
+            shift?: string | null;
+            /**
              * Format: date
              * @description Date of the shift for per-shift FPI
              */
@@ -25637,6 +25648,11 @@ export interface components {
          * @enum {string}
          */
         FPIRecordResultEnum: "PASS" | "FAIL" | "CONDITIONAL";
+        FPIRecordShiftInfo: {
+            id: string;
+            name: string;
+            code: string;
+        };
         /**
          * @description * `NOT_REQUIRED` - Not Required
          *     * `PENDING` - Pending
@@ -50515,6 +50531,7 @@ export interface operations {
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 part_type?: string;
+                shift?: string;
                 /** @description Filter by shift date (YYYY-MM-DD) */
                 shift_date?: string;
                 /**
@@ -50812,8 +50829,13 @@ export interface operations {
                      */
                     equipment?: string;
                     /**
+                     * Format: uuid
+                     * @description Per Shift: the shift the first piece is for (with shift_date). Omitted, the shift running now is used.
+                     */
+                    shift?: string;
+                    /**
                      * Format: date
-                     * @description Required for per_shift scope
+                     * @description Per Shift: the date the shift started (with shift)
                      */
                     shift_date?: string;
                 };
@@ -50880,6 +50902,7 @@ export interface operations {
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
                 part_type?: string;
+                shift?: string;
                 shift_date?: string;
                 /**
                  * @description Current status of the FPI

@@ -52,11 +52,11 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
     const [signing, setSigning] = useState<{ row: FpiRow; verdict: FpiVerdict } | null>(null);
 
     // The latest record per step AND context decides (a Per Shift / Per Equipment step
-    // has one first piece per shift day / machine): PENDING → waiting on QA; FAILED →
+    // has one first piece per run of a shift / machine): PENDING → waiting on QA; FAILED →
     // held; WAIVED → released, and a buy-off authority may correct it with a new one.
     const latestByStep = new Map<string, FpiRow>();
     for (const r of data?.results ?? []) {
-        const key = `${r.step ?? ""}|${r.shift_date ?? ""}|${r.equipment ?? ""}`;
+        const key = `${r.step ?? ""}|${r.shift ?? ""}|${r.shift_date ?? ""}|${r.equipment ?? ""}`;
         if (!latestByStep.has(key)) latestByStep.set(key, r);
     }
     const rows: FpiRow[] = [...latestByStep.values()].filter((r) => r.status === "PENDING");
@@ -91,6 +91,7 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
                             onClick={() => startNew.mutate(
                                 { work_order: workOrderId, step: String(r.step),
                                   ...(r.equipment ? { equipment: String(r.equipment) } : {}),
+                                  ...(r.shift ? { shift: String(r.shift) } : {}),
                                   ...(r.shift_date ? { shift_date: String(r.shift_date) } : {}) },
                                 {
                                     onSuccess: () => toast.success("New first piece started — the waiver is marked superseded."),

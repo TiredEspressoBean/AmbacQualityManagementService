@@ -120,6 +120,7 @@ export function useFpiGetOrCreate() {
             /** The part starting it: its machine is the context on a Per Equipment step. */
             part?: string;
             equipment?: string;
+            shift?: string;
             shift_date?: string;
         }) => api.api_FPIRecords_get_or_create_create(data, {
             headers: {

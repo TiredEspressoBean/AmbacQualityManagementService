@@ -290,7 +290,7 @@ def void_fpi_pass(fpi: FPIRecord, user, reason: str) -> FPIRecord:
         fresh = FPIRecord.objects.create(
             tenant=fpi.tenant, work_order=fpi.work_order, step=fpi.step, part_type=fpi.part_type,
             designated_part=designated or fpi.designated_part, equipment=fpi.equipment,
-            shift_date=fpi.shift_date, status=FPIStatus.PENDING,
+            shift_date=fpi.shift_date, shift=fpi.shift, status=FPIStatus.PENDING,
             notes=f"Re-inspection: the pass on {fpi.inspected_at:%Y-%m-%d} was voided — {reason}"
                   if fpi.inspected_at else f"Re-inspection: an earlier pass was voided — {reason}")
         transaction.on_commit(lambda: notify_fpi_requested(fresh))
@@ -326,7 +326,7 @@ def _first_piece_in(work_order, step, ctx, prefer=None):
     return None
 
 
-def start_fpi(work_order, step, user, *, part=None, equipment=None, shift_date=None):
+def start_fpi(work_order, step, user, *, part=None, equipment=None, shift=None, shift_date=None):
     """Start a first piece for the context `part` (or the given machine / shift) needs
     under the step's scope. Returns ``(record, created)``.
 
@@ -346,7 +346,8 @@ def start_fpi(work_order, step, user, *, part=None, equipment=None, shift_date=N
     from Tracker.models import RecordEdit
     from Tracker.services.qms.fpi_scope import context_for, records_for
 
-    ctx = context_for(step, work_order, part=part, equipment=equipment, shift_date=shift_date)
+    ctx = context_for(step, work_order, part=part, equipment=equipment, shift=shift,
+                      shift_date=shift_date)
     if not ctx.known:
         raise ValueError("This step needs a first piece per machine, and the machine this "
                          "part runs on isn't recorded. Set the machine, then start the FPI.")
@@ -378,7 +379,7 @@ def start_fpi(work_order, step, user, *, part=None, equipment=None, shift_date=N
             tenant=work_order.tenant, work_order=work_order, step=step,
             # Steps.part_type is non-null (PROTECT); WorkOrder has none of its own.
             part_type=step.part_type, designated_part=designated, status=FPIStatus.PENDING,
-            shift_date=ctx.shift_date, equipment_id=ctx.equipment_id)
+            shift_date=ctx.shift_date, shift_id=ctx.shift_id, equipment_id=ctx.equipment_id)
     # The andon call: a machine and operator may be idle from this moment.
     notify_fpi_requested(fpi)
     return fpi, True

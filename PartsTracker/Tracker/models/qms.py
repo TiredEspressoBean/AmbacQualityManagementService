@@ -3124,7 +3124,7 @@ class FPIRecord(SecureModel):
 
     FPI scope options (defined on Step; enforced by services/qms/fpi_scope.py):
     - per_workorder: One FPI per work order at this step
-    - per_shift: One FPI per shift (shift_date) per step per work order
+    - per_shift: One FPI per run of a shift (shift + shift_date) per step per work order
     - per_equipment: One FPI per equipment per step per work order
     """
 
@@ -3163,6 +3163,16 @@ class FPIRecord(SecureModel):
         null=True,
         blank=True,
         help_text='Date of the shift for per-shift FPI'
+    )
+    # The shift version that was current when the first piece was made — history, so
+    # it isn't repointed when the shift is edited; fpi_scope matches every version.
+    shift = models.ForeignKey(
+        'Tracker.Shift',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='fpi_records',
+        help_text='Shift for per-shift FPI (null when no shift calendar was configured)'
     )
 
     status = models.CharField(
