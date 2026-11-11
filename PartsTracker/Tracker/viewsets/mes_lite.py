@@ -1216,9 +1216,10 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         from Tracker.models import (
             ProcessStep, QualityReports, MeasurementResult, QuarantineDisposition,
             MaterialUsage, Documents, StepExecution, TimeEntry,
-            BatchExecution,
+            BatchExecution, StepExecutionMeasurement,
         )
         from django.contrib.contenttypes.models import ContentType
+        from django.db.models import Prefetch
 
         part = self.get_object()
         work_order = part.work_order
@@ -1331,9 +1332,13 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         # Get batch cycles this part rode in, grouped by step. A batch cycle's
         # readings and verdict belong to the whole load — surfaced here so the
         # traveler shows "this came from the cycle you shared with N parts"
-        # without attributing a shared value to this one part.
+        # without attributing a shared value to this one part. The cycle's readings are
+        # the ones captured at its substeps; a logger trace posted against the load (no
+        # substep, dozens a run) is process data for SPC, not a line per reading here.
         batches = BatchExecution.objects.filter(parts=part).prefetch_related(
-            'measurements__measurement_definition', 'quality_reports', 'parts',
+            Prefetch('measurements', queryset=StepExecutionMeasurement.current.filter(
+                substep__isnull=False).select_related('measurement_definition')),
+            'quality_reports', 'parts',
         )
         batch_map = {}  # step_id -> list of BatchExecution
         for b in batches:

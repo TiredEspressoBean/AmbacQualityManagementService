@@ -635,3 +635,15 @@ class BatchQueryableApiTests(TenantTestCase):
         # The part's own per-part measurements stay empty — the reading is the
         # cycle's, not this part's.
         self.assertEqual(entry["measurements"], [])
+
+    def test_traveler_lists_the_cycle_check_not_a_logger_trace(self):
+        """A logger posting readings against the load (no substep) feeds SPC; the
+        traveler still lists only the reading checked at the cycle's substep."""
+        for v in (7.0, 7.2, 7.3):
+            StepExecutionMeasurement.objects.create(
+                tenant=self.tenant_a, batch_execution=self.batch, measurement_definition=self.md,
+                value=v, recorded_by=self.user_a)
+        resp = self.client.get(f"/api/Parts/{self.parts[0].id}/traveler/")
+        self.assertEqual(resp.status_code, 200)
+        entry = next(e for e in resp.json()["traveler"] if e["step_id"] == str(self.step.id))
+        self.assertEqual([m["actual_value"] for m in entry["batch_cycles"][0]["measurements"]], [7.1])
