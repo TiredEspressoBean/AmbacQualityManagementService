@@ -562,6 +562,7 @@ class FpiRequestedPayload:
     step_id: str | None
     step_name: str
     equipment_name: str
+    pieces: str = ''              # the first piece's serials, comma-separated
 
     @classmethod
     def sample(cls) -> 'FpiRequestedPayload':
@@ -574,6 +575,7 @@ class FpiRequestedPayload:
             step_id='00000000-0000-0000-0000-000000000003',
             step_name='Final Test',
             equipment_name='Test Bench 2',
+            pieces='WO-2026-0007-001, WO-2026-0007-002',
         )
 
 
@@ -604,6 +606,7 @@ class FpiDecidedPayload:
     step_name: str
     equipment_name: str
     status: str                   # PASSED | FAILED | WAIVED
+    pieces: str = ''              # the first piece's serials, comma-separated
 
     @classmethod
     def sample(cls) -> 'FpiDecidedPayload':

@@ -53,15 +53,18 @@ def call_for(blockers, tenant_id) -> None:
     calls = [_payload(b, tenant_id) for b in blockers if str(b.code) not in NOT_CALLED]
     if not calls:
         return
+    # The de-duplication hour is the refusal's, not whenever a worker gets to it.
+    hour = timezone.now().strftime('%Y%m%d%H')
     try:
-        notify_start_refused.apply_async(args=[str(tenant_id), calls])
+        notify_start_refused.apply_async(args=[str(tenant_id), calls, hour])
     except Exception:  # noqa: BLE001 - the call must never mask the refusal
         logger.exception("andon: could not dispatch start.refused for tenant %s", tenant_id)
 
 
 @shared_task
-def notify_start_refused(tenant_id: str, calls: list[dict]) -> None:
-    """Emit `start.refused` for each call, in its own transaction."""
+def notify_start_refused(tenant_id: str, calls: list[dict], hour: str | None = None) -> None:
+    """Emit `start.refused` for each call, in its own transaction. `hour`: when the
+    start was refused (YYYYMMDDHH), the de-duplication window."""
     from Tracker.models import Tenant
     from Tracker.services.core.notifications import emit
     from Tracker.services.mes.events import StartRefusedPayload
@@ -70,7 +73,7 @@ def notify_start_refused(tenant_id: str, calls: list[dict]) -> None:
     tenant = Tenant.objects.filter(pk=tenant_id).first()
     if tenant is None:
         return
-    hour = timezone.now().strftime('%Y%m%d%H')
+    hour = hour or timezone.now().strftime('%Y%m%d%H')
     with tenant_context(tenant_id):
         for call in calls:
             emit('start.refused', tenant=tenant, payload=StartRefusedPayload(**call),

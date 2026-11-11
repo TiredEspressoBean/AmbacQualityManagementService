@@ -130,7 +130,7 @@ class StartGatesS4Tests(TenantTestCase):
             resp = self.client.post(f"/api/StepExecutions/{self.visit.id}/claim/", {}, format='json')
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertEqual(resp.json()['blockers'][0]['waiting_on'], "the part's hold to be released")
-        tenant_id, calls = send.call_args.kwargs['args']
+        tenant_id, calls, _hour = send.call_args.kwargs['args']
         self.assertEqual(tenant_id, str(self.tenant_a.id))
         self.assertEqual([c['gate'] for c in calls], ['part_on_hold'])
         self.assertEqual(calls[0]['part_number'], "S4-1")
@@ -142,6 +142,38 @@ class StartGatesS4Tests(TenantTestCase):
         with mock.patch('Tracker.services.mes.andon.notify_start_refused.apply_async') as send:
             call_for([Blocker(GateCode.FIRST_PIECE_PENDING, "waiting")], self.tenant_a.id)
         send.assert_not_called()
+
+    def test_the_andon_calls_render_what_is_held_and_link_to_the_work_order(self):
+        """start.refused and fpi.requested have their own templates: the generic one
+        rendered 'Quality event fired at now.' with no link."""
+        from dataclasses import asdict
+        from django.template import Context, Template
+        from Tracker.services.core.notifications.system_templates import (
+            FPI_DECIDED, FPI_REQUESTED, START_REFUSED, TOOL_LIFE_WARNING,
+        )
+        from Tracker.services.mes.events import StartRefusedPayload, ToolLifeWarningPayload
+        from Tracker.services.qms.events import FpiDecidedPayload, FpiRequestedPayload
+        tool = asdict(ToolLifeWarningPayload.sample())
+        url = Template(TOOL_LIFE_WARNING['in_app']['action_url_template']).render(Context({'payload': tool}))
+        self.assertEqual(url, f"/editor/equipment/{tool['equipment_id']}/edit")
+        for spec, payload in ((START_REFUSED, StartRefusedPayload.sample()),
+                              (FPI_REQUESTED, FpiRequestedPayload.sample()),
+                              (FPI_DECIDED, FpiDecidedPayload.sample())):
+            ctx = Context({'payload': asdict(payload), 'branding': {}})
+            in_app = spec['in_app']
+            subject = Template(in_app['subject']).render(ctx)
+            url = Template(in_app['action_url_template']).render(ctx)
+            self.assertNotIn('event', subject.lower())
+            self.assertEqual(url, f"/workorder/{payload.work_order_id}/control")
+        # Subjects render as plain text (render.py), so not escaped.
+        start = Template(START_REFUSED['in_app']['subject']).render(
+            Context({'payload': asdict(StartRefusedPayload.sample())}, autoescape=False))
+        self.assertIn("WO-2026-0007-001", start)
+        self.assertIn("the work order's hold to clear", start)
+        # QA's call names the pieces to inspect.
+        waiting = Template(FPI_REQUESTED['in_app']['body_text']).render(
+            Context({'payload': asdict(FpiRequestedPayload.sample())}, autoescape=False))
+        self.assertIn("WO-2026-0007-001, WO-2026-0007-002", waiting)
 
     def test_the_starter_rules_route_each_gate(self):
         from Tracker.services.core.notifications.system_rules import list_starter_rule_specs

@@ -380,7 +380,164 @@ SHIFT_NOTE_PUBLISHED = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# The andon's calls (user decision 2026-11-11): a refused start, and a first piece
+# waiting for QA. Each names what's held and links to the work order's control page.
+# ---------------------------------------------------------------------------
+
+START_REFUSED = {
+    "event_code": "start.refused",
+    "email": {
+        "subject": "Work can't start: {% firstof payload.part_number payload.step_name %} — waiting on {{ payload.waiting_on }}",
+        "body_text": """Work was refused at its start, and it's waiting on {{ payload.waiting_on }}.
+
+Part:        {{ payload.part_number|default:'—' }}
+Step:        {{ payload.step_name|default:'—' }}
+Work order:  {{ payload.work_order_number|default:'—' }}
+Why:         {{ payload.message }}
+
+A machine and an operator may be idle until it's cleared.
+
+Open the work order: {{ action_url }}
+
+- {{ branding.company_name|default:'UQMES' }}""",
+        "body_html": _html(
+            title="Work can't start",
+            body="""<p style="margin: 0 0 16px;">It's waiting on <strong>{{ payload.waiting_on }}</strong>.</p>
+      <table cellpadding="6" cellspacing="0" style="border-collapse: collapse; margin: 16px 0; width: 100%; font-size: 14px;">
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Part</td><td><strong>{{ payload.part_number|default:'—' }}</strong></td></tr>
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Step</td><td>{{ payload.step_name|default:'—' }}</td></tr>
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Work order</td><td>{{ payload.work_order_number|default:'—' }}</td></tr>
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Why</td><td>{{ payload.message }}</td></tr>
+      </table>""",
+            action_label="Open the work order",
+        ),
+        "action_url_template": "{% if payload.work_order_id %}/workorder/{{ payload.work_order_id }}/control{% endif %}",
+        "severity": "warning",
+    },
+    "in_app": {
+        "subject": "Can't start {% firstof payload.part_number payload.step_name %}: waiting on {{ payload.waiting_on }}",
+        "body_text": "{{ payload.message }}{% if payload.step_name %} ({{ payload.step_name }}{% if payload.work_order_number %}, {{ payload.work_order_number }}{% endif %}){% endif %}",
+        "action_url_template": "{% if payload.work_order_id %}/workorder/{{ payload.work_order_id }}/control{% endif %}",
+        "severity": "warning",
+        "icon": "octagon-alert",
+    },
+}
+
+FPI_REQUESTED = {
+    "event_code": "fpi.requested",
+    "email": {
+        "subject": "First piece waiting: {{ payload.step_name }} on {{ payload.work_order_number }}",
+        "body_text": """A first piece is waiting for QA's buy-off. The rest of the run waits on it.
+
+Work order:  {{ payload.work_order_number }}
+Step:        {{ payload.step_name }}{% if payload.equipment_name %}
+Machine:     {{ payload.equipment_name }}{% endif %}{% if payload.pieces %}
+Pieces:      {{ payload.pieces }}{% endif %}
+
+Open the work order: {{ action_url }}
+
+- {{ branding.company_name|default:'UQMES' }}""",
+        "body_html": _html(
+            title="First piece waiting",
+            body="""<p style="margin: 0 0 16px;">A first piece is waiting for QA's buy-off. The rest of the run waits on it.</p>
+      <table cellpadding="6" cellspacing="0" style="border-collapse: collapse; margin: 16px 0; width: 100%; font-size: 14px;">
+        {% if payload.pieces %}<tr><td style="color: #666; padding: 4px 12px 4px 0;">Pieces</td><td><strong>{{ payload.pieces }}</strong></td></tr>{% endif %}
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Work order</td><td><strong>{{ payload.work_order_number }}</strong></td></tr>
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Step</td><td>{{ payload.step_name }}</td></tr>
+        {% if payload.equipment_name %}<tr><td style="color: #666; padding: 4px 12px 4px 0;">Machine</td><td>{{ payload.equipment_name }}</td></tr>{% endif %}
+      </table>""",
+            action_label="Open the work order",
+        ),
+        "action_url_template": "{% if payload.work_order_id %}/workorder/{{ payload.work_order_id }}/control{% endif %}",
+        "severity": "warning",
+    },
+    "in_app": {
+        "subject": "First piece waiting: {{ payload.step_name }}",
+        "body_text": "{% if payload.pieces %}{{ payload.pieces }} — {% endif %}{{ payload.work_order_number }}{% if payload.equipment_name %} on {{ payload.equipment_name }}{% endif %}: QA to buy off the first piece; the run waits on it.",
+        "action_url_template": "{% if payload.work_order_id %}/workorder/{{ payload.work_order_id }}/control{% endif %}",
+        "severity": "warning",
+        "icon": "clipboard-check",
+    },
+}
+
+FPI_DECIDED = {
+    "event_code": "fpi.decided",
+    "email": {
+        "subject": "First piece {{ payload.status|lower }}: {{ payload.step_name }} on {{ payload.work_order_number }}",
+        "body_text": """QA has {{ payload.status|lower }} the first piece.{% if payload.status == 'FAILED' %} Correct the setup and re-run the first piece; the run stays held.{% else %} The run may go ahead.{% endif %}
+
+Work order:  {{ payload.work_order_number }}
+Step:        {{ payload.step_name }}{% if payload.equipment_name %}
+Machine:     {{ payload.equipment_name }}{% endif %}
+
+Open the work order: {{ action_url }}
+
+- {{ branding.company_name|default:'UQMES' }}""",
+        "body_html": _html(
+            title="First piece {{ payload.status|lower }}",
+            body="""<p style="margin: 0 0 16px;">{% if payload.status == 'FAILED' %}Correct the setup and re-run the first piece; the run stays held.{% else %}The run may go ahead.{% endif %}</p>
+      <table cellpadding="6" cellspacing="0" style="border-collapse: collapse; margin: 16px 0; width: 100%; font-size: 14px;">
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Work order</td><td><strong>{{ payload.work_order_number }}</strong></td></tr>
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Step</td><td>{{ payload.step_name }}</td></tr>
+        {% if payload.equipment_name %}<tr><td style="color: #666; padding: 4px 12px 4px 0;">Machine</td><td>{{ payload.equipment_name }}</td></tr>{% endif %}
+      </table>""",
+            action_label="Open the work order",
+        ),
+        "action_url_template": "{% if payload.work_order_id %}/workorder/{{ payload.work_order_id }}/control{% endif %}",
+        "severity": "info",
+    },
+    "in_app": {
+        "subject": "First piece {{ payload.status|lower }}: {{ payload.step_name }}",
+        "body_text": "{% if payload.pieces %}{{ payload.pieces }} — {% endif %}{{ payload.work_order_number }}{% if payload.equipment_name %} on {{ payload.equipment_name }}{% endif %}: {% if payload.status == 'FAILED' %}correct the setup and re-run the first piece; the run stays held.{% else %}the run may go ahead.{% endif %}",
+        "action_url_template": "{% if payload.work_order_id %}/workorder/{{ payload.work_order_id }}/control{% endif %}",
+        "severity": "info",
+        "icon": "clipboard-check",
+    },
+}
+
+TOOL_LIFE_WARNING = {
+    "event_code": "tool_life.warning",
+    "email": {
+        "subject": "Tool near its life limit: {{ payload.equipment_name }} ({{ payload.current }} of {{ payload.hard_limit|default:'—' }})",
+        "body_text": """{{ payload.equipment_name }} reached its soft life limit. Plan its refurbishment before the hard limit stops the work that needs it.
+
+Tool:        {{ payload.equipment_name }}
+Limit:       {{ payload.limit_name }}
+Used:        {{ payload.current }}
+Soft limit:  {{ payload.soft_limit }}
+Hard limit:  {{ payload.hard_limit|default:'—' }}
+
+Open the tool: {{ action_url }}
+
+- {{ branding.company_name|default:'UQMES' }}""",
+        "body_html": _html(
+            title="Tool near its life limit",
+            body="""<p style="margin: 0 0 16px;"><strong>{{ payload.equipment_name }}</strong> reached its soft life limit. Plan its refurbishment before the hard limit stops the work that needs it.</p>
+      <table cellpadding="6" cellspacing="0" style="border-collapse: collapse; margin: 16px 0; width: 100%; font-size: 14px;">
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Limit</td><td>{{ payload.limit_name }}</td></tr>
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Used</td><td><strong>{{ payload.current }}</strong></td></tr>
+        <tr><td style="color: #666; padding: 4px 12px 4px 0;">Soft / hard limit</td><td>{{ payload.soft_limit }} / {{ payload.hard_limit|default:'—' }}</td></tr>
+      </table>""",
+            action_label="Open the tool",
+        ),
+        "action_url_template": "/editor/equipment/{{ payload.equipment_id }}/edit",
+        "severity": "warning",
+    },
+    "in_app": {
+        "subject": "Tool near its life limit: {{ payload.equipment_name }}",
+        "body_text": "{{ payload.limit_name }}: {{ payload.current }} used, soft limit {{ payload.soft_limit }}{% if payload.hard_limit %}, hard limit {{ payload.hard_limit }}{% endif %}. Plan the refurbishment.",
+        "action_url_template": "/editor/equipment/{{ payload.equipment_id }}/edit",
+        "severity": "warning",
+        "icon": "wrench",
+    },
+}
+
 ALL_TEMPLATES = [
+    START_REFUSED,
+    FPI_REQUESTED,
+    FPI_DECIDED,
+    TOOL_LIFE_WARNING,
     NCR_OPENED,
     STEP_FAILURE,
     CAPA_ASSIGNED,

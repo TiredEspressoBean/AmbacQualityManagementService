@@ -435,6 +435,9 @@ def _fpi_payload_kwargs(fpi: FPIRecord) -> dict:
         step_id=str(fpi.step_id) if fpi.step_id else None,
         step_name=fpi.step.name if fpi.step_id else "",
         equipment_name=fpi.equipment.name if fpi.equipment_id else "",
+        # The pieces of the set, by serial — QA's call names what to inspect.
+        pieces=', '.join(fpi.first_piece_parts.order_by('ERP_id').values_list('ERP_id', flat=True))
+        or (fpi.designated_part.ERP_id if fpi.designated_part_id else ""),
     )
 
 

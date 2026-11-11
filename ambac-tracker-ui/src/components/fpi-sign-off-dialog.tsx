@@ -108,6 +108,8 @@ export function FpiSignOffDialog({
     // A first piece of several parts: a fail names which ones failed (their FAIL
     // reports; the good ones release when the re-run passes).
     const pieces = record?.first_piece_parts_info ?? [];
+    // The attestation names every piece of the set: the set is bought off as a whole.
+    const pieceNames = pieces.length ? pieces.map((p) => p.label).join(", ") : (partLabel ?? "");
     const [badParts, setBadParts] = useState<string[]>([]);
     const toggleBad = (id: string) =>
         setBadParts((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
@@ -222,11 +224,11 @@ export function FpiSignOffDialog({
                     <DialogDescription>
                         {verdict === "PASS" && <>
                             By signing off you attest that the setup is correct and the first
-                            piece{partLabel ? ` (${partLabel})` : ""} conforms, and this
+                            piece{pieceNames ? ` (${pieceNames})` : ""} conforms, and this
                             releases the run.{" "}
                         </>}
                         {verdict === "FAIL" && <>
-                            The setup did not pass{partLabel ? ` (first piece ${partLabel})` : ""}. The
+                            The setup did not pass{pieceNames ? ` (first piece ${pieceNames})` : ""}. The
                             run stays held; correct the setup and run a new first piece for
                             re-inspection.{" "}
                         </>}
