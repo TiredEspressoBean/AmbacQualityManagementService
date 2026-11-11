@@ -1093,6 +1093,74 @@ class DemoOrdersSeeder(BaseSeeder):
                  f"{' (incl. 1 FAIL)' if len(batches) > 1 else ''}")
         return {'batch_captures': count}
 
+    # The wash tank's temperature logger: one reading every 30 s while a load runs.
+    BATH_LOG_INTERVAL = timedelta(seconds=30)
+
+    def log_bath_temperature_trace(self):
+        """The wash tank's logger trace through each sealed load's run.
+
+        A logger posts the bath temperature against the load (the step-measurement
+        API, no substep), so these readings are process data for SPC, not checks:
+        ~60 a load gives the Wash Bath Temperature chart 20+ subgroups at every
+        subgroup size the SPC page offers (2–25), so Cp/Cpk shows and moves with n.
+        The single checked reading on the load's completion substep stays what the
+        traveler shows. Runs after the QA and operator walks: their finished loads
+        count too, and the order loads alone are too few for n=25.
+
+        The tank holds 60 °C (σ ≈ 1.1 °C, Cp ≈ 1.4 — capable, not by a wide margin).
+        No thermostat wave in it: a slow cycle moves the subgroup means together and
+        trips the zone and run rules all over a stable process. The
+        hot load — the one whose check read 71 °C — is the heater sticking on: its
+        trace climbs from 60 to 71 over the run's last quarter, the out-of-control point the
+        CAPA from SPC is raised on (capa.py, seed_spc_capa).
+        """
+        import random
+        from Tracker.models import BatchExecution, MeasurementDefinition, QualityReports, StepExecutionMeasurement
+
+        self.log("Logging the wash tank's bath temperature through each load...")
+        wash = build_steps(self.tenant).get('Wash')
+        md = MeasurementDefinition.objects.filter(
+            tenant=self.tenant, label='Bath Temperature', step=wash).first()
+        if wash is None or md is None:
+            self.log("  Wash / Bath Temperature def missing; skipping the logger trace", warning=True)
+            return {'bath_log_readings': 0}
+
+        loads = list(BatchExecution.objects.filter(
+            tenant=self.tenant, step=wash, sealed_at__isnull=False, completed_at__isnull=False,
+        ).order_by('sealed_at', 'work_order__ERP_id', 'id'))
+        hot_ids = set(QualityReports.objects.filter(
+            tenant=self.tenant, batch_execution__in=loads, status='FAIL',
+        ).values_list('batch_execution_id', flat=True))
+
+        rows, times = [], []
+        for be in loads:
+            rng = random.Random(zlib.crc32(f"bath-log-{be.work_order.ERP_id}-{be.sealed_at:%Y%m%d%H%M}".encode()))
+            run = (be.completed_at - be.sealed_at).total_seconds()
+            steps = int(run // self.BATH_LOG_INTERVAL.total_seconds())
+            for k in range(steps + 1):
+                at = be.sealed_at + k * self.BATH_LOG_INTERVAL
+                stuck = (k / steps - 0.75) / 0.25  # the heater sticks on for the last quarter
+                if be.id in hot_ids and stuck > 0:
+                    temp = 60.0 + 11.0 * stuck + rng.gauss(0, 0.3)
+                else:
+                    temp = 60.0 + rng.gauss(0, 1.1)
+                m = StepExecutionMeasurement(
+                    tenant=self.tenant, batch_execution=be, measurement_definition=md,
+                    value=round(temp, 2), recorded_by=be.started_by,
+                )
+                m.is_within_spec = m.evaluate_spec()
+                rows.append(m)
+                times.append(at)
+        StepExecutionMeasurement.objects.bulk_create(rows)
+        # recorded_at is auto_now_add: bulk_create stamps every row (and the instance)
+        # with now. The logger's times go back on afterwards.
+        for m, at in zip(rows, times):
+            m.recorded_at = at
+        StepExecutionMeasurement.objects.bulk_update(rows, ['recorded_at'], batch_size=500)
+
+        self.log(f"  Logged {len(rows)} bath temperatures across {len(loads)} loads")
+        return {'bath_log_readings': len(rows)}
+
     def _seal_running_exhibit(self, wash, operator):
         """A load that is running right now: WO-2024-0042-A's open Wash load, sealed
         about 20 minutes ago through the real capture (its "Start the wash cycle"

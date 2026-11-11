@@ -7,6 +7,8 @@ Creates:
 - CAPA-2024-003: In progress (nozzle defects, main demo)
 - CAPA-2024-004: Open (pending RCA - contamination issue)
 - CAPA-2024-005: Open, just initiated (customer complaint)
+- CAPA-2024-006: Open, raised from the SPC page on the Wash bath temperature
+  (seed_spc_capa, run in scenario Phase 6d2 after the logger trace)
 """
 
 from datetime import timedelta
@@ -636,6 +638,88 @@ class DemoCapaSeeder(BaseSeeder):
                     'completion_notes': assignee_data.get('notes', '') if status == CapaTaskStatus.COMPLETED else '',
                 }
             )
+
+    def seed_spc_capa(self, users):
+        """CAPA-2024-006: raised from the SPC page on the Wash bath-temperature chart.
+
+        The heater stuck on through one load (orders.py, log_bath_temperature_trace):
+        its logger readings climb past the X̄ chart's UCL. QA (Maria) clicked the first
+        subgroup above it and chose Investigate (Create CAPA), so the problem statement
+        is the one the page writes — worked out here the way the page does it, an X̄-R
+        chart at n=5 over the last 90 days with live limits (Bath Temperature has no
+        frozen baseline). Production (Jennifer) owns the wash, as for CAPA-2024-004.
+        """
+        from Tracker.models import MeasurementDefinition, ProcessStep
+        from Tracker.services.qms.spc_ingest import collect_spc_rows
+
+        wash = build_steps(self.tenant).get('Wash')
+        md = MeasurementDefinition.objects.filter(
+            tenant=self.tenant, label='Bath Temperature', step=wash).first()
+        if wash is None or md is None:
+            self.log("  Wash / Bath Temperature def missing; no SPC CAPA", warning=True)
+            return None
+
+        n, a2 = 5, 0.577  # X̄-R at the page's default subgroup size
+        rows = collect_spc_rows(tenant=self.tenant, measurement_id=md.id,
+                                start=self.today - timedelta(days=90), end=self.today)
+        groups = [rows[i:i + n] for i in range(0, len(rows), n)]
+        groups = [g for g in groups if len(g) >= 2]  # the page drops a lone last point
+        if len(groups) < 20:
+            self.log(f"  Only {len(groups)} bath-temperature subgroups; no SPC CAPA", warning=True)
+            return None
+        means = [sum(r.value for r in g) / len(g) for g in groups]
+        ranges = [max(r.value for r in g) - min(r.value for r in g) for g in groups]
+        cl = sum(means) / len(means)
+        r_bar = sum(ranges) / len(ranges)
+        ucl, lcl = cl + a2 * r_bar, cl - a2 * r_bar
+        hit = next((i for i, m in enumerate(means) if m > ucl), None)
+        if hit is None:
+            self.log("  No bath-temperature subgroup above UCL; no SPC CAPA", warning=True)
+            return None
+
+        g, when = groups[hit], groups[hit][0].timestamp
+        usl, lsl = float(md.nominal + md.upper_tol), float(md.nominal - md.lower_tol)
+        route = ProcessStep.objects.filter(step=wash).select_related('process').first()
+        statement = (
+            "SPC Out-of-Control Condition Detected\n\n"
+            f"Process: {route.process.name if route else ''}\n"
+            f"Step: {wash.name}\n"
+            f"Measurement: {md.label}\n"
+            f"Subgroup: {hit + 1}\n"
+            f"Date: {when.month}/{when.day}/{when.year}\n\n"
+            "Violation(s): Rule 1: Beyond 3σ\n\n"
+            f"X-bar Value: {means[hit]:.4f} {md.unit}\n"
+            f"Range: {ranges[hit]:.4f} {md.unit}\n"
+            f"Individual Values: {', '.join(f'{r.value:.3f}' for r in g)}\n\n"
+            "Control Limits:\n"
+            f"- UCL: {ucl:.3f} {md.unit}\n"
+            f"- CL: {cl:.3f} {md.unit}\n"
+            f"- LCL: {lcl:.3f} {md.unit}\n\n"
+            "Specification Limits:\n"
+            f"- USL: {usl:.3f} {md.unit}\n"
+            f"- LSL: {lsl:.3f} {md.unit}"
+        )
+        days_ago = max((self.today - when).days, 0)
+        capa_data = {
+            'capa_number': 'CAPA-2024-006',
+            'problem_statement': statement,
+            'status': CapaStatus.OPEN,
+            'capa_type': CapaType.CORRECTIVE,
+            'severity': CapaSeverity.MINOR,
+            'initiated_by': 'maria.qa@demo.ambac.com',
+            'assigned_to': 'jennifer.mgr@demo.ambac.com',
+            'initiated_days_ago': days_ago,
+            'due_days': 21,
+            'approval_required': False,
+            'approval_status': 'NOT_REQUIRED',
+            'immediate_action': 'Wash tank heater put on manual control; bath back at 60 °C',
+            'step': 'Wash',
+        }
+        user_map = users.get('by_email', {})
+        capa = self._create_capa(capa_data, user_map, build_steps(self.tenant), {})
+        self.log(f"  Created {capa.capa_number} from bath-temperature subgroup {hit + 1} "
+                 f"(mean {means[hit]:.2f} > UCL {ucl:.2f})")
+        return capa
 
     def _link_quality_reports(self, capa):
         """Link quality reports from Great Lakes order to CAPA.

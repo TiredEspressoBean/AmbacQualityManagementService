@@ -207,6 +207,16 @@ class DemoScenario(BaseSeeder):
         self.log("\n--- Phase 6d: Block on Out-of-Spec Exhibit ---")
         result['oos_block'] = self._seed_oos_block(result['companies'], result['users'])
 
+        # Phase 6d2: the wash tank's logger trace through every finished load, and the
+        # CAPA QA raised from its out-of-control point on the SPC page. After the walks,
+        # whose finished Wash loads it logs too (enough readings for 20+ subgroups at
+        # every subgroup size the SPC page offers).
+        self.log("\n--- Phase 6d2: Wash Bath Logger and SPC CAPA ---")
+        result['bath_log'] = DemoOrdersSeeder(
+            self.stdout, self.style, self.tenant, scale=self.scale).log_bath_temperature_trace()
+        result['spc_capa'] = DemoCapaSeeder(
+            self.stdout, self.style, self.tenant, scale=self.scale).seed_spc_capa(result['users'])
+
         # The demand outlook exhibit for the Planner, Production Manager, Purchasing
         # and Shipping tracks: a two-year forecast from this month, a tentative (RFI)
         # deal and an overdue order line. See seed/demo/forecast.py.
