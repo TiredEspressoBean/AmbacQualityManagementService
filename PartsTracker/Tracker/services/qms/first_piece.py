@@ -130,8 +130,10 @@ def declare_new_setup(*, step, work_order, user, reason_code: str, reason: str =
                       part=None, equipment=None):
     """An operator's declared new setup (tool change, offset, crash, repair…) re-opens
     the first piece of the context: the pass or waiver standing in it is SUPERSEDED,
-    its step release withdrawn, and the next start begins a new first piece. Returns
-    the superseded record.
+    its step release withdrawn, and the next start begins a new first piece. Parts
+    started before the declaration were made under the old setup and stay covered by
+    its first piece (user decision 2026-11-11) — if a crash makes them suspect, QA
+    quarantines them deliberately. Returns the superseded record.
 
     Raises:
         ValidationError: no reason, the step has no first piece, the context can't be
@@ -163,8 +165,9 @@ def declare_new_setup(*, step, work_order, user, reason_code: str, reason: str =
             object_id=standing.id, field_name='status', old_value=standing.status,
             new_value=FPIStatus.SUPERSEDED, reason=why, edited_by=user)
         standing.status = FPIStatus.SUPERSEDED
-        standing.save(update_fields=['status', 'updated_at'])
-        # Its release no longer stands: the setup it verified is gone.
+        standing.setup_ended_at = timezone.now()
+        standing.save(update_fields=['status', 'setup_ended_at', 'updated_at'])
+        # Its release no longer stands for new work: the setup it verified is gone.
         QaApproval.objects.filter(fpi_record=standing, archived=False).update(  # tenant-safe: scoped FK
             archived=True, updated_at=timezone.now())
     return standing

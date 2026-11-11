@@ -3161,6 +3161,11 @@ class FPIRecord(SecureModel):
     failed_parts = models.ManyToManyField(
         'Tracker.Parts', blank=True, related_name='+',
         help_text='The pieces of this first piece that failed (a FAIL verdict names them)')
+    # When a declared new setup ended the setup this record verified. Parts started
+    # before it were made under that setup and stay covered by it.
+    setup_ended_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='When a declared new setup superseded this first piece')
     equipment = models.ForeignKey(
         'Tracker.Equipments',
         null=True,

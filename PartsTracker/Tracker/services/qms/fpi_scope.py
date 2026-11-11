@@ -156,6 +156,19 @@ def records_for(step, work_order, ctx: FpiContext):
     return qs.filter(**ctx.filters()).order_by('-created_at')
 
 
+def made_under_old_setup(step, work_order, part) -> bool:
+    """Was `part`'s visit started before a declared new setup ended the setup its
+    context's first piece verified? Then that first piece covers it and it moves on as
+    normal (user decision 2026-11-11)."""
+    from Tracker.models import FPIStatus
+    started = visit_started_at(part, step)
+    if started is None:
+        return False
+    ctx = context_for(step, work_order, part=part)
+    return records_for(step, work_order, ctx).filter(
+        status=FPIStatus.SUPERSEDED, setup_ended_at__gt=started).exists()
+
+
 def qa_released(step, work_order, part=None) -> bool:
     """Whether `part` has the step's QA release on `work_order`. A direct step sign-off
     releases the work order; a first-piece pass releases its own context only, so on a
@@ -168,7 +181,8 @@ def qa_released(step, work_order, part=None) -> bool:
     if qs.filter(fpi_record__isnull=True).exists():
         return True
     ctx = context_for(step, work_order, part=part)
-    return qs.filter(fpi_record__in=records_for(step, work_order, ctx)).exists()
+    return (qs.filter(fpi_record__in=records_for(step, work_order, ctx)).exists()
+            or made_under_old_setup(step, work_order, part))
 
 
 def status_in(step, work_order, ctx: FpiContext) -> dict:

@@ -269,11 +269,16 @@ def start_machine(step, part, execution=None):
 def _life_limit_refusals(part) -> list[str]:
     """Each life limit the part (or the core it is) has reached. Read live, not the
     cached status, so calendar expiries are caught."""
+    from Tracker.services.life_tracking.reman_cycles import is_reman_cycles
     from Tracker.services.reman.core_steps import core_of
+    core = core_of(part)
+    # A reman-cycle count is the remans BEGUN: it refuses a new reman (a core not yet
+    # started), never the later steps of the reman that reached the limit.
+    starting_reman = core is not None and core.status == 'RECEIVED'
     out = [f"Life limit reached: {lt.definition.name} ({lt.current_value:g} of "
            f"{lt.effective_hard_limit:g}) — it needs an approved extension to start."
-           for lt in _life_trackings(part) if lt.is_blocked]
-    core = core_of(part)
+           for lt in _life_trackings(part)
+           if lt.is_blocked and (starting_reman or not is_reman_cycles(lt.definition))]
     if core is not None:
         from Tracker.services.life_tracking.reman_cycles import untracked_over_limit
         out += [f"Life limit reached: {d.name} — {part.ERP_id} has been remanned "
@@ -399,8 +404,10 @@ def release_blockers(step: 'Steps', step_execution, work_order) -> list[Blocker]
 
     # First piece (Parts only).
     if part is not None and step.requires_first_piece_inspection:
+        from Tracker.services.qms.fpi_scope import made_under_old_setup
         fpi_status = step.get_fpi_status(work_order, part=part)
-        if fpi_status['status'] not in ('PASSED', 'WAIVED', 'NOT_REQUIRED'):
+        if (fpi_status['status'] not in ('PASSED', 'WAIVED', 'NOT_REQUIRED')
+                and not made_under_old_setup(step, work_order, part)):
             ctx = fpi_status.get('context_label')
             out.append(Blocker(GateCode.FIRST_PIECE,
                                f"First Piece Inspection required{f' for {ctx}' if ctx else ''}: "

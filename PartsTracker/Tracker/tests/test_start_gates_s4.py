@@ -151,6 +151,16 @@ class StartGatesS4Tests(TenantTestCase):
         tracking.refresh_from_db()
         self.assertEqual(tracking.accumulated, Decimal(2))
 
+    def test_the_reman_that_reaches_the_limit_is_not_stopped_by_it(self):
+        from Tracker.services.mes.gates import StartContext, floor_blockers
+        self._reman_limit(2)
+        self._core("C-OLD-1", "SN-99", disassembled=True)
+        core = self._core("C-NEW", "SN-99")
+        start_execution(self._core_visit(core), self.user_a)  # the 2nd reman: now at 2 of 2
+        core.part.refresh_from_db()
+        ctx = StartContext(part=core.part, step=self.step, work_order=self.wo, operator=self.user_a)
+        self.assertEqual(floor_blockers(ctx), [])  # its next steps still start
+
     def test_a_unit_at_its_reman_limit_is_refused_before_teardown(self):
         self._reman_limit(2)
         self._core("C-OLD-1", "SN-88", disassembled=True)

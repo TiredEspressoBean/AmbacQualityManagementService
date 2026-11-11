@@ -16,6 +16,10 @@ from decimal import Decimal
 REMAN_UNIT = 'remans'
 
 
+def is_reman_cycles(definition) -> bool:
+    return (definition.unit or '').strip().lower() == REMAN_UNIT
+
+
 def reman_definitions(core):
     """The reman-cycle definitions that apply to the core's type."""
     from Tracker.models import LifeLimitDefinition, PartTypeLifeLimit

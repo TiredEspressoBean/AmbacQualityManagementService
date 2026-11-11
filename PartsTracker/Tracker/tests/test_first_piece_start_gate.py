@@ -100,6 +100,26 @@ class FirstPieceStartGateTests(TenantTestCase):
         with self.assertRaises(StartRefused):
             self._start(3)
 
+    def test_parts_made_under_the_old_setup_move_on_after_a_new_setup(self):
+        from Tracker.models import QaApproval
+        from Tracker.services.mes.gates import GateCode as G, release_blockers
+        from Tracker.services.qms.first_piece import declare_new_setup
+        self._start(0)
+        record = self._record()
+        FPIRecord.objects.filter(pk=record.pk).update(status="PASSED")
+        QaApproval.objects.create(tenant=self.tenant_a, step=self.step, work_order=self.wo,
+                                  fpi_record=record, qa_staff=self.user_b)
+        self._start(1)
+        declare_new_setup(step=self.step, work_order=self.wo, user=self.user_a,
+                          reason_code='OFFSET', reason="Offset moved")
+        self._start(2)  # the new first piece
+
+        def holds(i):
+            se = StepExecution.objects.get(pk=self.visits[i].pk)
+            return {b.code for b in release_blockers(self.step, se, self.wo)} & {G.FIRST_PIECE, G.QA_SIGNOFF}
+        self.assertEqual(holds(1), set())  # started under the old setup
+        self.assertTrue(holds(2))           # started after: waits for the new first piece
+
     def test_a_new_setup_needs_a_reason(self):
         from Tracker.services.qms.first_piece import declare_new_setup
         with self.assertRaises(ValidationError):
