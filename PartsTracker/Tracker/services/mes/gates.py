@@ -139,6 +139,10 @@ class Blocker:
     message: str
     # Where it's cleared, when there's a page for it (a life limit's reset / extend).
     link: str = ''
+    # A supervisor gate the start will also meet once the floor refusal ahead of it
+    # clears — listed so nobody is surprised twice (P5, user ruling 2026-11-11). It
+    # doesn't refuse on its own here, and the andon doesn't call for it.
+    pending: bool = False
     # What it holds back, for the andon's call (services/mes/andon.py). Set by the
     # start decision; not part of the API body.
     part: Optional['Parts'] = field(default=None, compare=False, repr=False)
@@ -152,7 +156,8 @@ class Blocker:
     def to_dict(self) -> dict:
         return {'code': str(self.code), 'message': self.message, 'stage': str(self.spec.stage),
                 'escape': str(self.spec.escape), 'clears': self.spec.clears,
-                'waiting_on': self.spec.waiting_on, 'link': self.link}
+                'waiting_on': self.spec.waiting_on, 'link': self.link,
+                'pending_behind_floor': self.pending}
 
 
 class StartRefused(ValidationError):
@@ -404,6 +409,45 @@ class StartDecision:
     outcomes: list[Outcome] = field(default_factory=list)
 
 
+def _pending_supervisor_gates(ctx: StartContext, authorizer=None) -> list[Blocker]:
+    """The supervisor gates this start will meet once the floor refusal ahead of them
+    clears (P5, user ruling 2026-11-11): repeat-visit rule, reassignment, training (the
+    machine type's too). Judged without raising; nothing written. None when a
+    supervisor is already signing in."""
+    if authorizer is not None:
+        return []
+    from Tracker.services.mes.lifecycle import RevisitRefused, check_revisit_rule
+    also = "Also needed once that's cleared: a supervisor"
+    out: list[Blocker] = []
+    part, step, operator = ctx.part, ctx.step, ctx.operator
+    if part is not None and ctx.visit_number > 1 and step.has_gate(str(GateCode.REVISIT_RULE)):
+        try:
+            check_revisit_rule(part, step, operator, visit_number=ctx.visit_number)
+        except RevisitRefused as exc:
+            out.append(Blocker(GateCode.REVISIT_RULE, f"{also} ({exc.detail})", pending=True))
+    ex = ctx.execution
+    if ex is not None and ex.assigned_to_id and ex.assigned_to_id != operator.id:
+        holder = ex.assigned_to.get_full_name() or ex.assigned_to.get_username()
+        out.append(Blocker(GateCode.ASSIGNED_TO_OTHER,
+                           f"{also} to reassign it from {holder}.", pending=True))
+    if step.has_gate(str(GateCode.TRAINING)):
+        from Tracker.services.training import check_training_authorization
+        machine = start_machine(step, part, ex, ctx.machine)
+        result = check_training_authorization(
+            operator, step, process=ctx.process,
+            equipment_type=getattr(machine, 'equipment_type', None))
+        if not result.authorized:
+            names = ', '.join(name for name, _ in result.missing)
+            out.append(Blocker(GateCode.TRAINING, f"{also} (not qualified: {names}).",
+                               pending=True))
+    return [replace_ctx(b, ctx) for b in out]
+
+
+def replace_ctx(blocker: Blocker, ctx: StartContext) -> Blocker:
+    from dataclasses import replace
+    return replace(blocker, part=ctx.part, step=ctx.step, work_order=ctx.work_order)
+
+
 def decide_start(ctx: StartContext, *, authorizer=None, reason=None) -> StartDecision:
     """The one start decision. Raises `StartRefused` for a floor refusal, or a
     `lifecycle.StartGateError` for a supervisor-overridable one (the caller asks for a
@@ -422,7 +466,9 @@ def decide_start(ctx: StartContext, *, authorizer=None, reason=None) -> StartDec
     if first_piece is not None:
         refused.append(first_piece)
     if refused:
-        raise StartRefused(refused)
+        # The supervisor gates waiting behind the floor are named now too (P5): the
+        # sign-in still opens only once the floor is clear.
+        raise StartRefused(refused + _pending_supervisor_gates(ctx, authorizer))
     outcomes = [Outcome(c, 'PASSED') for c in _floor_applies(ctx)]
     if ctx.part is not None and ctx.work_order is not None and ctx.step.has_gate('first_piece'):
         outcomes.append(Outcome(GateCode.FIRST_PIECE_PENDING, 'PASSED'))

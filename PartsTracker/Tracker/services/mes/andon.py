@@ -50,7 +50,9 @@ def call_for(blockers, tenant_id) -> None:
     the refusal reaches the operator whatever happens here."""
     if not tenant_id:
         return
-    calls = [_payload(b, tenant_id) for b in blockers if str(b.code) not in NOT_CALLED]
+    # Supervisor gates listed as pending behind the floor (P5) are answered on the spot.
+    calls = [_payload(b, tenant_id) for b in blockers
+             if str(b.code) not in NOT_CALLED and not getattr(b, 'pending', False)]
     if not calls:
         return
     # The de-duplication hour is the refusal's, not whenever a worker gets to it.

@@ -121,6 +121,25 @@ class StartGatesS4Tests(TenantTestCase):
         record = FPIRecord.objects.get(work_order=self.wo, step=self.step)
         self.assertEqual(record.equipment_id, machine.id)
 
+    # --- P5: the supervisor gates behind a floor refusal are named too
+    def test_a_floor_refusal_also_names_the_training_still_needed(self):
+        from unittest import mock
+        from Tracker.services.mes.andon import call_for
+        course = TrainingType.objects.create(tenant=self.tenant_a, name="Mill setup")
+        TrainingRequirement.objects.create(tenant=self.tenant_a, training_type=course, step=self.step)
+        self._machine(status="IN_MAINTENANCE")
+        with self.assertRaises(StartRefused) as ctx:
+            self._start(self.operator)
+        codes = [(b.code, b.pending) for b in ctx.exception.blockers]
+        self.assertEqual(codes, [(GateCode.EQUIPMENT_DOWN, False), (GateCode.TRAINING, True)])
+        self.assertIn("Also needed once that's cleared: a supervisor (not qualified: Mill setup)",
+                      ctx.exception.messages[1])
+        self.assertTrue(ctx.exception.blockers[1].to_dict()['pending_behind_floor'])
+        with mock.patch('Tracker.services.mes.andon.notify_start_refused.apply_async') as send:
+            call_for(ctx.exception.blockers, self.tenant_a.id)
+        _tenant, calls, _hour = send.call_args.kwargs['args']
+        self.assertEqual([c['gate'] for c in calls], ['equipment_down'])  # the floor only
+
     # --- the andon
     def test_a_refused_start_at_the_api_calls_whoever_clears_it(self):
         from unittest import mock
