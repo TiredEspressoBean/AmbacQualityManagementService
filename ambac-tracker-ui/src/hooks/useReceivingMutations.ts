@@ -171,6 +171,8 @@ export type LateDelivery = Schema<"LateDelivery">;
 export const useReceiveExpectedLot = () => {
     const queryClient = useQueryClient();
     return useMutation({
+        // The dialog says why it was refused; the global toast said it a second time.
+        meta: { suppressGlobalError: true },
         mutationFn: (vars: {
             id: string;
             /** The supplier's lot/batch number as printed. The lot is numbered by UQMES. */

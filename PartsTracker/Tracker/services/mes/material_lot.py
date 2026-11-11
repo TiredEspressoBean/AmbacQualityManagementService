@@ -13,6 +13,13 @@ from decimal import Decimal
 from django.db import transaction
 
 
+
+def _qty(v) -> str:
+    """A quantity as people write it: 50, not 50.0000 (walk 2026-11-10)."""
+    d = Decimal(str(v))
+    text = f"{d:f}"
+    return text.rstrip("0").rstrip(".") if "." in text else text
+
 def split_material_lot(lot, quantity: Decimal, reason: str = ""):
     """Split ``quantity`` off ``lot`` into a new child MaterialLot.
 
@@ -273,7 +280,7 @@ def receive_expected_lot(lot, *, received_by, lot_number: str = "",
         if short_by > 0:
             if remainder not in ("BACKORDERED", "CLOSED"):
                 raise ValueError(
-                    f"{quantity} of {ordered} arrived — say whether more is coming "
+                    f"{_qty(quantity)} of {_qty(ordered)} arrived — say whether more is coming "
                     f"(back-ordered) or that's all (nothing more expected).")
             locked.ordered_quantity = ordered
             locked.short_receipt = remainder
@@ -287,7 +294,7 @@ def receive_expected_lot(lot, *, received_by, lot_number: str = "",
                 allowed = ordered * Decimal(str(tolerance)) / Decimal(100)
                 if -short_by > allowed:
                     raise ValueError(
-                        f"{-short_by} more than the {ordered} ordered — over the {tolerance}% "
+                        f"{_qty(-short_by)} more than the {_qty(ordered)} ordered — over the {tolerance}% "
                         f"allowed. Count again, or accept the overage to keep it.")
             locked.ordered_quantity = ordered
             update.append("ordered_quantity")

@@ -11,7 +11,6 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { locationSummaryOptions } from "@/hooks/useLocations";
-import { locationFromScan } from "@/lib/scan";
 
 const MAX_SUGGESTIONS = 8;
 
@@ -57,7 +56,14 @@ export function LocationInput({ value, onChange, onEnter, id, placeholder = "Sca
                 onFocus={() => setFocused(true)}
                 // Delayed so a click on a suggestion lands before the list closes.
                 onBlur={() => setTimeout(() => setFocused(false), 120)}
-                onChange={(e) => { onChange(locationFromScan(e.target.value)); setActive(0); setNavigated(false); }}
+                // Kept as typed: trimming on every keystroke ate a space before the next
+                // character ("Rack 1" → "Rack1"; a wedge scanner types a label the same
+                // way). Only a label's "LOC:" prefix is taken off; the server trims.
+                onChange={(e) => {
+                    const raw = e.target.value;
+                    onChange(/^\s*LOC:/i.test(raw) ? raw.replace(/^\s*LOC:\s*/i, "") : raw);
+                    setActive(0); setNavigated(false);
+                }}
                 onKeyDown={(e) => {
                     if (open && e.key === "ArrowDown") { e.preventDefault(); setNavigated(true); setActive((a) => Math.min(a + 1, matches.length - 1)); }
                     else if (open && e.key === "ArrowUp") { e.preventDefault(); setNavigated(true); setActive((a) => Math.max(a - 1, 0)); }
