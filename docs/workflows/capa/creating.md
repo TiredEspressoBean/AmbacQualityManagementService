@@ -18,6 +18,9 @@ This guide covers how to initiate and set up a CAPA investigation.
 3. Complete the form
 4. Link related records manually
 
+On the list, **Needs My Approval** narrows it to CAPAs waiting on your approval,
+and **Severity (Critical First)** sorts Critical, then Major, then Minor.
+
 ### From a pattern you spotted
 
 There is **no suggestion engine** — nothing proposes a CAPA to you. Recurring

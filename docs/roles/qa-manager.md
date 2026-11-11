@@ -214,8 +214,8 @@ with their email and password and the closure is attributed to them.
 !!! warning "Closed is the end of the line"
     A closed CAPA cannot be reopened. If the check shows the action did *not*
     work, record **Not effective** instead. That does three things rather than
-    one: the CAPA returns to **In Progress**, its root-cause analysis is flagged
-    for review — on the grounds that an ineffective action usually means the
+    one: the CAPA returns to **In Progress**, its root-cause analysis returns to
+    unverified with its verifier cleared, flagged for review — on the grounds that an ineffective action usually means the
     cause was wrong — and a follow-up **corrective task is raised automatically,
     due in 30 days**.
 

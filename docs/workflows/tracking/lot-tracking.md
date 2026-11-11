@@ -161,7 +161,9 @@ The lot is chosen in this order:
 1. **What the picker actually staged** for that step — if someone recorded a
    lot at staging (including via **Took another**), that is what gets drawn.
    The sheet named what the plan *would* take; the picker took what was really
-   on the shelf, and the record has to say what happened.
+   on the shelf, and the record has to say what happened. If that lot has been
+   held or rejected since it was picked, it isn't drawn, and the choice falls
+   to the next rule.
 2. Otherwise **the customer's own property**, if this is their work — a
    free-issue kit is meant for their job, so it goes first.
 3. Otherwise **own stock, oldest-expiry first (FEFO)**, then oldest receipt.
@@ -185,7 +187,9 @@ open the lot it was **recorded** against. Under what it reached, each draw from
 this lot has **Wrong lot?**. Choose the **lot actually used**, which must be the
 same item with enough in stock, and give a reason. **Move the draw** gives the
 quantity back to this lot, draws it from the right one, and keeps both lots'
-records and the reason. The unit's trace then names the right lot.
+records and the reason. The unit's trace then names the right lot. A lot that
+has been held or rejected since the draw takes the quantity back and stays held
+or rejected.
 
 It needs the stock-correction permission held by leads (`apply_cyclecount`). This
 fixes the genealogy. **Adjust quantity** only fixes a count, and leaves the unit

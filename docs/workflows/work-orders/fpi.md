@@ -131,7 +131,9 @@ a reading misread)? Anyone who can sign off FPIs can **Void pass** on the FPI
 banner, with a required reason:
 
 - The pass stays on record, marked **Voided** with your reason. It is not deleted.
-- The step's release is withdrawn, and a **new first-piece inspection** opens.
+- That pass's release is withdrawn, and a **new first-piece inspection** opens.
+  Under **Per shift** or **Per machine**, other shifts' or machines' passes
+  stand.
   Parts not yet past the step wait until the piece is re-inspected and bought off.
 - Parts already past the step are **not** pulled back. If they need looking at,
   that is a quality decision about them, made separately.

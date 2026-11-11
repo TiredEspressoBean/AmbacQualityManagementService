@@ -60,6 +60,10 @@ Pass: Lower Limit ≤ Measured Value ≤ Upper Limit
 Fail: Measured Value < Lower Limit OR Measured Value > Upper Limit
 ```
 
+Leave a tolerance blank for a one-sided spec: only the other side is checked. A
+value of 0 is a real limit, not a blank. With no nominal there is nothing to
+judge against, and the reading is in spec.
+
 ### Visual Indicators
 
 | Result | Indicator |

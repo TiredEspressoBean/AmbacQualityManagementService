@@ -71,6 +71,11 @@ label code, otherwise **LOC:&lt;name&gt;** — and older labels still scan.
 a lot splits the remainder off, so the record follows the material rather than
 the paperwork.
 
+The location box suggests matching locations as you type. **Enter** takes a
+suggestion only when you chose it with the arrow keys. Otherwise it submits what
+you scanned or typed, exactly as entered, so *Rack 1* stays Rack 1 even when
+*Rack 10* is suggested. A scanned label's **LOC:** prefix is removed.
+
 Serialised units have a location too, not just material lots.
 
 !!! tip "A location you need can be made on the spot"

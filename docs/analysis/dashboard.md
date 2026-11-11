@@ -83,7 +83,8 @@ Headed *NCR & Disposition Analysis*, with the same **30 / 60 / 90 day** toggle.
 Cards for **Total NCRs**, **Open NCRs**, **Avg Age** and **Closure Rate**; then
 the **NCR Trend** (created against closed), the **Disposition Breakdown** —
 rework, repair, scrap, use as is, return to supplier, not a nonconformance — the
-**NCR Aging** buckets and **Summary Statistics**.
+**NCR Aging** buckets and **Summary Statistics**. **Open NCRs** is the number
+open now (*Currently unresolved*), whatever the window.
 
 **Awaiting a CAPA decision** lists failed reports nobody has yet decided a CAPA
 on, and **Open Dispositions** the non-conforming parts still being dispositioned.

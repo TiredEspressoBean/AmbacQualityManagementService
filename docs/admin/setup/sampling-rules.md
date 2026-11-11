@@ -63,14 +63,14 @@ twice:
     not pull a tightened supplier back to normal — five accepted lots do.
 
 !!! danger "Discontinue is a recommendation, never automatic"
-    Z1.4 says that where tightened inspection persists for 5 consecutive lots
-    without earning a return to normal, you stop accepting that supplier's
-    product. The system raises that as a **recommendation**. It does not suspend
+    Z1.4 says that once 5 lots in all have been not accepted while a supplier is
+    on tightened inspection, you stop accepting that supplier's product. The system raises that as a **recommendation**. It does not suspend
     the supplier's approval, and it never will — removing a source is a
     commercial decision with a person's name on it.
 
     C=0 and Z1.9 do not switch severity. C=0 escalates through the gate's
-    100%-inspection and fallback path instead.
+    100%-inspection and fallback path instead. A Z1.9 lot is judged at normal
+    severity, whatever severity the rule set names.
 
 ### 100% Inspection
 Inspect every part:
@@ -200,6 +200,15 @@ rule set, not the rule.
 | **Zero-Acceptance** | C=0 (Squeglia) | Any defect in the sample rejects the lot |
 | **Variables Sampling** | ANSI/ASQ Z1.9 | A measured characteristic — sample mean and spread against an acceptability constant |
 
+AQL starts at 0.10. A lower AQL is refused, because the tables carry no plan for
+it.
+
+!!! warning "C=0 plans: AQL 0.65 to 6.5 only"
+    A Zero-Acceptance rule set carries AQL 0.65, 1.0, 1.5, 2.5, 4.0 or 6.5. Any
+    other AQL is refused (*"C=0 plans are carried for AQL 0.65, 1, 1.5, 2.5, 4,
+    6.5 only."*), and both editors offer only these. Check the sample sizes
+    against your controlled copy of the C=0 table before you rely on them.
+
 !!! note "Variables sampling needs a characteristic"
     A Variables rule measures one characteristic, so the rule set must name
     which one. Without it the rule cannot be evaluated.
@@ -233,7 +242,7 @@ repeat.
 | **Route to alternate edge** | Send parts down a different path |
 | **Tighten sampling** | Switch to a stricter rule set |
 | **Hold / quarantine** | Stop the material |
-| **Raise CAPA / SCAR** | Open a CAPA, or a SCAR when the type is Supplier |
+| **Raise CAPA / SCAR** | Opens a CAPA of the gate's configured type (a SCAR when the type is Supplier). It records the step, part and work order and links the report that tripped the gate. Superseded reports don't count toward a gate |
 | **Require approval** | Demand an approval before continuing |
 
 A gate also sets a **minimum sample** before it can trip, so it does not fire

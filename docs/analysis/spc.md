@@ -248,7 +248,8 @@ check. There is no normal-curve overlay.
 Click **SPC Report** on the SPC page to generate a PDF:
 
 - Full-page control charts
-- Capability summary tables
+- Capability summary tables. With fewer readings than one subgroup, the report
+  leaves within-subgroup σ, Cp and Cpk blank
 - Delivered as a download, or emailed to you where this deployment sends mail
 
 Select a measurement and date range first — the report is generated for the

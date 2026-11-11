@@ -17,6 +17,11 @@ report edited to FAIL, a failed first piece. Its description says what failed,
 for example *"Failed Nozzle Inspection: Hole blockage"*, or the report's own
 description when it has one.
 
+Another failure at the same step on the same visit joins the disposition
+already open there, but only while nothing has been decided on it (no type
+chosen). Once it's decided, a new failure opens its own disposition. A second
+failed check on a load joins the load's open disposition.
+
 It opens **unassigned**. Nobody is picked for it; it waits on the QA home page,
 under *Unassigned dispositions*, until someone presses **Take it** (which needs
 `change_quarantinedisposition`). It then moves to their **My dispositions**. The part stays

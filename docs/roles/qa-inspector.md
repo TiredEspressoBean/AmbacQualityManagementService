@@ -23,8 +23,8 @@ As a QA Inspector, you:
     [Dispositions](../workflows/quality/dispositions.md#who-can-decide-and-co-signing).
 
 !!! note "Sampling is decided for you"
-    A rule flags the part and the plan is calculated — *"Inspect 29 of 250 ·
-    Accept ≤ 0 · Reject ≥ 1"*. Your job is to answer **"why this part?"** from
+    A rule flags the part and the plan is calculated — *"Inspect &lt;n&gt; of
+    &lt;lot size&gt; · Accept ≤ &lt;Ac&gt; · Reject ≥ &lt;Re&gt;"*. Your job is to answer **"why this part?"** from
     the Sample flag and its reason, not to choose the sample size.
 
 ## Getting Started
@@ -153,6 +153,9 @@ Based on lot size and AQL level:
 - If the sample can't be finished: **Accept unfinished…** with a reason, which waits
   for QA to approve. See [Accepting before the sample is
   finished](../workflows/supply/overview.md#accepting-before-the-sample-is-finished).
+- The plan is fixed when the inspection opens: the sample size, Ac/Re and the
+  inbox's plan badge are the plan as it was then, even if the rule set is edited
+  afterwards.
 
 ### After Lot Decision
 

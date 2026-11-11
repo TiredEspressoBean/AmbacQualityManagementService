@@ -30,7 +30,7 @@ in its life:
 | **On order** | Expected, not yet arrived |
 | **Late** | Expected receipts overdue, or due within 3 days |
 | **Awaiting inspection** | Received, not yet inspected |
-| **On hand** | Inspected and available |
+| **On hand** | Accepted or In Use: stock that can be drawn, including lots partly used |
 | **Held** | Quarantined or otherwise not usable |
 | **Rejected** | Rejected, awaiting a disposition or return |
 
@@ -257,6 +257,12 @@ just by lot number.
     *Ordered 100 · 10 over*. The ordered figure is evidence about the order, so
     it is not overwritten by what turned up.
 
+    A Tenant Admin can set **Over-receipt tolerance (%)** under **Settings** >
+    **Organization**. Beyond it the receipt is refused (*"&lt;N&gt; more than the
+    &lt;M&gt; ordered — over the &lt;P&gt;% allowed. Count again, or accept the
+    overage to keep it."*) unless the receiver ticks **Accept the overage**.
+    Left blank, any overage is taken and recorded.
+
 ### What cannot be edited directly
 
 **Status** is not an editable field, and **quantity** changes only through
@@ -286,7 +292,7 @@ came in:
 | Keyed wrong | Where | |
 |-------------|-------|---|
 | The quantity received | **Correct receipt…** on the row's **⋯** menu | Enter what actually arrived, and why. What's on hand changes with it |
-| The supplier, item, PO or line | **Correct receipt details** under **Came from** on the lot page | Item appears only on a material lot. A short delivery's back-ordered remainder still on order moves with a PO or line correction |
+| The supplier, item, PO or line | **Correct receipt details** under **Came from** on the lot page | Item appears only on a material lot. **No supplier** clears the supplier. When the delivery has a PO number, a back-ordered remainder still on order is corrected with it |
 
 Both take a **required reason**, and both are offered only while nothing has been
 used from the lot, split off it or adjusted. After that the lot's history depends
@@ -333,8 +339,12 @@ One row per component:
 **Find #** · **Part Number** · **Description** · **Qty/Ea** · **Qty Req'd** ·
 **Pull from** · **Lot pulled** · **Opt** · **✓**
 
-- **Qty Req'd** is the bill of materials quantity times the work order quantity.
-- **Pull from** names the lots consumption will draw, oldest expiry first;
+- **Qty Req'd** is the quantity on the part's released assembly BOM (the one
+  consumption draws from, archived lines left out) times the work order
+  quantity.
+- **Pull from** names the lots consumption will draw, oldest expiry first.
+  Stock picked for another job isn't offered. What was picked for this job
+  counts toward it, so the line isn't short for what's already in its tote;
   **Lot pulled** is where you write the lot you actually took — the one the
   traceability record will claim went into the unit.
 - Only lines for operations on the job's **route** are picked. A line for a
@@ -485,6 +495,15 @@ same runtime for both. Filter by source or status to narrow it.
     segmented into Receiving, OSP returns, and In-process. See the
     [QA Inspector Guide](../../roles/qa-inspector.md).
 
+The sampling plan decides the lot, not any one reading. An out-of-spec reading
+on a sampled unit counts toward the plan; you can leave the result Pending and
+carry on with the sample.
+
+The plan is fixed when the inspection opens. The sample size and Ac/Re you see,
+and the plan badge in the inbox, are the plan as it was then. Editing the rule
+set afterwards doesn't change an inspection already open. Without its rule set's
+labels the page reads *Sample plan (as set when the inspection opened)*.
+
 ### Accepting before the sample is finished
 
 A lot is accepted when its sampling plan reaches a verdict. Sometimes that has to
@@ -530,6 +549,9 @@ you do to bought stock.
 | **Reject whole lot** | The entire lot goes back. Needs permission — see below |
 
 The reject and its disposition are created **together**, in one step.
+
+If the sample wasn't finished, the inspection is recorded as **failed**: the
+reject decided it. The lot still counts toward the supplier's Z1.4 severity.
 
 !!! note "Rejecting part of a delivery is the normal case"
     The default assumes a delivery is mostly good, because it usually is. The

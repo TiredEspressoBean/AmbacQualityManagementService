@@ -41,6 +41,10 @@ apply. Parts can't be sent out while their work order is on hold, cancelled or
 completed, or while a part is quarantined. The refusal names each part, and
 nothing ships.
 
+A part already sent out and received back for this step doesn't return to
+**Ready to ship**, and **Send out** refuses it: *"&lt;part&gt; has already been
+out and back for this step (&lt;shipment&gt;)."*
+
 The parts move to **At vendor**, and the schedule reflects that they're off-site.
 
 ## Getting parts back

@@ -190,8 +190,9 @@ Reopen action and no transition out of it. If the problem recurs, raise a new
 CAPA and reference the old one.
 
 The one route back is *before* closure: a **Not Effective** verification returns
-the CAPA from Pending Verification to **In Progress**, marks the root cause
-analysis for review, and raises a follow-up corrective task due in 30 days. The
+the CAPA from Pending Verification to **In Progress**, returns the root cause
+analysis to **unverified** and clears who verified it, flagged for review, and
+raises a follow-up corrective task due in 30 days. The
 reviewed RCA has to be approved again before the next effectiveness check. That
 is the only reopening the system does, and it happens because the CAPA never
 closed.

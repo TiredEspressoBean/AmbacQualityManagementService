@@ -95,7 +95,10 @@ A task can be completed from either surface — whichever you are already on:
 - **Personal > Inbox**, against the task in your list
 - The CAPA's **Tasks** tab
 
-In both, add your completion notes and click **Mark Complete**. The notes are
+In both, **Complete Task** opens a dialog for your completion notes; confirm it
+with **Complete Task** in the Inbox or **Mark Complete** on the Tasks tab.
+Completing is done only this way: the task's edit form doesn't offer
+**Completed**, and a completed task can't be reopened. The notes are
 saved with the completion, so say what was actually done rather than "done" —
 this is the record a verifier reads when checking the action was effective.
 
@@ -153,7 +156,8 @@ Overdue tasks:
     A CAPA closes when its effectiveness is confirmed, and that is refused while
     any task is still open: *"Cannot close CAPA: N task(s) still pending. Complete
     them before confirming effectiveness."* Overdue or not, every task has to be
-    completed first. A deleted task doesn't count.
+    completed or cancelled first. A cancelled or deleted task doesn't count, and
+    a cancelled task is left out of the completion percentage.
 
 The task list can be filtered to **overdue only**, which is the quickest way to
 see what is actually holding a CAPA open. Note this is the task-level filter —

@@ -414,6 +414,11 @@ far a void reaches.
     usually correct — one bad wash cycle really does invalidate everything in
     the tank — but it is not a per-part fix and must not be used as one.
 
+A part's traveler shows each load it rode in as a **Batch cycle** box, *shared
+with N parts*, with the readings taken at that load's substeps. A logger's
+trace posted against the load isn't listed there. It is process data, read on
+SPC.
+
 ### Rework and visits
 
 A traveler row is per **step**, not per attempt, so a part that has been

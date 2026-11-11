@@ -173,6 +173,12 @@ A calibration record's status is derived, not chosen:
     calibration's due date is months away. A failure is a statement about the
     instrument, not a deadline, so it cannot be aged out of.
 
+A gauge's calibrations carry across its versions, and the status shown is its
+latest record's. When two records share a calibration date, the one entered
+later counts, so an after-repair Pass recorded the same day as a Fail returns
+the gauge to service. A gauge whose latest calibration failed is listed as
+**Failed**, not Overdue, here and on the Calibration Due report.
+
 ### Recording Calibration
 
 A calibration is its own record, written from **Quality** > **Calibrations**, not
@@ -217,9 +223,10 @@ the calibration or due date, the equipment, who performed it), the form asks for
 **Reason for the correction** and won't save without one. The reason is kept
 beside the field it changed.
 
-Correcting the **result** re-applies the gauge's status. A Fail corrected to Pass
-returns the gauge to service, and the reverse takes it out of service, exactly as
-if the record had been entered that way.
+Only the gauge's latest calibration puts it in or out of service. Correcting the
+**result** of the latest record re-applies it: a Fail corrected to Pass returns
+the gauge to service, and the reverse takes it out. Correcting an older record
+changes nothing.
 
 ## What equipment was used
 
