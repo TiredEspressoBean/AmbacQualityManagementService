@@ -24,6 +24,7 @@ START_GATES = (
     'part_on_hold',
     'equipment_down',
     'life_limit',
+    'tool_life',
     'training_not_authorized',
     'revisit_rule',
 )

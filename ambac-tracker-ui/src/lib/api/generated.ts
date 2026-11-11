@@ -3729,6 +3729,13 @@ export type Fixture = {
    * @maximum 2147483647
    */
   number | undefined;
+  equipment_type?:
+    | /**
+     * The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
+     */
+    (string | null)
+    | undefined;
+  capacity: number;
   lead_time_days?:
     | /**
      * Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report.
@@ -3779,6 +3786,12 @@ export type FixtureRequest = {
    * @maximum 2147483647
    */
   number | undefined;
+  equipment_type?:
+    | /**
+     * The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
+     */
+    (string | null)
+    | undefined;
   lead_time_days?:
     | /**
      * Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report.
@@ -7303,6 +7316,12 @@ export type LifeLimitDefinition = {
      */
     (string | null)
     | undefined;
+  equipment_type?:
+    | /**
+     * Tooling type this limit applies to (each item of the type is tracked). Units: parts, cycles or hours.
+     */
+    (string | null)
+    | undefined;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -8765,6 +8784,7 @@ export type GateEnum =
    * `part_on_hold` - Part not on hold
    * `equipment_down` - Machine in service
    * `life_limit` - Life limit
+   * `tool_life` - Tool life
    * `training_not_authorized` - Operator trained
    * `revisit_rule` - Repeat visits
    * `substeps_incomplete` - Work instruction done
@@ -8774,7 +8794,7 @@ export type GateEnum =
    * `first_piece` - First piece
    * `measurement_out_of_spec` - Readings in spec
    *
-   * @enum work_order_not_workable, deviation_expired, part_quarantined, core_awaiting_authorisation, part_on_hold, equipment_down, life_limit, training_not_authorized, revisit_rule, substeps_incomplete, qualified_operator, quarantine_hold, qa_signoff, first_piece, measurement_out_of_spec
+   * @enum work_order_not_workable, deviation_expired, part_quarantined, core_awaiting_authorisation, part_on_hold, equipment_down, life_limit, tool_life, training_not_authorized, revisit_rule, substeps_incomplete, qualified_operator, quarantine_hold, qa_signoff, first_piece, measurement_out_of_spec
    */
   | "work_order_not_workable"
   | "deviation_expired"
@@ -8783,6 +8803,7 @@ export type GateEnum =
   | "part_on_hold"
   | "equipment_down"
   | "life_limit"
+  | "tool_life"
   | "training_not_authorized"
   | "revisit_rule"
   | "substeps_incomplete"
@@ -13877,6 +13898,10 @@ export type PatchedFixtureRequest = Partial<{
    * @maximum 2147483647
    */
   quantity: number;
+  /**
+   * The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
+   */
+  equipment_type: string | null;
   /**
    * Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report.
    *
@@ -22271,6 +22296,8 @@ const Fixture = z.object({
   name: z.string().max(100),
   kind: FixtureKindEnum.optional(),
   quantity: z.number().int().gte(0).lte(2147483647).optional(),
+  equipment_type: z.string().uuid().nullish(),
+  capacity: z.number().int(),
   lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
   steps: z.array(z.string().uuid()).optional(),
   step_names: z.array(z.string()),
@@ -22286,6 +22313,7 @@ const FixtureRequest = z.object({
   name: z.string().min(1).max(100),
   kind: FixtureKindEnum.optional(),
   quantity: z.number().int().gte(0).lte(2147483647).optional(),
+  equipment_type: z.string().uuid().nullish(),
   lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
   steps: z.array(z.string().uuid()).optional(),
   archived: z.boolean().optional(),
@@ -22295,6 +22323,7 @@ const PatchedFixtureRequest = z
     name: z.string().min(1).max(100),
     kind: FixtureKindEnum,
     quantity: z.number().int().gte(0).lte(2147483647),
+    equipment_type: z.string().uuid().nullable(),
     lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
     steps: z.array(z.string().uuid()),
     archived: z.boolean(),
@@ -22615,6 +22644,7 @@ const LifeLimitDefinition = z.object({
     .string()
     .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
     .nullish(),
+  equipment_type: z.string().uuid().nullish(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -22639,6 +22669,7 @@ const LifeLimitDefinitionRequest = z.object({
     .string()
     .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
     .nullish(),
+  equipment_type: z.string().uuid().nullish(),
   archived: z.boolean().optional(),
   change_description: z.string().optional(),
 });
@@ -22656,6 +22687,7 @@ const PatchedLifeLimitDefinitionRequest = z
       .string()
       .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
       .nullable(),
+    equipment_type: z.string().uuid().nullable(),
     archived: z.boolean(),
     change_description: z.string(),
   })
@@ -24841,6 +24873,7 @@ const GateEnum = z.enum([
   "part_on_hold",
   "equipment_down",
   "life_limit",
+  "tool_life",
   "training_not_authorized",
   "revisit_rule",
   "substeps_incomplete",

@@ -66,6 +66,14 @@ class LifeLimitDefinition(SecureModel):
         blank=True,
         help_text="Absolute limit - block/retire when reached"
     )
+    # Tool and fixture life (services/life_tracking/tool_life.py): a type with a
+    # definition is life-limited, and each of its items is tracked against it.
+    equipment_type = models.ForeignKey(
+        'Tracker.EquipmentType', null=True, blank=True, on_delete=models.PROTECT,
+        related_name='life_limits',
+        help_text="Tooling type this limit applies to (each item of the type is tracked). "
+                  "Units: parts, cycles or hours.",
+    )
 
     class Meta:
         verbose_name = 'Life Limit Definition'

@@ -351,7 +351,8 @@ def submit_substep(
                 if kind == "status":
                     _apply_status(report, cap)
                 elif kind == "equipment_roles":
-                    for warning in _apply_equipment_roles(report, cap):
+                    for warning in _apply_equipment_roles(report, cap,
+                                                          _visits_of(step_execution, batch_execution)):
                         if warning not in warnings:
                             warnings.append(warning)
                 elif kind == "personnel_roles":
@@ -952,17 +953,38 @@ def _apply_status(report: QualityReports, cap) -> None:
     on_report_failed(report, prior)
 
 
-def _apply_equipment_roles(report: QualityReports, cap) -> list[str]:
+def _visits_of(step_execution, batch_execution) -> list:
+    """The visits a capture is for: the one visit, or a load's members' visits."""
+    if step_execution is not None:
+        return [step_execution]
+    if batch_execution is None:
+        return []
+    return list(StepExecution.objects.filter(  # tenant-safe: .objects auto-scopes
+        step_id=batch_execution.step_id, part__in=batch_execution.parts.all(),
+        status='IN_PROGRESS'))
+
+
+def _apply_equipment_roles(report: QualityReports, cap, visits=()) -> list[str]:
     """The inspection's equipment roster. An OUT_OF_SERVICE or failed-calibration gauge
     is refused here as it is on a measurement capture — this block was a second door
     onto the record that skipped the check. An OVERDUE one is recorded with a warning,
     as on a measurement (user decision 2026-10-07: any capture that names a gauge).
-    Returns those warnings."""
-    warnings: list[str] = []
+
+    A TOOL or FIXTURE at its life limit is refused the same way, and one within life
+    goes on the visits and is counted (services/life_tracking/tool_life.py) — a tool
+    known only from a capture would otherwise escape the start gate.
+    Returns the warnings."""
+    from Tracker.services.life_tracking import tool_life
+    valid_roles = {r.value for r in EquipmentRole}
+    with tool_life.one_cycle_per_load():
+        return _apply_equipment_rows(report, cap.get("rows") or [], valid_roles, visits)
+
+
+def _apply_equipment_rows(report, rows, valid_roles, visits) -> list[str]:
     from django.core.exceptions import ValidationError
     from Tracker.models import Equipments, EquipmentStatus
-    rows = cap.get("rows") or []
-    valid_roles = {r.value for r in EquipmentRole}
+    from Tracker.services.life_tracking import tool_life
+    warnings: list[str] = []
     for row in rows:
         equipment_id = row.get("equipment_id")
         role = row.get("role")
@@ -979,6 +1001,11 @@ def _apply_equipment_roles(report: QualityReports, cap) -> list[str]:
         if equipment.calibration_status == 'OVERDUE':
             warnings.append(f"{equipment.name} is past its calibration due date — it was "
                             f"recorded; tell QA so the gauge gets recalibrated.")
+        if role in tool_life.TOOL_ROLES:
+            for visit in (visits or [None]):
+                for w in tool_life.capture(visit, equipment, role):
+                    if w not in warnings:
+                        warnings.append(w)
         QualityReportEquipment.objects.update_or_create(
             quality_report=report,
             equipment_id=equipment_id,

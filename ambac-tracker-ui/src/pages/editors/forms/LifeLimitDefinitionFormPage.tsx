@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useRetrieveEquipmentTypes } from "@/hooks/useRetrieveEquipmentTypes";
 import {
     useCreateLifeLimitDefinition, useLifeLimitDefinition, useUpdateLifeLimitDefinition,
 } from "@/hooks/useLifeLimitDefinitionsAdmin";
@@ -43,6 +45,10 @@ export function LifeLimitDefinitionFormPage() {
     const [calendar, setCalendar] = useState(false);
     const [soft, setSoft] = useState("");
     const [hard, setHard] = useState("");
+    // Tool and fixture life: the equipment type whose items this limit tracks.
+    const [equipmentType, setEquipmentType] = useState<string>("none");
+    const { data: typesResp } = useRetrieveEquipmentTypes({ limit: 500 });
+    const equipmentTypes = typesResp?.results ?? [];
 
     useEffect(() => {
         if (mode !== "edit" || !existing) return;
@@ -52,6 +58,7 @@ export function LifeLimitDefinitionFormPage() {
         setCalendar(existing.is_calendar_based ?? false);
         setSoft(existing.soft_limit == null ? "" : String(Number(existing.soft_limit)));
         setHard(existing.hard_limit == null ? "" : String(Number(existing.hard_limit)));
+        setEquipmentType(existing.equipment_type ?? "none");
     }, [mode, existing]);
 
     function submit() {
@@ -65,6 +72,7 @@ export function LifeLimitDefinitionFormPage() {
         const payload = {
             name: name.trim(), unit: unit.trim(), unit_label: unitLabel.trim() || unit.trim(),
             is_calendar_based: calendar, soft_limit, hard_limit,
+            equipment_type: equipmentType === "none" ? null : equipmentType,
         };
         const onSuccess = () => {
             toast.success(mode === "edit" ? "Definition saved" : "Definition created");
@@ -115,6 +123,22 @@ export function LifeLimitDefinitionFormPage() {
                             </p>
                         </div>
                         <Switch id="lld-cal" checked={calendar} onCheckedChange={setCalendar} />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                        <Label htmlFor="lld-eqtype">Tooling type</Label>
+                        <Select value={equipmentType} onValueChange={setEquipmentType}>
+                            <SelectTrigger id="lld-eqtype"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">None — a part limit</SelectItem>
+                                {equipmentTypes.map((t) => (
+                                    <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                            For a tool, die or fixture: every item of this type is tracked against
+                            the limit. Count it in parts, cycles or hours.
+                        </p>
                     </div>
                 </CardContent>
             </Card>

@@ -25924,6 +25924,9 @@ export interface components {
          *     program. `steps` is the set of operations that require it; the solver serializes ops
          *     against the `quantity` available (cumulative capacity). `steps` validates against the
          *     tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+         *
+         *     With an `equipment_type`, the capacity is that type's items in service and within
+         *     life (`capacity`), and `quantity` is not used.
          */
         Fixture: {
             /** Format: uuid */
@@ -25941,6 +25944,12 @@ export interface components {
             kind?: components["schemas"]["FixtureKindEnum"];
             /** @description How many of this resource exist (concurrency limit). */
             quantity?: number;
+            /**
+             * Format: uuid
+             * @description The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
+             */
+            equipment_type?: string | null;
+            readonly capacity: number;
             /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
             lead_time_days?: number | null;
             /** @description Steps that require this resource. */
@@ -25962,6 +25971,9 @@ export interface components {
          *     program. `steps` is the set of operations that require it; the solver serializes ops
          *     against the `quantity` available (cumulative capacity). `steps` validates against the
          *     tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+         *
+         *     With an `equipment_type`, the capacity is that type's items in service and within
+         *     life (`capacity`), and `quantity` is not used.
          */
         FixtureRequest: {
             name: string;
@@ -25977,6 +25989,11 @@ export interface components {
             kind?: components["schemas"]["FixtureKindEnum"];
             /** @description How many of this resource exist (concurrency limit). */
             quantity?: number;
+            /**
+             * Format: uuid
+             * @description The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
+             */
+            equipment_type?: string | null;
             /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
             lead_time_days?: number | null;
             /** @description Steps that require this resource. */
@@ -26102,6 +26119,7 @@ export interface components {
          *     * `part_on_hold` - Part not on hold
          *     * `equipment_down` - Machine in service
          *     * `life_limit` - Life limit
+         *     * `tool_life` - Tool life
          *     * `training_not_authorized` - Operator trained
          *     * `revisit_rule` - Repeat visits
          *     * `substeps_incomplete` - Work instruction done
@@ -26112,7 +26130,7 @@ export interface components {
          *     * `measurement_out_of_spec` - Readings in spec
          * @enum {string}
          */
-        GateEnum: "work_order_not_workable" | "deviation_expired" | "part_quarantined" | "core_awaiting_authorisation" | "part_on_hold" | "equipment_down" | "life_limit" | "training_not_authorized" | "revisit_rule" | "substeps_incomplete" | "qualified_operator" | "quarantine_hold" | "qa_signoff" | "first_piece" | "measurement_out_of_spec";
+        GateEnum: "work_order_not_workable" | "deviation_expired" | "part_quarantined" | "core_awaiting_authorisation" | "part_on_hold" | "equipment_down" | "life_limit" | "tool_life" | "training_not_authorized" | "revisit_rule" | "substeps_incomplete" | "qualified_operator" | "quarantine_hold" | "qa_signoff" | "first_piece" | "measurement_out_of_spec";
         /**
          * @description * `CONSECUTIVE_FAILS` - Consecutive failures
          *     * `FAIL_RATE_PCT` - Failure rate (%)
@@ -26990,6 +27008,11 @@ export interface components {
              * @description Absolute limit - block/retire when reached
              */
             hard_limit?: string | null;
+            /**
+             * Format: uuid
+             * @description Tooling type this limit applies to (each item of the type is tracked). Units: parts, cycles or hours.
+             */
+            equipment_type?: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -27017,6 +27040,11 @@ export interface components {
              * @description Absolute limit - block/retire when reached
              */
             hard_limit?: string | null;
+            /**
+             * Format: uuid
+             * @description Tooling type this limit applies to (each item of the type is tracked). Units: parts, cycles or hours.
+             */
+            equipment_type?: string | null;
             archived?: boolean;
             /** @description Reason for this revision, recorded on the new version (AS9100D 8.3). */
             change_description?: string;
@@ -31876,6 +31904,9 @@ export interface components {
          *     program. `steps` is the set of operations that require it; the solver serializes ops
          *     against the `quantity` available (cumulative capacity). `steps` validates against the
          *     tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+         *
+         *     With an `equipment_type`, the capacity is that type's items in service and within
+         *     life (`capacity`), and `quantity` is not used.
          */
         PatchedFixtureRequest: {
             name?: string;
@@ -31891,6 +31922,11 @@ export interface components {
             kind?: components["schemas"]["FixtureKindEnum"];
             /** @description How many of this resource exist (concurrency limit). */
             quantity?: number;
+            /**
+             * Format: uuid
+             * @description The equipment type whose items are this resource. When set, capacity is how many are in service and within life; otherwise `quantity`.
+             */
+            equipment_type?: string | null;
             /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
             lead_time_days?: number | null;
             /** @description Steps that require this resource. */
@@ -32013,6 +32049,11 @@ export interface components {
              * @description Absolute limit - block/retire when reached
              */
             hard_limit?: string | null;
+            /**
+             * Format: uuid
+             * @description Tooling type this limit applies to (each item of the type is tracked). Units: parts, cycles or hours.
+             */
+            equipment_type?: string | null;
             archived?: boolean;
             /** @description Reason for this revision, recorded on the new version (AS9100D 8.3). */
             change_description?: string;

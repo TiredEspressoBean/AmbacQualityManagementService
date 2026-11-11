@@ -59,8 +59,9 @@ class GateCode(StrEnum):
     PART_QUARANTINED = 'part_quarantined'
     PART_ON_HOLD = 'part_on_hold'
     EQUIPMENT_DOWN = 'equipment_down'
-    # --- START: an approved extension
+    # --- START: an approved extension (or, for a tool, a reset)
     LIFE_LIMIT = 'life_limit'
+    TOOL_LIFE = 'tool_life'
     # --- START: a QA waiver
     FIRST_PIECE_PENDING = 'first_piece_pending'
     # --- START: supervisor override (the codes the API already answers with)
@@ -102,6 +103,8 @@ _SPECS = [
              "Maintenance", "the machine to return to service"),
     GateSpec(GateCode.LIFE_LIMIT, Stage.START, Escape.LIMIT_EXTENSION,
              "Engineering", "an approved life-limit extension"),
+    GateSpec(GateCode.TOOL_LIFE, Stage.START, Escape.LIMIT_EXTENSION,
+             "Tooling", "the tool to be reset after refurbishment, or an approved extension"),
     GateSpec(GateCode.FIRST_PIECE_PENDING, Stage.START, Escape.SIGNED_WAIVER,
              "QA", "QA to buy off the first piece"),
     GateSpec(GateCode.REVISIT_RULE, Stage.START, Escape.SUPERVISOR_OVERRIDE,
@@ -233,6 +236,12 @@ def floor_blockers(ctx: StartContext) -> list[Blocker]:
                                f"{part.ERP_id} is on hold — release the hold before starting it."))
     if part is not None and _carries(step, GateCode.LIFE_LIMIT):
         out += [Blocker(GateCode.LIFE_LIMIT, m) for m in _life_limit_refusals(part)]
+    # Tool life is opt-in, so it needs the step's own row. A visit already running
+    # isn't refused by the count its own start made.
+    resuming = ctx.execution is not None and ctx.execution.status == 'IN_PROGRESS'
+    if step is not None and step.has_gate(str(GateCode.TOOL_LIFE)) and not resuming:
+        from Tracker.services.life_tracking.tool_life import start_refusals
+        out += [Blocker(GateCode.TOOL_LIFE, m) for m in start_refusals(step, ctx.execution)]
     if step is not None and _carries(step, GateCode.EQUIPMENT_DOWN):
         machine = start_machine(step, part, ctx.execution)
         if machine is not None and machine.status != 'IN_SERVICE':
@@ -293,6 +302,8 @@ def _floor_applies(ctx: StartContext) -> list[GateCode]:
         codes += [GateCode.CORE_AWAITING_AUTHORISATION, GateCode.PART_QUARANTINED,
                   GateCode.PART_ON_HOLD, GateCode.LIFE_LIMIT]
     codes.append(GateCode.EQUIPMENT_DOWN)
+    if ctx.step is not None and ctx.step.has_gate(str(GateCode.TOOL_LIFE)):
+        codes.append(GateCode.TOOL_LIFE)
     if ctx.work_order is not None:
         codes += [GateCode.DEVIATION_EXPIRED, GateCode.WORK_ORDER_NOT_WORKABLE]
     return [c for c in codes if _carries(ctx.step, c)]
@@ -379,6 +390,9 @@ def record_start(execution, decision: StartDecision, *, by=None, at=None) -> Non
     _record(execution, Stage.START, decision.outcomes, by=by, at=at)
     from Tracker.services.qms.first_piece import join_on_start
     join_on_start(execution)
+    # Its tools go on the visit and the run is counted against their life.
+    from Tracker.services.life_tracking.tool_life import on_start as tools_on_start
+    tools_on_start(execution)
 
 
 # ============================================================================

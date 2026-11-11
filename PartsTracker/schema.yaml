@@ -60278,6 +60278,9 @@ components:
         program. `steps` is the set of operations that require it; the solver serializes ops
         against the `quantity` available (cumulative capacity). `steps` validates against the
         tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+
+        With an `equipment_type`, the capacity is that type's items in service and within
+        life (`capacity`), and `quantity` is not used.
       properties:
         id:
           type: string
@@ -60302,6 +60305,15 @@ components:
           maximum: 2147483647
           minimum: 0
           description: How many of this resource exist (concurrency limit).
+        equipment_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: The equipment type whose items are this resource. When set,
+            capacity is how many are in service and within life; otherwise `quantity`.
+        capacity:
+          type: integer
+          readOnly: true
         lead_time_days:
           type: integer
           maximum: 2147483647
@@ -60323,6 +60335,7 @@ components:
         archived:
           type: boolean
       required:
+      - capacity
       - id
       - name
       - step_names
@@ -60347,6 +60360,9 @@ components:
         program. `steps` is the set of operations that require it; the solver serializes ops
         against the `quantity` available (cumulative capacity). `steps` validates against the
         tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+
+        With an `equipment_type`, the capacity is that type's items in service and within
+        life (`capacity`), and `quantity` is not used.
       properties:
         name:
           type: string
@@ -60368,6 +60384,12 @@ components:
           maximum: 2147483647
           minimum: 0
           description: How many of this resource exist (concurrency limit).
+        equipment_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: The equipment type whose items are this resource. When set,
+            capacity is how many are in service and within life; otherwise `quantity`.
         lead_time_days:
           type: integer
           maximum: 2147483647
@@ -60651,6 +60673,7 @@ components:
       - part_on_hold
       - equipment_down
       - life_limit
+      - tool_life
       - training_not_authorized
       - revisit_rule
       - substeps_incomplete
@@ -60668,6 +60691,7 @@ components:
         * `part_on_hold` - Part not on hold
         * `equipment_down` - Machine in service
         * `life_limit` - Life limit
+        * `tool_life` - Tool life
         * `training_not_authorized` - Operator trained
         * `revisit_rule` - Repeat visits
         * `substeps_incomplete` - Work instruction done
@@ -62610,6 +62634,12 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           nullable: true
           description: Absolute limit - block/retire when reached
+        equipment_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Tooling type this limit applies to (each item of the type
+            is tracked). Units: parts, cycles or hours.'
         created_at:
           type: string
           format: date-time
@@ -62666,6 +62696,12 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           nullable: true
           description: Absolute limit - block/retire when reached
+        equipment_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Tooling type this limit applies to (each item of the type
+            is tracked). Units: parts, cycles or hours.'
         archived:
           type: boolean
         change_description:
@@ -71888,6 +71924,9 @@ components:
         program. `steps` is the set of operations that require it; the solver serializes ops
         against the `quantity` available (cumulative capacity). `steps` validates against the
         tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+
+        With an `equipment_type`, the capacity is that type's items in service and within
+        life (`capacity`), and `quantity` is not used.
       properties:
         name:
           type: string
@@ -71909,6 +71948,12 @@ components:
           maximum: 2147483647
           minimum: 0
           description: How many of this resource exist (concurrency limit).
+        equipment_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: The equipment type whose items are this resource. When set,
+            capacity is how many are in service and within life; otherwise `quantity`.
         lead_time_days:
           type: integer
           maximum: 2147483647
@@ -72121,6 +72166,12 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           nullable: true
           description: Absolute limit - block/retire when reached
+        equipment_type:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'Tooling type this limit applies to (each item of the type
+            is tracked). Units: parts, cycles or hours.'
         archived:
           type: boolean
         change_description:

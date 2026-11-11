@@ -253,6 +253,14 @@ class Fixture(SecureModel):
     quantity = models.PositiveIntegerField(
         default=1, help_text="How many of this resource exist (concurrency limit).",
     )
+    # Tracked tooling: when set, the capacity is the type's items in service and within
+    # life (tool_life.fixture_capacity), and `quantity` is not used.
+    equipment_type = models.ForeignKey(
+        'Tracker.EquipmentType', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='fixtures',
+        help_text="The equipment type whose items are this resource. When set, capacity is "
+                  "how many are in service and within life; otherwise `quantity`.",
+    )
     lead_time_days = models.PositiveIntegerField(
         null=True, blank=True,
         help_text="Days to acquire or produce this tooling if it's short — drives the "

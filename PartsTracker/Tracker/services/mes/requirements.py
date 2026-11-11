@@ -453,9 +453,12 @@ def sourcing_requirements(tenant) -> dict:
         })
     produce.sort(key=lambda r: r['need_by'])
 
-    # --- tooling: fixtures not yet on hand ----------------------------------
+    # --- tooling: fixtures not on hand (none, or none in service and within life) ---
+    from Tracker.services.life_tracking.tool_life import fixture_capacity
     tooling = []
-    for fx in Fixture.objects.filter(archived=False, tenant=tenant, quantity=0):
+    for fx in Fixture.objects.filter(archived=False, tenant=tenant):
+        if fixture_capacity(fx) > 0:
+            continue
         lead = fx.lead_time_days
         tooling.append({
             'fixture': fx.name,

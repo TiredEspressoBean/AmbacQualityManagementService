@@ -101,6 +101,10 @@ def planned_production_machine(step_id, part_id):
             affinity__in=[aff.DIALED_IN, aff.PREFERRED],
         ).select_related('equipment')
     )
+    # A tool the step names isn't the machine it runs on (tool_life.py).
+    from Tracker.services.life_tracking.tool_life import is_tooling, life_limited_type_ids
+    limited = life_limited_type_ids() if candidates else set()
+    candidates = [c for c in candidates if not is_tooling(c.equipment, limited)]
     if candidates:
         chosen = next((c for c in candidates if c.affinity == aff.DIALED_IN), candidates[0])
         return chosen.equipment
@@ -311,6 +315,8 @@ def advance_part_step(
         current_execution.completed_by = current_execution.assigned_to or operator
         current_execution.status = 'COMPLETED'
         current_execution.decision_result = str(decision_result) if decision_result else ''
+        from Tracker.services.life_tracking.tool_life import on_complete as tools_on_complete
+        tools_on_complete(current_execution)  # its tools accrue the run's hours
 
     # Draw the material this step consumes, now that the step is done. Hooked to the
     # step the part is LEAVING (not the one it enters) because that's the work that

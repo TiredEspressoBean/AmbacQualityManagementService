@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,7 @@ import {
   useProcesses,
   useProcessDetail,
 } from "@/hooks/useScheduling";
+import { useRetrieveEquipmentTypes } from "@/hooks/useRetrieveEquipmentTypes";
 
 const KIND_OPTIONS = [
   { value: "FIXTURE", label: "Fixture" },
@@ -76,6 +78,11 @@ export default function EditFixtureFormPage() {
   // Cascading Process → Step picker state.
   const [processId, setProcessId] = useState<string | undefined>();
   const [selected, setSelected] = useState<SelStep[]>([]);
+  // Tracked tooling: with an equipment type, capacity is that type's items in service
+  // and within life, and the typed quantity isn't used.
+  const [equipmentType, setEquipmentType] = useState<string>("none");
+  const { data: typesResp } = useRetrieveEquipmentTypes({ limit: 500 });
+  const equipmentTypes = typesResp?.results ?? [];
 
   const { data: processesData } = useProcesses();
   const processes = useMemo(
@@ -119,6 +126,7 @@ export default function EditFixtureFormPage() {
       const ids: string[] = (f.steps ?? []).map(String);
       const names: string[] = f.step_names ?? [];
       setSelected(ids.map((id, i) => ({ id, label: names[i] ?? "Step" })));
+      setEquipmentType(f.equipment_type ? String(f.equipment_type) : "none");
     }
   }, [mode, fixture, form]);
 
@@ -135,6 +143,7 @@ export default function EditFixtureFormPage() {
       kind: values.kind,
       quantity: values.quantity,
       lead_time_days: values.lead_time_days ?? null,
+      equipment_type: equipmentType === "none" ? null : equipmentType,
       steps: selected.map((s) => s.id),
     };
     const done = () => navigate({ to: "/editor/tooling" });
@@ -241,11 +250,33 @@ export default function EditFixtureFormPage() {
                       onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
                     />
                   </FormControl>
-                  <FormDescription>How many exist (concurrency limit).</FormDescription>
+                  <FormDescription>
+                    {equipmentType === "none"
+                      ? "How many exist (concurrency limit)."
+                      : "Not used: the tracked items below decide how many are available."}
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="fixture-eqtype">Tracked as equipment</Label>
+            <Select value={equipmentType} onValueChange={setEquipmentType}>
+              <SelectTrigger id="fixture-eqtype" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Not tracked — use the quantity</SelectItem>
+                {equipmentTypes.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {equipmentType === "none"
+                ? "For tooling recorded item by item (each die, each fixture), pick its equipment type: the scheduler then counts those in service and within their life."
+                : `Available now: ${fixture?.capacity ?? "—"} in service and within life.`}
+            </p>
           </div>
 
           <FormField

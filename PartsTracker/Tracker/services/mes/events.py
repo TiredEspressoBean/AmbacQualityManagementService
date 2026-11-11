@@ -192,3 +192,50 @@ register_event(EventType(
     ),
     external_routable=False,
 ))
+
+
+# =============================================================================
+# tool_life.warning — a tool reached its soft life limit (services/life_tracking/
+# tool_life.py). Its owners plan the refurbishment before the hard limit stops work.
+# =============================================================================
+
+@dataclass(frozen=True)
+class ToolLifeWarningPayload:
+    """Payload for `tool_life.warning`."""
+
+    id: str                       # LifeTracking id; correlation id source
+    tenant_id: str
+    equipment_id: str
+    equipment_name: str
+    limit_name: str
+    current: str
+    soft_limit: str
+    hard_limit: str
+
+    @classmethod
+    def sample(cls) -> 'ToolLifeWarningPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000a1',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            equipment_id='00000000-0000-0000-0000-0000000000a2',
+            equipment_name='Nozzle press die #2',
+            limit_name='Die strokes',
+            current='45000',
+            soft_limit='45000',
+            hard_limit='50000',
+        )
+
+
+register_event(EventType(
+    code='tool_life.warning',
+    label='Tool Near Its Life Limit',
+    domain='Production',
+    payload_schema=ToolLifeWarningPayload,
+    default_channels=['in_app'],
+    default_recipient_groups=['Production Manager', 'Engineering'],
+    default_on=True,
+    transactional=False,
+    description='A tool or fixture reached its soft life limit: plan its refurbishment '
+                'before the hard limit stops the work that needs it.',
+    external_routable=False,
+))

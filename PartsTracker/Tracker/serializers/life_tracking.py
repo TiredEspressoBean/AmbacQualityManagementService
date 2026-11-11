@@ -29,7 +29,7 @@ class LifeLimitDefinitionSerializer(SecureModelMixin):
         model = LifeLimitDefinition
         fields = (
             'id', 'name', 'unit', 'unit_label',
-            'is_calendar_based', 'soft_limit', 'hard_limit',
+            'is_calendar_based', 'soft_limit', 'hard_limit', 'equipment_type',
             'created_at', 'updated_at', 'archived', 'version', 'change_description',
         )
         read_only_fields = ('created_at', 'updated_at', 'version')

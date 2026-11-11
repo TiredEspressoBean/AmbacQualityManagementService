@@ -394,14 +394,17 @@ def get_changeover_matrix(tenant) -> dict[tuple, float]:
 
 
 def get_fixture_availability(tenant) -> dict[UUID, FixtureData]:
-    """Shared tooling with limited quantity: `fixture_id → FixtureData`."""
+    """Shared tooling with limited quantity: `fixture_id → FixtureData`. A fixture of an
+    equipment type has as many as are in service and within life; one without, its
+    typed quantity (tool_life.fixture_capacity)."""
     from Tracker.models import Fixture
+    from Tracker.services.life_tracking.tool_life import fixture_capacity
 
     result: dict[UUID, FixtureData] = {}
     for f in Fixture.objects.filter(archived=False, tenant=tenant).prefetch_related('steps'):
         result[f.id] = FixtureData(
             fixture_id=f.id,
-            quantity=f.quantity,
+            quantity=fixture_capacity(f),
             step_ids=frozenset(s.id for s in f.steps.all()),
         )
     return result

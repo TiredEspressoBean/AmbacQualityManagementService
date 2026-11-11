@@ -19,14 +19,24 @@ class FixtureSerializer(serializers.ModelSerializer):
     """A shared, quantity-limited scheduling resource — fixture / cutting tool / die / NC
     program. `steps` is the set of operations that require it; the solver serializes ops
     against the `quantity` available (cumulative capacity). `steps` validates against the
-    tenant-scoped Steps manager, so a cross-tenant step id is rejected."""
+    tenant-scoped Steps manager, so a cross-tenant step id is rejected.
+
+    With an `equipment_type`, the capacity is that type's items in service and within
+    life (`capacity`), and `quantity` is not used."""
     step_names = serializers.SerializerMethodField()
+    capacity = serializers.SerializerMethodField()
 
     class Meta:
         model = Fixture
         # `archived` so a deleted fixture shows as such and can be restored (PATCH it false).
-        fields = ('id', 'name', 'kind', 'quantity', 'lead_time_days', 'steps', 'step_names', 'archived')
-        read_only_fields = ('id', 'step_names')
+        fields = ('id', 'name', 'kind', 'quantity', 'equipment_type', 'capacity', 'lead_time_days',
+                  'steps', 'step_names', 'archived')
+        read_only_fields = ('id', 'step_names', 'capacity')
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_capacity(self, obj):
+        from Tracker.services.life_tracking.tool_life import fixture_capacity
+        return fixture_capacity(obj)
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_step_names(self, obj):

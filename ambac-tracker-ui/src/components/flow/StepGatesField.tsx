@@ -49,6 +49,8 @@ export const GATE_CATALOG: { gate: string; stage: Stage; label: string; hint: st
       hint: "No work starts on a machine that is out of service, in maintenance or in calibration." },
     { gate: "life_limit", stage: "START", label: "Life limit",
       hint: "A part at its life limit (including how often a unit has been remanned) doesn't start without an approved extension." },
+    { gate: "tool_life", stage: "START", label: "Tool life",
+      hint: "No work starts with a tool or fixture at its life limit until it's reset after refurbishment or an extension is approved." },
     { gate: "training_not_authorized", stage: "START", label: "Operator trained",
       hint: "The operator holds the step's training, and the machine type's; a supervisor can authorize past it." },
     { gate: "revisit_rule", stage: "START", label: "Repeat visits",

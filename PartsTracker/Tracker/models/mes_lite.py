@@ -1277,6 +1277,7 @@ class StepGateKind(models.TextChoices):
     PART_ON_HOLD = 'part_on_hold', 'Part not on hold'
     EQUIPMENT_DOWN = 'equipment_down', 'Machine in service'
     LIFE_LIMIT = 'life_limit', 'Life limit'
+    TOOL_LIFE = 'tool_life', 'Tool life'
     TRAINING = 'training_not_authorized', 'Operator trained'
     REVISIT_RULE = 'revisit_rule', 'Repeat visits'
     SUBSTEPS_INCOMPLETE = 'substeps_incomplete', 'Work instruction done'

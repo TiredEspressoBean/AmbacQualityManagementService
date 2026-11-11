@@ -222,8 +222,11 @@ def start_load(*, work_order, step, parts, user, authorizer=None, reason=None,
         if refused:
             raise StartRefused(refused)
         _assert_one_machine_for_first_piece(step, visits)
-        for v in visits:
-            start_execution(v, user, authorizer=authorizer, reason=reason)
+        # The load's tools are counted once all of it has started: a cycle once.
+        from Tracker.services.life_tracking.tool_life import one_cycle_per_load
+        with one_cycle_per_load():
+            for v in visits:
+                start_execution(v, user, authorizer=authorizer, reason=reason)
 
         batch = BatchExecution.objects.create(
             tenant=work_order.tenant, work_order=work_order, step=step, started_by=user,
@@ -324,6 +327,8 @@ def complete_batch(*, batch: "BatchExecution", user: "User") -> CompleteResult:
         batch.completed_by = user
         batch.save(update_fields=['completed_at', 'completed_by'])
         logger.info("BatchExecution %s completed by user %s", batch.id, user.id)
+        from Tracker.services.life_tracking.tool_life import on_load_complete
+        on_load_complete(batch)  # the run's hours, once for the load
 
         live = [p for p in batch.parts.all() if p.part_status not in TERMINAL_PART_STATUSES]
         # Small cohorts advance synchronously so the operator sees the move
