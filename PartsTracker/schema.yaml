@@ -15864,6 +15864,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/LifeTrackingResetRequest'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -15892,13 +15893,62 @@ paths:
           description: ''
   /api/LifeTracking/for_object/:
     get:
-      operationId: api_LifeTracking_for_object_retrieve
+      operationId: api_LifeTracking_for_object_list
       description: |-
         Get all life tracking records for a specific object.
 
         Query params:
         - content_type: e.g., "tracker.parts" or content_type ID
         - object_id: UUID of the object
+      parameters:
+      - in: query
+        name: cached_status
+        schema:
+          type: string
+      - in: query
+        name: content_type
+        schema:
+          type: string
+        description: '"app_label.model" (e.g. "tracker.equipments") or id'
+        required: true
+      - in: query
+        name: definition
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: object_id
+        schema:
+          type: string
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: source
+        schema:
+          type: string
+          enum:
+          - CALCULATED
+          - CUSTOMER
+          - ESTIMATED
+          - LOGBOOK
+          - OEM
+          - RESET
+          - TRANSFERRED
+        description: |-
+          Where did this life data come from?
+
+          * `OEM` - OEM Records
+          * `CUSTOMER` - Customer Provided
+          * `LOGBOOK` - Logbook Entry
+          * `CALCULATED` - Calculated
+          * `ESTIMATED` - Estimated
+          * `TRANSFERRED` - Transferred from Core
+          * `RESET` - Reset After Rebuild
       tags:
       - api
       security:
@@ -15909,7 +15959,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LifeTracking'
+                type: array
+                items:
+                  $ref: '#/components/schemas/LifeTracking'
           description: ''
   /api/LifeTracking/metadata/:
     get:
@@ -62781,6 +62833,9 @@ components:
         definition_unit:
           type: string
           readOnly: true
+        definition_is_current:
+          type: boolean
+          readOnly: true
         accumulated:
           type: string
           format: decimal
@@ -62814,15 +62869,18 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+          nullable: true
         remaining_to_soft_limit:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+          nullable: true
         percent_used:
           type: number
           format: double
           readOnly: true
+          nullable: true
         status:
           type: string
           readOnly: true
@@ -62834,11 +62892,13 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+          nullable: true
         effective_soft_limit:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+          nullable: true
         hard_limit_override:
           type: string
           format: decimal
@@ -62885,6 +62945,7 @@ components:
       - created_at
       - current_value
       - definition
+      - definition_is_current
       - definition_name
       - definition_unit
       - effective_hard_limit
@@ -63024,11 +63085,15 @@ components:
       - object_id
     LifeTrackingResetRequest:
       type: object
-      description: Serializer for resetting life tracking (after overhaul)
+      description: |-
+        Serializer for resetting life tracking (after overhaul). The reason is required
+        (user ruling 2026-11-11): a reset puts a worn item back to zero.
       properties:
         reason:
           type: string
-          default: ''
+          minLength: 1
+      required:
+      - reason
     LifeTrackingSourceEnum:
       enum:
       - OEM

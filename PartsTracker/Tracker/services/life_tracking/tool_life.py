@@ -140,10 +140,10 @@ def visit_tools(execution) -> list:
             .filter(step_execution=execution, role__in=TOOL_ROLES).select_related('equipment')]
 
 
-def start_refusals(step, execution=None) -> list[str]:
-    """Each tool a start would use that is at its hard limit."""
+def start_refusals(step, execution=None) -> list[tuple]:
+    """Each tool a start would use that is at its hard limit, as (tool, why)."""
     tools = {e.id: e for e in authored_tools(step) + visit_tools(execution)}
-    return [_limit_text(e, t) for e in tools.values() for t in at_hard_limit(e)]
+    return [(e, _limit_text(e, t)) for e in tools.values() for t in at_hard_limit(e)]
 
 
 # --- counting -------------------------------------------------------------

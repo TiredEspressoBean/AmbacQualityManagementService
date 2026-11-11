@@ -7,7 +7,7 @@ ViewSets for life tracking models:
 """
 from django.contrib.contenttypes.models import ContentType
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -228,7 +228,15 @@ class LifeTrackingViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
         )
         return Response(LifeTrackingSerializer(tracking, context={'request': request}).data)
 
-    @action(detail=False, methods=['get'])
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('content_type', str, required=True,
+                             description='"app_label.model" (e.g. "tracker.equipments") or id'),
+            OpenApiParameter('object_id', str, required=True),
+        ],
+        responses={200: LifeTrackingSerializer(many=True)},
+    )
+    @action(detail=False, methods=['get'], pagination_class=None)
     def for_object(self, request):
         """
         Get all life tracking records for a specific object.
@@ -250,7 +258,8 @@ class LifeTrackingViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
         if '.' in content_type_param:
             app_label, model = content_type_param.split('.')
             try:
-                ct = ContentType.objects.get(app_label=app_label, model=model)
+                # Either case: the app label is "Tracker", a caller writes "tracker".
+                ct = ContentType.objects.get(app_label__iexact=app_label, model__iexact=model)
             except ContentType.DoesNotExist:
                 return Response({'detail': 'Invalid content_type'}, status=status.HTTP_400_BAD_REQUEST)
         else:

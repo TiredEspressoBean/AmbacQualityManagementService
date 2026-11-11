@@ -4,6 +4,7 @@ import { useRetrieveQuarantineDispositions } from "@/hooks/useRetrieveQuarantine
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PartBlockersCard } from "@/components/parts/PartBlockersCard";
+import { LifeTrackingSection } from "@/components/life-limits/LifeTrackingSection";
 
 // Compact list of QRs + Dispositions filtered by part id, rendered under the
 // info sections on the part-detail page. Each row deep-links into the
@@ -16,6 +17,10 @@ export function PartLinkedRecordsSection({ modelData }: { modelData: { id?: stri
         <>
             {/* What holds the part at its step, and a way past the blocks that allow one. */}
             {modelData?.id != null && <PartBlockersCard partId={String(modelData.id)} />}
+            {/* Its life limits: reset or extend one that stops its work starting. */}
+            {modelData?.id != null && (
+                <LifeTrackingSection contentType="tracker.parts" objectId={String(modelData.id)} />
+            )}
             <LinkedRecords modelData={modelData} />
         </>
     );

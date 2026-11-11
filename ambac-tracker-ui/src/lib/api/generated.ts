@@ -4468,6 +4468,7 @@ export type LifeTracking = {
   definition: string;
   definition_name: string;
   definition_unit: string;
+  definition_is_current: boolean;
   accumulated?: /**
    * Current accumulated value
    *
@@ -4499,22 +4500,22 @@ export type LifeTracking = {
   /**
    * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
    */
-  remaining: string;
+  remaining: string | null;
   /**
    * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
    */
-  remaining_to_soft_limit: string;
-  percent_used: number;
+  remaining_to_soft_limit: string | null;
+  percent_used: number | null;
   status: string;
   is_blocked: boolean;
   /**
    * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
    */
-  effective_hard_limit: string;
+  effective_hard_limit: string | null;
   /**
    * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
    */
-  effective_soft_limit: string;
+  effective_soft_limit: string | null;
   /**
    * Override hard limit for this specific instance
    *
@@ -22747,6 +22748,7 @@ const LifeTracking = z.object({
   definition: z.string().uuid(),
   definition_name: z.string(),
   definition_unit: z.string(),
+  definition_is_current: z.boolean(),
   accumulated: z
     .string()
     .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
@@ -22754,13 +22756,25 @@ const LifeTracking = z.object({
   reference_date: z.string().nullish(),
   source: LifeTrackingSourceEnum.optional(),
   current_value: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
-  remaining: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
-  remaining_to_soft_limit: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
-  percent_used: z.number(),
+  remaining: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullable(),
+  remaining_to_soft_limit: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullable(),
+  percent_used: z.number().nullable(),
   status: z.string(),
   is_blocked: z.boolean(),
-  effective_hard_limit: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
-  effective_soft_limit: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
+  effective_hard_limit: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullable(),
+  effective_soft_limit: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
+    .nullable(),
   hard_limit_override: z
     .string()
     .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
@@ -22802,9 +22816,7 @@ const LifeTrackingOverrideRequest = z.object({
 const LifeTrackingIncrementRequest = z.object({
   value: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
 });
-const LifeTrackingResetRequest = z
-  .object({ reason: z.string().default("") })
-  .partial();
+const LifeTrackingResetRequest = z.object({ reason: z.string().min(1) });
 const MasterWorkbookUploadRequestRequest = z.object({
   file: z.instanceof(File),
   dry_run: z.boolean().optional().default(true),
@@ -43670,7 +43682,7 @@ Supports increment, reset (overhaul), and per-instance limit overrides.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ reason: z.string().default("") }).partial(),
+        schema: z.object({ reason: z.string().min(1) }),
       },
       {
         name: "id",
@@ -43691,14 +43703,56 @@ Supports increment, reset (overhaul), and per-instance limit overrides.`,
   {
     method: "get",
     path: "/api/LifeTracking/for_object/",
-    alias: "api_LifeTracking_for_object_retrieve",
+    alias: "api_LifeTracking_for_object_list",
     description: `Get all life tracking records for a specific object.
 
 Query params:
 - content_type: e.g., &quot;tracker.parts&quot; or content_type ID
 - object_id: UUID of the object`,
     requestFormat: "json",
-    response: LifeTracking,
+    parameters: [
+      {
+        name: "cached_status",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "content_type",
+        type: "Query",
+        schema: z.string(),
+      },
+      {
+        name: "definition",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "object_id",
+        type: "Query",
+        schema: z.string(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "source",
+        type: "Query",
+        schema: z
+          .enum([
+            "CALCULATED",
+            "CUSTOMER",
+            "ESTIMATED",
+            "LOGBOOK",
+            "OEM",
+            "RESET",
+            "TRANSFERRED",
+          ])
+          .optional(),
+      },
+    ],
+    response: z.array(LifeTracking),
   },
   {
     method: "get",

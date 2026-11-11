@@ -3,6 +3,7 @@ import { LocationCombobox } from "@/components/locations/LocationCombobox";
 
 import { Combobox } from "@/components/ui/combobox";
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { LifeTrackingSection } from "@/components/life-limits/LifeTrackingSection";
 import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -635,7 +636,10 @@ export default function EquipmentFormPage() {
             )}
             {mode === "edit" && equipmentId && (
                 <div className="max-w-3xl mx-auto py-6">
-                    <div className="space-y-6"><RecordHistoryCard endpoint="Equipment" id={equipmentId} model="equipments" /><RecordArchiveCard endpoint="Equipment" id={equipmentId} model="equipments" /></div>
+                    <div className="space-y-6">
+                        {/* Tool / fixture life: reset after refurbishment, or extend. */}
+                        <LifeTrackingSection contentType="tracker.equipments" objectId={equipmentId} />
+                        <RecordHistoryCard endpoint="Equipment" id={equipmentId} model="equipments" /><RecordArchiveCard endpoint="Equipment" id={equipmentId} model="equipments" /></div>
                 </div>
             )}
         </div>

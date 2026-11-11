@@ -137,6 +137,8 @@ SPECS: dict[GateCode, GateSpec] = {s.code: s for s in _SPECS}
 class Blocker:
     code: GateCode
     message: str
+    # Where it's cleared, when there's a page for it (a life limit's reset / extend).
+    link: str = ''
     # What it holds back, for the andon's call (services/mes/andon.py). Set by the
     # start decision; not part of the API body.
     part: Optional['Parts'] = field(default=None, compare=False, repr=False)
@@ -150,7 +152,7 @@ class Blocker:
     def to_dict(self) -> dict:
         return {'code': str(self.code), 'message': self.message, 'stage': str(self.spec.stage),
                 'escape': str(self.spec.escape), 'clears': self.spec.clears,
-                'waiting_on': self.spec.waiting_on}
+                'waiting_on': self.spec.waiting_on, 'link': self.link}
 
 
 class StartRefused(ValidationError):
@@ -246,12 +248,15 @@ def floor_blockers(ctx: StartContext, *, only: set | None = None) -> list[Blocke
             out.append(Blocker(GateCode.PART_ON_HOLD,
                                f"{part.ERP_id} is on hold — release the hold before starting it."))
     if part is not None and want(GateCode.LIFE_LIMIT):
-        out += [Blocker(GateCode.LIFE_LIMIT, m) for m in _life_limit_refusals(part)]
+        out += [Blocker(GateCode.LIFE_LIMIT, m, link=f"/details/Parts/{part.id}")
+                for m in _life_limit_refusals(part)]
     # Tool life is opt-in, so it needs the step's own row (no `step is None` default).
     if step is not None and (only is None or GateCode.TOOL_LIFE in only) \
             and step.has_gate(str(GateCode.TOOL_LIFE)):
         from Tracker.services.life_tracking.tool_life import start_refusals
-        out += [Blocker(GateCode.TOOL_LIFE, m) for m in start_refusals(step, ctx.execution)]
+        # Each names the tool, and leads to its page (reset / extend there).
+        out += [Blocker(GateCode.TOOL_LIFE, m, link=f"/editor/equipment/{tool.id}/edit")
+                for tool, m in start_refusals(step, ctx.execution)]
     if step is not None and want(GateCode.EQUIPMENT_DOWN):
         refusal = machine_refusal(start_machine(step, part, ctx.execution, ctx.machine))
         if refusal:

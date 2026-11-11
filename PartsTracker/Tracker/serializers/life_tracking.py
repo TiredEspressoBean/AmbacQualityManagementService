@@ -86,19 +86,28 @@ class LifeTrackingSerializer(SecureModelMixin):
     definition_unit = serializers.CharField(source='definition.unit_label', read_only=True)
     content_type_model = serializers.SerializerMethodField()
     current_value = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    remaining = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    remaining_to_soft_limit = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    percent_used = serializers.FloatField(read_only=True)
+    # Null when the limit has no hard / soft value — declared so, or the generated
+    # client rejects the response the first time one is missing.
+    remaining = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, allow_null=True)
+    remaining_to_soft_limit = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True,
+                                                       allow_null=True)
+    percent_used = serializers.FloatField(read_only=True, allow_null=True)
     status = serializers.CharField(read_only=True)
     is_blocked = serializers.BooleanField(read_only=True)
-    effective_hard_limit = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    effective_soft_limit = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    effective_hard_limit = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True,
+                                                    allow_null=True)
+    effective_soft_limit = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True,
+                                                    allow_null=True)
+    # A tracking against a superseded version of its limit: kept for the record, but
+    # the gates judge the current version's (services/mes/gates.py).
+    definition_is_current = serializers.BooleanField(source='definition.is_current_version',
+                                                     read_only=True)
 
     class Meta:
         model = LifeTracking
         fields = (
             'id', 'content_type', 'content_type_model', 'object_id',
-            'definition', 'definition_name', 'definition_unit',
+            'definition', 'definition_name', 'definition_unit', 'definition_is_current',
             'accumulated', 'reference_date', 'source',
             'current_value', 'remaining', 'remaining_to_soft_limit',
             'percent_used', 'status', 'is_blocked',
@@ -160,8 +169,9 @@ class LifeTrackingIncrementSerializer(serializers.Serializer):
 
 
 class LifeTrackingResetSerializer(serializers.Serializer):
-    """Serializer for resetting life tracking (after overhaul)"""
-    reason = serializers.CharField(required=False, allow_blank=True, default="")
+    """Serializer for resetting life tracking (after overhaul). The reason is required
+    (user ruling 2026-11-11): a reset puts a worn item back to zero."""
+    reason = serializers.CharField(required=True, allow_blank=False)
 
 
 class LifeTrackingOverrideSerializer(serializers.Serializer):

@@ -322,8 +322,11 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
             } else {
                 // A refusal says which part didn't start and why (with "Waiting on: …").
                 const label = allParts.find((p) => String(p.id) === selectedIds[0])?.ERP_id;
+                // Where it's cleared, when there's a page (a tool's or part's life).
+                const link = (e as { link?: string } | null)?.link;
                 toast.error(label ? `Couldn't start ${label}` : "Couldn't start the work", {
                     description: e instanceof Error ? e.message : undefined,
+                    ...(link ? { action: { label: "Open", onClick: () => { window.location.assign(link); } } } : {}),
                 });
             }
         } finally {

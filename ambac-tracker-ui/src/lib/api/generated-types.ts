@@ -6059,7 +6059,7 @@ export interface paths {
          *     - content_type: e.g., "tracker.parts" or content_type ID
          *     - object_id: UUID of the object
          */
-        get: operations["api_LifeTracking_for_object_retrieve"];
+        get: operations["api_LifeTracking_for_object_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -27083,6 +27083,7 @@ export interface components {
             definition: string;
             readonly definition_name: string;
             readonly definition_unit: string;
+            readonly definition_is_current: boolean;
             /**
              * Format: decimal
              * @description Current accumulated value
@@ -27108,17 +27109,17 @@ export interface components {
             /** Format: decimal */
             readonly current_value: string;
             /** Format: decimal */
-            readonly remaining: string;
+            readonly remaining: string | null;
             /** Format: decimal */
-            readonly remaining_to_soft_limit: string;
+            readonly remaining_to_soft_limit: string | null;
             /** Format: double */
-            readonly percent_used: number;
+            readonly percent_used: number | null;
             readonly status: string;
             readonly is_blocked: boolean;
             /** Format: decimal */
-            readonly effective_hard_limit: string;
+            readonly effective_hard_limit: string | null;
             /** Format: decimal */
-            readonly effective_soft_limit: string;
+            readonly effective_soft_limit: string | null;
             /**
              * Format: decimal
              * @description Override hard limit for this specific instance
@@ -27209,9 +27210,11 @@ export interface components {
             source?: components["schemas"]["LifeTrackingSourceEnum"];
             archived?: boolean;
         };
-        /** @description Serializer for resetting life tracking (after overhaul) */
+        /**
+         * @description Serializer for resetting life tracking (after overhaul). The reason is required
+         *     (user ruling 2026-11-11): a reset puts a worn item back to zero.
+         */
         LifeTrackingResetRequest: {
-            /** @default  */
             reason: string;
         };
         /**
@@ -53949,7 +53952,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["LifeTrackingResetRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["LifeTrackingResetRequest"];
@@ -53986,9 +53989,29 @@ export interface operations {
             };
         };
     };
-    api_LifeTracking_for_object_retrieve: {
+    api_LifeTracking_for_object_list: {
         parameters: {
-            query?: never;
+            query: {
+                cached_status?: string;
+                /** @description "app_label.model" (e.g. "tracker.equipments") or id */
+                content_type: string;
+                definition?: string;
+                object_id: string;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /**
+                 * @description Where did this life data come from?
+                 *
+                 *     * `OEM` - OEM Records
+                 *     * `CUSTOMER` - Customer Provided
+                 *     * `LOGBOOK` - Logbook Entry
+                 *     * `CALCULATED` - Calculated
+                 *     * `ESTIMATED` - Estimated
+                 *     * `TRANSFERRED` - Transferred from Core
+                 *     * `RESET` - Reset After Rebuild
+                 */
+                source?: "CALCULATED" | "CUSTOMER" | "ESTIMATED" | "LOGBOOK" | "OEM" | "RESET" | "TRANSFERRED";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -54000,7 +54023,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LifeTracking"];
+                    "application/json": components["schemas"]["LifeTracking"][];
                 };
             };
         };

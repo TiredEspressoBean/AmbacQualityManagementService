@@ -105,8 +105,21 @@ function rethrow(e: unknown, what: string): never {
     const body = apiErrorBody(e);
     const detail = typeof body === "object" && body !== null
         ? (body as { detail?: unknown }).detail : undefined;
-    if (typeof detail === "string" && detail) throw new Error(detail + waitingOn(body));
+    if (typeof detail === "string" && detail) {
+        const err = new Error(detail + waitingOn(body)) as Error & { link?: string };
+        err.link = refusalLink(body);
+        throw err;
+    }
     throw new Error(`${what}: ${describeApiError(e)}`);
+}
+
+/** Where a refusal is cleared, when it has a page — a life limit's reset / extend. */
+export function refusalLink(body: unknown): string | undefined {
+    const blockers = (body as { blockers?: unknown } | null)?.blockers;
+    if (!Array.isArray(blockers)) return undefined;
+    const link = blockers.map((b) => (b as { link?: unknown }).link)
+        .find((l): l is string => typeof l === "string" && l.length > 0);
+    return link;
 }
 
 /** A start gate's refusal says who the floor is waiting on (the andon, user decision

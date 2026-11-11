@@ -122,6 +122,27 @@ class ToolLifeTests(TenantTestCase):
         with self.assertRaisesMessage(ValidationError, "reached its life limit"):
             tool_life.capture(None, self.die, 'TOOL')
 
+    # --- the Life section: reset / extend (P4, user ruling 2026-11-11)
+    def test_the_refusal_leads_to_the_tools_page(self):
+        self._limit('parts', 1)
+        start_execution(self._visit(0), self.user_a)
+        with self.assertRaises(StartRefused) as ctx:
+            start_execution(self._visit(1), self.user_a)
+        self.assertEqual(ctx.exception.blockers[0].to_dict()['link'],
+                         f"/editor/equipment/{self.die.id}/edit")
+
+    def test_a_reset_needs_a_reason_and_the_list_marks_superseded_limits(self):
+        definition = self._limit('parts', 5)
+        tracking = LifeTracking.for_object(self.die, definition, accumulated=Decimal(5))[0]
+        definition.create_new_version(user=self.user_a, change_description="Raised", hard_limit=Decimal(8))
+        self.authenticate_superuser(tenant=self.tenant_a)
+        resp = self.client.post(f"/api/LifeTracking/{tracking.id}/reset/", {}, format='json')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        resp = self.client.get("/api/LifeTracking/for_object/",
+                               {'content_type': 'tracker.equipments', 'object_id': str(self.die.id)})
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual([r['definition_is_current'] for r in resp.json()], [False])
+
     # --- scheduling capacity
     def test_a_typed_fixture_schedules_the_items_in_service_and_within_life(self):
         parts = self._limit('parts', 10)
