@@ -228,8 +228,11 @@ class DecisionCosignTests(TenantContextMixin, TestCase):
         se = StepExecution.objects.filter(
             part=self.part, step=self.fail_step).first()
         self.assertIsNotNone(se)
-        self.assertEqual(se.assigned_to_id, self.operator.id,
-                         'the operator keeps the work they are doing')
+        self.assertNotEqual(se.assigned_to_id, self.lead.id,
+                            'the lead who co-signed is not handed the work')
+        # User decision 2026-11-04: a first visit to a step is unassigned (anyone picks
+        # it up) whatever the revisit rule; SAME applies to repeat visits only.
+        self.assertIsNone(se.assigned_to_id)
 
     def test_uncosigned_path_leaves_authorized_by_null(self):
         """A lead resolving from their own terminal is a single actor: they are
@@ -242,7 +245,8 @@ class DecisionCosignTests(TenantContextMixin, TestCase):
             part=self.part, step=self.fail_step).first()
         self.assertEqual(log.operator_id, self.lead.id)
         self.assertIsNone(log.authorized_by_id)
-        self.assertEqual(se.assigned_to_id, self.lead.id)
+        # A first visit is unassigned (user decision 2026-11-04).
+        self.assertIsNone(se.assigned_to_id)
 
     def test_response_echoes_the_authorizer(self):
         resp = self._resolve(self.operator, **self._cosign())
