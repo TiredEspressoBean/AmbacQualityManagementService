@@ -68,6 +68,8 @@ type EnsureVariables = {
     stepId: string;
     /** Supervisor re-auth to push past the gate (a DIFFERENT user's login). */
     override?: OverrideCredentials;
+    /** The production machine chosen at Start Work (one the step runs on). */
+    machine?: string;
 };
 
 type EnsureResult = {
@@ -119,9 +121,11 @@ export function waitingOn(body: unknown): string {
 }
 
 export async function ensureStepExecution(
-    { partId, stepId, override }: EnsureVariables,
+    { partId, stepId, override, machine }: EnsureVariables,
 ): Promise<EnsureResult> {
     const headers = { "X-CSRFToken": getCookie("csrftoken") ?? "" };
+    // The production machine chosen at Start Work, when the step offers a choice.
+    const onMachine = machine ? { equipment: machine } : {};
 
     // 1. Try to find an existing execution for this (part, step).
     const listed = await api.api_StepExecutions_list({
@@ -136,13 +140,16 @@ export async function ensureStepExecution(
         // for a row already IN_PROGRESS and owned by this user.
         try {
             await api.api_StepExecutions_claim_create(
-                override
-                    ? {
-                        override_email: override.email,
-                        override_password: override.password,
-                        override_reason: override.reason,
-                    }
-                    : {},
+                {
+                    ...onMachine,
+                    ...(override
+                        ? {
+                            override_email: override.email,
+                            override_password: override.password,
+                            override_reason: override.reason,
+                        }
+                        : {}),
+                },
                 { params: { id: existing.id }, headers },
             );
         } catch (e) {
@@ -159,6 +166,7 @@ export async function ensureStepExecution(
                 part: partId,
                 step: stepId,
                 status: "IN_PROGRESS",
+                ...onMachine,
                 ...(override
                     ? {
                         override_email: override.email,

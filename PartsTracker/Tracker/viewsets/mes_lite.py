@@ -3344,6 +3344,29 @@ class StepsViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, Da
         return Response(StepsSerializer(step, context={"request": request}).data,
                         status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        responses=inline_serializer(name='StepMachines', fields={
+            'machines': inline_serializer(name='StepMachine', many=True, fields={
+                'id': serializers.UUIDField(),
+                'name': serializers.CharField(),
+                'status': serializers.CharField(),
+                'refusal': serializers.CharField(allow_null=True),
+            }),
+        }),
+        description="The production machines a step runs on (authored affinities, best "
+                    "first; tooling left out), each with why it can't run work now, if it "
+                    "can't — the Start Work machine picker.",
+    )
+    @action(detail=True, methods=["get"])
+    def machines(self, request, pk=None):
+        from Tracker.services.mes.gates import machine_refusal
+        from Tracker.services.mes.parts import production_machines
+        step = self.get_object()
+        return Response({'machines': [
+            {'id': str(m.id), 'name': m.name, 'status': m.status,
+             'refusal': machine_refusal(m)}
+            for m in production_machines(step.id)]})
+
     @extend_schema(responses=StepWithResolvedRulesSerializer)
     @action(detail=True, methods=["get"])
     def resolved_rules(self, request, pk=None):
@@ -3546,11 +3569,18 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
         # that's the real authorization point. A part merely arriving at a step
         # (PENDING) isn't gated; nobody is working it yet. The workflow engine
         # creates executions via the ORM, not this HTTP path, so it is untouched.
-        from Tracker.services.mes.gates import StartContext, decide_start
+        from Tracker.services.mes.gates import StartContext, assert_machine_eligible, decide_start
         self._pending_start = None
+        self._chosen = None
         if str(request.data.get('status', '')).upper() == 'IN_PROGRESS':
             part = Parts.objects.filter(pk=request.data.get('part')).first() if request.data.get('part') else None  # tenant-safe: .objects auto-scopes to the request tenant
             step = Steps.objects.filter(pk=request.data.get('step')).first()
+            machine, bad = self._chosen_machine(request)
+            if bad is not None:
+                return bad
+            if machine is not None and step is not None:
+                assert_machine_eligible(step, machine)
+            self._chosen = machine
             if step is not None:
                 # The one start decision, as on every start path: the floor (held/ended
                 # WO, quarantined part, expired deviation, a reman unit awaiting
@@ -3560,7 +3590,8 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
                     part=part, step=step,
                     work_order=part.work_order if part is not None and part.work_order_id else None,
                     operator=request.user,
-                    visit_number=StepExecution.get_visit_count(part, step) + 1 if part is not None else 1)
+                    visit_number=StepExecution.get_visit_count(part, step) + 1 if part is not None else 1,
+                    machine=machine)
                 reason = request.data.get('override_reason')
                 decision, err = self._gated_start(
                     request, lambda auth: decide_start(ctx, authorizer=auth, reason=reason))
@@ -3598,7 +3629,13 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
             from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
             from Tracker.services.mes.parts import _stamp_production_equipment
             evaluate_substep_sampling(execution)
-            _stamp_production_equipment(execution)
+            # The machine chosen at Start Work, else the one planned.
+            chosen = getattr(self, '_chosen', None)
+            if chosen is not None:
+                from Tracker.services.mes.gates import record_machine
+                record_machine(execution, chosen)
+            else:
+                _stamp_production_equipment(execution)
         # Logged after the machine is stamped: a Per Equipment first piece reads it.
         if decision is not None:
             from Tracker.services.mes.gates import record_start
@@ -3609,6 +3646,19 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
             if execution.part_id:
                 from Tracker.services.reman.core_steps import on_step_started
                 on_step_started(execution.part, self.request.user)
+
+    def _chosen_machine(self, request):
+        """The production machine chosen at Start Work (`equipment`), or None; a 400
+        response for an id that isn't one of this company's machines."""
+        machine_id = request.data.get('equipment')
+        if not machine_id:
+            return None, None
+        from Tracker.models import Equipments
+        machine = Equipments.objects.filter(pk=machine_id, archived=False).first()  # tenant-safe: .objects auto-scopes
+        if machine is None:
+            return None, Response({'detail': "That machine wasn't found."},
+                                  status=status.HTTP_400_BAD_REQUEST)
+        return machine, None
 
     def update(self, request, *args, **kwargs):
         # Flipping an existing row to IN_PROGRESS is the same "operator takes up the
@@ -3621,14 +3671,18 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
         new_status = str(request.data.get('status', '')).upper()
         if new_status == 'IN_PROGRESS' and execution.status != 'IN_PROGRESS':
             reason = request.data.get('override_reason')
+            machine, bad = self._chosen_machine(request)
+            if bad is not None:
+                return bad
             _, err = self._gated_start(
                 request, lambda auth: start_execution(execution, request.user,
-                                                      authorizer=auth, reason=reason))
+                                                      authorizer=auth, reason=reason,
+                                                      machine=machine))
             if err is not None:
                 return err
             rest = {k: v for k, v in request.data.items()
                     if k not in ('status', 'override_reason', 'override_email',
-                                 'override_password', 'override_signature')}
+                                 'override_password', 'override_signature', 'equipment')}
             if not rest:
                 execution.refresh_from_db()
                 return Response(self.get_serializer(execution).data)
@@ -3913,6 +3967,11 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
                     required=False,
                     help_text="Required when overriding. Logged on the execution.",
                 ),
+                'equipment': serializers.UUIDField(
+                    required=False,
+                    help_text="The production machine chosen at Start Work (one the step "
+                              "runs on). Without it, the machine planned now.",
+                ),
             }
         ),
         responses={200: StepExecutionSerializer}
@@ -3951,10 +4010,13 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
         # Delegate the transition + reassignment/competence gates to the
         # lifecycle service; a supervisor is only consulted if it's blocked.
         reason = request.data.get('override_reason')
+        machine, bad = self._chosen_machine(request)
+        if bad is not None:
+            return bad
         _, err = self._gated_start(
             request,
             lambda auth: start_execution(
-                execution, request.user, authorizer=auth, reason=reason,
+                execution, request.user, authorizer=auth, reason=reason, machine=machine,
             ),
         )
         if err is not None:

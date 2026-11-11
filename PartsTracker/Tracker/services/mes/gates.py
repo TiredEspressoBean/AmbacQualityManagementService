@@ -137,6 +137,11 @@ SPECS: dict[GateCode, GateSpec] = {s.code: s for s in _SPECS}
 class Blocker:
     code: GateCode
     message: str
+    # What it holds back, for the andon's call (services/mes/andon.py). Set by the
+    # start decision; not part of the API body.
+    part: Optional['Parts'] = field(default=None, compare=False, repr=False)
+    step: Optional['Steps'] = field(default=None, compare=False, repr=False)
+    work_order: Optional['WorkOrder'] = field(default=None, compare=False, repr=False)
 
     @property
     def spec(self) -> GateSpec:
@@ -170,6 +175,8 @@ class StartContext:
     operator: object
     visit_number: int = 1
     execution: Optional['StepExecution'] = None
+    # The production machine the operator chose at Start Work, if they did.
+    machine: Optional['Equipments'] = None
 
     @property
     def process(self):
@@ -246,7 +253,7 @@ def floor_blockers(ctx: StartContext, *, only: set | None = None) -> list[Blocke
         from Tracker.services.life_tracking.tool_life import start_refusals
         out += [Blocker(GateCode.TOOL_LIFE, m) for m in start_refusals(step, ctx.execution)]
     if step is not None and want(GateCode.EQUIPMENT_DOWN):
-        refusal = machine_refusal(start_machine(step, part, ctx.execution))
+        refusal = machine_refusal(start_machine(step, part, ctx.execution, ctx.machine))
         if refusal:
             out.append(Blocker(GateCode.EQUIPMENT_DOWN, refusal))
     if wo is not None and want(GateCode.DEVIATION_EXPIRED):
@@ -259,7 +266,9 @@ def floor_blockers(ctx: StartContext, *, only: set | None = None) -> list[Blocke
         held_or_ended = start_refusal(wo)
         if held_or_ended:
             out.append(Blocker(GateCode.WORK_ORDER_NOT_WORKABLE, held_or_ended))
-    return out
+    # What each holds back, for the andon's call.
+    from dataclasses import replace
+    return [replace(b, part=part, step=step, work_order=wo) for b in out]
 
 
 def machine_refusal(machine) -> str | None:
@@ -287,18 +296,50 @@ def resume_blockers(ctx: StartContext) -> list[Blocker]:
     return floor_blockers(ctx, only=keep)
 
 
-def start_machine(step, part, execution=None):
-    """The machine a start runs on: the PRODUCTION machine recorded on the visit, else
-    the one it is planned for (the step's authored machine, else the schedule's)."""
+def start_machine(step, part, execution=None, chosen=None):
+    """The machine a start runs on, judged as it is now (gate review 2026-11-11):
+
+    - the one the operator chose at Start Work;
+    - a visit already running keeps the machine recorded on it;
+    - otherwise the one it is planned for now (live schedule, else authored) — the
+      machine stamped when the part arrived may since have been re-planned;
+    - else whatever was recorded on the visit."""
+    if chosen is not None:
+        return chosen
+    link = None
     if execution is not None and execution.pk:
         from Tracker.models.qms import EquipmentRole, StepExecutionEquipment
         link = (StepExecutionEquipment.objects  # tenant-safe: FK-correlated to a scoped visit
                 .filter(step_execution=execution, role=EquipmentRole.PRODUCTION)
                 .select_related('equipment').first())
-        if link is not None:
+        if link is not None and execution.status == 'IN_PROGRESS':
             return link.equipment
     from Tracker.services.mes.parts import planned_production_machine
-    return planned_production_machine(step.id, getattr(part, 'id', None))
+    planned = planned_production_machine(step.id, getattr(part, 'id', None))
+    return planned if planned is not None else (link.equipment if link else None)
+
+
+def assert_machine_eligible(step, machine) -> None:
+    """A machine chosen at Start Work must be one the step runs on (any authored
+    affinity), and not tooling. A step with no authored machines takes any."""
+    from django.core.exceptions import ValidationError
+    from Tracker.services.mes.parts import production_machines
+    allowed = production_machines(step.id)
+    if allowed and machine.id not in {m.id for m in allowed}:
+        raise ValidationError(f"{machine.name} isn't a machine {step.name} runs on.")
+
+
+def record_machine(execution, machine) -> None:
+    """The visit's PRODUCTION machine is the one it started on: replaces whatever was
+    stamped when the part arrived."""
+    if machine is None or execution is None or not execution.pk:
+        return
+    from Tracker.models.qms import EquipmentRole, StepExecutionEquipment
+    (StepExecutionEquipment.objects  # tenant-safe: FK-correlated to a scoped visit
+     .filter(step_execution=execution, role=EquipmentRole.PRODUCTION)
+     .exclude(equipment=machine).delete())
+    StepExecutionEquipment.objects.get_or_create(  # tenant-safe: FK-correlated to a scoped visit
+        step_execution=execution, equipment=machine, role=EquipmentRole.PRODUCTION)
 
 
 def _life_limit_refusals(part) -> list[str]:
@@ -331,7 +372,8 @@ def _floor_applies(ctx: StartContext) -> list[GateCode]:
         codes += [GateCode.CORE_AWAITING_AUTHORISATION, GateCode.PART_QUARANTINED,
                   GateCode.PART_ON_HOLD, GateCode.LIFE_LIMIT]
     # Logged only when there was a machine to judge: a check that didn't run isn't a pass.
-    if ctx.step is not None and start_machine(ctx.step, ctx.part, ctx.execution) is not None:
+    if ctx.step is not None and start_machine(ctx.step, ctx.part, ctx.execution,
+                                              ctx.machine) is not None:
         codes.append(GateCode.EQUIPMENT_DOWN)
     if ctx.step is not None and ctx.step.has_gate(str(GateCode.TOOL_LIFE)):
         codes.append(GateCode.TOOL_LIFE)
@@ -371,7 +413,7 @@ def decide_start(ctx: StartContext, *, authorizer=None, reason=None) -> StartDec
     refused = floor_blockers(ctx)
     # The first piece: only its N pieces start until QA buys it off (or waives it).
     from Tracker.services.qms.first_piece import start_blocker
-    first_piece = start_blocker(ctx.step, ctx.work_order, ctx.part, ctx.execution)
+    first_piece = start_blocker(ctx.step, ctx.work_order, ctx.part, ctx.execution, ctx.machine)
     if first_piece is not None:
         refused.append(first_piece)
     if refused:
@@ -398,7 +440,7 @@ def decide_start(ctx: StartContext, *, authorizer=None, reason=None) -> StartDec
         outcomes.append(Outcome(GateCode.ASSIGNED_TO_OTHER, 'OVERRIDDEN', authorizer, reason or ''))
 
     if ctx.step.has_gate(str(GateCode.TRAINING)):
-        machine = start_machine(ctx.step, ctx.part, ctx.execution)
+        machine = start_machine(ctx.step, ctx.part, ctx.execution, ctx.machine)
         snapshot = authorize_start(ctx.operator, ctx.step, ctx.process, authorizer=authorizer,
                                    reason=reason,
                                    equipment_type=getattr(machine, 'equipment_type', None))

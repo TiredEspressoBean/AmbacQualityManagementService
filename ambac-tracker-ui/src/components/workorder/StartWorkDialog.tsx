@@ -43,6 +43,15 @@ import {
 } from "@/hooks/useEnsureStepExecution";
 import { useWorkAuthorization, type WorkAuthRow } from "@/hooks/useWorkAuthorization";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+/** The production machines a step runs on, for the Start Work machine picker. */
+const stepMachinesOptions = (stepId: string | undefined) => queryOptions({
+    queryKey: ["step-machines", stepId] as const,
+    queryFn: () => api.api_Steps_machines_retrieve({ params: { id: stepId! } }),
+});
 
 type StartWorkDialogProps = {
     workOrderId: string;
@@ -234,6 +243,21 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
 
     const resetOverride = () => setGate(null);
 
+    // The machine it runs on (gate review 2026-11-11): the step's production machines,
+    // offered when there's a choice. "planned" leaves it to the live schedule / the
+    // authored machine; a pick is judged by the start gates and recorded on the visit.
+    const firstStepId = (() => {
+        const first = allParts.find((p) => String(p.id) === selectedIds[0]);
+        return first ? String(first.step) : undefined;
+    })();
+    const { data: machinesResp } = useQuery({
+        ...stepMachinesOptions(firstStepId),
+        enabled: open && !!firstStepId,
+    });
+    const machines = machinesResp?.machines ?? [];
+    const [machine, setMachine] = useState<string>("planned");
+    useEffect(() => { setMachine("planned"); }, [firstStepId]);
+
     /** Ensure the first part's execution, then route into the runtime. Shared
      *  by the normal start and the supervisor-override retry. */
     const launch = async (opts?: { override?: OverrideCredentials }) => {
@@ -249,6 +273,7 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
             partId: firstId,
             stepId,
             override: opts?.override,
+            machine: machine !== "planned" ? machine : undefined,
         });
         const queue = selectedIds.slice(1);
 
@@ -295,7 +320,9 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
             if (e instanceof TrainingGateError) {
                 showGate(e.gate);
             } else {
-                toast.error("Could not open the work surface", {
+                // A refusal says which part didn't start and why (with "Waiting on: …").
+                const label = allParts.find((p) => String(p.id) === selectedIds[0])?.ERP_id;
+                toast.error(label ? `Couldn't start ${label}` : "Couldn't start the work", {
                     description: e instanceof Error ? e.message : undefined,
                 });
             }
@@ -435,6 +462,27 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
                         })
                     )}
                 </div>
+
+                {machines.length > 1 && selectedIds.length > 0 && (
+                    <div className="space-y-1">
+                        <label htmlFor="start-machine" className="text-sm font-medium">Machine</label>
+                        <Select value={machine} onValueChange={setMachine}>
+                            <SelectTrigger id="start-machine"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="planned">As planned</SelectItem>
+                                {machines.map((m) => (
+                                    <SelectItem key={m.id} value={String(m.id)} disabled={!!m.refusal}>
+                                        {m.name}{m.refusal ? " — not available" : ""}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                            Running it on another machine? Pick it: the checks judge that one,
+                            and it's recorded on the work.
+                        </p>
+                    </div>
+                )}
 
                 <DialogFooter className="sm:items-center">
                     {selectedIds.length > 0 && (

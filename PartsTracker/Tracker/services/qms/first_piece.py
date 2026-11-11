@@ -38,21 +38,25 @@ def _released(records) -> bool:
     return records.filter(status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]).exists()
 
 
-def start_context(step, work_order, part, execution=None):
-    """The context a start of `part` now is in. An existing visit answers from its own
-    facts; a visit not yet created (a first Start Work) from the start moment and the
-    machine it will run on."""
+def start_context(step, work_order, part, execution=None, machine=None):
+    """The context a start of `part` now is in. A visit already running answers from its
+    own facts; one starting now from the start moment and the machine it starts on —
+    the operator's choice, else the one planned now (gates.start_machine). An unstarted
+    visit with no machine recorded was "unknown" here, which no one could fix (gate
+    review 2026-11-11)."""
     from Tracker.services.qms.fpi_scope import PER_EQUIPMENT, context_for
     started = getattr(execution, 'started_at', None) or timezone.now()
-    if (step.fpi_scope or '') == PER_EQUIPMENT and execution is None:
-        from Tracker.services.mes.parts import planned_production_machine
-        machine = planned_production_machine(step.id, part.id)
-        return context_for(step, work_order, part=part, equipment=machine, at=started)
+    running = execution is not None and execution.status == 'IN_PROGRESS'
+    if (step.fpi_scope or '') == PER_EQUIPMENT and not running:
+        from Tracker.services.mes.gates import start_machine
+        on = start_machine(step, part, execution, machine)
+        return context_for(step, work_order, part=part, equipment=on, at=started)
     return context_for(step, work_order, part=part, at=started)
 
 
-def start_blocker(step, work_order, part, execution=None):
-    """The first-piece refusal for starting `part` at `step`, or None.
+def start_blocker(step, work_order, part, execution=None, machine=None):
+    """The first-piece refusal for starting `part` at `step` (on `machine`, when the
+    operator chose one), or None.
 
     Refused while the context's first piece is unpassed and `part` isn't one of its N
     pieces (already one, or a place still open in the set)."""
@@ -65,11 +69,11 @@ def start_blocker(step, work_order, part, execution=None):
     from Tracker.models import FPIStatus
     from Tracker.services.mes.gates import Blocker, GateCode
     from Tracker.services.qms.fpi_scope import records_for
-    ctx = start_context(step, work_order, part, execution)
+    ctx = start_context(step, work_order, part, execution, machine)
     if not ctx.known:
         return Blocker(GateCode.FIRST_PIECE_PENDING, (
-            f"{step.name} needs a first piece per machine, and the machine {part.ERP_id} runs on "
-            "isn't recorded. Record the machine, then start it."))
+            f"{step.name} needs a first piece per machine, and no machine is planned for "
+            f"{part.ERP_id}. Pick the machine at Start Work."))
     records = records_for(step, work_order, ctx)
     if _released(records):
         return None

@@ -91,38 +91,51 @@ def _stamp_production_equipment(execution) -> None:
 
 def planned_production_machine(step_id, part_id):
     """The machine a visit of `part_id` to `step_id` runs on before anyone records one:
-    the step's authored machine (dialed-in, else preferred), else what the live
-    schedule assigned to this part+step. None when neither says."""
+    what the live schedule assigned to this part+step (the solver may have moved it off
+    the authored machine), else the step's authored machine — dialed-in, else
+    preferred, by name. Deterministic. None when neither says (gate review
+    2026-11-11: the start gates judge the machine actually planned)."""
+    if part_id is not None:
+        # "Live" is the current solve's slot for this part and step: the newest active,
+        # committed schedule, and not one marked stale since — a stale slot doesn't beat
+        # authoring (lead sign-off 2026-11-11).
+        # tenant-safe: .objects auto-scopes to the current tenant.
+        from Tracker.models import ScheduledTask, ScheduleResult
+        current = (ScheduleResult.objects
+                   .filter(archived=False, is_active=True, is_draft=False)
+                   .order_by('-created_at').first())
+        if current is not None and not current.is_stale:
+            task = (
+                ScheduledTask.objects
+                .filter(archived=False, schedule=current, part_id=part_id, step_id=step_id,
+                        machine__isnull=False)
+                .select_related('machine')
+                .order_by('-start_time')
+                .first()
+            )
+            if task is not None:
+                return task.machine
+    candidates = production_machines(step_id, preferred_only=True)
+    return candidates[0] if candidates else None
+
+
+def production_machines(step_id, *, preferred_only=False) -> list:
+    """The step's authored production machines, best first: dialed-in, then preferred,
+    then (unless `preferred_only`) eligible — each by name. Tooling the step names is
+    left out: a tool isn't the machine a step runs on (tool_life.py)."""
     from Tracker.models import StepEquipmentAffinity
-    aff = StepEquipmentAffinity.Affinity
-    candidates = list(
-        StepEquipmentAffinity.objects.filter(archived=False,
-            step_id=step_id,
-            affinity__in=[aff.DIALED_IN, aff.PREFERRED],
-        ).select_related('equipment')
-    )
-    # A tool the step names isn't the machine it runs on (tool_life.py).
     from Tracker.services.life_tracking.tool_life import is_tooling, life_limited_type_ids
-    limited = life_limited_type_ids() if candidates else set()
-    candidates = [c for c in candidates if not is_tooling(c.equipment, limited)]
-    if candidates:
-        chosen = next((c for c in candidates if c.affinity == aff.DIALED_IN), candidates[0])
-        return chosen.equipment
-    if part_id is None:
-        return None
-    # No authored machine — what the live schedule assigned to this part+step, so the
-    # solver's choice becomes the as-built machine.
-    # tenant-safe: .objects auto-scopes to the current tenant.
-    from Tracker.models import ScheduledTask
-    task = (
-        ScheduledTask.objects
-        .filter(archived=False, part_id=part_id, step_id=step_id,
-                machine__isnull=False, schedule__is_active=True)
-        .select_related('machine')
-        .order_by('-start_time')
-        .first()
-    )
-    return task.machine if task is not None else None
+    aff = StepEquipmentAffinity.Affinity
+    rank = {aff.DIALED_IN: 0, aff.PREFERRED: 1, aff.ELIGIBLE: 2}
+    wanted = [aff.DIALED_IN, aff.PREFERRED] + ([] if preferred_only else [aff.ELIGIBLE])
+    links = list(StepEquipmentAffinity.objects.filter(  # tenant-safe: .objects auto-scopes
+        archived=False, step_id=step_id, affinity__in=wanted).select_related('equipment'))
+    if not links:
+        return []
+    limited = life_limited_type_ids()
+    links = [l for l in links if not is_tooling(l.equipment, limited)]
+    links.sort(key=lambda l: (rank.get(l.affinity, 9), l.equipment.name))
+    return [l.equipment for l in links]
 
 
 def _cascade_work_order_completion(part: Parts) -> None:

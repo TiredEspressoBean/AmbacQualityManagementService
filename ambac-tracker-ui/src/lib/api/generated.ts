@@ -15329,6 +15329,10 @@ export type PatchedStepExecutionRequest = Partial<{
   decision_result: string;
   status: StepExecutionStatusEnum;
   archived: boolean;
+  /**
+   * Starting it (status IN_PROGRESS): the production machine chosen at Start Work, one the step runs on. Without it, the machine planned now.
+   */
+  equipment: string;
 }>;
 export type PatchedStepTimingRecordRequest = Partial<{
   /**
@@ -17992,6 +17996,10 @@ export type StepExecutionCreateRequest = {
   string | undefined;
   status?: StepExecutionStatusEnum | undefined;
   archived?: boolean | undefined;
+  equipment?: /**
+   * Starting it (status IN_PROGRESS): the production machine chosen at Start Work, one the step runs on. Without it, the machine planned now.
+   */
+  string | undefined;
   override_email?: /**
    * @minLength 1
    */
@@ -18041,6 +18049,19 @@ export type StepExecutionRequest = {
   string | undefined;
   status?: StepExecutionStatusEnum | undefined;
   archived?: boolean | undefined;
+  equipment?: /**
+   * Starting it (status IN_PROGRESS): the production machine chosen at Start Work, one the step runs on. Without it, the machine planned now.
+   */
+  string | undefined;
+};
+export type StepMachines = {
+  machines: Array<StepMachine>;
+};
+export type StepMachine = {
+  id: string;
+  name: string;
+  status: string;
+  refusal: string | null;
 };
 export type StepOverrideRequest = {
   step_execution: string;
@@ -26644,6 +26665,7 @@ const StepExecutionCreateRequest = z.object({
   decision_result: z.string().max(50).optional(),
   status: StepExecutionStatusEnum.optional(),
   archived: z.boolean().optional(),
+  equipment: z.string().uuid().optional(),
   override_email: z.string().min(1).email().optional(),
   override_password: z.string().min(1).optional(),
   override_reason: z.string().optional(),
@@ -26682,6 +26704,7 @@ const StepExecutionRequest = z.object({
   decision_result: z.string().max(50).optional(),
   status: StepExecutionStatusEnum.optional(),
   archived: z.boolean().optional(),
+  equipment: z.string().uuid().optional(),
 });
 const PatchedStepExecutionRequest = z
   .object({
@@ -26694,6 +26717,7 @@ const PatchedStepExecutionRequest = z
     decision_result: z.string().max(50),
     status: StepExecutionStatusEnum,
     archived: z.boolean(),
+    equipment: z.string().uuid(),
   })
   .partial();
 const ClaimStepInputRequest = z
@@ -26701,6 +26725,7 @@ const ClaimStepInputRequest = z
     override_email: z.string().min(1),
     override_password: z.string().min(1),
     override_reason: z.string().min(1),
+    equipment: z.string().uuid(),
   })
   .partial();
 const FlagOverrideInputRequest = z.object({ reason: z.string().min(1) });
@@ -27098,6 +27123,13 @@ const PatchedStepsRequest = z
     archived: z.boolean(),
   })
   .partial();
+const StepMachine = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  status: z.string(),
+  refusal: z.string().nullable(),
+});
+const StepMachines = z.object({ machines: z.array(StepMachine) });
 const StepWithResolvedRules = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
@@ -31685,6 +31717,8 @@ export const schemas = {
   StepTimingRequest,
   StepsRequest,
   PatchedStepsRequest,
+  StepMachine,
+  StepMachines,
   StepWithResolvedRules,
   CreateStepRevisionInputRequest,
   SamplingRuleUpdateRequest,
@@ -58770,6 +58804,31 @@ Usage:
   },
   {
     method: "get",
+    path: "/api/Steps/:id/machines/",
+    alias: "api_Steps_machines_retrieve",
+    description: `The production machines a step runs on (authored affinities, best first; tooling left out), each with why it can&#x27;t run work now, if it can&#x27;t — the Start Work machine picker.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: StepMachines,
+  },
+  {
+    method: "get",
     path: "/api/Steps/:id/resolved_rules/",
     alias: "api_Steps_resolved_rules_retrieve",
     description: `GET /steps/:id/resolved_rules/
@@ -62717,7 +62776,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.unknown(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingRecords/metadata/",
@@ -62725,10 +62787,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingRecords/my-training/",

@@ -78,6 +78,78 @@ class StartGatesS4Tests(TenantTestCase):
         self.assertEqual(self._codes(ctx), [GateCode.EQUIPMENT_DOWN])
         self.assertIn("calibration", ctx.exception.messages[0])
 
+    # --- the machine chosen at Start Work
+    def _second_machine(self, status="IN_SERVICE"):
+        other = Equipments.objects.create(tenant=self.tenant_a, name="Haas VF-4", status=status)
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant_a, step=self.step, equipment=other,
+            affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
+        return other
+
+    def test_a_chosen_machine_is_judged_and_recorded(self):
+        from Tracker.models.qms import StepExecutionEquipment
+        self._machine(status="IN_MAINTENANCE")  # the planned one is down
+        other = self._second_machine()
+        v = StepExecution.objects.get(pk=self.visit.pk)
+        start_execution(v, self.user_a, machine=other)  # runs on the other: starts
+        links = StepExecutionEquipment.objects.filter(step_execution=v, role='PRODUCTION')
+        self.assertEqual([l.equipment_id for l in links], [other.id])
+
+    def test_a_chosen_machine_that_is_down_refuses(self):
+        self._machine()
+        other = self._second_machine(status="OUT_OF_SERVICE")
+        with self.assertRaises(StartRefused) as ctx:
+            start_execution(StepExecution.objects.get(pk=self.visit.pk), self.user_a, machine=other)
+        self.assertIn("Haas VF-4", ctx.exception.messages[0])
+
+    def test_a_machine_the_step_does_not_run_on_is_refused(self):
+        from django.core.exceptions import ValidationError
+        self._machine()
+        stray = Equipments.objects.create(tenant=self.tenant_a, name="Lathe 9")
+        with self.assertRaisesMessage(ValidationError, "isn't a machine"):
+            start_execution(StepExecution.objects.get(pk=self.visit.pk), self.user_a, machine=stray)
+
+    def test_a_per_equipment_first_piece_judges_the_planned_machine(self):
+        """An unstarted visit with no machine recorded used to be 'unknown' — refused,
+        and nothing could record one. The machine planned now decides its context."""
+        from Tracker.models import FPIRecord
+        from Tracker.services.mes.step_gates import FLOOR_GATES, set_step_gates
+        set_step_gates(self.step, [{'gate': g} for g in FLOOR_GATES]
+                       + [{'gate': 'first_piece', 'fpi_scope': 'PER_EQUIPMENT'}])
+        machine = self._machine()
+        self._start()
+        record = FPIRecord.objects.get(work_order=self.wo, step=self.step)
+        self.assertEqual(record.equipment_id, machine.id)
+
+    # --- the andon
+    def test_a_refused_start_at_the_api_calls_whoever_clears_it(self):
+        from unittest import mock
+        Parts.objects.filter(pk=self.part.pk).update(part_status="ON_HOLD")
+        self.authenticate_superuser(tenant=self.tenant_a)
+        with mock.patch('Tracker.services.mes.andon.notify_start_refused.apply_async') as send:
+            resp = self.client.post(f"/api/StepExecutions/{self.visit.id}/claim/", {}, format='json')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertEqual(resp.json()['blockers'][0]['waiting_on'], "the part's hold to be released")
+        tenant_id, calls = send.call_args.kwargs['args']
+        self.assertEqual(tenant_id, str(self.tenant_a.id))
+        self.assertEqual([c['gate'] for c in calls], ['part_on_hold'])
+        self.assertEqual(calls[0]['part_number'], "S4-1")
+
+    def test_a_first_piece_refusal_calls_nobody(self):
+        from unittest import mock
+        from Tracker.services.mes.andon import call_for
+        from Tracker.services.mes.gates import Blocker
+        with mock.patch('Tracker.services.mes.andon.notify_start_refused.apply_async') as send:
+            call_for([Blocker(GateCode.FIRST_PIECE_PENDING, "waiting")], self.tenant_a.id)
+        send.assert_not_called()
+
+    def test_the_starter_rules_route_each_gate(self):
+        from Tracker.services.core.notifications.system_rules import list_starter_rule_specs
+        rules = {r['conditions_source']: r['recipient_group_names']
+                 for r in list_starter_rule_specs() if r['event_code'] == 'start.refused'}
+        self.assertEqual(rules['payload.gate == "work_order_not_workable"'], ["Production Manager"])
+        self.assertNotIn('payload.gate == "first_piece_pending"', rules)
+
     # --- resume
     def test_resuming_your_own_visit_is_not_refused_by_a_start_only_gate(self):
         tracking = self._life(self.part, 10, 100)

@@ -1534,6 +1534,8 @@ from Tracker.reports.tasks import generate_and_email_report  # noqa: E402, F401
 # dispatch_outbox_row messages die with KeyError (the web side can .delay()
 # a task it never registered — sending needs no registry, executing does).
 from Tracker.services.core.notifications.tasks import dispatch_outbox_row  # noqa: E402, F401
+# And the andon's call for a refused start (services/mes/andon.py).
+from Tracker.services.mes.andon import notify_start_refused  # noqa: E402, F401
 
 
 # Thresholds. Not tenant-configurable yet — feature-flag when a real tenant asks.

@@ -34900,6 +34900,42 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Steps/{id}/machines/:
+    get:
+      operationId: api_Steps_machines_retrieve
+      description: The production machines a step runs on (authored affinities, best
+        first; tooling left out), each with why it can't run work now, if it can't
+        — the Start Work machine picker.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step.
+        required: true
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter steps by process's part type UUID
+      - in: query
+        name: process
+        schema:
+          type: string
+        description: Filter steps by process UUID (via ProcessStep)
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepMachines'
+          description: ''
   /api/Steps/{id}/resolved_rules/:
     get:
       operationId: api_Steps_resolved_rules_retrieve
@@ -54835,6 +54871,11 @@ components:
           type: string
           minLength: 1
           description: Required when overriding. Logged on the execution.
+        equipment:
+          type: string
+          format: uuid
+          description: The production machine chosen at Start Work (one the step runs
+            on). Without it, the machine planned now.
     ClassAccuracy:
       type: object
       properties:
@@ -74172,6 +74213,12 @@ components:
           $ref: '#/components/schemas/StepExecutionStatusEnum'
         archived:
           type: boolean
+        equipment:
+          type: string
+          format: uuid
+          writeOnly: true
+          description: 'Starting it (status IN_PROGRESS): the production machine chosen
+            at Start Work, one the step runs on. Without it, the machine planned now.'
     PatchedStepTimingRecordRequest:
       type: object
       description: One step's standard times — setup, cycle, load/unload, attention,
@@ -83481,6 +83528,12 @@ components:
           $ref: '#/components/schemas/StepExecutionStatusEnum'
         archived:
           type: boolean
+        equipment:
+          type: string
+          format: uuid
+          writeOnly: true
+          description: 'Starting it (status IN_PROGRESS): the production machine chosen
+            at Start Work, one the step runs on. Without it, the machine planned now.'
         override_email:
           type: string
           format: email
@@ -83775,6 +83828,12 @@ components:
           $ref: '#/components/schemas/StepExecutionStatusEnum'
         archived:
           type: boolean
+        equipment:
+          type: string
+          format: uuid
+          writeOnly: true
+          description: 'Starting it (status IN_PROGRESS): the production machine chosen
+            at Start Work, one the step runs on. Without it, the machine planned now.'
       required:
       - step
     StepExecutionStatusEnum:
@@ -83871,6 +83930,33 @@ components:
       required:
       - advanced
       - total
+    StepMachine:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+        refusal:
+          type: string
+          nullable: true
+      required:
+      - id
+      - name
+      - refusal
+      - status
+    StepMachines:
+      type: object
+      properties:
+        machines:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepMachine'
+      required:
+      - machines
     StepOverride:
       type: object
       description: Serializer for step override requests.

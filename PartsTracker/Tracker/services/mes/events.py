@@ -239,3 +239,59 @@ register_event(EventType(
                 'before the hard limit stops the work that needs it.',
     external_routable=False,
 ))
+
+
+# =============================================================================
+# start.refused — the andon (user decision 2026-11-11). A start gate nobody on the
+# floor can override refused a start: whoever clears it is called. Routed per gate
+# by the starter rules (one per gate code). Emitted outside the refused request's
+# transaction (services/mes/andon.py), de-duplicated per part and gate per hour.
+# =============================================================================
+
+@dataclass(frozen=True)
+class StartRefusedPayload:
+    """Payload for `start.refused`."""
+
+    id: str                       # "<part or step>:<gate>" — correlation id source
+    tenant_id: str
+    gate: str                     # services.mes.gates.GateCode value — rules route on it
+    waiting_on: str               # what the floor waits for, in words
+    message: str
+    part_id: str | None
+    part_number: str
+    step_id: str | None
+    step_name: str
+    work_order_id: str | None
+    work_order_number: str
+
+    @classmethod
+    def sample(cls) -> 'StartRefusedPayload':
+        return cls(
+            id='00000000-0000-0000-0000-0000000000b1:work_order_not_workable',
+            tenant_id='00000000-0000-0000-0000-000000000000',
+            gate='work_order_not_workable',
+            waiting_on="the work order's hold to clear",
+            message='WO-2026-0007 is on hold (Material) — clear the hold before starting work.',
+            part_id='00000000-0000-0000-0000-0000000000b1',
+            part_number='WO-2026-0007-001',
+            step_id='00000000-0000-0000-0000-000000000003',
+            step_name='Bore',
+            work_order_id='00000000-0000-0000-0000-000000000007',
+            work_order_number='WO-2026-0007',
+        )
+
+
+register_event(EventType(
+    code='start.refused',
+    label='Work Refused at Start',
+    domain='Production',
+    payload_schema=StartRefusedPayload,
+    default_channels=['in_app'],
+    default_recipient_groups=[],       # routed per gate by the starter rules
+    default_on=True,
+    transactional=False,
+    description='A start was refused by a gate nobody on the floor can clear (a hold, a '
+                'machine down, a life limit…): a machine and operator may be idle until '
+                'whoever clears it acts.',
+    external_routable=False,
+))

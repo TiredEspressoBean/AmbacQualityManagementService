@@ -90,6 +90,10 @@ def custom_exception_handler(exc, context):
         if blockers:
             body['code'] = str(blockers[0].code)
             body['blockers'] = [b.to_dict() for b in blockers]
+            # The andon: a refused start calls whoever clears it (services/mes/andon.py).
+            from Tracker.services.mes.andon import call_for
+            from Tracker.utils.tenant_context import current_tenant_var
+            call_for(blockers, current_tenant_var.get())
         exc = DRFValidationError(body)
 
     # Handle Django's Http404

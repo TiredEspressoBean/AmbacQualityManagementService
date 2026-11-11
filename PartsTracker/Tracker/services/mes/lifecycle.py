@@ -464,23 +464,31 @@ def _load_has_others(execution, to) -> bool:
                            .exclude(assigned_to=to).exists())
 
 
-def start_execution(execution, operator, *, authorizer=None, reason=None):
+def start_execution(execution, operator, *, authorizer=None, reason=None, machine=None):
     """Apply the waiting -> in-process transition to an existing execution.
 
     The gates are `gates.decide_start` (floor, revisit rule, reassignment if the row
     is another operator's, competence); the outcome is kept on the snapshot and in
     the decision log. Raises `StartRefused` / `StartGateError` subclasses; the row is
     untouched on any raise (all checks precede the save).
+
+    `machine`: the production machine the operator chose at Start Work (one the step
+    runs on). Without it, the one planned now. The gates judge that machine, and it is
+    recorded on the visit as its PRODUCTION machine (gate review 2026-11-11).
     """
+    from dataclasses import replace
     from Tracker.services.mes.gates import (
-        StartRefused, context_for_execution, decide_start, record_start, resume_blockers,
+        StartRefused, assert_machine_eligible, context_for_execution, decide_start,
+        record_machine, record_start, resume_blockers, start_machine,
     )
+    if machine is not None and execution.step_id is not None:
+        assert_machine_eligible(execution.step, machine)
     # A visit that has ended (completed, rolled back, exited) isn't started again: a
     # stale screen would otherwise reopen it as an orphan that takes captures.
     if execution.exited_at is not None or execution.status in ('COMPLETED', 'ROLLED_BACK', 'SKIPPED'):
         from django.core.exceptions import ValidationError
         raise ValidationError("This visit has ended — work the part's current step instead.")
-    ctx = context_for_execution(execution, operator)
+    ctx = replace(context_for_execution(execution, operator), machine=machine)
     # Resuming your own visit (Start Work on a part you already started) isn't a new
     # start: re-running the gates replaced the start record, dropping the supervisor
     # override / reassignment / revisit override given at the real start — it fell off
@@ -495,11 +503,15 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
 
     decision = decide_start(ctx, authorizer=authorizer, reason=reason)
     reassigned = 'reassignment' in decision.snapshot
+    # The machine it starts on, judged above: resolved before the row says it's running.
+    on = (start_machine(execution.step, ctx.part, execution, machine)
+          if execution.step_id is not None and ctx.part is not None else None)
 
     execution.assigned_to = operator
     execution.status = 'IN_PROGRESS'
     execution.training_authorization = decision.snapshot
     execution.save()
+    record_machine(execution, on)
     record_start(execution, decision, by=operator)
     # Taking over a part in an open load takes the load: its other visits come too.
     if reassigned:

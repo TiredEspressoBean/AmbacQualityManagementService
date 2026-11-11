@@ -1780,6 +1780,17 @@ class StepExecutionSerializer(SecureModelMixin):
         help_text="Whether 'Needs repair' (REPAIR) is a result an inspector may record on "
                   "this visit: a core in rebuild at a check with planned repairs. The "
                   "server refuses it anywhere else. Set on a single execution; null in lists.")
+    # Start Work's chosen production machine; the view reads it from the request and
+    # records it (StepExecutionViewSet._chosen_machine). Not a model field.
+    equipment = serializers.UUIDField(
+        write_only=True, required=False,
+        help_text="Starting it (status IN_PROGRESS): the production machine chosen at "
+                  "Start Work, one the step runs on. Without it, the machine planned now.")
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        attrs.pop('equipment', None)
+        return attrs
 
     class Meta:
         model = StepExecution
@@ -1791,7 +1802,7 @@ class StepExecutionSerializer(SecureModelMixin):
             'completed_by', 'completed_by_info',
             'next_step', 'decision_result', 'status', 'is_active',
             'training_authorization', 'repair_result_offered',
-            'created_at', 'updated_at', 'archived'
+            'created_at', 'updated_at', 'archived', 'equipment',
         )
         read_only_fields = (
             'created_at', 'updated_at', 'part_info', 'step_info',

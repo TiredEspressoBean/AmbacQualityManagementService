@@ -14234,6 +14234,23 @@ export interface paths {
         patch: operations["api_Steps_partial_update"];
         trace?: never;
     };
+    "/api/Steps/{id}/machines/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The production machines a step runs on (authored affinities, best first; tooling left out), each with why it can't run work now, if it can't — the Start Work machine picker. */
+        get: operations["api_Steps_machines_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Steps/{id}/resolved_rules/": {
         parameters: {
             query?: never;
@@ -23335,6 +23352,11 @@ export interface components {
             override_password?: string;
             /** @description Required when overriding. Logged on the execution. */
             override_reason?: string;
+            /**
+             * Format: uuid
+             * @description The production machine chosen at Start Work (one the step runs on). Without it, the machine planned now.
+             */
+            equipment?: string;
         };
         ClassAccuracy: {
             counted: number;
@@ -33263,6 +33285,11 @@ export interface components {
             decision_result?: string;
             status?: components["schemas"]["StepExecutionStatusEnum"];
             archived?: boolean;
+            /**
+             * Format: uuid
+             * @description Starting it (status IN_PROGRESS): the production machine chosen at Start Work, one the step runs on. Without it, the machine planned now.
+             */
+            equipment?: string;
         };
         /** @description One step's standard times — setup, cycle, load/unload, attention, SMED setup. */
         PatchedStepTimingRecordRequest: {
@@ -37905,6 +37932,11 @@ export interface components {
             decision_result?: string;
             status?: components["schemas"]["StepExecutionStatusEnum"];
             archived?: boolean;
+            /**
+             * Format: uuid
+             * @description Starting it (status IN_PROGRESS): the production machine chosen at Start Work, one the step runs on. Without it, the machine planned now.
+             */
+            equipment?: string;
             /** Format: email */
             override_email?: string;
             override_password?: string;
@@ -38073,6 +38105,11 @@ export interface components {
             decision_result?: string;
             status?: components["schemas"]["StepExecutionStatusEnum"];
             archived?: boolean;
+            /**
+             * Format: uuid
+             * @description Starting it (status IN_PROGRESS): the production machine chosen at Start Work, one the step runs on. Without it, the machine planned now.
+             */
+            equipment?: string;
         };
         /**
          * @description * `PENDING` - Pending
@@ -38122,6 +38159,16 @@ export interface components {
         StepIncrementResponse: {
             advanced: number;
             total: number;
+        };
+        StepMachine: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            status: string;
+            refusal: string | null;
+        };
+        StepMachines: {
+            machines: components["schemas"]["StepMachine"][];
         };
         /** @description Serializer for step override requests. */
         StepOverride: {
@@ -67498,6 +67545,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Steps"];
+                };
+            };
+        };
+    };
+    api_Steps_machines_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Filter steps by process's part type UUID */
+                part_type?: string;
+                /** @description Filter steps by process UUID (via ProcessStep) */
+                process?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepMachines"];
                 };
             };
         };

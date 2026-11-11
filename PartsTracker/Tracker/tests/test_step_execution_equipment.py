@@ -130,7 +130,10 @@ class StepExecutionEquipmentCaptureTests(TenantContextMixin, TestCase):
         self._advance()
         self.assertEqual(self._new_exec_at_step2().primary_equipment, self.cnc)
 
-    def test_authored_affinity_wins_over_schedule(self):
+    def test_the_live_schedule_wins_over_authoring(self):
+        """The live schedule is the current plan: the solver may have moved the part off
+        the authored machine, and the start gates judge the machine it will really run
+        on (gate review 2026-11-11). Authoring decides when nothing is scheduled."""
         best = Equipments.objects.create(tenant=self.tenant, name="CNC-dialed")
         StepEquipmentAffinity.objects.create(
             tenant=self.tenant, step=self.step2, equipment=best,
@@ -138,7 +141,18 @@ class StepExecutionEquipmentCaptureTests(TenantContextMixin, TestCase):
         )
         self._make_scheduled_task(self.cnc, self.step2, is_active=True)
         self._advance()
-        # Authoring beats the schedule fallback.
+        self.assertEqual(self._new_exec_at_step2().primary_equipment, self.cnc)
+
+    def test_a_stale_schedule_does_not_beat_authoring(self):
+        from Tracker.models import ScheduleResult
+        best = Equipments.objects.create(tenant=self.tenant, name="CNC-dialed")
+        StepEquipmentAffinity.objects.create(
+            tenant=self.tenant, step=self.step2, equipment=best,
+            affinity=StepEquipmentAffinity.Affinity.DIALED_IN,
+        )
+        task = self._make_scheduled_task(self.cnc, self.step2, is_active=True)
+        ScheduleResult.objects.filter(pk=task.schedule_id).update(is_stale=True)
+        self._advance()
         self.assertEqual(self._new_exec_at_step2().primary_equipment, best)
 
     def test_inactive_schedule_not_used(self):

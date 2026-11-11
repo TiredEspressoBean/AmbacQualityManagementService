@@ -125,6 +125,32 @@ STARTER_RULES = [
         "channels": ["in_app"],
         "min_gap_seconds": 0,
     },
+] + [
+    # ---- The andon: a refused start calls whoever clears it --------------
+    # (user decision 2026-11-11). One rule per start gate, routed on its code. A
+    # first piece already calls QA (fpi.requested); supervisor-override refusals are
+    # answered on the spot ("Ask a supervisor"), so neither is here.
+    {
+        "event_code": "start.refused",
+        "name": f"Start refused ({label}) - call {', '.join(groups)}",
+        "description": f"Default starter rule. A start refused by '{label}' calls the groups "
+                       "that clear it.",
+        "recipient_strategy": "static",
+        "recipient_group_names": groups,
+        "channels": ["in_app"],
+        "min_gap_seconds": 0,
+        "conditions_source": f'payload.gate == "{gate}"',
+    }
+    for gate, label, groups in (
+        ("work_order_not_workable", "Work order workable", ["Production Manager"]),
+        ("deviation_expired", "Deviation in date", ["Engineering", "Document Controller"]),
+        ("part_quarantined", "Part not quarantined", ["QA Manager", "QA Inspector"]),
+        ("part_on_hold", "Part not on hold", ["Shift Lead", "Production Manager"]),
+        ("core_awaiting_authorisation", "Customer authorisation", ["Production Manager"]),
+        ("equipment_down", "Machine in service", ["Shift Lead", "Production Manager"]),
+        ("life_limit", "Life limit", ["Engineering", "QA Manager"]),
+        ("tool_life", "Tool life", ["Engineering", "Shift Lead"]),
+    )
 ]
 
 
@@ -236,7 +262,8 @@ def _seed_one_rule(tenant, spec, groups_by_name, event_registry, counts) -> None
             description=spec["description"],
             event_code=event_code,
             scope_kind="tenant",
-            conditions_source="",
+            # A starter rule may narrow its event (one rule per gate on start.refused).
+            conditions_source=spec.get("conditions_source", ""),
             channels=spec["channels"],
             recipient_strategy=spec["recipient_strategy"],
             min_gap_seconds=spec["min_gap_seconds"],
