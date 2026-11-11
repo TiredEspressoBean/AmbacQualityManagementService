@@ -184,6 +184,18 @@ def handle_approval_decision(sender, instance, **kwargs):
     apply_approval_decision_to_content_object(instance, instance.status)
 
 
+@receiver(post_save, sender='Tracker.Steps')
+def give_new_step_its_floor(sender, instance, created, raw=False, **kwargs):
+    """A new step starts with the floor gates (user decision 2026-11-11: every gate is
+    composable, the floor is the default). A new VERSION of a step carries its source's
+    gates instead (services/mes/steps.create_new_step_version copies them); fixtures
+    loaded raw carry their own."""
+    if not created or raw or instance.previous_version_id:
+        return
+    from Tracker.services.mes.step_gates import give_floor
+    give_floor(instance)
+
+
 @receiver(post_save, sender=CAPA)
 def create_initial_containment_task(sender, instance, created, **kwargs):
     """Auto-create initial containment task when CAPA is created"""

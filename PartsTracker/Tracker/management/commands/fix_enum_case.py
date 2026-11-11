@@ -76,9 +76,6 @@ class Command(BaseCommand):
             # Equipment
             (tracker_models.Equipments, 'status', tracker_models.EquipmentStatus),
 
-            # Step requirements
-            (tracker_models.StepRequirement, 'requirement_type', tracker_models.RequirementType),
-
             # Additional QMS fields
             (tracker_models.FPIRecord, 'status', tracker_models.FPIStatus),
             (tracker_models.FPIRecord, 'result', tracker_models.FPIResult),

@@ -19,8 +19,9 @@ class GateBypassTests(TenantTestCase):
     def setUp(self):
         super().setUp()
         pt = PartTypes.objects.create(tenant=self.tenant_a, name="Injector")
-        self.step = Steps.objects.create(tenant=self.tenant_a, name="Final QA", part_type=pt,
-                                         requires_qa_signoff=True)
+        self.step = Steps.objects.create(tenant=self.tenant_a, name="Final QA", part_type=pt)
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, requires_qa_signoff=True)
         self.wo = WorkOrder.objects.create(tenant=self.tenant_a, ERP_id="WO-BYP-1", quantity=1)
         self.part = Parts.objects.create(tenant=self.tenant_a, ERP_id="BYP-1", part_type=pt,
                                          work_order=self.wo, step=self.step, part_status="IN_PROGRESS")

@@ -233,16 +233,17 @@ def create_new_step_version(
                 tolerance_lower_override=smr.tolerance_lower_override,
             )
 
-        # --- Child copy 2: StepRequirement ---
-        for req in step.requirements.all():
+        # --- Child copy 2: StepRequirement (the step's gates) ---
+        for req in step.requirements.filter(archived=False):
             StepRequirement.objects.create(
+                tenant=req.tenant,
                 step=new_version,
-                requirement_type=req.requirement_type,
-                name=req.name,
-                description=req.description,
-                is_mandatory=req.is_mandatory,
+                gate=req.gate,
                 order=req.order,
-                config=req.config,
+                fpi_scope=req.fpi_scope,
+                qa_assurance=req.qa_assurance,
+                revisit_assignment=req.revisit_assignment,
+                revisit_role=req.revisit_role,
             )
 
         # --- Child copy 3: TrainingRequirement (step-owned only) ---

@@ -33,8 +33,8 @@ class QaStepSignoffTests(TestCase):
         self.lot = _build_lot(tenant=self.tenant, user=self.operator, part_type=part_type,
                               num_steps=2, num_parts=1, substeps_per_step=1, wo_erp_id="WO-SIGN")
         self.step_a, self.step_b = self.lot["steps"]
-        self.step_a.requires_qa_signoff = True
-        self.step_a.save(update_fields=["requires_qa_signoff"])
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step_a, requires_qa_signoff=True)
         self.part = self.lot["parts"][0]
         self.wo = self.lot["wo"]
 
@@ -90,8 +90,9 @@ class QaStepSignoffTests(TestCase):
             sign_off_step(self.wo, self.step_a, lead)
 
     def test_fpi_gated_steps_are_left_to_their_buy_off(self):
-        self.step_a.requires_first_piece_inspection = True
-        self.step_a.save(update_fields=["requires_first_piece_inspection"])
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step_a, requires_qa_signoff=True,
+                             requires_first_piece_inspection=True)
         self._submit()
         self.assertEqual(pending_signoffs(), [])
         with self.assertRaisesRegex(ValueError, "first piece"):

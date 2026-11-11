@@ -7,6 +7,7 @@ import type {
   TerminalStatusEnum,
   EdgeTypeEnum,
 } from '@/lib/api/generated';
+import type { StepGate } from './StepGatesField';
 
 export type StepType = StepTypeEnum;
 
@@ -27,7 +28,7 @@ export interface StepData {
   is_entry_point?: boolean;
   description?: string;
   max_visits?: number | null;
-  /** Who may work a repeat visit (ANY / SAME / DIFFERENT / ROLE), enforced at start. */
+  /** Who may work a repeat visit — read-only, from the repeat-visit gate. */
   revisit_assignment?: string;
   revisit_role?: string | null;
   expected_duration?: string | null;
@@ -45,21 +46,21 @@ export interface StepData {
     attention_type?: 'full' | 'load_unload' | 'unattended';
     external_setup_minutes?: number;
   } | null;
-  // QA settings
+  /** The step's gates — the one source of which checks apply. Edited as the whole list;
+   *  the read-only flags below are the server's answers from it, for display. */
+  gates?: StepGate[];
   requires_qa_signoff?: boolean;
   /** NONE = signed under their login, PASSWORD = they re-enter their own. */
   qa_signoff_assurance?: string;
+  requires_first_piece_inspection?: boolean;
+  block_on_quarantine?: boolean;
+  block_on_measurement_failure?: boolean;
   sampling_required?: boolean;
   min_sampling_rate?: number;
   // Batch completion — lot moves as a unit; pass_threshold = fraction READY to advance
   requires_batch_completion?: boolean;
   pass_threshold?: number;
-  // First Piece Inspection
-  requires_first_piece_inspection?: boolean;
-  fpi_scope?: string;
   sequencing_mode?: string;
-  block_on_quarantine?: boolean;
-  block_on_measurement_failure?: boolean;
   // Outside processing (subcontract op — the node owns the whole step: send out →
   // vendor → return → inspect). Set on a RECEIVING step to make it an OSP node.
   is_outside_process?: boolean;
@@ -182,23 +183,16 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         terminalStatus: step.terminal_status,
         description: step.description,
         maxVisits: step.max_visits,
-        revisitAssignment: step.revisit_assignment,
-        revisitRole: step.revisit_role,
         expectedDuration: step.expected_duration,
         scrapRate: step.scrap_rate != null ? Number(step.scrap_rate) : null,
         isStart: isEntryPoint,
-        // QA settings
-        requiresQaSignoff: step.requires_qa_signoff,
-        qaSignoffAssurance: step.qa_signoff_assurance,
+        // The step's gates (QA sign-off, first piece, quarantine hold, repeat visits…)
+        gates: step.gates ?? [],
         samplingRequired: step.sampling_required,
         minSamplingRate: step.min_sampling_rate,
         requiresBatchCompletion: step.requires_batch_completion,
         passThreshold: step.pass_threshold,
-        requiresFirstPieceInspection: step.requires_first_piece_inspection,
-        fpiScope: step.fpi_scope,
         sequencingMode: step.sequencing_mode,
-        blockOnQuarantine: step.block_on_quarantine,
-        blockOnMeasurementFailure: step.block_on_measurement_failure,
         // Outside processing (OSP node config)
         isOutsideProcess: step.is_outside_process,
         outsideSupplier: step.outside_supplier,

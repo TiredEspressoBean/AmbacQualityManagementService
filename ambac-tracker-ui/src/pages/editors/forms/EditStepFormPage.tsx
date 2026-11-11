@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes"
 import { useCreateStep } from "@/hooks/useCreateStep"
 import { useRetrieveStepWithSamplingRules } from "@/hooks/useRetrieveStepWithSamplingRules"
@@ -40,10 +39,11 @@ import { schemas } from "@/lib/api/generated";
 import type { Schema } from "@/lib/api/types";
 import { isFieldRequired } from "@/lib/zod-config";
 import { api } from "@/lib/api/generated";
+import { FLOOR_GATES, StepGatesField, type StepGate } from "@/components/flow/StepGatesField";
 
 // part_type is nullable on the API only for a raw material's receiving plan, which this
 // form never edits — here it is always a chosen part type.
-type FormValues = Pick<Schema<"StepsRequest">, "name" | "description" | "requires_first_piece_inspection" | "operation_number"> & {
+type FormValues = Pick<Schema<"StepsRequest">, "name" | "description" | "gates" | "operation_number"> & {
     part_type: string
 
     rules: { rule_type: string; value: string | number | null; order: number }[]
@@ -64,7 +64,7 @@ const formSchema = schemas.StepsRequest.pick({
     name: true,
     description: true,
     part_type: true,
-    requires_first_piece_inspection: true,
+    gates: true,
     operation_number: true,
 }).extend({
     // Override part_type to be string (ID value from select)
@@ -121,7 +121,8 @@ export default function StepFormPage() {
             name: "",
             description: "",
             part_type: "",
-            requires_first_piece_inspection: false,
+            // A new step starts with the floor; the engineer adds or removes gates.
+            gates: FLOOR_GATES.map((gate, order) => ({ gate, order })),
             operation_number: "",
             rules: [],
             fallback_rules: [],
@@ -133,7 +134,7 @@ export default function StepFormPage() {
     useEffect(() => {
         if (mode === "edit" && step) {
             const stepWithRules = step as typeof step & {
-                requires_first_piece_inspection?: boolean
+                gates?: FormValues["gates"]
                 operation_number?: string
                 active_ruleset?: { rules?: FormValues["rules"]; tighten_after?: number; fallback_duration?: number }
                 fallback_ruleset?: { rules?: FormValues["rules"] }
@@ -143,7 +144,7 @@ export default function StepFormPage() {
                 name: step.name ?? "",
                 description: step.description ?? "",
                 part_type: step.part_type ?? "",
-                requires_first_piece_inspection: stepWithRules.requires_first_piece_inspection ?? false,
+                gates: stepWithRules.gates ?? [],
                 operation_number: stepWithRules.operation_number ?? "",
                 rules: stepWithRules.active_ruleset?.rules ?? [],
                 fallback_rules: stepWithRules.fallback_ruleset?.rules ?? [],
@@ -367,21 +368,14 @@ export default function StepFormPage() {
 
                     <FormField
                         control={form.control}
-                        name="requires_first_piece_inspection"
+                        name="gates"
                         render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                                <FormControl>
-                                    <Checkbox
-                                        checked={field.value ?? false}
-                                        onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
-                                <div className="space-y-1 leading-none">
-                                    <FormLabel>Require First Piece Inspection</FormLabel>
-                                    <FormDescription>
-                                        First part of each work order at this step must pass inspection before others can proceed
-                                    </FormDescription>
-                                </div>
+                            <FormItem className="rounded-md border p-4">
+                                <StepGatesField
+                                    gates={(field.value ?? []) as StepGate[]}
+                                    editable={!lockedToProcess}
+                                    onChange={field.onChange}
+                                />
                             </FormItem>
                         )}
                     />

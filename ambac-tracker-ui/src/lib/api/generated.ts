@@ -8520,35 +8520,22 @@ export type Step = {
      */
     (LaborModelEnum | BlankEnum | NullEnum | null)
     | undefined;
-  requires_qa_signoff?: boolean | undefined;
-  qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
+  requires_qa_signoff: boolean;
+  qa_signoff_assurance: string;
   sampling_required?: boolean | undefined;
   min_sampling_rate?: /**
    * Minimum % of parts that must be sampled at this step
    */
   number | undefined;
-  block_on_quarantine?: boolean | undefined;
-  block_on_measurement_failure?: /**
-   * If True, parts cannot advance if any measurement is out of spec
-   */
-  boolean | undefined;
+  block_on_quarantine: boolean;
+  block_on_measurement_failure: boolean;
   pass_threshold?: number | undefined;
   requires_batch_completion?: /**
    * If True, all parts in batch must be ready before any can advance
    */
   boolean | undefined;
-  requires_first_piece_inspection?: /**
-   * If True, first part of each work order at this step requires FPI before others can proceed
-   */
-  boolean | undefined;
-  fpi_scope?: /**
-     * Scope at which FPI applies
-    
-    * `PER_WORKORDER` - Per Work Order
-    * `PER_SHIFT` - Per Shift
-    * `PER_EQUIPMENT` - Per Equipment
-     */
-  FpiScopeEnum | undefined;
+  requires_first_piece_inspection: boolean;
+  fpi_scope: string;
   sequencing_mode?: /**
    * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
    *
@@ -8615,13 +8602,9 @@ export type Step = {
      */
     (number | null)
     | undefined;
-  revisit_assignment?: RevisitAssignmentEnum | undefined;
-  revisit_role?:
-    | /**
-     * Required role when revisit_assignment='role'
-     */
-    (string | null)
-    | undefined;
+  revisit_assignment: string;
+  revisit_role: string | null;
+  gates: Array<StepGate>;
 };
 export type StepTiming = Partial<{
   /**
@@ -8666,23 +8649,6 @@ export type AttentionTypeEnum =
    * @enum full, load_unload, unattended
    */
   "full" | "load_unload" | "unattended";
-export type QaSignoffAssuranceEnum =
-  /**
-   * * `NONE` - Check off - recorded under their login
-   * `PASSWORD` - Signature + password - they re-enter their own password
-   *
-   * @enum NONE, PASSWORD
-   */
-  "NONE" | "PASSWORD";
-export type FpiScopeEnum =
-  /**
-   * * `PER_WORKORDER` - Per Work Order
-   * `PER_SHIFT` - Per Shift
-   * `PER_EQUIPMENT` - Per Equipment
-   *
-   * @enum PER_WORKORDER, PER_SHIFT, PER_EQUIPMENT
-   */
-  "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT";
 export type StepTypeEnum =
   /**
    * * `TASK` - Task
@@ -8735,16 +8701,45 @@ export type TerminalStatusEnum =
   | "AWAITING_PICKUP"
   | "CORE_BANKED"
   | "RMA_CLOSED";
-export type RevisitAssignmentEnum =
+export type StepGate = {
+  gate: GateEnum;
+  order?: number | undefined;
+  fpi_scope?: (string | null) | undefined;
+  qa_assurance?: (string | null) | undefined;
+  revisit_assignment?: (string | null) | undefined;
+  revisit_role?: (string | null) | undefined;
+};
+export type GateEnum =
   /**
-   * * `ANY` - Any Qualified Operator
-   * `SAME` - Same as Previous
-   * `DIFFERENT` - Different Operator
-   * `ROLE` - Specific Role
+   * * `work_order_not_workable` - Work order workable
+   * `deviation_expired` - Deviation in date
+   * `part_quarantined` - Part not quarantined
+   * `core_awaiting_authorisation` - Customer authorisation
+   * `training_not_authorized` - Operator trained
+   * `revisit_rule` - Repeat visits
+   * `substeps_incomplete` - Work instruction done
+   * `qualified_operator` - Qualified operator on record
+   * `life_limit` - Life limit
+   * `quarantine_hold` - Quarantine hold
+   * `qa_signoff` - QA sign-off
+   * `first_piece` - First piece
+   * `measurement_out_of_spec` - Readings in spec
    *
-   * @enum ANY, SAME, DIFFERENT, ROLE
+   * @enum work_order_not_workable, deviation_expired, part_quarantined, core_awaiting_authorisation, training_not_authorized, revisit_rule, substeps_incomplete, qualified_operator, life_limit, quarantine_hold, qa_signoff, first_piece, measurement_out_of_spec
    */
-  "ANY" | "SAME" | "DIFFERENT" | "ROLE";
+  | "work_order_not_workable"
+  | "deviation_expired"
+  | "part_quarantined"
+  | "core_awaiting_authorisation"
+  | "training_not_authorized"
+  | "revisit_rule"
+  | "substeps_incomplete"
+  | "qualified_operator"
+  | "life_limit"
+  | "quarantine_hold"
+  | "qa_signoff"
+  | "first_piece"
+  | "measurement_out_of_spec";
 export type StepEdge = {
   id: number;
   from_step: string;
@@ -10811,23 +10806,17 @@ export type Steps = {
   string | undefined;
   expected_duration?: (string | null) | undefined;
   description?: (string | null) | undefined;
-  block_on_quarantine?: boolean | undefined;
-  block_on_measurement_failure?: /**
-   * If True, parts cannot advance if any measurement is out of spec
-   */
-  boolean | undefined;
-  requires_qa_signoff?: boolean | undefined;
-  qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
+  block_on_quarantine: boolean;
+  block_on_measurement_failure: boolean;
+  requires_qa_signoff: boolean;
+  qa_signoff_assurance: string;
   sampling_required?: boolean | undefined;
   min_sampling_rate?: /**
    * Minimum % of parts that must be sampled at this step
    */
   number | undefined;
   pass_threshold?: number | undefined;
-  requires_first_piece_inspection?: /**
-   * If True, first part of each work order at this step requires FPI before others can proceed
-   */
-  boolean | undefined;
+  requires_first_piece_inspection: boolean;
   part_type?: (string | null) | undefined;
   part_type_info: {
     id: string;
@@ -10905,13 +10894,10 @@ export type Steps = {
      */
     (number | null)
     | undefined;
-  revisit_assignment?: RevisitAssignmentEnum | undefined;
-  revisit_role?:
-    | /**
-     * Required role when revisit_assignment='role'
-     */
-    (string | null)
-    | undefined;
+  revisit_assignment: string;
+  revisit_role: string | null;
+  gates?: Array<StepGate> | undefined;
+  fpi_scope: string;
   sequencing_mode?: /**
    * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
    *
@@ -15326,23 +15312,12 @@ export type PatchedStepsRequest = Partial<{
   operation_number: string;
   expected_duration: string | null;
   description: string | null;
-  block_on_quarantine: boolean;
-  /**
-   * If True, parts cannot advance if any measurement is out of spec
-   */
-  block_on_measurement_failure: boolean;
-  requires_qa_signoff: boolean;
-  qa_signoff_assurance: QaSignoffAssuranceEnum;
   sampling_required: boolean;
   /**
    * Minimum % of parts that must be sampled at this step
    */
   min_sampling_rate: number;
   pass_threshold: number;
-  /**
-   * If True, first part of each work order at this step requires FPI before others can proceed
-   */
-  requires_first_piece_inspection: boolean;
   part_type: string | null;
   /**
    * The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
@@ -15397,11 +15372,7 @@ export type PatchedStepsRequest = Partial<{
    * @maximum 2147483647
    */
   max_visits: number | null;
-  revisit_assignment: RevisitAssignmentEnum;
-  /**
-   * Required role when revisit_assignment='role'
-   */
-  revisit_role: string | null;
+  gates: Array<StepGateRequest>;
   /**
    * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
    *
@@ -15430,6 +15401,14 @@ export type PatchedStepsRequest = Partial<{
   change_description: string;
   archived: boolean;
 }>;
+export type StepGateRequest = {
+  gate: GateEnum;
+  order?: number | undefined;
+  fpi_scope?: (string | null) | undefined;
+  qa_assurance?: (string | null) | undefined;
+  revisit_assignment?: (string | null) | undefined;
+  revisit_role?: (string | null) | undefined;
+};
 export type StepTimingRequest = Partial<{
   /**
    * Internal (machine-stopped) setup / changeover minutes.
@@ -18049,35 +18028,16 @@ export type StepRequest = {
      */
     (LaborModelEnum | BlankEnum | NullEnum | null)
     | undefined;
-  requires_qa_signoff?: boolean | undefined;
-  qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
   sampling_required?: boolean | undefined;
   min_sampling_rate?: /**
    * Minimum % of parts that must be sampled at this step
    */
   number | undefined;
-  block_on_quarantine?: boolean | undefined;
-  block_on_measurement_failure?: /**
-   * If True, parts cannot advance if any measurement is out of spec
-   */
-  boolean | undefined;
   pass_threshold?: number | undefined;
   requires_batch_completion?: /**
    * If True, all parts in batch must be ready before any can advance
    */
   boolean | undefined;
-  requires_first_piece_inspection?: /**
-   * If True, first part of each work order at this step requires FPI before others can proceed
-   */
-  boolean | undefined;
-  fpi_scope?: /**
-     * Scope at which FPI applies
-    
-    * `PER_WORKORDER` - Per Work Order
-    * `PER_SHIFT` - Per Shift
-    * `PER_EQUIPMENT` - Per Equipment
-     */
-  FpiScopeEnum | undefined;
   sequencing_mode?: /**
    * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
    *
@@ -18141,13 +18101,6 @@ export type StepRequest = {
      * @maximum 2147483647
      */
     (number | null)
-    | undefined;
-  revisit_assignment?: RevisitAssignmentEnum | undefined;
-  revisit_role?:
-    | /**
-     * Required role when revisit_assignment='role'
-     */
-    (string | null)
     | undefined;
 };
 export type StepSamplingRulesUpdateRequest = {
@@ -18263,23 +18216,12 @@ export type StepsRequest = {
   string | undefined;
   expected_duration?: (string | null) | undefined;
   description?: (string | null) | undefined;
-  block_on_quarantine?: boolean | undefined;
-  block_on_measurement_failure?: /**
-   * If True, parts cannot advance if any measurement is out of spec
-   */
-  boolean | undefined;
-  requires_qa_signoff?: boolean | undefined;
-  qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
   sampling_required?: boolean | undefined;
   min_sampling_rate?: /**
    * Minimum % of parts that must be sampled at this step
    */
   number | undefined;
   pass_threshold?: number | undefined;
-  requires_first_piece_inspection?: /**
-   * If True, first part of each work order at this step requires FPI before others can proceed
-   */
-  boolean | undefined;
   part_type?: (string | null) | undefined;
   work_center?:
     | /**
@@ -18344,13 +18286,7 @@ export type StepsRequest = {
      */
     (number | null)
     | undefined;
-  revisit_assignment?: RevisitAssignmentEnum | undefined;
-  revisit_role?:
-    | /**
-     * Required role when revisit_assignment='role'
-     */
-    (string | null)
-    | undefined;
+  gates?: Array<StepGateRequest> | undefined;
   sequencing_mode?: /**
    * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
    *
@@ -24780,8 +24716,6 @@ const StepTiming = z
   })
   .partial();
 const LaborModelEnum = z.enum(["off", "pool", "named"]);
-const QaSignoffAssuranceEnum = z.enum(["NONE", "PASSWORD"]);
-const FpiScopeEnum = z.enum(["PER_WORKORDER", "PER_SHIFT", "PER_EQUIPMENT"]);
 const StepTypeEnum = z.enum([
   "TASK",
   "START",
@@ -24808,7 +24742,29 @@ const TerminalStatusEnum = z.enum([
   "CORE_BANKED",
   "RMA_CLOSED",
 ]);
-const RevisitAssignmentEnum = z.enum(["ANY", "SAME", "DIFFERENT", "ROLE"]);
+const GateEnum = z.enum([
+  "work_order_not_workable",
+  "deviation_expired",
+  "part_quarantined",
+  "core_awaiting_authorisation",
+  "training_not_authorized",
+  "revisit_rule",
+  "substeps_incomplete",
+  "qualified_operator",
+  "life_limit",
+  "quarantine_hold",
+  "qa_signoff",
+  "first_piece",
+  "measurement_out_of_spec",
+]);
+const StepGate = z.object({
+  gate: GateEnum,
+  order: z.number().int().optional(),
+  fpi_scope: z.string().nullish(),
+  qa_assurance: z.string().nullish(),
+  revisit_assignment: z.string().nullish(),
+  revisit_role: z.string().uuid().nullish(),
+});
 const Step = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
@@ -24819,16 +24775,16 @@ const Step = z.object({
   expected_duration: z.string().nullish(),
   timing: StepTiming.nullable(),
   labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullish(),
-  requires_qa_signoff: z.boolean().optional(),
-  qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
+  requires_qa_signoff: z.boolean(),
+  qa_signoff_assurance: z.string(),
   sampling_required: z.boolean().optional(),
   min_sampling_rate: z.number().optional(),
-  block_on_quarantine: z.boolean().optional(),
-  block_on_measurement_failure: z.boolean().optional(),
+  block_on_quarantine: z.boolean(),
+  block_on_measurement_failure: z.boolean(),
   pass_threshold: z.number().optional(),
   requires_batch_completion: z.boolean().optional(),
-  requires_first_piece_inspection: z.boolean().optional(),
-  fpi_scope: FpiScopeEnum.optional(),
+  requires_first_piece_inspection: z.boolean(),
+  fpi_scope: z.string(),
   sequencing_mode: z.string().max(20).optional(),
   step_type: StepTypeEnum.optional(),
   is_decision_point: z.boolean().optional(),
@@ -24844,8 +24800,9 @@ const Step = z.object({
   is_terminal: z.boolean().optional(),
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
-  revisit_assignment: RevisitAssignmentEnum.optional(),
-  revisit_role: z.string().uuid().nullish(),
+  revisit_assignment: z.string(),
+  revisit_role: z.string().uuid().nullable(),
+  gates: z.array(StepGate),
 });
 const ProcessStep = z.object({
   id: z.number().int(),
@@ -26887,14 +26844,14 @@ const Steps = z.object({
   operation_number: z.string().max(20).optional(),
   expected_duration: z.string().nullish(),
   description: z.string().nullish(),
-  block_on_quarantine: z.boolean().optional(),
-  block_on_measurement_failure: z.boolean().optional(),
-  requires_qa_signoff: z.boolean().optional(),
-  qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
+  block_on_quarantine: z.boolean(),
+  block_on_measurement_failure: z.boolean(),
+  requires_qa_signoff: z.boolean(),
+  qa_signoff_assurance: z.string(),
   sampling_required: z.boolean().optional(),
   min_sampling_rate: z.number().optional(),
   pass_threshold: z.number().optional(),
-  requires_first_piece_inspection: z.boolean().optional(),
+  requires_first_piece_inspection: z.boolean(),
   part_type: z.string().uuid().nullish(),
   part_type_info: z
     .object({
@@ -26920,8 +26877,10 @@ const Steps = z.object({
   is_terminal: z.boolean().optional(),
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
-  revisit_assignment: RevisitAssignmentEnum.optional(),
-  revisit_role: z.string().uuid().nullish(),
+  revisit_assignment: z.string(),
+  revisit_role: z.string().uuid().nullable(),
+  gates: z.array(StepGate).optional(),
+  fpi_scope: z.string(),
   sequencing_mode: z.string().max(20).optional(),
   scrap_rate: z
     .string()
@@ -26942,6 +26901,14 @@ const PaginatedStepsList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(Steps),
 });
+const StepGateRequest = z.object({
+  gate: GateEnum,
+  order: z.number().int().optional(),
+  fpi_scope: z.string().nullish(),
+  qa_assurance: z.string().nullish(),
+  revisit_assignment: z.string().nullish(),
+  revisit_role: z.string().uuid().nullish(),
+});
 const StepTimingRequest = z
   .object({
     setup_minutes: z.number().gte(0),
@@ -26956,14 +26923,9 @@ const StepsRequest = z.object({
   operation_number: z.string().max(20).optional(),
   expected_duration: z.string().nullish(),
   description: z.string().nullish(),
-  block_on_quarantine: z.boolean().optional(),
-  block_on_measurement_failure: z.boolean().optional(),
-  requires_qa_signoff: z.boolean().optional(),
-  qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
   sampling_required: z.boolean().optional(),
   min_sampling_rate: z.number().optional(),
   pass_threshold: z.number().optional(),
-  requires_first_piece_inspection: z.boolean().optional(),
   part_type: z.string().uuid().nullish(),
   work_center: z.string().uuid().nullish(),
   step_type: StepTypeEnum.optional(),
@@ -26977,8 +26939,7 @@ const StepsRequest = z.object({
   is_terminal: z.boolean().optional(),
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
-  revisit_assignment: RevisitAssignmentEnum.optional(),
-  revisit_role: z.string().uuid().nullish(),
+  gates: z.array(StepGateRequest).optional(),
   sequencing_mode: z.string().min(1).max(20).optional(),
   scrap_rate: z
     .string()
@@ -26995,14 +26956,9 @@ const PatchedStepsRequest = z
     operation_number: z.string().max(20),
     expected_duration: z.string().nullable(),
     description: z.string().nullable(),
-    block_on_quarantine: z.boolean(),
-    block_on_measurement_failure: z.boolean(),
-    requires_qa_signoff: z.boolean(),
-    qa_signoff_assurance: QaSignoffAssuranceEnum,
     sampling_required: z.boolean(),
     min_sampling_rate: z.number(),
     pass_threshold: z.number(),
-    requires_first_piece_inspection: z.boolean(),
     part_type: z.string().uuid().nullable(),
     work_center: z.string().uuid().nullable(),
     step_type: StepTypeEnum,
@@ -27021,8 +26977,7 @@ const PatchedStepsRequest = z
     is_terminal: z.boolean(),
     terminal_status: z.union([TerminalStatusEnum, BlankEnum]),
     max_visits: z.number().int().gte(0).lte(2147483647).nullable(),
-    revisit_assignment: RevisitAssignmentEnum,
-    revisit_role: z.string().uuid().nullable(),
+    gates: z.array(StepGateRequest),
     sequencing_mode: z.string().min(1).max(20),
     scrap_rate: z
       .string()
@@ -30794,16 +30749,10 @@ const StepRequest = z.object({
   part_type: z.string().uuid().nullish(),
   expected_duration: z.string().nullish(),
   labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullish(),
-  requires_qa_signoff: z.boolean().optional(),
-  qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
   sampling_required: z.boolean().optional(),
   min_sampling_rate: z.number().optional(),
-  block_on_quarantine: z.boolean().optional(),
-  block_on_measurement_failure: z.boolean().optional(),
   pass_threshold: z.number().optional(),
   requires_batch_completion: z.boolean().optional(),
-  requires_first_piece_inspection: z.boolean().optional(),
-  fpi_scope: FpiScopeEnum.optional(),
   sequencing_mode: z.string().min(1).max(20).optional(),
   step_type: StepTypeEnum.optional(),
   is_decision_point: z.boolean().optional(),
@@ -30816,8 +30765,6 @@ const StepRequest = z.object({
   is_terminal: z.boolean().optional(),
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
   max_visits: z.number().int().gte(0).lte(2147483647).nullish(),
-  revisit_assignment: RevisitAssignmentEnum.optional(),
-  revisit_role: z.string().uuid().nullish(),
 });
 
 export const schemas = {
@@ -31397,12 +31344,11 @@ export const schemas = {
   AttentionTypeEnum,
   StepTiming,
   LaborModelEnum,
-  QaSignoffAssuranceEnum,
-  FpiScopeEnum,
   StepTypeEnum,
   DecisionTypeEnum,
   TerminalStatusEnum,
-  RevisitAssignmentEnum,
+  GateEnum,
+  StepGate,
   Step,
   ProcessStep,
   EdgeTypeEnum,
@@ -31621,6 +31567,7 @@ export const schemas = {
   StepProcessRef,
   Steps,
   PaginatedStepsList,
+  StepGateRequest,
   StepTimingRequest,
   StepsRequest,
   PatchedStepsRequest,

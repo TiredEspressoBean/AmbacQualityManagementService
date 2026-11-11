@@ -728,15 +728,9 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'pass_threshold': step_data.get('pass_threshold', 1.0),
                     'expected_duration': step_data.get('expected_duration'),
                     # QA & Sampling
-                    'block_on_quarantine': step_data.get('block_on_quarantine', False),
-                    'requires_qa_signoff': step_data.get('requires_qa_signoff', False),
                     'sampling_required': step_data.get('sampling_required', False),
                     'min_sampling_rate': step_data.get('min_sampling_rate', 0.0),
-                    # First Piece Inspection
-                    'requires_first_piece_inspection': step_data.get('requires_first_piece_inspection', False),
-                    'fpi_scope': step_data.get('fpi_scope', 'PER_WORKORDER'),
                     # Workflow Control
-                    'block_on_measurement_failure': step_data.get('block_on_measurement_failure', False),
                     'block_on_spc_violation': step_data.get('block_on_spc_violation', False),
                     'override_expiry_hours': step_data.get('override_expiry_hours', 24),
                     'undo_window_minutes': step_data.get('undo_window_minutes', 15),
@@ -753,10 +747,10 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'terminal_status': step_data.get('terminal_status', ''),
                     # Cycle control
                     'max_visits': step_data.get('max_visits'),
-                    'revisit_assignment': step_data.get('revisit_assignment', 'ANY'),
-                    'revisit_role': revisit_role,
                 }
             )
+            # The step's gates: the floor plus what the route table turns on.
+            self._set_gates(step, step_data, revisit_role)
             steps.append(step)
             step_map[step_name] = step
 
@@ -775,6 +769,23 @@ class DemoManufacturingSeeder(BaseSeeder):
         self._create_step_edges(process, step_map)
 
         return process, steps
+
+    @staticmethod
+    def _set_gates(step, step_data, revisit_role):
+        """The step's gates (StepRequirement rows): the floor, plus the gates its route
+        entry turns on with the flag names the tables use."""
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(
+            step,
+            requires_qa_signoff=step_data.get('requires_qa_signoff', False),
+            qa_signoff_assurance=step_data.get('qa_signoff_assurance', 'NONE'),
+            requires_first_piece_inspection=step_data.get('requires_first_piece_inspection', False),
+            fpi_scope=step_data.get('fpi_scope', 'PER_WORKORDER'),
+            block_on_quarantine=step_data.get('block_on_quarantine', False),
+            block_on_measurement_failure=step_data.get('block_on_measurement_failure', False),
+            revisit_assignment=step_data.get('revisit_assignment', 'ANY'),
+            revisit_role=revisit_role,
+        )
 
     def _create_build_process(self, part_type):
         """The new-manufacture route (DEMO_BUILD_PROCESS), with its own steps."""
@@ -815,13 +826,8 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'description': step_data['description'],
                     'pass_threshold': step_data.get('pass_threshold', 1.0),
                     'expected_duration': step_data.get('expected_duration'),
-                    'block_on_quarantine': step_data.get('block_on_quarantine', False),
-                    'requires_qa_signoff': step_data.get('requires_qa_signoff', False),
                     'sampling_required': step_data.get('sampling_required', False),
                     'min_sampling_rate': step_data.get('min_sampling_rate', 0.0),
-                    'requires_first_piece_inspection': step_data.get('requires_first_piece_inspection', False),
-                    'fpi_scope': step_data.get('fpi_scope', 'PER_WORKORDER'),
-                    'block_on_measurement_failure': step_data.get('block_on_measurement_failure', False),
                     'block_on_spc_violation': step_data.get('block_on_spc_violation', False),
                     'override_expiry_hours': step_data.get('override_expiry_hours', 24),
                     'undo_window_minutes': step_data.get('undo_window_minutes', 15),
@@ -834,10 +840,9 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'is_terminal': is_terminal,
                     'terminal_status': step_data.get('terminal_status', ''),
                     'max_visits': step_data.get('max_visits'),
-                    'revisit_assignment': step_data.get('revisit_assignment', 'ANY'),
-                    'revisit_role': groups.get(role_name) if role_name else None,
                 },
             )
+            self._set_gates(step, step_data, groups.get(role_name) if role_name else None)
             step_map[name] = step
         route = cfg['route']
         for i, name in enumerate(route, start=1):

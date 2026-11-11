@@ -453,7 +453,8 @@ def process_graph(process_id, cache: dict | None = None) -> tuple:
                  requires_first_piece_inspection=ps.step.requires_first_piece_inspection,
                  order=ps.order)
         for ps in ProcessStep.objects.filter(process_id=process_id)
-        .select_related('step').order_by('order'))
+        # The first-piece gate is a StepRequirement row: prefetched, not one query a step.
+        .select_related('step').prefetch_related('step__requirements').order_by('order'))
     edges = tuple(
         EdgeData(from_step_id=e.from_step_id, to_step_id=e.to_step_id,
                  edge_type=e.edge_type, max_minutes=e.max_minutes)

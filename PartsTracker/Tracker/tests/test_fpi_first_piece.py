@@ -49,8 +49,9 @@ class FpiFirstPieceTests(TenantTestCase):
         # part has an active execution — isolates the FPI first-piece gate.
         self.step = Steps.objects.create(
             tenant=self.tenant_a, part_type=self.pt, name="Op1", step_type="TASK",
-            requires_first_piece_inspection=True,
         )
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, requires_first_piece_inspection=True)
         ProcessStep.objects.create(process=self.process, step=self.step, order=1)
         self.wo = WorkOrder.objects.create(
             tenant=self.tenant_a, ERP_id="WO-FP-1",
@@ -120,7 +121,8 @@ class FpiFirstPieceTests(TenantTestCase):
         """The refusal's headline names no cause; the blockers do. It used to say
         "finish the step's captures first" whatever blocked — here the captures are
         done and the first piece is quarantined."""
-        Steps.objects.filter(pk=self.step.pk).update(block_on_quarantine=True)
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, requires_first_piece_inspection=True, block_on_quarantine=True)
         resp = self._get_or_create()
         fpi_id = resp.data["fpi"]["id"]
         self._start(self.p1)

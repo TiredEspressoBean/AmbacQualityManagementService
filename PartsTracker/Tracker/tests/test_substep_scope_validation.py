@@ -22,11 +22,11 @@ class SubstepFpiBatchExclusionTests(TenantContextMixin, VectorTestCase):
         self.part_type = PartTypes.objects.create(tenant=self.tenant, name="Widget")
         self.fpi_step = Steps.objects.create(
             tenant=self.tenant, part_type=self.part_type, name="Inspect",
-            requires_first_piece_inspection=True,
         )
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.fpi_step, requires_first_piece_inspection=True)
         self.normal_step = Steps.objects.create(
             tenant=self.tenant, part_type=self.part_type, name="Assemble",
-            requires_first_piece_inspection=False,
         )
 
     def test_batch_scope_rejected_on_fpi_step(self):

@@ -72,14 +72,17 @@ class DecisionCosignTests(TenantContextMixin, TestCase):
             tenant=self.tenant, part_type=self.pt, name="Dc Decide",
             step_type="TASK", is_decision_point=True, decision_type="MANUAL",
         )
+        from Tracker.services.mes.step_gates import set_gates_from_flags
         self.pass_step = Steps.objects.create(
             tenant=self.tenant, part_type=self.pt, name="Dc Final",
-            step_type="TASK", revisit_assignment="same",
+            step_type="TASK",
         )
+        set_gates_from_flags(self.pass_step, revisit_assignment="same")
         self.fail_step = Steps.objects.create(
             tenant=self.tenant, part_type=self.pt, name="Dc Rework",
-            step_type="REWORK", revisit_assignment="same",
+            step_type="REWORK",
         )
+        set_gates_from_flags(self.fail_step, revisit_assignment="same")
         for order, step in enumerate((self.gate, self.pass_step, self.fail_step), start=1):
             ProcessStep.objects.create(process=self.process, step=step, order=order)
         StepEdge.objects.create(

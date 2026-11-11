@@ -40,8 +40,9 @@ class FpiGateTests(TenantContextMixin, TestCase):
         # step1 gates on FPI; step2 is the destination.
         self.step1 = Steps.objects.create(
             tenant=self.tenant, part_type=self.pt, name="Op1", step_type="TASK",
-            requires_first_piece_inspection=True,
         )
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step1, requires_first_piece_inspection=True)
         self.step2 = Steps.objects.create(
             tenant=self.tenant, part_type=self.pt, name="Op2", step_type="TASK",
         )
@@ -112,8 +113,8 @@ class FpiGateTests(TenantContextMixin, TestCase):
         self.assertEqual(self.part.step_id, self.step2.id)
 
     def test_no_gate_when_fpi_not_required(self):
-        self.step1.requires_first_piece_inspection = False
-        self.step1.save(update_fields=["requires_first_piece_inspection"])
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step1)
         result = self._advance()
         self.assertEqual(result.status, "advanced")
         self.part.refresh_from_db()

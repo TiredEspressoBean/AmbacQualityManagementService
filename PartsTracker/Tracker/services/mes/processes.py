@@ -617,8 +617,12 @@ def create_process_with_steps(data: dict) -> Processes:
         # splatted into Steps.objects.create, which would reject them.
         is_exit_point = node.pop("is_exit_point", False)
         auto_advance = node.pop("auto_advance", True)
+        gates = _pop_gates(node)
 
         step = Steps.objects.create(part_type=process.part_type, **node)
+        if gates is not _UNSET:
+            from Tracker.services.mes.step_gates import set_step_gates
+            set_step_gates(step, gates)
 
         if temp_id is not None and temp_id <= 0:
             temp_id_map[temp_id] = step.id
@@ -700,6 +704,9 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
         # StepTiming instance against a dict, call it changed on every save, and then
         # hand `timing=` to create_new_step_version as though it were a model field.
         timing = node.pop("timing", _UNSET)
+        # The step's gates are its StepRequirement rows, not Steps fields: out before
+        # the diff, like timing, and written to whichever row the save lands on.
+        gates = _pop_gates(node)
 
         # Existing step: node_id is a UUID matching a Steps row. New
         # step: node_id is None, a negative int legacy sentinel, or any
@@ -741,13 +748,14 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
 
             diffed = {k: v for k, v in node.items() if _changed(k, v)}
             timing_changed = timing is not _UNSET and _timing_differs(step, timing)
+            gates_changed = gates is not _UNSET and _gates_differ(step, gates)
             note = f"Process editor save for {instance.name} v{instance.version}"
-            if str(node_id) in existing_process_steps and (diffed or timing_changed):
+            if str(node_id) in existing_process_steps and (diffed or timing_changed or gates_changed):
                 # The draft's own row: copied once if another process shares it,
                 # edited in place after that — not a new version per save.
                 from Tracker.services.mes.steps import step_for_draft
                 step = step_for_draft(step, instance, user=user, change_description=note, **diffed)
-            elif diffed:
+            elif diffed or gates_changed:
                 # A step brought in from elsewhere: version it for this process.
                 step = create_new_step_version(
                     step, user=user, change_description=note, process=instance, **diffed,
@@ -788,6 +796,9 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
             # like it saved and then vanish on the next read.
             if timing is not _UNSET:
                 _apply_step_timing(step, timing)
+            if gates_changed:
+                from Tracker.services.mes.step_gates import set_step_gates
+                set_step_gates(step, gates)
 
             # Edges reference Step rows directly. When a Step versioned
             # above, edges must rebuild against the new Step id —
@@ -805,6 +816,9 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
             incoming_step_ids.add(str(step.id))
             if timing is not _UNSET:
                 _apply_step_timing(step, timing)
+            if gates is not _UNSET:
+                from Tracker.services.mes.step_gates import set_step_gates
+                set_step_gates(step, gates)
             if node_id is not None:
                 temp_id_map[node_id] = step.id
             # Edges from the canvas reference a new node by its _temp_id; map it
@@ -834,6 +848,31 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
     instance.step_edges.all().delete()
     _build_edges(instance, edges_data, temp_id_map, preserved=preserved)
     return instance
+
+
+# The old Steps gate flags (2026-11-11: the step's gates are its StepRequirement rows).
+_RETIRED_GATE_KEYS = (
+    'requires_qa_signoff', 'qa_signoff_assurance', 'requires_first_piece_inspection',
+    'fpi_scope', 'block_on_quarantine', 'block_on_measurement_failure',
+    'revisit_assignment', 'revisit_role', 'revisit_role_id',
+)
+
+
+def _pop_gates(node: dict):
+    """The node's `gates` list, or `_UNSET` when it sends none. A node still sending
+    the retired gate flags is refused rather than having them silently dropped."""
+    retired = [k for k in _RETIRED_GATE_KEYS if k in node]
+    if retired:
+        raise ValueError(
+            f"{', '.join(retired)} {'is' if len(retired) == 1 else 'are'} no longer step "
+            "fields: send the step's `gates` list instead.")
+    return node.pop("gates", _UNSET)
+
+
+def _gates_differ(step, gates) -> bool:
+    """Whether saving `gates` would change the step's gate rows."""
+    from Tracker.services.mes.step_gates import gate_signature
+    return gate_signature(gates or []) != gate_signature(step.requirements.filter(archived=False))
 
 
 def _timing_differs(step, data) -> bool:

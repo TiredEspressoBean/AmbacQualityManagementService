@@ -72,16 +72,9 @@ _STEP_DIFF_FIELDS = (
     "is_decision_point",
     "is_terminal",
     "max_visits",
-    # Who may work a repeat visit — enforced at start, so a change is a process change.
-    "revisit_assignment",
-    "revisit_role_id",
     "is_critical",
-    "requires_first_piece_inspection",
-    "requires_qa_signoff",
     "sampling_required",
     "min_sampling_rate",
-    "block_on_quarantine",
-    "block_on_measurement_failure",
     "sequencing_mode",
     # A Repair node's code: which repair a check can send a unit to.
     "repair_code_id",
@@ -135,6 +128,28 @@ def diff_has_changes(diff: Dict[str, Any] | None) -> bool:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+def _gate_setting(row) -> str:
+    """How a step's gate row is set, in words, for the diff."""
+    if row.gate == 'first_piece':
+        return f"on ({(row.fpi_scope or 'PER_WORKORDER').replace('_', ' ').title()})"
+    if row.gate == 'qa_signoff':
+        return f"on ({'signature + password' if row.qa_assurance == 'PASSWORD' else 'check off'})"
+    if row.gate == 'revisit_rule':
+        role = f": {row.revisit_role.name}" if row.revisit_assignment == 'ROLE' and row.revisit_role else ''
+        return f"on ({row.revisit_assignment}{role})"
+    return "on"
+
+
+def _diff_gates(a, b) -> Dict[str, Dict[str, Any]]:
+    """{'gate:<code>': {from, to}} for each gate added, removed or set differently
+    between two versions of a step — its StepRequirement rows (2026-11-11). Absent
+    reads "off"."""
+    ra = {r.gate: _gate_setting(r) for r in a.requirements.filter(archived=False)}
+    rb = {r.gate: _gate_setting(r) for r in b.requirements.filter(archived=False)}
+    return {f"gate:{g}": {"from": ra.get(g, "off"), "to": rb.get(g, "off")}
+            for g in sorted(set(ra) | set(rb)) if ra.get(g) != rb.get(g)}
+
+
 def _diff_scalars(a, b, fields: tuple[str, ...]) -> Dict[str, Dict[str, Any]]:
     """Return {field: {from, to}} for any field that differs between a and b."""
     result: Dict[str, Dict[str, Any]] = {}
@@ -173,7 +188,7 @@ def _diff_steps(from_process: "Processes", to_process: "Processes") -> Dict[str,
         if a is None:
             added.append(_step_summary(b))
             continue
-        changes = _diff_scalars(a, b, _STEP_DIFF_FIELDS)
+        changes = {**_diff_scalars(a, b, _STEP_DIFF_FIELDS), **_diff_gates(a, b)}
         if changes:
             modified.append({**_step_summary(b), "changes": changes})
 

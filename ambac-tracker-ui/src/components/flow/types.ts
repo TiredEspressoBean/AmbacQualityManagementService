@@ -1,4 +1,5 @@
 import type { Node, Edge } from '@xyflow/react';
+import type { StepGate } from './StepGatesField';
 import type {
   StepTypeEnum,
   DecisionTypeEnum,
@@ -196,19 +197,20 @@ export interface StepData {
   scrap_rate?: number | string | null;
   part_type?: string;
   part_type_name?: string;
-  // QA fields
+  /** The step's gates — the one source of which checks apply (QA sign-off, first
+   *  piece, quarantine hold, repeat-visit rule…). Edited as the whole list. */
+  gates?: StepGate[];
+  // Read-only, answered by the server from `gates`, for screens that only show them.
   requires_qa_signoff?: boolean;
   /** NONE = signed under their login, PASSWORD = they re-enter their own. */
   qa_signoff_assurance?: string;
-  sampling_required?: boolean;
-  min_sampling_rate?: number;
   block_on_quarantine?: boolean;
   block_on_measurement_failure?: boolean;
-  pass_threshold?: number;
-  /** Who may work a repeat visit (enforced at start/claim): ANY (no constraint, the
-   *  default), SAME (whoever worked the last visit), DIFFERENT, or ROLE (revisit_role). */
   revisit_assignment?: 'ANY' | 'SAME' | 'DIFFERENT' | 'ROLE';
   revisit_role?: string | null;
+  sampling_required?: boolean;
+  min_sampling_rate?: number;
+  pass_threshold?: number;
   /** Reman: the repair code this step carries, as the shop writes it (e.g. NZL-RECON).
    *  Flow validation needs it to tell a configured Repair node from an unroutable one. */
   repair_code_code?: string | null;

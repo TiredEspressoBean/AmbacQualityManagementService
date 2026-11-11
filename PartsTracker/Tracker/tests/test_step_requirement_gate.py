@@ -1,11 +1,8 @@
-"""Fail-closed gating for unimplemented mandatory StepRequirement types.
+"""A step's gate rows hold advancement (user decisions 2026-11-11).
 
-`StepRequirement.is_satisfied` has automated checks for MEASUREMENT / QA_APPROVAL
-/ FPI_PASSED / SIGNOFF. The resource/safety types (EQUIPMENT_CHECK / MATERIAL_SCAN
-/ TRAINING_VALID / CALIBRATION_VALID) are not yet wired, so a *mandatory*
-requirement of those types must fail CLOSED (block advancement) rather than
-silently pass. Non-mandatory ones aren't checked by the gate, and DOCUMENT /
-CUSTOM stay advisory. Mirrors the FPI-gate test setup (`test_fpi_gate.py`).
+The gates that apply to a step are its StepRequirement rows: a gate row the part
+doesn't meet holds it at the step, and a gate removed from the step no longer does.
+Mirrors the FPI-gate test setup (`test_fpi_gate.py`).
 """
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -15,7 +12,6 @@ from Tracker.models import (
     Parts,
     Processes,
     ProcessStep,
-    RequirementType,
     StepExecution,
     StepRequirement,
     Steps,
@@ -24,6 +20,7 @@ from Tracker.models import (
     WorkOrderStatus,
 )
 from Tracker.services.mes.advancement import try_advance_lot
+from Tracker.services.mes.step_gates import FLOOR_GATES, set_step_gates
 from Tracker.tests.base import TenantContextMixin
 
 
@@ -64,29 +61,23 @@ class StepRequirementGateTests(TenantContextMixin, TestCase):
             tenant_id=str(self.tenant.id), operator=self.user,
         )
 
-    def _req_blocked(self, result):
+    def _qa_blocked(self, result):
         return any(
-            "Requirement not met" in b
+            "QA signoff required" in b
             for lst in result.blockers_by_part.values() for b in lst
         )
 
-    def test_mandatory_unimplemented_safety_type_blocks(self):
-        StepRequirement.objects.create(
-            step=self.step1, requirement_type=RequirementType.CALIBRATION_VALID,
-            name="Gauge calibration", is_mandatory=True,
-        )
+    def test_a_gate_row_holds_advancement(self):
+        StepRequirement.objects.create(step=self.step1, gate="qa_signoff", qa_assurance="NONE")
         result = self._advance()
         self.assertEqual(result.status, "blocked")
-        self.assertTrue(self._req_blocked(result))
+        self.assertTrue(self._qa_blocked(result))
         self.part.refresh_from_db()
         self.assertEqual(self.part.step_id, self.step1.id, "must not leave the gated step")
 
-    def test_non_mandatory_unimplemented_type_does_not_block(self):
-        # Only mandatory requirements are enforced by the gate.
-        StepRequirement.objects.create(
-            step=self.step1, requirement_type=RequirementType.MATERIAL_SCAN,
-            name="Scan (advisory)", is_mandatory=False,
-        )
+    def test_a_gate_removed_from_the_step_no_longer_holds(self):
+        StepRequirement.objects.create(step=self.step1, gate="qa_signoff", qa_assurance="NONE")
+        set_step_gates(self.step1, [{"gate": g} for g in FLOOR_GATES])
         result = self._advance()
         self.assertEqual(result.status, "advanced")
         self.part.refresh_from_db()

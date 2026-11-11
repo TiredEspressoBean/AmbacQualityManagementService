@@ -60388,16 +60388,6 @@ components:
       - upper_limit
       - value
       - within_spec
-    FpiScopeEnum:
-      enum:
-      - PER_WORKORDER
-      - PER_SHIFT
-      - PER_EQUIPMENT
-      type: string
-      description: |-
-        * `PER_WORKORDER` - Per Work Order
-        * `PER_SHIFT` - Per Shift
-        * `PER_EQUIPMENT` - Per Equipment
     FrozenFreed:
       type: object
       description: A frozen or planner-pinned operation that couldn't be held where
@@ -60530,6 +60520,36 @@ components:
         * `OVERRIDDEN` - Supervisor override
         * `WAIVED` - Waived
         * `BYPASSED` - Bypass approved
+    GateEnum:
+      enum:
+      - work_order_not_workable
+      - deviation_expired
+      - part_quarantined
+      - core_awaiting_authorisation
+      - training_not_authorized
+      - revisit_rule
+      - substeps_incomplete
+      - qualified_operator
+      - life_limit
+      - quarantine_hold
+      - qa_signoff
+      - first_piece
+      - measurement_out_of_spec
+      type: string
+      description: |-
+        * `work_order_not_workable` - Work order workable
+        * `deviation_expired` - Deviation in date
+        * `part_quarantined` - Part not quarantined
+        * `core_awaiting_authorisation` - Customer authorisation
+        * `training_not_authorized` - Operator trained
+        * `revisit_rule` - Repeat visits
+        * `substeps_incomplete` - Work instruction done
+        * `qualified_operator` - Qualified operator on record
+        * `life_limit` - Life limit
+        * `quarantine_hold` - Quarantine hold
+        * `qa_signoff` - QA sign-off
+        * `first_piece` - First piece
+        * `measurement_out_of_spec` - Readings in spec
     GateMetricEnum:
       enum:
       - CONSECUTIVE_FAILS
@@ -74045,16 +74065,6 @@ components:
         description:
           type: string
           nullable: true
-        block_on_quarantine:
-          type: boolean
-        block_on_measurement_failure:
-          type: boolean
-          description: If True, parts cannot advance if any measurement is out of
-            spec
-        requires_qa_signoff:
-          type: boolean
-        qa_signoff_assurance:
-          $ref: '#/components/schemas/QaSignoffAssuranceEnum'
         sampling_required:
           type: boolean
         min_sampling_rate:
@@ -74064,10 +74074,6 @@ components:
         pass_threshold:
           type: number
           format: double
-        requires_first_piece_inspection:
-          type: boolean
-          description: If True, first part of each work order at this step requires
-            FPI before others can proceed
         part_type:
           type: string
           format: uuid
@@ -74147,13 +74153,10 @@ components:
           minimum: 0
           nullable: true
           description: Max times a part can visit this step. Null = unlimited.
-        revisit_assignment:
-          $ref: '#/components/schemas/RevisitAssignmentEnum'
-        revisit_role:
-          type: string
-          format: uuid
-          nullable: true
-          description: Required role when revisit_assignment='role'
+        gates:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepGateRequest'
         sequencing_mode:
           type: string
           minLength: 1
@@ -77097,14 +77100,6 @@ components:
       - part_type_documents
       - parts_in_qa
       - work_order_documents
-    QaSignoffAssuranceEnum:
-      enum:
-      - NONE
-      - PASSWORD
-      type: string
-      description: |-
-        * `NONE` - Check off - recorded under their login
-        * `PASSWORD` - Signature + password - they re-enter their own password
     QualificationStatus:
       type: object
       description: Resolved supplier standing for a scope (the `status` action response).
@@ -79988,18 +79983,6 @@ components:
           minLength: 1
       required:
       - reason
-    RevisitAssignmentEnum:
-      enum:
-      - ANY
-      - SAME
-      - DIFFERENT
-      - ROLE
-      type: string
-      description: |-
-        * `ANY` - Any Qualified Operator
-        * `SAME` - Same as Previous
-        * `DIFFERENT` - Different Operator
-        * `ROLE` - Specific Role
     ReworkStatusResponse:
       type: object
       properties:
@@ -82765,8 +82748,10 @@ components:
           - $ref: '#/components/schemas/NullEnum'
         requires_qa_signoff:
           type: boolean
+          readOnly: true
         qa_signoff_assurance:
-          $ref: '#/components/schemas/QaSignoffAssuranceEnum'
+          type: string
+          readOnly: true
         sampling_required:
           type: boolean
         min_sampling_rate:
@@ -82775,10 +82760,10 @@ components:
           description: Minimum % of parts that must be sampled at this step
         block_on_quarantine:
           type: boolean
+          readOnly: true
         block_on_measurement_failure:
           type: boolean
-          description: If True, parts cannot advance if any measurement is out of
-            spec
+          readOnly: true
         pass_threshold:
           type: number
           format: double
@@ -82787,17 +82772,10 @@ components:
           description: If True, all parts in batch must be ready before any can advance
         requires_first_piece_inspection:
           type: boolean
-          description: If True, first part of each work order at this step requires
-            FPI before others can proceed
+          readOnly: true
         fpi_scope:
-          allOf:
-          - $ref: '#/components/schemas/FpiScopeEnum'
-          description: |-
-            Scope at which FPI applies
-
-            * `PER_WORKORDER` - Per Work Order
-            * `PER_SHIFT` - Per Shift
-            * `PER_EQUIPMENT` - Per Equipment
+          type: string
+          readOnly: true
         sequencing_mode:
           type: string
           description: How this Op's substeps are ordered for the operator. 'sequential'
@@ -82884,19 +82862,34 @@ components:
           nullable: true
           description: Max times a part can visit this step. Null = unlimited.
         revisit_assignment:
-          $ref: '#/components/schemas/RevisitAssignmentEnum'
+          type: string
+          readOnly: true
         revisit_role:
           type: string
           format: uuid
+          readOnly: true
           nullable: true
-          description: Required role when revisit_assignment='role'
+        gates:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepGate'
+          readOnly: true
       required:
+      - block_on_measurement_failure
+      - block_on_quarantine
+      - fpi_scope
+      - gates
       - id
       - name
       - outside_supplier_name
       - part_type_name
+      - qa_signoff_assurance
       - repair_code_code
       - repair_code_name
+      - requires_first_piece_inspection
+      - requires_qa_signoff
+      - revisit_assignment
+      - revisit_role
       - timing
     StepDistributionResponse:
       type: object
@@ -83619,6 +83612,56 @@ components:
         * `SKIPPED` - Skipped
         * `CANCELLED` - Cancelled
         * `ROLLED_BACK` - Rolled Back
+    StepGate:
+      type: object
+      description: |-
+        One of a step's gates (a StepRequirement row): the gate's code, its order, and
+        the settings its kind has. Stage and escape come from the registry.
+      properties:
+        gate:
+          $ref: '#/components/schemas/GateEnum'
+        order:
+          type: integer
+        fpi_scope:
+          type: string
+          nullable: true
+        qa_assurance:
+          type: string
+          nullable: true
+        revisit_assignment:
+          type: string
+          nullable: true
+        revisit_role:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - gate
+    StepGateRequest:
+      type: object
+      description: |-
+        One of a step's gates (a StepRequirement row): the gate's code, its order, and
+        the settings its kind has. Stage and escape come from the registry.
+      properties:
+        gate:
+          $ref: '#/components/schemas/GateEnum'
+        order:
+          type: integer
+        fpi_scope:
+          type: string
+          nullable: true
+        qa_assurance:
+          type: string
+          nullable: true
+        revisit_assignment:
+          type: string
+          nullable: true
+        revisit_role:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - gate
     StepIncrementInputRequest:
       type: object
       properties:
@@ -83871,41 +83914,18 @@ components:
           - $ref: '#/components/schemas/LaborModelEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
-        requires_qa_signoff:
-          type: boolean
-        qa_signoff_assurance:
-          $ref: '#/components/schemas/QaSignoffAssuranceEnum'
         sampling_required:
           type: boolean
         min_sampling_rate:
           type: number
           format: double
           description: Minimum % of parts that must be sampled at this step
-        block_on_quarantine:
-          type: boolean
-        block_on_measurement_failure:
-          type: boolean
-          description: If True, parts cannot advance if any measurement is out of
-            spec
         pass_threshold:
           type: number
           format: double
         requires_batch_completion:
           type: boolean
           description: If True, all parts in batch must be ready before any can advance
-        requires_first_piece_inspection:
-          type: boolean
-          description: If True, first part of each work order at this step requires
-            FPI before others can proceed
-        fpi_scope:
-          allOf:
-          - $ref: '#/components/schemas/FpiScopeEnum'
-          description: |-
-            Scope at which FPI applies
-
-            * `PER_WORKORDER` - Per Work Order
-            * `PER_SHIFT` - Per Shift
-            * `PER_EQUIPMENT` - Per Equipment
         sequencing_mode:
           type: string
           minLength: 1
@@ -83980,13 +84000,6 @@ components:
           minimum: 0
           nullable: true
           description: Max times a part can visit this step. Null = unlimited.
-        revisit_assignment:
-          $ref: '#/components/schemas/RevisitAssignmentEnum'
-        revisit_role:
-          type: string
-          format: uuid
-          nullable: true
-          description: Required role when revisit_assignment='role'
       required:
       - name
     StepSamplingRulesUpdateRequest:
@@ -84510,14 +84523,16 @@ components:
           nullable: true
         block_on_quarantine:
           type: boolean
+          readOnly: true
         block_on_measurement_failure:
           type: boolean
-          description: If True, parts cannot advance if any measurement is out of
-            spec
+          readOnly: true
         requires_qa_signoff:
           type: boolean
+          readOnly: true
         qa_signoff_assurance:
-          $ref: '#/components/schemas/QaSignoffAssuranceEnum'
+          type: string
+          readOnly: true
         sampling_required:
           type: boolean
         min_sampling_rate:
@@ -84529,8 +84544,7 @@ components:
           format: double
         requires_first_piece_inspection:
           type: boolean
-          description: If True, first part of each work order at this step requires
-            FPI before others can proceed
+          readOnly: true
         part_type:
           type: string
           format: uuid
@@ -84650,12 +84664,20 @@ components:
           nullable: true
           description: Max times a part can visit this step. Null = unlimited.
         revisit_assignment:
-          $ref: '#/components/schemas/RevisitAssignmentEnum'
+          type: string
+          readOnly: true
         revisit_role:
           type: string
           format: uuid
+          readOnly: true
           nullable: true
-          description: Required role when revisit_assignment='role'
+        gates:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepGate'
+        fpi_scope:
+          type: string
+          readOnly: true
         sequencing_mode:
           type: string
           description: How this Op's substeps are ordered for the operator. 'sequential'
@@ -84710,7 +84732,10 @@ components:
           type: boolean
           readOnly: true
       required:
+      - block_on_measurement_failure
+      - block_on_quarantine
       - created_at
+      - fpi_scope
       - id
       - is_current_version
       - material
@@ -84719,6 +84744,11 @@ components:
       - part_type_info
       - part_type_name
       - processes
+      - qa_signoff_assurance
+      - requires_first_piece_inspection
+      - requires_qa_signoff
+      - revisit_assignment
+      - revisit_role
       - updated_at
       - version
       - work_center_name
@@ -84749,16 +84779,6 @@ components:
         description:
           type: string
           nullable: true
-        block_on_quarantine:
-          type: boolean
-        block_on_measurement_failure:
-          type: boolean
-          description: If True, parts cannot advance if any measurement is out of
-            spec
-        requires_qa_signoff:
-          type: boolean
-        qa_signoff_assurance:
-          $ref: '#/components/schemas/QaSignoffAssuranceEnum'
         sampling_required:
           type: boolean
         min_sampling_rate:
@@ -84768,10 +84788,6 @@ components:
         pass_threshold:
           type: number
           format: double
-        requires_first_piece_inspection:
-          type: boolean
-          description: If True, first part of each work order at this step requires
-            FPI before others can proceed
         part_type:
           type: string
           format: uuid
@@ -84851,13 +84867,10 @@ components:
           minimum: 0
           nullable: true
           description: Max times a part can visit this step. Null = unlimited.
-        revisit_assignment:
-          $ref: '#/components/schemas/RevisitAssignmentEnum'
-        revisit_role:
-          type: string
-          format: uuid
-          nullable: true
-          description: Required role when revisit_assignment='role'
+        gates:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepGateRequest'
         sequencing_mode:
           type: string
           minLength: 1

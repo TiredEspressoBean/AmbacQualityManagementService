@@ -182,8 +182,9 @@ class BlockOnOutOfSpecTests(TenantTestCase):
         from Tracker.models import MeasurementDefinition, Parts, StepExecution, WorkOrder
         t = self.tenant_a
         self.pt = PartTypes.objects.create(tenant=t, name="Body", ID_prefix="B")
-        self.step = Steps.objects.create(tenant=t, part_type=self.pt, name="Bore", step_type="TASK",
-                                         block_on_measurement_failure=True)
+        self.step = Steps.objects.create(tenant=t, part_type=self.pt, name="Bore", step_type="TASK")
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, block_on_measurement_failure=True)
         self.md = MeasurementDefinition.objects.create(tenant=t, step=self.step, label="OD", type="NUMERIC",
                                                        nominal=10, upper_tol=0.1, lower_tol=0.1)
         self.wo = WorkOrder.objects.create(tenant=t, ERP_id="WO-OOS", quantity=1)

@@ -412,21 +412,14 @@ export default function ProcessFlowPage() {
           terminalStatus: updatedStep.terminal_status,
           description: updatedStep.description,
           maxVisits: updatedStep.max_visits,
-          revisitAssignment: updatedStep.revisit_assignment,
-          revisitRole: updatedStep.revisit_role,
           expectedDuration: updatedStep.expected_duration,
           scrapRate: updatedStep.scrap_rate != null ? Number(updatedStep.scrap_rate) : null,
-          requiresQaSignoff: updatedStep.requires_qa_signoff,
-          qaSignoffAssurance: updatedStep.qa_signoff_assurance,
+          gates: updatedStep.gates ?? [],
           samplingRequired: updatedStep.sampling_required,
           minSamplingRate: updatedStep.min_sampling_rate,
           requiresBatchCompletion: updatedStep.requires_batch_completion,
           passThreshold: updatedStep.pass_threshold,
-          requiresFirstPieceInspection: updatedStep.requires_first_piece_inspection,
-          fpiScope: updatedStep.fpi_scope,
           sequencingMode: updatedStep.sequencing_mode,
-          blockOnQuarantine: updatedStep.block_on_quarantine,
-          blockOnMeasurementFailure: updatedStep.block_on_measurement_failure,
           isOutsideProcess: updatedStep.is_outside_process,
           outsideSupplier: updatedStep.outside_supplier,
           outsideSupplierName: updatedStep.outside_supplier_name,
@@ -491,25 +484,17 @@ export default function ProcessFlowPage() {
         is_terminal: step.is_terminal || false,
         terminal_status: step.terminal_status || '',
         max_visits: step.max_visits,
-        // Who may work a repeat visit (enforced at start); ANY = no constraint.
-        revisit_assignment: step.revisit_assignment || 'ANY',
-        // An FK goes as its _id, like outside_supplier_id: the save diffs and assigns ids.
-        revisit_role_id: step.revisit_assignment === 'ROLE' ? (step.revisit_role ?? null) : null,
         expected_duration: step.expected_duration,
         scrap_rate: step.scrap_rate,
-        requires_qa_signoff: step.requires_qa_signoff || false,
-        // Without this the editor's three-way control wrote to local state and the
-        // save dropped it: the gate would turn on, but always as a check-off.
-        qa_signoff_assurance: step.qa_signoff_assurance || 'NONE',
+        // The step's gates — the whole list (QA sign-off and its assurance, first piece
+        // and its scope, quarantine hold, readings in spec, the repeat-visit rule, the
+        // floor). A brand-new node without any yet is given the floor by the server.
+        ...(step.gates !== undefined ? { gates: step.gates } : {}),
         sampling_required: step.sampling_required || false,
         min_sampling_rate: step.min_sampling_rate,
         requires_batch_completion: step.requires_batch_completion || false,
         pass_threshold: step.pass_threshold,
-        requires_first_piece_inspection: step.requires_first_piece_inspection || false,
-        fpi_scope: step.fpi_scope || 'PER_WORKORDER',
         sequencing_mode: step.sequencing_mode || 'sequential',
-        block_on_quarantine: step.block_on_quarantine || false,
-        block_on_measurement_failure: step.block_on_measurement_failure || false,
         is_outside_process: step.is_outside_process || false,
         // FK by id — the graph-save applies node keys to the Step directly.
         outside_supplier_id: step.outside_supplier || null,

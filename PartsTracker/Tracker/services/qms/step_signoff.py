@@ -30,33 +30,42 @@ def pending_signoffs(work_order=None, user=None) -> list[dict]:
     """[{work_order_id, work_order, step_id, step, units, oldest_entered_at}] —
     QA-gated steps whose submitted work is waiting for a sign-off, among the step
     executions `user` may see (all of the tenant's when no user is given)."""
-    from Tracker.models import QaApproval, StepExecution, Substep, SubstepCompletion
+    from django.db.models import Subquery
+    from Tracker.models import QaApproval, StepExecution, StepRequirement, Substep, SubstepCompletion
     submitted = SubstepCompletion.objects.filter(  # tenant-safe: correlated to a scoped execution
         step_execution=OuterRef("pk"), is_voided=False)
     has_substeps = Substep.objects.filter(step=OuterRef("step"))  # tenant-safe: correlated to a scoped step
     signed = QaApproval.objects.filter(  # tenant-safe: correlated to a scoped execution
         step=OuterRef("step"), work_order=OuterRef("part__work_order"), archived=False)
+    # The step's gates are its StepRequirement rows.
+    qa_gate = StepRequirement.objects.filter(  # tenant-safe: correlated to a scoped step
+        step=OuterRef("step"), gate="qa_signoff", archived=False)
+    fpi_gate = StepRequirement.objects.filter(  # tenant-safe: correlated to a scoped step
+        step=OuterRef("step"), gate="first_piece", archived=False)
     from Tracker.services.qms.incoming_inspection import visible
     qs = (visible(StepExecution, user)
-          .filter(exited_at__isnull=True, step__requires_qa_signoff=True,
+          .filter(exited_at__isnull=True,
                   part__isnull=False, part__archived=False, part__work_order__isnull=False)
+          .annotate(_qa=Exists(qa_gate), _fpi=Exists(fpi_gate),
+                    _assurance=Subquery(qa_gate.values("qa_assurance")[:1]))
+          .filter(_qa=True)
           # An FPI-gated step is signed off by its first-piece buy-off (fpi.pass_fpi
           # writes the QaApproval) and already has its own inbox row.
-          .exclude(step__requires_first_piece_inspection=True)
+          .exclude(_fpi=True)
           .annotate(_submitted=Exists(submitted), _has_substeps=Exists(has_substeps), _signed=Exists(signed))
           .filter(_signed=False)
           .exclude(_has_substeps=True, _submitted=False))
     if work_order is not None:
         qs = qs.filter(part__work_order=work_order)
     groups = (qs.values("part__work_order", "part__work_order__ERP_id", "step", "step__name",
-                        "step__qa_signoff_assurance")
+                        "_assurance")
               .annotate(units=Count("id"), oldest=Min("entered_at"))
               .order_by("oldest"))
     return [{"work_order_id": str(g["part__work_order"]), "work_order": g["part__work_order__ERP_id"],
              "step_id": str(g["step"]), "step": g["step__name"], "units": g["units"],
              # So the sign-off surface can ask for a password where the author asked
              # for one, rather than discovering the requirement by being refused.
-             "assurance": g["step__qa_signoff_assurance"],
+             "assurance": g["_assurance"] or "NONE",
              "oldest_entered_at": g["oldest"]} for g in groups]
 
 

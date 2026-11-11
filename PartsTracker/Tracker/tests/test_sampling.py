@@ -20,11 +20,12 @@ from Tracker.models import (
     StepEdge, EdgeType,
     # Override & Rollback models
     StepOverride, BlockType, OverrideStatus,
-    RecordEdit, StepRequirement, RequirementType,
+    RecordEdit, StepRequirement,
     # QMS models
     CAPA, CapaType, CapaSeverity,
 )
 from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
+from Tracker.services.mes.step_gates import set_gates_from_flags
 
 User = get_user_model()
 
@@ -389,15 +390,14 @@ class FPIRecordTestCase(TenantTestCase):
             name='FPI Step',
             part_type=self.part_type,
             description='Step requiring first piece inspection',
-            requires_first_piece_inspection=True,
         )
+        set_gates_from_flags(self.step_with_fpi, requires_first_piece_inspection=True)
 
         # Create step without FPI
         self.step_no_fpi = Steps.objects.create(
             name='Normal Step',
             part_type=self.part_type,
             description='Normal step without FPI',
-            requires_first_piece_inspection=False,
         )
 
         ProcessStep.objects.create(process=self.process, step=self.step_with_fpi, order=1)
@@ -565,15 +565,15 @@ class StepAdvancementGatingTestCase(TenantTestCase):
             name='QA Step',
             part_type=self.part_type,
             description='Step requiring QA signoff',
-            requires_qa_signoff=True,
         )
+        set_gates_from_flags(self.step_with_qa, requires_qa_signoff=True)
 
         self.step_with_fpi = Steps.objects.create(
             name='FPI Step',
             part_type=self.part_type,
             description='Step requiring FPI',
-            requires_first_piece_inspection=True,
         )
+        set_gates_from_flags(self.step_with_fpi, requires_first_piece_inspection=True)
 
         self.step_with_sampling = Steps.objects.create(
             name='Sampling Step',
@@ -746,8 +746,7 @@ class StepAdvancementGatingTestCase(TenantTestCase):
         self.part.save()
 
         # Make the step block on quarantine
-        self.step_basic.block_on_quarantine = True
-        self.step_basic.save()
+        set_gates_from_flags(self.step_basic, block_on_quarantine=True)
 
         step_exec = StepExecution.objects.create(
             part=self.part,
@@ -1679,117 +1678,33 @@ class StepRequirementTestCase(TenantTestCase):
             description='Test step',
         )
 
-    def test_create_measurement_requirement(self):
-        """Test creating a measurement requirement"""
-        from Tracker.models import StepRequirement, RequirementType
-
-        req = StepRequirement.objects.create(
-            step=self.step,
-            requirement_type=RequirementType.MEASUREMENT,
-            name='Diameter Check',
-            description='Must measure outer diameter',
-            is_mandatory=True,
-            order=1,
-            config={'measurement_id': 'uuid-here'}
-        )
-
-        self.assertEqual(req.requirement_type, RequirementType.MEASUREMENT)
-        self.assertTrue(req.is_mandatory)
-        self.assertEqual(req.order, 1)
-
     def test_create_signoff_requirement(self):
-        """Test creating a signoff requirement"""
-        from Tracker.models import StepRequirement, RequirementType
-
+        """A QA sign-off gate row keeps its own setting: how the inspector signs."""
         req = StepRequirement.objects.create(
-            step=self.step,
-            requirement_type=RequirementType.SIGNOFF,
-            name='QA Signoff',
-            description='Requires QA inspector signoff',
-            is_mandatory=True,
-            order=2,
-            config={'signoff_role': 'qa_inspector'}
-        )
-
-        self.assertEqual(req.requirement_type, RequirementType.SIGNOFF)
+            step=self.step, gate='qa_signoff', qa_assurance='PASSWORD', order=2)
+        self.assertEqual(req.gate, 'qa_signoff')
+        step = Steps.objects.get(pk=self.step.pk)
+        self.assertTrue(step.requires_qa_signoff)
+        self.assertEqual(step.qa_signoff_assurance, 'PASSWORD')
 
     def test_create_fpi_requirement(self):
-        """Test creating an FPI requirement"""
-        from Tracker.models import StepRequirement, RequirementType
-
-        req = StepRequirement.objects.create(
-            step=self.step,
-            requirement_type=RequirementType.FPI_PASSED,
-            name='First Piece',
-            description='First piece must pass inspection',
-            is_mandatory=True,
-            order=0
-        )
-
-        self.assertEqual(req.requirement_type, RequirementType.FPI_PASSED)
+        """A first-piece gate row keeps its scope."""
+        StepRequirement.objects.create(step=self.step, gate='first_piece', fpi_scope='PER_SHIFT')
+        step = Steps.objects.get(pk=self.step.pk)
+        self.assertTrue(step.requires_first_piece_inspection)
+        self.assertEqual(step.fpi_scope, 'PER_SHIFT')
 
     def test_multiple_requirements_per_step(self):
-        """Test multiple requirements on a single step"""
-        from Tracker.models import StepRequirement, RequirementType
+        """A step carries several gates — the floor plus those added — each once."""
+        from django.db import IntegrityError, transaction
+        from Tracker.services.mes.step_gates import FLOOR_GATES
 
-        StepRequirement.objects.create(
-            step=self.step,
-            requirement_type=RequirementType.FPI_PASSED,
-            name='FPI',
-            is_mandatory=True,
-            order=0
-        )
-
-        StepRequirement.objects.create(
-            step=self.step,
-            requirement_type=RequirementType.MEASUREMENT,
-            name='Diameter',
-            is_mandatory=True,
-            order=1
-        )
-
-        StepRequirement.objects.create(
-            step=self.step,
-            requirement_type=RequirementType.SIGNOFF,
-            name='QA Approval',
-            is_mandatory=True,
-            order=2
-        )
-
-        StepRequirement.objects.create(
-            step=self.step,
-            requirement_type=RequirementType.DOCUMENT,
-            name='Work Instructions',
-            is_mandatory=False,
-            order=3
-        )
-
-        requirements = StepRequirement.objects.filter(step=self.step).order_by('order')
-        self.assertEqual(requirements.count(), 4)
-        self.assertEqual(requirements.filter(is_mandatory=True).count(), 3)
-
-    def test_requirement_config_stores_json(self):
-        """Test that config field properly stores JSON data"""
-        from Tracker.models import StepRequirement, RequirementType
-
-        config = {
-            'equipment_types': ['caliper', 'cmm'],
-            'calibration_required': True,
-            'max_days_since_calibration': 30
-        }
-
-        req = StepRequirement.objects.create(
-            step=self.step,
-            requirement_type=RequirementType.CALIBRATION_VALID,
-            name='Calibration Check',
-            is_mandatory=True,
-            config=config
-        )
-
-        req.refresh_from_db()
-        self.assertEqual(req.config['equipment_types'], ['caliper', 'cmm'])
-        self.assertTrue(req.config['calibration_required'])
-        self.assertEqual(req.config['max_days_since_calibration'], 30)
+        StepRequirement.objects.create(step=self.step, gate='first_piece', fpi_scope='PER_WORKORDER')
+        StepRequirement.objects.create(step=self.step, gate='qa_signoff', qa_assurance='NONE')
+        live = StepRequirement.objects.filter(step=self.step, archived=False)
+        self.assertEqual(live.count(), len(FLOOR_GATES) + 2)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            StepRequirement.objects.create(step=self.step, gate='qa_signoff')
 
 
 class IncrementStepTestCase(TenantTestCase):
@@ -1931,8 +1846,8 @@ class IncrementStepTestCase(TenantTestCase):
             name='QA Step',
             part_type=self.part_type,
             description='Requires QA',
-            requires_qa_signoff=True,
         )
+        set_gates_from_flags(step_with_qa, requires_qa_signoff=True)
         ProcessStep.objects.create(process=self.process, step=step_with_qa, order=4)
 
         # Move part to QA step

@@ -28,7 +28,7 @@ import { useContentTypeMapping } from '@/hooks/useContentTypes';
 import { MeasurementsEditor } from './measurements-editor';
 import { StepSamplingEditor } from './step-sampling-editor';
 import { usePermissionSet } from '@/hooks/useMyPermissions';
-import { useTenantGroups } from '@/hooks/useTenantGroups';
+import { StepGatesField, type StepGate } from './StepGatesField';
 import { StepDocumentsEditor } from './step-documents-editor';
 import { StepTrainingRequirementsEditor } from './step-training-requirements-editor';
 import { StepMachinesEditor } from './step-machines-editor';
@@ -65,20 +65,6 @@ export const DECISION_TYPE_OPTIONS = [
   { value: 'MANUAL', label: 'Manual Operator Selection' },
   { value: 'AGGREGATE', label: 'Based on Quality Gate (aggregate signal)' },
 ] as const;
-
-/** First Piece Inspection scope options */
-export const FPI_SCOPE_OPTIONS = [
-  { value: 'PER_WORKORDER', label: 'Per Work Order' },
-  { value: 'PER_SHIFT', label: 'Per Shift' },
-  { value: 'PER_EQUIPMENT', label: 'Per Equipment' },
-] as const;
-
-/** What one passed (or waived) first piece releases, per scope. */
-const FPI_SCOPE_HINT = {
-  PER_WORKORDER: "One first piece releases this step for the whole work order.",
-  PER_SHIFT: "Each shift needs its own first piece on the work order: Day and Night on the same date are separate. The shift is whichever started most recently.",
-  PER_EQUIPMENT: "Each machine needs its own first piece on the work order. A part with no machine recorded is held.",
-} as const;
 
 export interface StepEditorPanelProps {
   node: Node;
@@ -130,24 +116,11 @@ type StepNodeData = {
   isTerminal?: boolean;
   terminalStatus?: string;
   maxVisits?: number | string;
-  /** Who may work a repeat visit: ANY / SAME / DIFFERENT / ROLE (+ revisitRole). */
-  revisitAssignment?: string;
-  revisitRole?: string | null;
-  // Quality gates
-  requiresQaSignoff?: boolean;
-  /** How sure we need to be that the inspector who signed is who they say:
-   *  NONE = under their login, PASSWORD = they re-enter their own password.
-   *  Only meaningful while `requiresQaSignoff` is on. */
-  qaSignoffAssurance?: string;
-  requiresFirstPieceInspection?: boolean;
+  /** The step's gates: QA sign-off, first piece, quarantine hold, repeat visits… */
+  gates?: StepGate[];
   requiresBatchCompletion?: boolean;
-  fpiScope?: string;
   /** Substep order for the operator: 'sequential' (default) or 'free_order'. */
   sequencingMode?: string;
-  /** Parts can't advance from this step while quarantined. */
-  blockOnQuarantine?: boolean;
-  /** Parts can't advance from this step with an out-of-spec reading. */
-  blockOnMeasurementFailure?: boolean;
   samplingRequired?: boolean;
   minSamplingRate?: number;
   passThreshold?: number;
@@ -719,7 +692,6 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                 <p className="text-sm">{data.maxVisits || 'Unlimited'}</p>
               )}
             </div>
-            <RevisitRuleField nodeId={node.id} data={data} editable={editable} onUpdate={onUpdate} />
           </>
         )}
 
@@ -1135,45 +1107,15 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                 )}
               </div>
             )}
-            {!isReworkType && (
-              <RevisitRuleField nodeId={node.id} data={data} editable={editable} onUpdate={onUpdate} />
-            )}
-
-            {/* QA flags */}
-            {/* One three-way control over two fields: the boolean still means "is
-                there a gate", the assurance means "how is identity proven at it".
-                How much ceremony a release deserves is a quality-system decision,
-                so it belongs to whoever authors the process — the same choice a
-                substep's sign-off block offers. */}
-            <div className="space-y-1.5">
-              <Label htmlFor="requires-qa" className="text-sm font-normal">QA signoff</Label>
-              {editable ? (
-                <Select
-                  value={!data.requiresQaSignoff ? 'OFF' : (data.qaSignoffAssurance || 'NONE')}
-                  onValueChange={(v) =>
-                    onUpdate(node.id, v === 'OFF'
-                      ? { requires_qa_signoff: false }
-                      : { requires_qa_signoff: true, qa_signoff_assurance: v })}
-                >
-                  <SelectTrigger id="requires-qa">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="OFF">Not required</SelectItem>
-                    <SelectItem value="NONE">Check off — recorded under their login</SelectItem>
-                    <SelectItem value="PASSWORD">Signature + password — they re-enter their own password</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Badge variant={data.requiresQaSignoff ? 'default' : 'secondary'}>
-                  {!data.requiresQaSignoff
-                    ? 'Not required'
-                    : data.qaSignoffAssurance === 'PASSWORD'
-                      ? 'Signature + password'
-                      : 'Check off'}
-                </Badge>
-              )}
-            </div>
+            {/* The step's gates — QA sign-off (and how the inspector signs), first piece
+                (and what it covers), quarantine hold, readings in spec, repeat visits, and
+                the floor every new step starts with. Which checks apply, and how much
+                ceremony a release deserves, is the process author's quality-system call. */}
+            <StepGatesField
+              gates={data.gates ?? []}
+              editable={editable}
+              onChange={(gates) => onUpdate(node.id, { gates })}
+            />
 
             <div className="flex items-center justify-between">
               <Label htmlFor="sampling-required" className="text-sm font-normal">Sampling required</Label>
@@ -1208,83 +1150,6 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                 )}
               </div>
             )}
-
-            {/* First Piece Inspection */}
-            <div className="flex items-center justify-between">
-              <Label htmlFor="requires-fpi" className="text-sm font-normal">Requires first-piece inspection</Label>
-              {editable ? (
-                <Switch
-                  id="requires-fpi"
-                  checked={data.requiresFirstPieceInspection || false}
-                  onCheckedChange={(checked) => onUpdate(node.id, { requires_first_piece_inspection: checked })}
-                />
-              ) : (
-                <Badge variant={data.requiresFirstPieceInspection ? 'default' : 'secondary'}>
-                  {data.requiresFirstPieceInspection ? 'Yes' : 'No'}
-                </Badge>
-              )}
-            </div>
-
-            {data.requiresFirstPieceInspection && editable && (
-              <div className="space-y-1.5">
-                <Label htmlFor="fpi-scope" className="text-sm font-normal">FPI scope</Label>
-                <Select value={data.fpiScope || 'PER_WORKORDER'} onValueChange={(v) => onUpdate(node.id, { fpi_scope: v })}>
-                  <SelectTrigger id="fpi-scope"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {FPI_SCOPE_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {FPI_SCOPE_HINT[(data.fpiScope || 'PER_WORKORDER') as keyof typeof FPI_SCOPE_HINT]}
-                </p>
-              </div>
-            )}
-
-            {/* Block on quarantine — the advancement gate refuses to move a quarantined
-                part off this step. Saved with the process like the settings around it. */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="block-on-quarantine" className="text-sm font-normal">Block on quarantine</Label>
-                {editable ? (
-                  <Switch
-                    id="block-on-quarantine"
-                    checked={data.blockOnQuarantine || false}
-                    onCheckedChange={(checked) => onUpdate(node.id, { block_on_quarantine: checked })}
-                  />
-                ) : (
-                  <Badge variant={data.blockOnQuarantine ? 'default' : 'secondary'}>
-                    {data.blockOnQuarantine ? 'Yes' : 'No'}
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                A quarantined part can't move on from this step until its quarantine is decided.
-              </p>
-            </div>
-
-            {/* Block on out-of-spec measurement — the advancement gate holds a part whose
-                reading at this step is outside its limits. */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="block-on-oos" className="text-sm font-normal">Block on out-of-spec measurement</Label>
-                {editable ? (
-                  <Switch
-                    id="block-on-oos"
-                    checked={data.blockOnMeasurementFailure || false}
-                    onCheckedChange={(checked) => onUpdate(node.id, { block_on_measurement_failure: checked })}
-                  />
-                ) : (
-                  <Badge variant={data.blockOnMeasurementFailure ? 'default' : 'secondary'}>
-                    {data.blockOnMeasurementFailure ? 'Yes' : 'No'}
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                A part with an out-of-spec reading at this step can't move on until it's dealt with.
-              </p>
-            </div>
 
             {/* Sequencing — the order the operator works this step's substeps in. */}
             <div className="space-y-1.5">
@@ -1412,60 +1277,6 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   );
 }
 
-
-const REVISIT_RULES = [
-    { value: 'ANY', label: 'Anyone qualified' },
-    { value: 'SAME', label: 'Whoever worked the last visit' },
-    { value: 'DIFFERENT', label: 'Someone else' },
-    { value: 'ROLE', label: 'Someone with a role' },
-];
-
-/** Who may work a repeat visit to this step (a part coming back — rework, a retest).
- *  An option, never a requirement: "Anyone qualified" constrains nothing. Enforced
- *  when the visit is started; a supervisor can authorize past it with a reason. */
-function RevisitRuleField({ nodeId, data, editable, onUpdate }: {
-    nodeId: string;
-    data: StepNodeData;
-    editable: boolean;
-    onUpdate: (nodeId: string, data: Partial<StepData>) => void;
-}) {
-    const rule = (data.revisitAssignment || 'ANY').toUpperCase();
-    const { data: groupsResp } = useTenantGroups(undefined, undefined, { enabled: rule === 'ROLE' });
-    const groups = (groupsResp?.results ?? []) as Array<{ id: string; name: string }>;
-    const ruleLabel = REVISIT_RULES.find((r) => r.value === rule)?.label ?? rule;
-    const roleName = groups.find((g) => g.id === data.revisitRole)?.name;
-    return (
-        <div className="space-y-1.5">
-            <Label className="text-sm font-normal">Repeat visits are worked by</Label>
-            {editable ? (
-                <>
-                    <Select value={rule} onValueChange={(v) => v && onUpdate(nodeId, {
-                        revisit_assignment: v, ...(v === 'ROLE' ? {} : { revisit_role: null }),
-                    })}>
-                        <SelectTrigger aria-label="Repeat visits are worked by"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {REVISIT_RULES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    {rule === 'ROLE' && (
-                        <Select value={data.revisitRole ?? ''} onValueChange={(v) => onUpdate(nodeId, { revisit_role: v || null })}>
-                            <SelectTrigger aria-label="Role for repeat visits"><SelectValue placeholder="Pick a role" /></SelectTrigger>
-                            <SelectContent>
-                                {groups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                        When a part comes back to this step. Checked when the visit is started; a
-                        supervisor can authorize past it with a reason.
-                    </p>
-                </>
-            ) : (
-                <p className="text-sm">{ruleLabel}{rule === 'ROLE' && roleName ? ` — ${roleName}` : ''}</p>
-            )}
-        </div>
-    );
-}
 
 
 /** A Repair node's repair code. Lists the tenant's current codes. */

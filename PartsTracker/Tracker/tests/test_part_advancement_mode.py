@@ -51,9 +51,11 @@ class PartAdvancementModeTests(TenantContextMixin, VectorTestCase):
     def _make_step(self, mode):
         s = Steps.objects.create(
             tenant=self.tenant, part_type=self.pt, name=f"Step-{mode}",
-            step_type="TASK", block_on_quarantine=True,
+            step_type="TASK",
             part_advancement_mode=mode,
         )
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(s, block_on_quarantine=True)
         ProcessStep.objects.create(process=self.process, step=s, order=1)
         ProcessStep.objects.create(process=self.process, step=self.dest, order=2)
         return s

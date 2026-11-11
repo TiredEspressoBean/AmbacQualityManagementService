@@ -25983,13 +25983,6 @@ export interface components {
             /** Format: date-time */
             recorded_at: string;
         };
-        /**
-         * @description * `PER_WORKORDER` - Per Work Order
-         *     * `PER_SHIFT` - Per Shift
-         *     * `PER_EQUIPMENT` - Per Equipment
-         * @enum {string}
-         */
-        FpiScopeEnum: "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT";
         /** @description A frozen or planner-pinned operation that couldn't be held where it was. */
         FrozenFreed: {
             part: string;
@@ -26046,6 +26039,23 @@ export interface components {
          * @enum {string}
          */
         GateDecisionOutcomeEnum: "PASSED" | "OVERRIDDEN" | "WAIVED" | "BYPASSED";
+        /**
+         * @description * `work_order_not_workable` - Work order workable
+         *     * `deviation_expired` - Deviation in date
+         *     * `part_quarantined` - Part not quarantined
+         *     * `core_awaiting_authorisation` - Customer authorisation
+         *     * `training_not_authorized` - Operator trained
+         *     * `revisit_rule` - Repeat visits
+         *     * `substeps_incomplete` - Work instruction done
+         *     * `qualified_operator` - Qualified operator on record
+         *     * `life_limit` - Life limit
+         *     * `quarantine_hold` - Quarantine hold
+         *     * `qa_signoff` - QA sign-off
+         *     * `first_piece` - First piece
+         *     * `measurement_out_of_spec` - Readings in spec
+         * @enum {string}
+         */
+        GateEnum: "work_order_not_workable" | "deviation_expired" | "part_quarantined" | "core_awaiting_authorisation" | "training_not_authorized" | "revisit_rule" | "substeps_incomplete" | "qualified_operator" | "life_limit" | "quarantine_hold" | "qa_signoff" | "first_piece" | "measurement_out_of_spec";
         /**
          * @description * `CONSECUTIVE_FAILS` - Consecutive failures
          *     * `FAIL_RATE_PCT` - Failure rate (%)
@@ -33211,11 +33221,6 @@ export interface components {
             operation_number?: string;
             expected_duration?: string | null;
             description?: string | null;
-            block_on_quarantine?: boolean;
-            /** @description If True, parts cannot advance if any measurement is out of spec */
-            block_on_measurement_failure?: boolean;
-            requires_qa_signoff?: boolean;
-            qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
             /**
              * Format: double
@@ -33224,8 +33229,6 @@ export interface components {
             min_sampling_rate?: number;
             /** Format: double */
             pass_threshold?: number;
-            /** @description If True, first part of each work order at this step requires FPI before others can proceed */
-            requires_first_piece_inspection?: boolean;
             /** Format: uuid */
             part_type?: string | null;
             /**
@@ -33268,12 +33271,7 @@ export interface components {
             terminal_status?: components["schemas"]["TerminalStatusEnum"] | components["schemas"]["BlankEnum"];
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
-            revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
-            /**
-             * Format: uuid
-             * @description Required role when revisit_assignment='role'
-             */
-            revisit_role?: string | null;
+            gates?: components["schemas"]["StepGateRequest"][];
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
             /**
@@ -34855,12 +34853,6 @@ export interface components {
             current_step_id: string | null;
             parts_in_qa: number;
         };
-        /**
-         * @description * `NONE` - Check off - recorded under their login
-         *     * `PASSWORD` - Signature + password - they re-enter their own password
-         * @enum {string}
-         */
-        QaSignoffAssuranceEnum: "NONE" | "PASSWORD";
         /** @description Resolved supplier standing for a scope (the `status` action response). */
         QualificationStatus: {
             qualified: boolean;
@@ -36206,14 +36198,6 @@ export interface components {
         RestorePreviousInputRequest: {
             reason: string;
         };
-        /**
-         * @description * `ANY` - Any Qualified Operator
-         *     * `SAME` - Same as Previous
-         *     * `DIFFERENT` - Different Operator
-         *     * `ROLE` - Specific Role
-         * @enum {string}
-         */
-        RevisitAssignmentEnum: "ANY" | "SAME" | "DIFFERENT" | "ROLE";
         ReworkStatusResponse: {
             total_rework_count: number;
             current_step_name: string | null;
@@ -37535,31 +37519,22 @@ export interface components {
              *     * `named` - Named (assign a specific operator)
              */
             labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
-            requires_qa_signoff?: boolean;
-            qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
+            readonly requires_qa_signoff: boolean;
+            readonly qa_signoff_assurance: string;
             sampling_required?: boolean;
             /**
              * Format: double
              * @description Minimum % of parts that must be sampled at this step
              */
             min_sampling_rate?: number;
-            block_on_quarantine?: boolean;
-            /** @description If True, parts cannot advance if any measurement is out of spec */
-            block_on_measurement_failure?: boolean;
+            readonly block_on_quarantine: boolean;
+            readonly block_on_measurement_failure: boolean;
             /** Format: double */
             pass_threshold?: number;
             /** @description If True, all parts in batch must be ready before any can advance */
             requires_batch_completion?: boolean;
-            /** @description If True, first part of each work order at this step requires FPI before others can proceed */
-            requires_first_piece_inspection?: boolean;
-            /**
-             * @description Scope at which FPI applies
-             *
-             *     * `PER_WORKORDER` - Per Work Order
-             *     * `PER_SHIFT` - Per Shift
-             *     * `PER_EQUIPMENT` - Per Equipment
-             */
-            fpi_scope?: components["schemas"]["FpiScopeEnum"];
+            readonly requires_first_piece_inspection: boolean;
+            readonly fpi_scope: string;
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
             /**
@@ -37600,12 +37575,10 @@ export interface components {
             terminal_status?: components["schemas"]["TerminalStatusEnum"] | components["schemas"]["BlankEnum"];
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
-            revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
-            /**
-             * Format: uuid
-             * @description Required role when revisit_assignment='role'
-             */
-            revisit_role?: string | null;
+            readonly revisit_assignment: string;
+            /** Format: uuid */
+            readonly revisit_role: string | null;
+            readonly gates: components["schemas"]["StepGate"][];
         };
         StepDistributionResponse: {
             /** Format: uuid */
@@ -38011,6 +37984,32 @@ export interface components {
          * @enum {string}
          */
         StepExecutionStatusEnum: "PENDING" | "CLAIMED" | "IN_PROGRESS" | "COMPLETED" | "SKIPPED" | "CANCELLED" | "ROLLED_BACK";
+        /**
+         * @description One of a step's gates (a StepRequirement row): the gate's code, its order, and
+         *     the settings its kind has. Stage and escape come from the registry.
+         */
+        StepGate: {
+            gate: components["schemas"]["GateEnum"];
+            order?: number;
+            fpi_scope?: string | null;
+            qa_assurance?: string | null;
+            revisit_assignment?: string | null;
+            /** Format: uuid */
+            revisit_role?: string | null;
+        };
+        /**
+         * @description One of a step's gates (a StepRequirement row): the gate's code, its order, and
+         *     the settings its kind has. Stage and escape come from the registry.
+         */
+        StepGateRequest: {
+            gate: components["schemas"]["GateEnum"];
+            order?: number;
+            fpi_scope?: string | null;
+            qa_assurance?: string | null;
+            revisit_assignment?: string | null;
+            /** Format: uuid */
+            revisit_role?: string | null;
+        };
         StepIncrementInputRequest: {
             /** Format: uuid */
             step_id: string;
@@ -38153,31 +38152,16 @@ export interface components {
              *     * `named` - Named (assign a specific operator)
              */
             labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
-            requires_qa_signoff?: boolean;
-            qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
             /**
              * Format: double
              * @description Minimum % of parts that must be sampled at this step
              */
             min_sampling_rate?: number;
-            block_on_quarantine?: boolean;
-            /** @description If True, parts cannot advance if any measurement is out of spec */
-            block_on_measurement_failure?: boolean;
             /** Format: double */
             pass_threshold?: number;
             /** @description If True, all parts in batch must be ready before any can advance */
             requires_batch_completion?: boolean;
-            /** @description If True, first part of each work order at this step requires FPI before others can proceed */
-            requires_first_piece_inspection?: boolean;
-            /**
-             * @description Scope at which FPI applies
-             *
-             *     * `PER_WORKORDER` - Per Work Order
-             *     * `PER_SHIFT` - Per Shift
-             *     * `PER_EQUIPMENT` - Per Equipment
-             */
-            fpi_scope?: components["schemas"]["FpiScopeEnum"];
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
             /**
@@ -38215,12 +38199,6 @@ export interface components {
             terminal_status?: components["schemas"]["TerminalStatusEnum"] | components["schemas"]["BlankEnum"];
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
-            revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
-            /**
-             * Format: uuid
-             * @description Required role when revisit_assignment='role'
-             */
-            revisit_role?: string | null;
         };
         /**
          * @description Update a step's sampling rules — plus its quality gate and acceptance plan,
@@ -38528,11 +38506,10 @@ export interface components {
             operation_number?: string;
             expected_duration?: string | null;
             description?: string | null;
-            block_on_quarantine?: boolean;
-            /** @description If True, parts cannot advance if any measurement is out of spec */
-            block_on_measurement_failure?: boolean;
-            requires_qa_signoff?: boolean;
-            qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
+            readonly block_on_quarantine: boolean;
+            readonly block_on_measurement_failure: boolean;
+            readonly requires_qa_signoff: boolean;
+            readonly qa_signoff_assurance: string;
             sampling_required?: boolean;
             /**
              * Format: double
@@ -38541,8 +38518,7 @@ export interface components {
             min_sampling_rate?: number;
             /** Format: double */
             pass_threshold?: number;
-            /** @description If True, first part of each work order at this step requires FPI before others can proceed */
-            requires_first_piece_inspection?: boolean;
+            readonly requires_first_piece_inspection: boolean;
             /** Format: uuid */
             part_type?: string | null;
             readonly part_type_info: {
@@ -38600,12 +38576,11 @@ export interface components {
             terminal_status?: components["schemas"]["TerminalStatusEnum"] | components["schemas"]["BlankEnum"];
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
-            revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
-            /**
-             * Format: uuid
-             * @description Required role when revisit_assignment='role'
-             */
-            revisit_role?: string | null;
+            readonly revisit_assignment: string;
+            /** Format: uuid */
+            readonly revisit_role: string | null;
+            gates?: components["schemas"]["StepGate"][];
+            readonly fpi_scope: string;
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
             /**
@@ -38647,11 +38622,6 @@ export interface components {
             operation_number?: string;
             expected_duration?: string | null;
             description?: string | null;
-            block_on_quarantine?: boolean;
-            /** @description If True, parts cannot advance if any measurement is out of spec */
-            block_on_measurement_failure?: boolean;
-            requires_qa_signoff?: boolean;
-            qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
             /**
              * Format: double
@@ -38660,8 +38630,6 @@ export interface components {
             min_sampling_rate?: number;
             /** Format: double */
             pass_threshold?: number;
-            /** @description If True, first part of each work order at this step requires FPI before others can proceed */
-            requires_first_piece_inspection?: boolean;
             /** Format: uuid */
             part_type?: string | null;
             /**
@@ -38704,12 +38672,7 @@ export interface components {
             terminal_status?: components["schemas"]["TerminalStatusEnum"] | components["schemas"]["BlankEnum"];
             /** @description Max times a part can visit this step. Null = unlimited. */
             max_visits?: number | null;
-            revisit_assignment?: components["schemas"]["RevisitAssignmentEnum"];
-            /**
-             * Format: uuid
-             * @description Required role when revisit_assignment='role'
-             */
-            revisit_role?: string | null;
+            gates?: components["schemas"]["StepGateRequest"][];
             /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
             sequencing_mode?: string;
             /**

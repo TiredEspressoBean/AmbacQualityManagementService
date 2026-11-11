@@ -133,8 +133,9 @@ class GateRegistryTests(TenantTestCase):
     # --- Release log -----------------------------------------------------------
 
     def test_a_release_logs_each_gate_and_the_bypass_that_cleared_one(self):
-        Steps.objects.filter(pk=self.step.pk).update(requires_qa_signoff=True, block_on_quarantine=True)
-        self.step.refresh_from_db()
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, requires_qa_signoff=True, block_on_quarantine=True)
+        self.step = Steps.objects.get(pk=self.step.pk)
         override = StepOverride.objects.create(
             tenant=self.tenant_a, step_execution=self.visits[0], block_type="QA_SIGNOFF",
             reason="Signer out", status="APPROVED", approved_by=self.user_a, requested_by=self.user_a,

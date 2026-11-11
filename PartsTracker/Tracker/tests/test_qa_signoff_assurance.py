@@ -41,8 +41,10 @@ class _Fixture(TenantContextMixin, VectorTestCase):
         self.pt = PartTypes.objects.create(tenant=self.tenant, name="Widget")
         self.process = Processes.objects.create(tenant=self.tenant, name="P-QA", part_type=self.pt)
         self.step = Steps.objects.create(
-            tenant=self.tenant, part_type=self.pt, name="Final Release", step_type="TASK",
-            requires_qa_signoff=True, requires_first_piece_inspection=self.fpi_gated)
+            tenant=self.tenant, part_type=self.pt, name="Final Release", step_type="TASK")
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, requires_qa_signoff=True,
+                             requires_first_piece_inspection=self.fpi_gated)
         ProcessStep.objects.create(process=self.process, step=self.step, order=1)
         self.wo = WorkOrder.objects.create(
             tenant=self.tenant, ERP_id="WO-QA-1", workorder_status=WorkOrderStatus.IN_PROGRESS,
@@ -59,8 +61,9 @@ class _Fixture(TenantContextMixin, VectorTestCase):
             completed_by=self.operator)
 
     def set_assurance(self, value):
-        self.step.qa_signoff_assurance = value
-        self.step.save(update_fields=["qa_signoff_assurance"])
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, requires_qa_signoff=True, qa_signoff_assurance=value,
+                             requires_first_piece_inspection=self.fpi_gated)
 
     def approval(self):
         return QaApproval.objects.filter(step=self.step, work_order=self.wo).first()

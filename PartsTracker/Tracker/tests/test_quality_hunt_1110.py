@@ -416,8 +416,8 @@ class VoidedFpiNamesAPartAtTheStepTests(_PartFixture):
     def test_the_fresh_fpi_names_a_part_still_at_the_step(self):
         from Tracker.models import FPIRecord, FPIStatus
         from Tracker.services.qms.fpi import void_fpi_pass
-        Steps.objects.filter(pk=self.step.pk).update(  # tenant-safe: fixture, scoped by pk
-            requires_first_piece_inspection=True)
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, requires_first_piece_inspection=True)
         self.step.refresh_from_db()
         later = Steps.objects.create(tenant=self.tenant_a, name="Pack", part_type=self.pt)
         moved_on = self._part("FP-1", step=later)

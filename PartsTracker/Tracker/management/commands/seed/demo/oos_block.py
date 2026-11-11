@@ -109,9 +109,10 @@ class DemoOutOfSpecBlockSeeder(DemoQaWalkSeeder):
             defaults={'name': CHECK_STEP, 'step_type': 'START',
                       'description': 'Bench-test the tip: opening pressure inside its limits.',
                       'expected_duration': timedelta(minutes=10),
-                      'block_on_measurement_failure': True,
                       'part_advancement_mode': 'PER_PART'},
         )
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(check, block_on_measurement_failure=True)
         release, _ = Steps.objects.update_or_create(
             tenant=self.tenant, part_type=part_type,
             external_id=step_key('nozzle-check', RELEASE_STEP),

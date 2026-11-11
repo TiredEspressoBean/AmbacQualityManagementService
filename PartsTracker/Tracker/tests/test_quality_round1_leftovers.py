@@ -21,8 +21,9 @@ class FpiReleasePerContextTests(_PartFixture):
 
     def setUp(self):
         super().setUp()
-        Steps.objects.filter(pk=self.step.pk).update(  # tenant-safe: fixture, scoped by pk
-            requires_first_piece_inspection=True, requires_qa_signoff=True, fpi_scope="PER_SHIFT")
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, requires_first_piece_inspection=True,
+                             requires_qa_signoff=True, fpi_scope="PER_SHIFT")
         self.step.refresh_from_db()
 
     def _passed(self, shift_date, part):

@@ -10,7 +10,6 @@
   SUPERSEDED and the run holds until the new one passes. After a pass nothing starts.
 - FPI records can't be deleted or patched through the API.
 """
-import importlib
 from datetime import timedelta
 
 from Tracker.models import (
@@ -19,6 +18,7 @@ from Tracker.models import (
 )
 from Tracker.models.qms import EquipmentRole, StepExecutionEquipment
 from Tracker.services.core.clock import tenant_today
+from Tracker.services.mes.step_gates import set_gates_from_flags
 from Tracker.services.qms.fpi import start_fpi
 from Tracker.tests.base import TenantTestCase
 
@@ -29,8 +29,8 @@ class FpiScopeTests(TenantTestCase):
         super().setUp()
         t = self.tenant_a
         self.pt = PartTypes.objects.create(tenant=t, name="Body", ID_prefix="B")
-        self.step = Steps.objects.create(tenant=t, part_type=self.pt, name="Turn", step_type="TASK",
-                                         requires_first_piece_inspection=True)
+        self.step = Steps.objects.create(tenant=t, part_type=self.pt, name="Turn", step_type="TASK")
+        set_gates_from_flags(self.step, requires_first_piece_inspection=True)
         self.wo = WorkOrder.objects.create(tenant=t, ERP_id="WO-SCOPE", quantity=2)
         self.part = Parts.objects.create(tenant=t, ERP_id="B-1", part_type=self.pt,
                                          work_order=self.wo, step=self.step)
@@ -42,7 +42,7 @@ class FpiScopeTests(TenantTestCase):
                                                         'add_fpirecord', 'full_tenant_access'])
 
     def _scope(self, scope):
-        Steps.objects.filter(pk=self.step.pk).update(fpi_scope=scope)
+        set_gates_from_flags(self.step, requires_first_piece_inspection=True, fpi_scope=scope)
         self.step.refresh_from_db()
 
     def _record(self, status, **ctx):
@@ -113,14 +113,8 @@ class FpiScopeTests(TenantTestCase):
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual((r.json()["context_label"], r.json()["has_pending"]), ("CNC-1", True))
 
-    # ── Per Operator removed ────────────────────────────────────────────────────
-    def test_migration_maps_per_operator_to_per_work_order(self):
-        Steps.objects.filter(pk=self.step.pk).update(fpi_scope='PER_OPERATOR')
-        mig = importlib.import_module('Tracker.migrations.0268_fpi_scope_per_operator_removed')
-        from django.apps import apps
-        mig.per_operator_to_per_workorder(apps, None)
-        self.step.refresh_from_db()
-        self.assertEqual(self.step.fpi_scope, 'PER_WORKORDER')
+    # Per Operator removed: its migration (0268) acted on Steps.fpi_scope, now the
+    # first-piece gate row's; the 0302 mapping test covers an unknown scope.
 
     # ── B2: correcting a waiver ─────────────────────────────────────────────────
     def test_a_waiver_is_corrected_by_a_new_first_piece(self):

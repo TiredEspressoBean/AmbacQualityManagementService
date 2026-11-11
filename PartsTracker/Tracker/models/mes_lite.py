@@ -719,26 +719,78 @@ class Steps(SecureModel):
         ),
     )
 
-    # ===== QA & SAMPLING =====
-
-    block_on_quarantine = models.BooleanField(default=False)
-    """If True, parts cannot advance from this step while quarantined."""
-
-    requires_qa_signoff = models.BooleanField(default=False)
-    """If True, QA approval is required to advance from this step."""
+    # ===== GATES =====
+    # Which gates apply to the step are its `requirements` rows (StepRequirement, user
+    # decisions 2026-11-11) — the one source of truth. The read-only properties below
+    # answer the questions the step's old flags answered, from those rows.
 
     QA_SIGNOFF_ASSURANCE = [
         ('NONE', 'Check off - recorded under their login'),
         ('PASSWORD', 'Signature + password - they re-enter their own password'),
     ]
-    qa_signoff_assurance = models.CharField(max_length=16, choices=QA_SIGNOFF_ASSURANCE, default='NONE')
-    """How sure we need to be that the inspector who signed this step is who they say.
 
-    `requires_qa_signoff` says whether there is a gate; this says how identity is
-    proven at it. The choice belongs to whoever authors the process - it is a
-    quality-system policy decision, not ours - exactly as the assurance of a
-    substep's sign-off block does. Meaningless when the gate is off.
-    """
+    def _gate(self, gate):
+        from Tracker.services.mes.step_gates import gate_row
+        return gate_row(self, gate)
+
+    @property
+    def block_on_quarantine(self) -> bool:
+        """A quarantined part can't move on from this step (the quarantine-hold gate)."""
+        return self._gate('quarantine_hold') is not None
+
+    @property
+    def requires_qa_signoff(self) -> bool:
+        """QA signs the step off before parts move on (the QA sign-off gate)."""
+        return self._gate('qa_signoff') is not None
+
+    @property
+    def qa_signoff_assurance(self) -> str:
+        """How the inspector's identity is proven at the sign-off — a quality-system
+        policy decision the process author makes. NONE when there's no sign-off."""
+        row = self._gate('qa_signoff')
+        return (row.qa_assurance or 'NONE') if row else 'NONE'
+
+    @property
+    def requires_first_piece_inspection(self) -> bool:
+        """A first piece is bought off before the rest move on (the first-piece gate)."""
+        return self._gate('first_piece') is not None
+
+    @property
+    def fpi_scope(self) -> str:
+        """What one first piece releases (services/qms/fpi_scope.py)."""
+        row = self._gate('first_piece')
+        return (row.fpi_scope or 'PER_WORKORDER') if row else 'PER_WORKORDER'
+
+    @property
+    def block_on_measurement_failure(self) -> bool:
+        """An out-of-spec reading holds the part (the readings-in-spec gate)."""
+        return self._gate('measurement_out_of_spec') is not None
+
+    @property
+    def revisit_assignment(self) -> str:
+        """Who may work a repeat visit: ANY when the step has no repeat-visit gate."""
+        row = self._gate('revisit_rule')
+        return (row.revisit_assignment or 'ANY') if row else 'ANY'
+
+    @property
+    def revisit_role(self):
+        row = self._gate('revisit_rule')
+        return row.revisit_role if row and row.revisit_assignment == 'ROLE' else None
+
+    @property
+    def revisit_role_id(self):
+        row = self._gate('revisit_rule')
+        return row.revisit_role_id if row and row.revisit_assignment == 'ROLE' else None
+
+    def has_gate(self, gate: str) -> bool:
+        return self._gate(gate) is not None
+
+    @property
+    def gate_rows(self) -> list:
+        """The step's live gate rows, in order."""
+        return sorted((r for r in self.requirements.all() if not r.archived), key=lambda r: r.order)
+
+    # ===== QA & SAMPLING =====
 
     notification_users = models.ManyToManyField(User, related_name='notification_users', blank=True)
     """Users to notify when parts reach this step."""
@@ -782,18 +834,6 @@ class Steps(SecureModel):
     picks between all-or-none cohesion (the historical default) and per-part
     advancement (which better matches per-part QA-decision gates)."""
 
-    requires_first_piece_inspection = models.BooleanField(
-        default=False,
-        help_text="If True, first part of each work order at this step requires FPI before others can proceed"
-    )
-    """
-    First Piece Inspection (FPI) verifies setup correctness at the start of production.
-    When enabled:
-    - First part reaching this step for a work order is flagged for FPI
-    - Other parts are blocked until FPI passes
-    - FPI pass unlocks production for remaining parts
-    """
-
     labor_model = models.CharField(
         max_length=10, null=True, blank=True,
         choices=[('off', 'Off (no crew constraint)'), ('pool', 'Pool (cap at qualified crew)'),
@@ -818,25 +858,17 @@ class Steps(SecureModel):
 
     # What one first piece releases — see services/qms/fpi_scope.py. Per Operator was
     # removed 2026-10-28: it never keyed a record, so it behaved as Per Work Order.
+    # The scope is the first-piece gate row's (StepRequirement.fpi_scope).
     FPI_SCOPE_CHOICES = [
         ('PER_WORKORDER', 'Per Work Order'),
         ('PER_SHIFT', 'Per Shift'),
         ('PER_EQUIPMENT', 'Per Equipment'),
     ]
-    fpi_scope = models.CharField(
-        max_length=20,
-        choices=FPI_SCOPE_CHOICES,
-        default='PER_WORKORDER',
-        help_text="Scope at which FPI applies"
-    )
 
     # ===== WORKFLOW CONTROL =====
 
-    block_on_measurement_failure = models.BooleanField(
-        default=False,
-        help_text="If True, parts cannot advance if any measurement is out of spec"
-    )
-
+    # Kept outside the gate rows by decision (2026-11-11): nothing enforces it yet; it
+    # may become a real gate later.
     block_on_spc_violation = models.BooleanField(
         default=False,
         help_text="If True, parts cannot advance if any SPC-enabled measurement is out of control"
@@ -974,21 +1006,14 @@ class Steps(SecureModel):
     )
     """Escalation routing when exceeded is defined via StepEdge with type='ESCALATION'."""
 
+    # Who may work a repeat visit: the repeat-visit gate row (StepRequirement); ANY when
+    # the step has none.
     REVISIT_ASSIGNMENT_CHOICES = [
         ('ANY', 'Any Qualified Operator'),
         ('SAME', 'Same as Previous'),
         ('DIFFERENT', 'Different Operator'),
         ('ROLE', 'Specific Role'),
     ]
-    revisit_assignment = models.CharField(
-        max_length=20, choices=REVISIT_ASSIGNMENT_CHOICES, default='ANY'
-    )
-    revisit_role = models.ForeignKey(
-        'Tracker.TenantGroup', null=True, blank=True,
-        on_delete=models.SET_NULL,
-        related_name='+',
-        help_text="Required role when revisit_assignment='role'"
-    )
 
     class Meta:
         verbose_name_plural = 'Steps'
@@ -1233,156 +1258,67 @@ class DecisionDataMissing(ValueError):
 
 # ===== STEP REQUIREMENTS =====
 
-class RequirementType(models.TextChoices):
-    """Types of requirements for step advancement."""
-    MEASUREMENT = 'MEASUREMENT', 'Measurement'
-    DOCUMENT = 'DOCUMENT', 'Document'
-    SIGNOFF = 'SIGNOFF', 'Signoff'
-    EQUIPMENT_CHECK = 'EQUIPMENT_CHECK', 'Equipment Check'
-    MATERIAL_SCAN = 'MATERIAL_SCAN', 'Material Scan'
-    TRAINING_VALID = 'TRAINING_VALID', 'Training Valid'
-    CALIBRATION_VALID = 'CALIBRATION_VALID', 'Calibration Valid'
-    FPI_PASSED = 'FPI_PASSED', 'FPI Passed'
-    QA_APPROVAL = 'QA_APPROVAL', 'QA Approval'
-    CUSTOM = 'CUSTOM', 'Custom'
+class StepGateKind(models.TextChoices):
+    """The gates a step can carry — `services.mes.gates.GateCode` values. Order and
+    stage live in services/mes/step_gates.py and the registry."""
+    WORK_ORDER_NOT_WORKABLE = 'work_order_not_workable', 'Work order workable'
+    DEVIATION_EXPIRED = 'deviation_expired', 'Deviation in date'
+    PART_QUARANTINED = 'part_quarantined', 'Part not quarantined'
+    CORE_AWAITING_AUTHORISATION = 'core_awaiting_authorisation', 'Customer authorisation'
+    TRAINING = 'training_not_authorized', 'Operator trained'
+    REVISIT_RULE = 'revisit_rule', 'Repeat visits'
+    SUBSTEPS_INCOMPLETE = 'substeps_incomplete', 'Work instruction done'
+    QUALIFIED_OPERATOR = 'qualified_operator', 'Qualified operator on record'
+    LIFE_LIMIT = 'life_limit', 'Life limit'
+    QUARANTINE_HOLD = 'quarantine_hold', 'Quarantine hold'
+    QA_SIGNOFF = 'qa_signoff', 'QA sign-off'
+    FIRST_PIECE = 'first_piece', 'First piece'
+    MEASUREMENT_OUT_OF_SPEC = 'measurement_out_of_spec', 'Readings in spec'
 
 
 class StepRequirement(SecureModel):
-    """
-    Defines a requirement that must be satisfied before advancing from a step.
+    """One gate on a step, composed by the engineer (user decisions 2026-11-11): a typed
+    row per gate, with only its own kind's settings filled. The step's rows are the one
+    source of truth for which gates apply to it; a gate with no row doesn't apply.
 
-    This model provides a flexible, extensible way to define step gating rules.
-    Each requirement has a type, configuration, and mandatory flag.
+    Its stage (before start / to move on) and escape are fixed by the registry
+    (services/mes/gates.py), not stored here. A new step starts with the floor
+    (services/mes/step_gates.FLOOR_GATES)."""
 
-    Types include:
-    - measurement: Specific measurement must be recorded
-    - document: Specific document type must be attached
-    - signoff: Requires user signoff (supervisor, QA, etc.)
-    - equipment_check: Equipment must be operational/calibrated
-    - material_scan: Material lot must be scanned/verified
-    - training_valid: Operator must have valid training
-    - calibration_valid: Equipment calibration must be current
-    - fpi_passed: First Piece Inspection must pass
-    - qa_approval: QA approval must be recorded
-    - custom: Custom logic (defined in config)
-    """
+    step = models.ForeignKey(Steps, on_delete=models.CASCADE, related_name='requirements')
+    gate = models.CharField(max_length=40, choices=StepGateKind.choices)
+    order = models.PositiveIntegerField(default=0, help_text='Display order within the step')
 
-    step = models.ForeignKey(
-        Steps,
-        on_delete=models.CASCADE,
-        related_name='requirements'
-    )
-    # DWI: when set, the requirement applies at substep granularity rather
-    # than at Op level. Null = Op-level requirement (matches today's behavior).
-    substep = models.ForeignKey(
-        'Tracker.Substep',
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name='step_requirements',
-        help_text='If set, the requirement applies at substep granularity rather than Op-level.',
-    )
-    requirement_type = models.CharField(
-        max_length=30,
-        choices=RequirementType.choices,
-        help_text='Type of requirement'
-    )
-    name = models.CharField(
-        max_length=100,
-        help_text='Short name for the requirement'
-    )
-    description = models.TextField(
-        blank=True,
-        help_text='Detailed description of the requirement'
-    )
-    is_mandatory = models.BooleanField(
-        default=True,
-        help_text='Whether this requirement must be satisfied to advance'
-    )
-    order = models.PositiveIntegerField(
-        default=0,
-        help_text='Display order within step'
-    )
-    config = models.JSONField(
-        default=dict,
-        help_text='Type-specific configuration (e.g., measurement IDs, document types)'
-    )
+    # first_piece: what one first piece releases (services/qms/fpi_scope.py).
+    fpi_scope = models.CharField(
+        max_length=20, blank=True, default='',
+        choices=[('PER_WORKORDER', 'Per Work Order'), ('PER_SHIFT', 'Per Shift'),
+                 ('PER_EQUIPMENT', 'Per Equipment')])
+    # qa_signoff: how the inspector's identity is proven at the sign-off.
+    qa_assurance = models.CharField(
+        max_length=16, blank=True, default='',
+        choices=[('NONE', 'Check off - recorded under their login'),
+                 ('PASSWORD', 'Signature + password - they re-enter their own password')])
+    # revisit_rule: who may work a repeat visit.
+    revisit_assignment = models.CharField(
+        max_length=20, blank=True, default='',
+        choices=[('SAME', 'Same as Previous'), ('DIFFERENT', 'Different Operator'),
+                 ('ROLE', 'Specific Role')])
+    revisit_role = models.ForeignKey(
+        'Tracker.TenantGroup', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='+', help_text="The role a repeat visit needs, when the rule is ROLE.")
 
     class Meta:
         verbose_name = 'Step Requirement'
         verbose_name_plural = 'Step Requirements'
         ordering = ['step', 'order']
-        indexes = [
-            models.Index(fields=['step', 'requirement_type']),
+        constraints = [
+            models.UniqueConstraint(fields=['step', 'gate'], condition=models.Q(archived=False),
+                                    name='steprequirement_one_live_gate_per_step'),
         ]
 
     def __str__(self):
-        return f"{self.step.name}: {self.name}"
-
-    def is_satisfied(self, step_execution):
-        """
-        Check if this requirement is satisfied for the given step execution.
-
-        Args:
-            step_execution: StepExecution instance to check
-
-        Returns:
-            bool: True if requirement is satisfied, False otherwise
-        """
-        from .qms import QaApproval, FPIRecord, StepExecutionMeasurement
-
-        if self.requirement_type == RequirementType.MEASUREMENT:
-            # Check if all configured measurements are recorded
-            measurement_ids = self.config.get('measurement_ids', [])
-            if not measurement_ids:
-                return True
-            recorded = StepExecutionMeasurement.objects.filter(
-                step_execution=step_execution,
-                measurement_definition_id__in=measurement_ids,
-                is_within_spec=True
-            ).values_list('measurement_definition_id', flat=True)
-            return set(measurement_ids) == set(recorded)
-
-        elif self.requirement_type == RequirementType.QA_APPROVAL:
-            # Check if QA approval exists
-            work_order = step_execution.subject_work_order
-            if work_order is None:
-                return False
-            from Tracker.services.qms.fpi_scope import qa_released
-            return qa_released(step_execution.step, work_order, part=step_execution.part)
-
-        elif self.requirement_type == RequirementType.FPI_PASSED:
-            # FPI is Parts-only — Cores don't have first-piece inspection.
-            if step_execution.part_id is None:
-                return True
-            fpi = FPIRecord.objects.filter(
-                work_order=step_execution.part.work_order,
-                step=step_execution.step,
-                status='PASSED'
-            ).first()
-            return fpi is not None
-
-        elif self.requirement_type == RequirementType.SIGNOFF:
-            # Check if signoff recorded (via step execution completed_by)
-            return step_execution.completed_by is not None
-
-        elif self.requirement_type in (
-            RequirementType.EQUIPMENT_CHECK,
-            RequirementType.MATERIAL_SCAN,
-            RequirementType.TRAINING_VALID,
-            RequirementType.CALIBRATION_VALID,
-        ):
-            # Not implemented as an automated check yet. Fail CLOSED: a declared
-            # *mandatory* resource/safety gate must never silently pass. (Training
-            # is separately enforced by the competence gate in
-            # `can_advance_from_step`, and calibration by the OUT_OF_SERVICE
-            # measurement-write refusal — so wiring these here is a later, possibly
-            # redundant refinement. Until then a mandatory requirement of these
-            # types blocks advancement rather than giving false assurance.)
-            return False
-
-        # Default: DOCUMENT / CUSTOM remain advisory (satisfied out-of-band).
-        return True
+        return f"{self.step.name}: {self.get_gate_display()}"
 
 
 class GateDecisionOutcome(models.TextChoices):

@@ -228,11 +228,13 @@ class ManufacturingSeeder(BaseSeeder):
                 is_terminal=is_terminal,
                 terminal_status=terminal_status if is_terminal else '',
                 max_visits=max_visits,
-                requires_qa_signoff=requires_qa,
                 sampling_required=sampling_req,
                 min_sampling_rate=sampling_rate,
                 expected_duration=expected_duration,
             )
+            if requires_qa:
+                from Tracker.services.mes.step_gates import set_gates_from_flags
+                set_gates_from_flags(step, requires_qa_signoff=True)
             created_steps[name] = step
             ProcessStep.objects.create(
                 process=reman_process,

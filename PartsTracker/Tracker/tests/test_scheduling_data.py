@@ -274,8 +274,8 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
         self.assertFalse(aff[self.machine.id].is_schedulable)
 
     def test_step_node_carries_fpi_flag(self):
-        self.s_timing.requires_first_piece_inspection = True
-        self.s_timing.save(update_fields=["requires_first_piece_inspection"])
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.s_timing, requires_first_piece_inspection=True)
         ProcessStep.objects.create(process=self.process, step=self.s_timing, order=1)
         WorkOrder.objects.create(
             tenant=self.tenant, ERP_id="WO-FPI", workorder_status=WorkOrderStatus.IN_PROGRESS,

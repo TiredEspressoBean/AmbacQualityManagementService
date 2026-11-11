@@ -302,10 +302,11 @@ class CompletedByIsWhoDidTheWorkTests(_Fixture):
         StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=first, visit_number=1,
                                      status="COMPLETED", completed_by=self.user_a,
                                      exited_at=timezone.now())
-        first.revisit_assignment = "SAME"
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(first, revisit_assignment="SAME")
         self.assertEqual(_get_operator_for_step(self.part, first, 2), self.user_a)
         self.assertIsNone(_get_operator_for_step(self.part, first, 1), "a first visit isn't a revisit")
-        first.revisit_assignment = "ANY"
+        set_gates_from_flags(first, revisit_assignment="ANY")
         self.assertIsNone(_get_operator_for_step(self.part, first, 2))
 
     def test_with_nobody_holding_it_the_mover_is_credited(self):
@@ -401,7 +402,8 @@ class RevisitRuleEnforcedTests(_Fixture):
 
     def _visits(self, rule, *, role=None):
         from Tracker.models import User
-        Steps.objects.filter(pk=self.step.pk).update(revisit_assignment=rule, revisit_role=role)
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, revisit_assignment=rule, revisit_role=role)
         self.step.refresh_from_db()
         StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=self.step, visit_number=1,
                                      status="COMPLETED", completed_by=self.user_a, assigned_to=self.user_a,
@@ -462,6 +464,7 @@ class RevisitRuleEnforcedTests(_Fixture):
         from Tracker.services.mes.lifecycle import check_revisit_rule
         self._visits("ANY")
         self.assertIsNone(check_revisit_rule(self.part, self.step, self.user_a, visit_number=2))
-        Steps.objects.filter(pk=self.step.pk).update(revisit_assignment="DIFFERENT")
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, revisit_assignment="DIFFERENT")
         self.step.refresh_from_db()
         self.assertIsNone(check_revisit_rule(self.part, self.step, self.user_a, visit_number=1))

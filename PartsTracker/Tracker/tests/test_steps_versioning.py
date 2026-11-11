@@ -29,7 +29,6 @@ from Tracker.models import (
     PartTypes,
     Processes,
     ProcessStatus,
-    RequirementType,
     Steps,
     StepMeasurementRequirement,
     StepRequirement,
@@ -211,32 +210,27 @@ class StepMeasurementRequirementCopyTestCase(TenantTestCase):
 # ---------------------------------------------------------------------------
 
 class StepRequirementCopyTestCase(TenantTestCase):
-    """StepRequirement rows are copied to the new version with all config fields."""
+    """A step's gate rows are copied to the new version with their settings; the new
+    version gets them in place of the floor a brand-new step would get."""
 
     def setUp(self):
         super().setUp()
         self.part_type = PartTypes.objects.create(name='SReq_PT', ID_prefix='SR-')
         self.step = _make_step(self.part_type, name='SReq Step')
         self.req = StepRequirement.objects.create(
-            step=self.step,
-            requirement_type=RequirementType.SIGNOFF,
-            name='Supervisor signoff',
-            description='Must be signed off by a supervisor.',
-            is_mandatory=True,
-            order=1,
-            config={'role': 'supervisor'},
+            step=self.step, gate='qa_signoff', qa_assurance='PASSWORD', order=20,
         )
+        self.count = StepRequirement.objects.filter(step=self.step, archived=False).count()
 
     def test_requirement_copied_to_new_version_with_correct_fields(self):
         v2 = create_new_step_version(
             self.step, user=self.user_a, change_description='Rev',
         )
-        v2_reqs = StepRequirement.objects.filter(step=v2)
-        self.assertEqual(v2_reqs.count(), 1)
-        v2_req = v2_reqs.first()
-        self.assertEqual(v2_req.requirement_type, RequirementType.SIGNOFF)
-        self.assertEqual(v2_req.name, 'Supervisor signoff')
-        self.assertEqual(v2_req.config, {'role': 'supervisor'})
+        v2_reqs = StepRequirement.objects.filter(step=v2, archived=False)
+        self.assertEqual(v2_reqs.count(), self.count)
+        v2_req = v2_reqs.get(gate='qa_signoff')
+        self.assertEqual(v2_req.qa_assurance, 'PASSWORD')
+        self.assertEqual(v2_req.order, 20)
         self.assertNotEqual(v2_req.pk, self.req.pk)
 
     def test_old_version_retains_its_requirement_rows(self):
@@ -244,20 +238,18 @@ class StepRequirementCopyTestCase(TenantTestCase):
             self.step, user=self.user_a, change_description='Rev',
         )
         self.assertEqual(
-            StepRequirement.objects.filter(step=self.step).count(), 1,
+            StepRequirement.objects.filter(step=self.step, archived=False).count(), self.count,
         )
 
     def test_multiple_requirements_all_copied(self):
-        StepRequirement.objects.create(
-            step=self.step,
-            requirement_type=RequirementType.QA_APPROVAL,
-            name='QA approval',
-            order=2,
-        )
+        StepRequirement.objects.create(step=self.step, gate='first_piece', fpi_scope='PER_SHIFT')
         v2 = create_new_step_version(
             self.step, user=self.user_a, change_description='Rev',
         )
-        self.assertEqual(StepRequirement.objects.filter(step=v2).count(), 2)
+        self.assertEqual(StepRequirement.objects.filter(step=v2, archived=False).count(),
+                         self.count + 1)
+        self.assertEqual(StepRequirement.objects.get(step=v2, gate='first_piece').fpi_scope,
+                         'PER_SHIFT')
 
 
 # ---------------------------------------------------------------------------

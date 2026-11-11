@@ -12,7 +12,7 @@ from Tracker.models import (
     Orders, OrdersStatus, OrderLine, OrderLineStatus, Parts, PartsStatus,
     WorkOrder, WorkOrderStatus,
     Steps, PartTypes, Processes, StepExecution, ProcessStep, StepEdge, EdgeType,
-    OutsideProcessShipment,
+    OutsideProcessShipment, StepGateKind,
     # MES Standard models
     EquipmentType, Equipments, TimeEntry, MaterialUsage, Shift,
     # QMS models
@@ -1484,7 +1484,31 @@ class StepProcessRefSerializer(serializers.Serializer):
     is_current_version = serializers.BooleanField()
 
 
-class StepsSerializer(SecureModelMixin):
+class StepGateSerializer(serializers.Serializer):
+    """One of a step's gates (a StepRequirement row): the gate's code, its order, and
+    the settings its kind has. Stage and escape come from the registry."""
+    gate = serializers.ChoiceField(choices=StepGateKind.choices)
+    order = serializers.IntegerField(required=False)
+    fpi_scope = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    qa_assurance = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    revisit_assignment = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    revisit_role = serializers.UUIDField(required=False, allow_null=True, source='revisit_role_id')
+
+
+class _StepGateFieldsMixin(serializers.Serializer):
+    """The old flag names answered from the step's gate rows (read-only), for the
+    screens that only show them. The rows themselves are `gates`."""
+    requires_qa_signoff = serializers.BooleanField(read_only=True)
+    qa_signoff_assurance = serializers.CharField(read_only=True)
+    requires_first_piece_inspection = serializers.BooleanField(read_only=True)
+    fpi_scope = serializers.CharField(read_only=True)
+    block_on_quarantine = serializers.BooleanField(read_only=True)
+    block_on_measurement_failure = serializers.BooleanField(read_only=True)
+    revisit_assignment = serializers.CharField(read_only=True)
+    revisit_role = serializers.UUIDField(read_only=True, allow_null=True, source='revisit_role_id')
+
+
+class StepsSerializer(_StepGateFieldsMixin, SecureModelMixin):
     """
     Steps serializer - represents step node properties.
 
@@ -1513,6 +1537,9 @@ class StepsSerializer(SecureModelMixin):
         write_only=True, required=False, allow_blank=True,
         help_text="Reason for this revision, recorded on the new version "
                   "(ISO 9001 4.4 / IATF 16949 8.5.6.1).")
+    # The step's gates (StepRequirement rows) — the whole list on write. A gate left
+    # out no longer applies. Omitted: a new step gets the floor, an edit keeps them.
+    gates = StepGateSerializer(many=True, required=False, source='gate_rows')
 
     # Fields whose edits are metadata-only and should NOT trigger a new version.
     # operation_number is a shop-floor routing label, not process behaviour — a
@@ -1546,6 +1573,8 @@ class StepsSerializer(SecureModelMixin):
             'is_terminal', 'terminal_status',
             # Workflow engine - cycle control
             'max_visits', 'revisit_assignment', 'revisit_role',
+            # The step's gates (writable); the flag names above are read from them.
+            'gates', 'fpi_scope',
             # DWI substep sequencing (Phase 1)
             'sequencing_mode',
             # Expected scrap fraction at this step (null = inherit process default)
@@ -1611,6 +1640,12 @@ class StepsSerializer(SecureModelMixin):
         # to whatever row comes back — a version fork returns a NEW step, and the timing
         # must land on that one or the edit silently applies to a superseded row.
         timing_data = validated_data.pop('timing', serializers.empty)
+        # The gates are rows, not step fields: out of the scalar update, and a change to
+        # them is a content change — it versions the step like any other.
+        gates = validated_data.pop('gate_rows', serializers.empty)
+        from Tracker.services.mes.step_gates import gate_signature
+        gates_changed = gates is not serializers.empty and (
+            gate_signature(gates) != gate_signature(instance.gate_rows))
 
         # `create_new_step_version` requires a change_description (ISO 9001 4.4 /
         # IATF 16949 8.5.6.1) and this serializer never supplied one, so EVERY content
@@ -1627,9 +1662,10 @@ class StepsSerializer(SecureModelMixin):
             'user': getattr(self.context.get('request'), 'user', None),
         }
         process = self._resolve_editing_process()
+        content_edit = bool(set(validated_data) - self._NON_VERSIONING_FIELDS) or gates_changed
         if process is not None:
             version_kwargs['process'] = process
-        elif set(validated_data) - self._NON_VERSIONING_FIELDS and instance.process_memberships.filter(
+        elif content_edit and instance.process_memberships.filter(
                 process__archived=False).exists():
             # Refused as the step form refuses it (user decision 2026-10-29): with no
             # process to version for, the edit minted a new current row that no process
@@ -1638,21 +1674,35 @@ class StepsSerializer(SecureModelMixin):
                 "This step is part of a process. Its content is edited there, so every other "
                 "version of the process keeps the step as it was. Timing and machines can "
                 "still be changed here.")
-        updated = apply_versioned_update(
-            instance, validated_data,
-            non_versioning_fields=self._NON_VERSIONING_FIELDS,
-            default_update=super().update,
-            version_kwargs=version_kwargs,
-        )
+        if gates_changed and not set(validated_data) - self._NON_VERSIONING_FIELDS:
+            # Only the gates changed: still a new version, so every other process
+            # version keeps the step's gates as they were.
+            updated = instance.create_new_version(**version_kwargs)
+            if validated_data:
+                updated = super().update(updated, validated_data)
+        else:
+            updated = apply_versioned_update(
+                instance, validated_data,
+                non_versioning_fields=self._NON_VERSIONING_FIELDS,
+                default_update=super().update,
+                version_kwargs=version_kwargs,
+            )
         if timing_data is not serializers.empty:
             self._write_timing(updated, timing_data)
+        if gates_changed:
+            from Tracker.services.mes.step_gates import set_step_gates
+            set_step_gates(updated, [dict(g) for g in gates])
         return updated
 
     def create(self, validated_data):
         timing_data = validated_data.pop('timing', None)
+        gates = validated_data.pop('gate_rows', None)
         step = super().create(validated_data)
         if timing_data:
             self._write_timing(step, timing_data)
+        if gates is not None:
+            from Tracker.services.mes.step_gates import set_step_gates
+            set_step_gates(step, [dict(g) for g in gates])
         return step
 
     @staticmethod
@@ -1959,8 +2009,10 @@ class WIPSummarySerializer(serializers.Serializer):
     total_active = serializers.IntegerField()
 
 
-class StepSerializer(SecureModelMixin):
+class StepSerializer(_StepGateFieldsMixin, SecureModelMixin):
     """Step serializer - just the node properties (no process/order/branching)"""
+    # The step's gates (StepRequirement rows); the flag names are read from them.
+    gates = StepGateSerializer(many=True, read_only=True, source='gate_rows')
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
     outside_supplier_name = serializers.CharField(source="outside_supplier.name", read_only=True, allow_null=True)
     # A Repair node's code, for the editor's label and picker.
@@ -1998,6 +2050,8 @@ class StepSerializer(SecureModelMixin):
             # Workflow engine - cycle control. Who may work a repeat visit
             # (ANY / SAME / DIFFERENT / ROLE + its role) — enforced at start/claim.
             "max_visits", "revisit_assignment", "revisit_role",
+            # The step's gates.
+            "gates",
         ]
 
 

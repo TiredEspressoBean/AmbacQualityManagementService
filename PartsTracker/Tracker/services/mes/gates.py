@@ -21,8 +21,9 @@ owner acts upstream (a disposition, change control, the customer, the order's ho
 Every passed or escaped gate is written to the decision log (`GateDecision`): one row
 per visit per gate per stage. Refusals that are later cleared are not kept.
 
-Decisions read recorded facts. Applicability today comes from the step's own fields;
-the typed requirement model (S1) replaces that adapter.
+Decisions read recorded facts. Which gates apply to a step is the engineer's choice,
+recorded as the step's StepRequirement rows (services/mes/step_gates.py): a gate with
+no row doesn't apply to that step.
 """
 from __future__ import annotations
 
@@ -67,7 +68,6 @@ class GateCode(StrEnum):
     SAMPLING_REQUIRED = 'sampling_required'
     SAMPLING_FAILED = 'sampling_failed'
     MEASUREMENT_OUT_OF_SPEC = 'measurement_out_of_spec'
-    STEP_REQUIREMENT = 'step_requirement'
     SUBSTEPS_INCOMPLETE = 'substeps_incomplete'
     QUALIFIED_OPERATOR = 'qualified_operator'
 
@@ -110,8 +110,6 @@ _SPECS = [
              "QA", "a disposition of the failed sample"),
     GateSpec(GateCode.MEASUREMENT_OUT_OF_SPEC, Stage.RELEASE, Escape.BYPASS_REQUEST,
              "QA", "the out-of-spec reading to be dealt with"),
-    GateSpec(GateCode.STEP_REQUIREMENT, Stage.RELEASE, Escape.NONE,
-             "Engineering", "the step's requirement to be met"),
     GateSpec(GateCode.SUBSTEPS_INCOMPLETE, Stage.RELEASE, Escape.NONE,
              "Operator", "the work instruction's required substeps"),
     GateSpec(GateCode.QUALIFIED_OPERATOR, Stage.RELEASE, Escape.NONE,
@@ -178,8 +176,15 @@ def _refusal_text(exc: ValidationError) -> str:
     return '; '.join(exc.messages)
 
 
+def _carries(step, code: GateCode) -> bool:
+    """Does the step carry this gate? With no step to ask (a caller checking the floor
+    alone), every gate applies."""
+    return step is None or step.has_gate(str(code))
+
+
 def floor_blockers(ctx: StartContext) -> list[Blocker]:
-    """The start gates nobody on the floor can override, every one that refuses.
+    """The start gates nobody on the floor can override that the step carries, every
+    one that refuses.
 
     - a reman unit parked on the customer's authorisation;
     - a QUARANTINED part: its disposition decides what happens to it (user decision
@@ -189,13 +194,14 @@ def floor_blockers(ctx: StartContext) -> list[Blocker]:
     - a held, cancelled or completed work order.
     """
     out: list[Blocker] = []
-    part, wo = ctx.part, ctx.work_order
-    if part is not None:
+    part, wo, step = ctx.part, ctx.work_order, ctx.step
+    if part is not None and _carries(step, GateCode.CORE_AWAITING_AUTHORISATION):
         from Tracker.services.reman.core_steps import assert_workable
         try:
             assert_workable(part)
         except ValidationError as exc:
             out.append(Blocker(GateCode.CORE_AWAITING_AUTHORISATION, _refusal_text(exc)))
+    if part is not None and _carries(step, GateCode.PART_QUARANTINED):
         from Tracker.models import PartsStatus
         from Tracker.services.qms.report_supersede import awaiting_recapture
         if part.part_status == PartsStatus.QUARANTINED and not awaiting_recapture(part):
@@ -207,11 +213,12 @@ def floor_blockers(ctx: StartContext) -> list[Blocker]:
                 f"{part.ERP_id} is quarantined — "
                 + (f"{disp.disposition_number} decides what happens to it; work it from there."
                    if disp else "it needs a disposition before any work starts."))))
-    if wo is not None:
+    if wo is not None and _carries(step, GateCode.DEVIATION_EXPIRED):
         from Tracker.services.change_control.temporary import refusal as deviation_refusal
         expired = deviation_refusal(wo)
         if expired:
             out.append(Blocker(GateCode.DEVIATION_EXPIRED, expired))
+    if wo is not None and _carries(step, GateCode.WORK_ORDER_NOT_WORKABLE):
         from Tracker.services.mes.work_order import start_refusal
         held_or_ended = start_refusal(wo)
         if held_or_ended:
@@ -225,7 +232,7 @@ def _floor_applies(ctx: StartContext) -> list[GateCode]:
         codes += [GateCode.CORE_AWAITING_AUTHORISATION, GateCode.PART_QUARANTINED]
     if ctx.work_order is not None:
         codes += [GateCode.DEVIATION_EXPIRED, GateCode.WORK_ORDER_NOT_WORKABLE]
-    return codes
+    return [c for c in codes if _carries(ctx.step, c)]
 
 
 @dataclass
@@ -263,7 +270,7 @@ def decide_start(ctx: StartContext, *, authorizer=None, reason=None) -> StartDec
 
     revisit = check_revisit_rule(ctx.part, ctx.step, ctx.operator, visit_number=ctx.visit_number,
                                  authorizer=authorizer, reason=reason)
-    if ctx.part is not None and ctx.visit_number > 1:
+    if ctx.part is not None and ctx.visit_number > 1 and ctx.step.has_gate(str(GateCode.REVISIT_RULE)):
         outcomes.append(Outcome(GateCode.REVISIT_RULE, 'OVERRIDDEN', authorizer, reason or '')
                         if revisit is not None else Outcome(GateCode.REVISIT_RULE, 'PASSED'))
 
@@ -278,10 +285,15 @@ def decide_start(ctx: StartContext, *, authorizer=None, reason=None) -> StartDec
                                           authorizer=authorizer, reason=reason)
         outcomes.append(Outcome(GateCode.ASSIGNED_TO_OTHER, 'OVERRIDDEN', authorizer, reason or ''))
 
-    snapshot = authorize_start(ctx.operator, ctx.step, ctx.process, authorizer=authorizer,
-                               reason=reason)
-    outcomes.append(Outcome(GateCode.TRAINING, 'OVERRIDDEN', authorizer, reason or '')
-                    if snapshot.get('override') else Outcome(GateCode.TRAINING, 'PASSED'))
+    if ctx.step.has_gate(str(GateCode.TRAINING)):
+        snapshot = authorize_start(ctx.operator, ctx.step, ctx.process, authorizer=authorizer,
+                                   reason=reason)
+        outcomes.append(Outcome(GateCode.TRAINING, 'OVERRIDDEN', authorizer, reason or '')
+                        if snapshot.get('override') else Outcome(GateCode.TRAINING, 'PASSED'))
+    else:
+        # The step doesn't carry the training gate: the start is recorded as gated (the
+        # snapshot the advancement backstop trusts), with nothing checked.
+        snapshot = {'authorized': True, 'missing': [], 'verified': [], 'training_gate': False}
     if reassignment is not None:
         snapshot['reassignment'] = reassignment.to_dict()
     if revisit is not None:
@@ -312,7 +324,7 @@ def release_blockers(step: 'Steps', step_execution, work_order) -> list[Blocker]
     # Life limit. Read the live `is_blocked`, not the possibly stale cached status, so
     # calendar (shelf-life) expiries are caught. Released by an approved limit
     # extension, not a bypass.
-    if part is not None:
+    if part is not None and step.has_gate(str(GateCode.LIFE_LIMIT)):
         for lt in _life_trackings(part):
             if lt.is_blocked:
                 out.append(Blocker(GateCode.LIFE_LIMIT, f"Life limit exceeded: {lt.definition.name}"))
@@ -348,13 +360,8 @@ def release_blockers(step: 'Steps', step_execution, work_order) -> list[Blocker]
             out.append(Blocker(GateCode.MEASUREMENT_OUT_OF_SPEC,
                                "One or more measurements are out of specification"))
 
-    # The step's declared requirements.
-    for req in step.requirements.filter(is_mandatory=True, archived=False):
-        if not req.is_satisfied(step_execution):
-            out.append(Blocker(GateCode.STEP_REQUIREMENT, f"Requirement not met: {req.name}"))
-
     # The work instruction's required substeps (Parts only).
-    if part is not None:
+    if part is not None and step.has_gate(str(GateCode.SUBSTEPS_INCOMPLETE)):
         from Tracker.services.dwi.advancement_gate import substep_completion_blockers
         out += [Blocker(GateCode.SUBSTEPS_INCOMPLETE, m)
                 for m in substep_completion_blockers(step, step_execution, work_order)]
@@ -386,6 +393,8 @@ def _life_trackings(part):
 def _needs_operator_backstop(step, step_execution, work_order) -> bool:
     if step_execution.training_authorization is not None:
         return False
+    if not step.has_gate(str(GateCode.QUALIFIED_OPERATOR)):
+        return False
     from Tracker.services.training import get_required_training
     return bool(get_required_training(step, getattr(work_order, 'process', None)))
 
@@ -409,7 +418,7 @@ def _release_applies(step, step_execution, work_order) -> list[GateCode]:
     codes = []
     if part is not None and step.block_on_quarantine:
         codes.append(GateCode.QUARANTINE_HOLD)
-    if part is not None and _life_trackings(part).exists():
+    if part is not None and step.has_gate(str(GateCode.LIFE_LIMIT)) and _life_trackings(part).exists():
         codes.append(GateCode.LIFE_LIMIT)
     if step.requires_qa_signoff:
         codes.append(GateCode.QA_SIGNOFF)
@@ -419,9 +428,8 @@ def _release_applies(step, step_execution, work_order) -> list[GateCode]:
         codes.append(GateCode.SAMPLING_REQUIRED)
     if step.block_on_measurement_failure:
         codes.append(GateCode.MEASUREMENT_OUT_OF_SPEC)
-    if step.requirements.filter(is_mandatory=True, archived=False).exists():
-        codes.append(GateCode.STEP_REQUIREMENT)
-    if part is not None and Substep.objects.filter(step=step, archived=False).exists():  # tenant-safe: FK-correlated to a scoped step
+    if (part is not None and step.has_gate(str(GateCode.SUBSTEPS_INCOMPLETE))
+            and Substep.objects.filter(step=step, archived=False).exists()):  # tenant-safe: FK-correlated to a scoped step
         codes.append(GateCode.SUBSTEPS_INCOMPLETE)
     if _needs_operator_backstop(step, step_execution, work_order):
         codes.append(GateCode.QUALIFIED_OPERATOR)

@@ -126,8 +126,8 @@ class StepOverrideRewireTests(AdvancementRewiresBase):
         )
         step_a, step_b = lot['steps']
         # Add the QA-signoff blocker condition.
-        step_a.requires_qa_signoff = True
-        step_a.save(update_fields=['requires_qa_signoff'])
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(step_a, requires_qa_signoff=True)
         part = lot['parts'][0]
         se = StepExecution.get_current_execution(part)
 

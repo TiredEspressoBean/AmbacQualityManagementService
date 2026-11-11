@@ -226,7 +226,8 @@ class OutsideProcessInspectionTests(_OSPFixtureMixin, TenantTestCase):
 
     def test_a_part_the_step_still_gates_is_left_workable_not_stranded(self):
         from Tracker.models import StepExecution
-        Steps.objects.filter(pk=self.osp_step.pk).update(requires_qa_signoff=True)
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.osp_step, requires_qa_signoff=True)
         self._inspect_return()
         osp.accept_return(self.report, self.user_a)
         for p in self.parts:

@@ -61,8 +61,9 @@ class MyFirstPiecesTests(TenantTestCase):
         t = self.tenant_a
         self.FPIRecord = FPIRecord
         self.pt = PartTypes.objects.create(tenant=t, name="Body", ID_prefix="B")
-        self.step = Steps.objects.create(tenant=t, part_type=self.pt, name="Turn", step_type="TASK",
-                                         requires_first_piece_inspection=True)
+        self.step = Steps.objects.create(tenant=t, part_type=self.pt, name="Turn", step_type="TASK")
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, requires_first_piece_inspection=True)
         self.wo = WorkOrder.objects.create(tenant=t, ERP_id="WO-FPI", quantity=2)
         self.part = Parts.objects.create(tenant=t, ERP_id="B-9", part_type=self.pt, work_order=self.wo,
                                          step=self.step)

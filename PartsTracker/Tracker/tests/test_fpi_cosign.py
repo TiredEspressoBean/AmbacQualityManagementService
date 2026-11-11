@@ -65,8 +65,10 @@ class FpiCosignTests(TenantContextMixin, TestCase):
         )
         self.step = Steps.objects.create(
             tenant=self.tenant, part_type=self.pt, name="Cs Inspect",
-            step_type="TASK", requires_first_piece_inspection=True,
+            step_type="TASK",
         )
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step, requires_first_piece_inspection=True)
         ProcessStep.objects.create(process=self.process, step=self.step, order=1)
         self.wo = WorkOrder.objects.create(
             tenant=self.tenant, ERP_id="WO-CS-1",
