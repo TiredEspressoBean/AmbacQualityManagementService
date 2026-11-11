@@ -142,6 +142,26 @@ def _active_execution_for(part, step):
     return ex
 
 
+def _refuse_unworkable(step, parts, user) -> None:
+    """Sending a part out starts its outside-process step, so it meets the start's
+    floor as any start does (user ruling 2026-11-11): a held, cancelled or completed
+    work order, or a quarantined part, refuses it — honouring the step's gate rows.
+    Raises `StartRefused` naming every part refused."""
+    from Tracker.models import StepExecution
+    from Tracker.services.mes.gates import StartContext, StartRefused, floor_blockers
+    refused = []
+    for part in parts:
+        ex = (StepExecution.objects  # tenant-safe: .objects auto-scopes
+              .filter(archived=False, part=part, step=step,
+                      status__in=["PENDING", "CLAIMED", "IN_PROGRESS"])
+              .order_by("-entered_at").first())
+        refused += floor_blockers(StartContext(
+            part=part, step=step, work_order=part.work_order, operator=user,
+            execution=ex))
+    if refused:
+        raise StartRefused(refused)
+
+
 def send_parts_out(*, step, parts, supplier=None, reference="", user=None):
     """Send ``parts`` out to a subcontract vendor for the outside-process ``step``.
 
@@ -171,6 +191,8 @@ def send_parts_out(*, step, parts, supplier=None, reference="", user=None):
             raise ValueError(
                 f"{supplier.name} has no active qualification for {special_process}. "
                 f"Qualify them for it, or send the parts to a vendor who is.")
+
+    _refuse_unworkable(step, parts, user)
 
     work_order = next((p.work_order for p in parts if p.work_order_id), None)
 

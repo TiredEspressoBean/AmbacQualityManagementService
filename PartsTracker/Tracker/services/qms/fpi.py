@@ -71,7 +71,7 @@ def _assure_identity(fpi: FPIRecord, user, password: str, identity_verified: boo
     from Tracker.services.core.second_person import verify_own_password
     if identity_verified:
         return True
-    if fpi.step is None or fpi.step.qa_signoff_assurance != 'PASSWORD':
+    if fpi.step is None or fpi.step.first_piece_assurance != 'PASSWORD':
         return False
     refusal = verify_own_password(tenant=fpi.tenant, user=user, password=password or '',
                                   throttle_prefix='qa_signoff_reauth')

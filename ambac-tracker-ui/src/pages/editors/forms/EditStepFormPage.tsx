@@ -131,10 +131,11 @@ export default function StepFormPage() {
         }) as unknown as FormValues,
     })
 
+    // The gates come from the step row: the resolved-rules endpoint doesn't carry them,
+    // and a form reset to no gates saved as "remove every gate". Wait for both.
     useEffect(() => {
-        if (mode === "edit" && step) {
+        if (mode === "edit" && step && stepRow) {
             const stepWithRules = step as typeof step & {
-                gates?: FormValues["gates"]
                 operation_number?: string
                 active_ruleset?: { rules?: FormValues["rules"]; tighten_after?: number; fallback_duration?: number }
                 fallback_ruleset?: { rules?: FormValues["rules"] }
@@ -144,7 +145,7 @@ export default function StepFormPage() {
                 name: step.name ?? "",
                 description: step.description ?? "",
                 part_type: step.part_type ?? "",
-                gates: stepWithRules.gates ?? [],
+                gates: (stepRow.gates ?? []) as FormValues["gates"],
                 operation_number: stepWithRules.operation_number ?? "",
                 rules: stepWithRules.active_ruleset?.rules ?? [],
                 fallback_rules: stepWithRules.fallback_ruleset?.rules ?? [],
@@ -152,7 +153,7 @@ export default function StepFormPage() {
                 fallback_duration: stepWithRules.active_ruleset?.fallback_duration ?? undefined,
             } as unknown as FormValues)
         }
-    }, [mode, step, form])
+    }, [mode, step, stepRow, form])
 
     // Return type comes from the endpoint. Written by hand it allowed `value` as
     // a string where the contract types it as a number, and the `as never` on

@@ -100,7 +100,7 @@ const REVISIT_OPTIONS = [
 const STAGE_LABEL: Record<Stage, string> = { START: "Before start", RELEASE: "To move on" };
 
 function defaultsFor(gate: string): StepGate {
-    if (gate === "first_piece") return { gate, fpi_scope: "PER_WORKORDER" };
+    if (gate === "first_piece") return { gate, fpi_scope: "PER_WORKORDER", qa_assurance: "NONE" };
     if (gate === "qa_signoff") return { gate, qa_assurance: "NONE" };
     if (gate === "revisit_rule") return { gate, revisit_assignment: "DIFFERENT", revisit_role: null };
     return { gate };
@@ -178,6 +178,16 @@ export function StepGatesField({
                                     <p className="text-xs text-muted-foreground">
                                         {FPI_SCOPE_HINT[g.fpi_scope || "PER_WORKORDER"]}
                                     </p>
+                                    {/* The buy-off is a QA release of its own: signed as
+                                        the author sets here (or as the QA sign-off asks, if
+                                        that asks for more). */}
+                                    <GateSetting
+                                        label="How the inspector signs the buy-off"
+                                        value={g.qa_assurance ?? "NONE"}
+                                        options={QA_ASSURANCE_OPTIONS}
+                                        editable={editable}
+                                        onChange={(v) => update(g.gate, { qa_assurance: v })}
+                                    />
                                 </>
                             )}
                             {g.gate === "qa_signoff" && (

@@ -742,13 +742,15 @@ def rollback_part_step(
     current_execution.save(update_fields=['status', 'exited_at'])
 
     visit_number = StepExecution.get_visit_count(part, previous_step) + 1
+    # The part waits at the step, not started and nobody's: whoever works it presses
+    # Start Work and the start decision runs for them — repeat-visit rule, training,
+    # holds (user ruling 2026-11-11). The rollback is a correction and is never refused
+    # for a start gate; that includes an approved late rollback (same path).
     rolled_back_exec = StepExecution.objects.create(
         part=part,
         step=previous_step,
         visit_number=visit_number,
-        assigned_to=operator,
-        status='IN_PROGRESS',
-        started_at=timezone.now(),
+        status='PENDING',
     )
 
     # Phase 3: rollback creates a new StepExecution; its substeps need

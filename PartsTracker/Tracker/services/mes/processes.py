@@ -860,13 +860,18 @@ _RETIRED_GATE_KEYS = (
 
 def _pop_gates(node: dict):
     """The node's `gates` list, or `_UNSET` when it sends none. A node still sending
-    the retired gate flags is refused rather than having them silently dropped."""
+    the retired gate flags is refused rather than having them silently dropped.
+    Refusals are ValidationErrors, so the API answers 400 on every save path."""
+    from django.core.exceptions import ValidationError
     retired = [k for k in _RETIRED_GATE_KEYS if k in node]
     if retired:
-        raise ValueError(
+        raise ValidationError(
             f"{', '.join(retired)} {'is' if len(retired) == 1 else 'are'} no longer step "
             "fields: send the step's `gates` list instead.")
-    return node.pop("gates", _UNSET)
+    gates = node.pop("gates", _UNSET)
+    if gates is not _UNSET and not isinstance(gates, list):
+        raise ValidationError("`gates` must be a list of the step's gates.")
+    return gates
 
 
 def _gates_differ(step, gates) -> bool:

@@ -43,6 +43,7 @@ from Tracker.models import (
     StepEdge,
 )
 from Tracker.services.change_control.diff import compute_process_diff
+from Tracker.services.mes.step_gates import rows_of, set_step_gates
 from Tracker.services.mes.steps import (
     add_step_to_process,
     create_new_step_version,
@@ -383,7 +384,7 @@ def _apply_intent_to_process(
         if ps_source is None:
             continue
         source = ps_source.step
-        add_step_to_process(
+        added = add_step_to_process(
             process,
             order=ps_source.order,
             is_entry_point=ps_source.is_entry_point,
@@ -391,6 +392,8 @@ def _apply_intent_to_process(
             step_type=source.step_type,
             description=source.description,
         )
+        # The gates its author composed, not just the floor a new step is given.
+        set_step_gates(added, rows_of(source))
 
     for entry in steps_block.get('modified', []):
         identity = entry['identity_id']
@@ -402,20 +405,31 @@ def _apply_intent_to_process(
         if ps is None:
             continue
         # Build field overrides from the diff's `changes` dict — each
-        # change is {"from": old, "to": new}; we only want the "to".
+        # change is {"from": old, "to": new}; we only want the "to". A gate change
+        # (`gate:<code>`, diff._diff_gates) is not a Steps field: it is applied to
+        # the new version's gate rows, taking that gate as the PCR's draft has it.
+        changes = entry.get('changes', {})
+        gate_codes = {k.split(':', 1)[1] for k in changes if k.startswith('gate:')}
         field_overrides = {
             field: change['to']
-            for field, change in entry.get('changes', {}).items()
-            if isinstance(change, dict) and 'to' in change
+            for field, change in changes.items()
+            if not field.startswith('gate:') and isinstance(change, dict) and 'to' in change
         }
-        if field_overrides:
-            create_new_step_version(
+        if field_overrides or gate_codes:
+            new_version = create_new_step_version(
                 ps.step,
                 user=user,
                 change_description=f"Rebase: applied intent on {ps.step.name}",
                 process=process,
                 **field_overrides,
             )
+            if gate_codes:
+                ps_draft = ProcessStep.objects.filter(  # tenant-safe: scoped by the draft
+                    process=source_draft, step__identity_id=identity).select_related('step').first()
+                drafted = {r['gate']: r for r in rows_of(ps_draft.step)} if ps_draft else {}
+                rows = [r for r in rows_of(new_version) if r['gate'] not in gate_codes]
+                rows += [drafted[g] for g in gate_codes if g in drafted]
+                set_step_gates(new_version, rows)
 
     # Edge changes — fully rebuild affected edges on the fresh process.
     # `create_new_process_version` copied edges from current_approved

@@ -1608,6 +1608,14 @@ class StepsSerializer(_StepGateFieldsMixin, SecureModelMixin):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        # The old gate flags are read-only now: sent on a write they were silently
+        # ignored, where the process save refuses them. One contract for both.
+        from Tracker.services.mes.processes import _RETIRED_GATE_KEYS
+        data = self.initial_data if isinstance(getattr(self, 'initial_data', None), dict) else {}
+        retired = [k for k in _RETIRED_GATE_KEYS if k in data]
+        if retired:
+            raise serializers.ValidationError({
+                k: "No longer a step field: send the step's `gates` list instead." for k in retired})
         # `part_type` is nullable for one kind of step only — a raw material's
         # receiving plan. Anywhere else, clearing it would reach the database's
         # check constraint as a 500.

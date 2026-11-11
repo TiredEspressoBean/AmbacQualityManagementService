@@ -104,6 +104,26 @@ class OutsideProcessSendReceiveTests(_OSPFixtureMixin, TenantTestCase):
         with self.assertRaises(ValueError):
             osp.send_parts_out(step=task, parts=self.parts, user=self.user_a)
 
+    def test_a_held_work_order_refuses_send_out(self):
+        """Sending out starts the step: a held work order refuses it (user ruling
+        2026-11-11)."""
+        from Tracker.services.mes.gates import GateCode, StartRefused
+        WorkOrder.objects.filter(pk=self.wo.pk).update(workorder_status=WorkOrderStatus.ON_HOLD)
+        for p in self.parts:
+            p.refresh_from_db()
+        with self.assertRaises(StartRefused) as ctx:
+            osp.send_parts_out(step=self.osp_step, parts=self.parts, user=self.user_a)
+        self.assertIn(GateCode.WORK_ORDER_NOT_WORKABLE, [b.code for b in ctx.exception.blockers])
+        self.assertFalse(OutsideProcessShipment.objects.exists())
+
+    def test_a_quarantined_part_refuses_send_out(self):
+        from Tracker.services.mes.gates import GateCode, StartRefused
+        Parts.objects.filter(pk=self.parts[0].pk).update(part_status=PartsStatus.QUARANTINED)
+        self.parts[0].refresh_from_db()
+        with self.assertRaises(StartRefused) as ctx:
+            osp.send_parts_out(step=self.osp_step, parts=self.parts, user=self.user_a)
+        self.assertEqual([b.code for b in ctx.exception.blockers], [GateCode.PART_QUARANTINED])
+
     def test_send_out_requires_a_supplier(self):
         self.osp_step.outside_supplier = None
         self.osp_step.save(update_fields=["outside_supplier"])

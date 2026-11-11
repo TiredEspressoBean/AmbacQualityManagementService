@@ -76,6 +76,15 @@ def gate_row(step, gate: str):
     return None
 
 
+def rows_of(step) -> list[dict]:
+    """The step's live gates as the editor's dicts — for writing them onto another step
+    with `set_step_gates`."""
+    return [{'gate': r.gate, 'order': r.order, 'fpi_scope': r.fpi_scope,
+             'qa_assurance': r.qa_assurance, 'revisit_assignment': r.revisit_assignment,
+             'revisit_role_id': r.revisit_role_id}
+            for r in step.requirements.filter(archived=False).order_by('order')]
+
+
 def gate_signature(rows) -> frozenset:
     """A comparable form of a gate list — dicts as the editor sends them, or
     StepRequirement rows — so two lists that configure the same gates compare equal."""
@@ -102,6 +111,12 @@ def clean_gate_row(row: dict) -> dict:
         if scope not in FPI_SCOPES:
             raise ValidationError(f"'{scope}' isn't a first-piece scope.")
         out['fpi_scope'] = scope
+        # How the inspector signs the buy-off: the buy-off is a QA release in its own
+        # right, so the author sets it here as on the QA sign-off gate.
+        assurance = row.get('qa_assurance') or 'NONE'
+        if assurance not in QA_ASSURANCES:
+            raise ValidationError(f"'{assurance}' isn't a sign-off assurance.")
+        out['qa_assurance'] = assurance
     elif gate == 'qa_signoff':
         assurance = row.get('qa_assurance') or 'NONE'
         if assurance not in QA_ASSURANCES:
@@ -128,6 +143,18 @@ def set_step_gates(step, rows: list[dict]) -> None:
     dupes = sorted({g for g in seen if seen.count(g) > 1})
     if dupes:
         raise ValidationError(f"A step carries each gate once: {', '.join(dupes)}.")
+    # Without its role a Specific Role rule let anyone through: refused when written.
+    # (Checked here, not in clean_gate_row, so comparing a step's existing gates —
+    # one whose role was since deleted — never fails.)
+    if any(r['revisit_assignment'] == 'ROLE' and not r['revisit_role_id'] for r in cleaned):
+        raise ValidationError("A repeat-visit rule of Specific Role needs its role.")
+    roles = {r['revisit_role_id'] for r in cleaned if r['revisit_role_id']}
+    if roles:
+        from Tracker.models import TenantGroup
+        found = TenantGroup.objects.filter(  # tenant-safe: explicit tenant filter
+            tenant_id=step.tenant_id, pk__in=roles).count()
+        if found != len(roles):
+            raise ValidationError("The repeat-visit role isn't one of this company's roles.")
     StepRequirement.objects.filter(step=step, archived=False).delete()  # tenant-safe: keyed to a scoped step
     for r in ordered(cleaned):
         StepRequirement.objects.create(tenant=step.tenant, step=step, **r)
@@ -163,7 +190,9 @@ def set_gates_from_flags(step, *, requires_qa_signoff=False, qa_signoff_assuranc
     if requires_qa_signoff:
         rows.append({'gate': 'qa_signoff', 'qa_assurance': qa_signoff_assurance or 'NONE'})
     if requires_first_piece_inspection:
-        rows.append({'gate': 'first_piece', 'fpi_scope': fpi_scope or 'PER_WORKORDER'})
+        # The old step-level assurance applied to the buy-off too.
+        rows.append({'gate': 'first_piece', 'fpi_scope': fpi_scope or 'PER_WORKORDER',
+                     'qa_assurance': qa_signoff_assurance or 'NONE'})
     if block_on_measurement_failure:
         rows.append({'gate': 'measurement_out_of_spec'})
     set_step_gates(step, rows)

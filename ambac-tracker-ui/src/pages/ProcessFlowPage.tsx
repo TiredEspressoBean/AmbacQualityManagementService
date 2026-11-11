@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FlowCanvas, StepEditorPanel } from '@/components/flow';
 import type { StepData as StepWithOrder } from '@/components/flow/use-steps-to-flow';
 import { buildNodesAndEdges } from '@/components/flow/use-steps-to-flow';
+import { FLOOR_GATES } from '@/components/flow/StepGatesField';
 type StepData = StepWithOrder;
 import { useRetrieveProcesses } from '@/hooks/useRetrieveProcesses';
 import { useRetrieveProcessWithSteps } from '@/hooks/useRetrieveProcessWithSteps';
@@ -179,6 +180,9 @@ export default function ProcessFlowPage() {
         is_entry_point: ps.is_entry_point as boolean | undefined,
         description: step.description as string | undefined,
         max_visits: step.max_visits as number | null,
+        // The step's gates as saved. Left out, the editor showed none, and adding one
+        // saved that one alone — removing every other gate.
+        gates: step.gates as StepWithOrder['gates'],
         revisit_assignment: (step.revisit_assignment as string | undefined) ?? 'ANY',
         revisit_role: (step.revisit_role as string | null | undefined) ?? null,
         expected_duration: step.expected_duration as string | null,
@@ -335,6 +339,9 @@ export default function ProcessFlowPage() {
       order: maxOrder + 1,
       step_type: stepType as StepData['step_type'],
       description: '',
+      // A new step starts with the floor, as on the Edit Step form: without it, adding
+      // one gate saved that one alone in place of the floor.
+      gates: FLOOR_GATES.map((gate, order) => ({ gate, order })),
       // Set type-specific defaults
       ...(stepType === 'DECISION' && {
         is_decision_point: true,

@@ -751,6 +751,15 @@ class Steps(SecureModel):
         return (row.qa_assurance or 'NONE') if row else 'NONE'
 
     @property
+    def first_piece_assurance(self) -> str:
+        """How the first-piece buy-off is signed: the first-piece gate's own setting,
+        raised to the QA sign-off's when that asks for more (the buy-off is the step's
+        QA release either way)."""
+        row = self._gate('first_piece')
+        own = (row.qa_assurance or 'NONE') if row else 'NONE'
+        return 'PASSWORD' if 'PASSWORD' in (own, self.qa_signoff_assurance) else 'NONE'
+
+    @property
     def requires_first_piece_inspection(self) -> bool:
         """A first piece is bought off before the rest move on (the first-piece gate)."""
         return self._gate('first_piece') is not None

@@ -290,6 +290,10 @@ class CompletedByIsWhoDidTheWorkTests(_Fixture):
         disp.refresh_from_db()
         self.assertEqual((self.part.step_id, self.part.part_status), (first.id, "IN_PROGRESS"))
         self.assertEqual(disp.current_state, "CLOSED")
+        # The part waits at the step for whoever presses Start Work (user ruling
+        # 2026-11-11): not started, not the roller's.
+        back = StepExecution.objects.filter(part=self.part, step=first).order_by('-visit_number').first()
+        self.assertEqual((back.status, back.assigned_to_id, back.started_at), ("PENDING", None, None))
         self.assertIn("Settled by a rollback", disp.resolution_notes)
         self.assertIn("Advanced it by mistake", disp.resolution_notes)
 

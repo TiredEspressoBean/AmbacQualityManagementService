@@ -306,7 +306,12 @@ def check_revisit_rule(part, step, operator, *, visit_number, authorizer=None,
                        "different operator from whoever worked it before.")
     elif rule == 'ROLE':
         role = getattr(step, 'revisit_role', None)
-        if role is not None and not operator.has_group(role.name, tenant=part.tenant):
+        # Fails closed: a rule whose role is gone (deleted, or never set) lets nobody
+        # through on their own — a supervisor authorises, or an engineer fixes the rule.
+        if role is None:
+            refusal = (f"This is visit {visit_number} to {step.name}, and its repeat-visit "
+                       "rule names a role that no longer exists.")
+        elif not operator.has_group(role.name, tenant=part.tenant):
             refusal = (f"This is visit {visit_number} to {step.name}, and a repeat visit "
                        f"needs the {role.name} role.")
     if refusal is None:

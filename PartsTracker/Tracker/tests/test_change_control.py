@@ -575,6 +575,30 @@ class PcrRebaseTestCase(TenantTestCase):
         self.assertEqual(c.step_identity_id, str(cleaning_identity))
         self.assertEqual(c.field, 'description')
 
+    def test_a_gate_change_rebases_onto_the_new_baseline(self):
+        # PCR-B adds QA sign-off to Milling; PCR-A edits Cleaning and ships first, so
+        # B rebases. The gate change is not a Steps field: rebasing it used to pass
+        # 'gate:qa_signoff' to create_new_step_version and crash.
+        from Tracker.services.mes.step_gates import rows_of, set_step_gates
+        pcr_a, draft_a = self._propose(title='PCR-A')
+        self._edit_step_on_draft(draft_a, self.cleaning.identity_id, description='Cleaning A')
+        pcr_b, draft_b = self._propose(title='PCR-B')
+        self._edit_step_on_draft(draft_b, self.milling.identity_id, description='Milling B')
+        milling_b = ProcessStep.objects.get(process=draft_b,
+                                            step__identity_id=self.milling.identity_id).step
+        set_step_gates(milling_b, rows_of(milling_b) + [{'gate': 'qa_signoff', 'qa_assurance': 'PASSWORD'}])
+
+        self._approve_and_implement(pcr_a)
+        submit_pcr(pcr_b, user=self.user_a)
+        approve_pcr(pcr_b, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+
+        pcr_b.refresh_from_db()
+        rebased = ProcessStep.objects.get(process=pcr_b.draft_process_version,
+                                          step__identity_id=self.milling.identity_id).step
+        self.assertTrue(rebased.requires_qa_signoff)
+        self.assertEqual(rebased.qa_signoff_assurance, 'PASSWORD')
+        self.assertEqual(rebased.description, 'Milling B')
+
     def _wire_baseline(self):
         """Cleaning → Milling → Done (DEFAULT), plus a Milling → Cleaning rework
         loop (ALTERNATE) that a PCR can take out and still leave a valid routing."""

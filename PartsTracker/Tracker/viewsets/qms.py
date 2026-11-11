@@ -2593,7 +2593,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             # this step's QA release, so it meets the same bar — and the dialog
             # needs to know up front, or an inspector signing from their own
             # session is refused with no field to comply in.
-            "assurance": step.qa_signoff_assurance,
+            "assurance": step.first_piece_assurance,
             "message": "FPI passed" if passed_fpi else "FPI required",
         })
 

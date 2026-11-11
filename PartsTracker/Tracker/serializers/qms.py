@@ -2060,7 +2060,7 @@ class FPIRecordSerializer(SecureModelMixin):
                 'name': obj.step.name,
                 # The buy-off is this step's QA release, so the dialog needs the
                 # author's assurance to ask for a password where one is required.
-                'qa_signoff_assurance': obj.step.qa_signoff_assurance,
+                'qa_signoff_assurance': obj.step.first_piece_assurance,
             }
         return None
 
