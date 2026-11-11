@@ -291,7 +291,7 @@ runs on the defaults below unless they are changed directly in the database.
 | Setting | Effect | Default |
 |---------|--------|---------|
 | **Block on measurement failure** | Parts cannot advance if any measurement is out of spec | Off |
-| **Block on SPC violation** | Parts cannot advance if an SPC-enabled measurement is out of control | Off |
+| **Block on SPC violation** | **Not enforced.** Setting it changes nothing; parts are not held for an out-of-control measurement | Off |
 | **Override expiry hours** | How long an override stays good before it must be re-approved | 24 |
 | **Undo window minutes** | How long after completing a step it can be undone without approval | 15 |
 | **Rollback requires approval** | Whether rolling a part back needs supervisor approval | On |
