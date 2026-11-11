@@ -13,6 +13,22 @@ from django.utils import timezone
 from Tracker.models import LifeTracking
 
 
+def carried_count(obj, definition):
+    """What `obj` has used against earlier versions of `definition`: the newest earlier
+    version's tracking's count, or None. A revised limit (raised, say) is the same
+    limit, so its count carries over rather than starting again from zero."""
+    from django.contrib.contenttypes.models import ContentType
+    ct = ContentType.objects.get_for_model(obj)
+    previous = definition.previous_version
+    while previous is not None:
+        old = LifeTracking.objects.filter(  # tenant-safe: generic FK to a scoped object
+            content_type=ct, object_id=obj.pk, definition=previous).first()
+        if old is not None:
+            return old.accumulated
+        previous = previous.previous_version
+    return None
+
+
 def increment_life_tracking(tracking: LifeTracking, value) -> LifeTracking:
     """Add to accumulated value. `value` may be negative for corrections."""
     tracking.accumulated += Decimal(str(value))

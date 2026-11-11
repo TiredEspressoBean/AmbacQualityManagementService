@@ -69,6 +69,39 @@ class StartGatesS4Tests(TenantTestCase):
         self._machine()
         self._start()
 
+    def test_a_machine_past_its_calibration_refuses_the_start(self):
+        mill = EquipmentType.objects.create(tenant=self.tenant_a, name="CNC mill",
+                                            requires_calibration=True)
+        self._machine(eq_type=mill)  # never calibrated = overdue
+        with self.assertRaises(StartRefused) as ctx:
+            self._start()
+        self.assertEqual(self._codes(ctx), [GateCode.EQUIPMENT_DOWN])
+        self.assertIn("calibration", ctx.exception.messages[0])
+
+    # --- resume
+    def test_resuming_your_own_visit_is_not_refused_by_a_start_only_gate(self):
+        tracking = self._life(self.part, 10, 100)
+        self._start()
+        tracking.increment(200)  # the limit lapses mid-visit
+        self._start()            # going back to it: not refused
+        Parts.objects.filter(pk=self.part.pk).update(part_status="ON_HOLD")
+        with self.assertRaises(StartRefused):
+            self._start()        # a hold still stops it
+
+    def test_an_ended_visit_is_not_started_again(self):
+        from django.core.exceptions import ValidationError
+        StepExecution.objects.filter(pk=self.visit.pk).update(status='ROLLED_BACK',
+                                                              exited_at=timezone.now())
+        with self.assertRaisesMessage(ValidationError, "has ended"):
+            self._start()
+
+    def test_a_revised_limit_judges_by_its_current_version(self):
+        tracking = self._life(self.part, 100, 100)
+        definition = tracking.definition
+        definition.create_new_version(user=self.user_a, change_description="Raised after test",
+                                      hard_limit=Decimal(150))
+        self._start()  # the old version's tracking no longer refuses
+
     # --- part on hold
     def test_a_part_on_hold_refuses_start_work(self):
         Parts.objects.filter(pk=self.part.pk).update(part_status="ON_HOLD")

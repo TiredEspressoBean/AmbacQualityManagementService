@@ -132,9 +132,10 @@ export default function StepFormPage() {
     })
 
     // The gates come from the step row: the resolved-rules endpoint doesn't carry them,
-    // and a form reset to no gates saved as "remove every gate". Wait for both.
+    // and a form reset to no gates saved as "remove every gate". Wait for both. A
+    // refetch (window focus) doesn't reset a form being edited: that lost unsaved edits.
     useEffect(() => {
-        if (mode === "edit" && step && stepRow) {
+        if (mode === "edit" && step && stepRow && !form.formState.isDirty) {
             const stepWithRules = step as typeof step & {
                 operation_number?: string
                 active_ruleset?: { rules?: FormValues["rules"]; tighten_after?: number; fallback_duration?: number }

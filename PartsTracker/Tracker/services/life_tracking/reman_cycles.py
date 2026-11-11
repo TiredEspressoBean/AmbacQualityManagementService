@@ -21,56 +21,74 @@ def is_reman_cycles(definition) -> bool:
 
 
 def reman_definitions(core):
-    """The reman-cycle definitions that apply to the core's type."""
+    """The reman-cycle definitions that apply to the core's type: live links to current,
+    unarchived definitions only (a revised limit leaves its old version's link behind;
+    a removed link no longer limits)."""
     from Tracker.models import LifeLimitDefinition, PartTypeLifeLimit
     if core.core_type_id is None:
         return []
+    # A revision copies the links onto the new version, so the current version's link
+    # is the live one.
     ids = (PartTypeLifeLimit.objects  # tenant-safe: .objects auto-scopes
-           .filter(part_type_id=core.core_type_id).values_list('definition_id', flat=True))
-    return list(LifeLimitDefinition.objects.filter(id__in=ids, unit__iexact=REMAN_UNIT))  # tenant-safe: .objects auto-scopes
+           .filter(part_type_id=core.core_type_id, archived=False)
+           .values_list('definition_id', flat=True))
+    return list(LifeLimitDefinition.objects.filter(  # tenant-safe: .objects auto-scopes
+        id__in=ids, unit__iexact=REMAN_UNIT, is_current_version=True, archived=False))
+
+
+def _serial(value) -> str:
+    return ' '.join((value or '').split()).upper()
 
 
 def prior_remans(core) -> int:
     """How many times this unit was remanned before: earlier cores of the same type and
-    serial number whose teardown began. A unit with no serial number has no history."""
+    serial number (compared without case or stray spaces) whose teardown began. Archived
+    cores don't count. A unit with no serial number has no history."""
     from Tracker.models import Core
-    serial = (core.serial_number or '').strip()
+    serial = _serial(core.serial_number)
     if not serial:
         return 0
-    return (Core.objects  # tenant-safe: .objects auto-scopes
-            .filter(core_type_id=core.core_type_id, serial_number__iexact=serial,
-                    disassembly_started_at__isnull=False)
-            .exclude(pk=core.pk).count())
+    others = (Core.objects  # tenant-safe: .objects auto-scopes
+              .filter(core_type_id=core.core_type_id, archived=False,
+                      disassembly_started_at__isnull=False)
+              .exclude(pk=core.pk).values_list('serial_number', flat=True))
+    return sum(1 for s in others if _serial(s) == serial)
+
+
+def reseed(core) -> None:
+    """The serial changed before the reman started: the count is the new serial's
+    history (user review 2026-11-11). Teardown begun, the count stands."""
+    from Tracker.models import LifeTracking
+    if core.status != 'RECEIVED':
+        return
+    prior = Decimal(prior_remans(core))
+    for definition in reman_definitions(core):
+        tracking, created = LifeTracking.for_object(core, definition, accumulated=prior)
+        if not created and tracking.accumulated != prior:
+            tracking.accumulated = prior
+            tracking.save(update_fields=['accumulated', 'updated_at', 'cached_status'])
 
 
 def ensure_reman_trackings(core) -> list:
-    """The core's reman-cycle trackings, created at its prior count where missing."""
+    """The core's reman-cycle trackings, created where missing at the count carried from
+    an earlier version of the limit, else its prior remans."""
     from Tracker.models import LifeTracking
+    from Tracker.services.life_tracking.life_tracking import carried_count
     out = []
     definitions = reman_definitions(core)
     if not definitions:
         return out
-    prior = Decimal(prior_remans(core))
+    prior = None
     for definition in definitions:
-        tracking, _ = LifeTracking.for_object(core, definition, accumulated=prior)
+        tracking = LifeTracking.objects.for_object(core).filter(definition=definition).first()  # tenant-safe: .objects auto-scopes
+        if tracking is None:
+            start = carried_count(core, definition)
+            if start is None:
+                prior = Decimal(prior_remans(core)) if prior is None else prior
+                start = prior
+            tracking, _ = LifeTracking.for_object(core, definition, accumulated=start)
         out.append(tracking)
     return out
-
-
-def untracked_over_limit(core) -> list:
-    """Reman-cycle definitions a received core is already at the hard limit of without a
-    tracking yet (a core received before its definition existed) — read, not written,
-    so the start gate stays a decision. Its tracking is created when the reman starts or
-    an extension is wanted."""
-    from Tracker.models import LifeTracking
-    if core.status != 'RECEIVED':
-        return []
-    tracked = set(LifeTracking.objects.for_object(core).values_list('definition_id', flat=True))  # tenant-safe: .objects auto-scopes
-    missing = [d for d in reman_definitions(core) if d.id not in tracked and d.hard_limit is not None]
-    if not missing:
-        return []
-    prior = prior_remans(core)
-    return [d for d in missing if prior >= d.hard_limit]
 
 
 def count_reman_start(core) -> None:

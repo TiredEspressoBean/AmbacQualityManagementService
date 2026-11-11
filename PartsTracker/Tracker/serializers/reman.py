@@ -121,7 +121,13 @@ class CoreSerializer(SecureModelMixin):
 
     def update(self, instance, validated_data):
         part_fields = validated_data.pop('part', None)
+        old_serial = instance.serial_number
         core = super().update(instance, validated_data)
+        if core.serial_number != old_serial:
+            # The reman count is the serial's history: re-seeded while the reman hasn't
+            # started; once it has, the count stands (auditlog keeps the edit).
+            from Tracker.services.life_tracking.reman_cycles import reseed
+            reseed(core)
         if part_fields is not None and 'order' in part_fields:
             core.part.order = part_fields['order']
             core.part.save(update_fields=['order', 'updated_at'])

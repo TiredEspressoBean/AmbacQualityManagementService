@@ -287,12 +287,13 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
         needed = Decimal(str(line.quantity))
         drawn = Decimal('0')
         by_lot: dict = {}
+        expired: list[str] = []
+        picked = _picked_lots_for(part, step, item.key, tenant)
         # Prefer the lots the picker actually put in the tote over re-deriving FEFO.
         # This is the whole point of recording them: the sheet named what the plan
         # WOULD draw, the picker took what was really on the shelf, and the record has
         # to say what happened rather than what was intended.
-        for lot in (_picked_lots_for(part, step, item.key, tenant)
-                    or _usable_lots(item.key, tenant, customer_id)):
+        for lot in (picked or _usable_lots(item.key, tenant, customer_id)):
             if drawn >= needed:
                 break
             if lot.owner_id is not None and lot.owner_id != customer_id:
@@ -300,7 +301,13 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
             try:
                 assert_lot_usable(lot)
             except ValueError:
-                continue  # expired — leave it for disposal, don't build with it
+                # Expired — left for disposal, never built with. Staging refuses an
+                # expired lot; one that expired after it was staged is skipped here and
+                # the shortfall says so (user ruling 2026-11-11: finished work is never
+                # held over it).
+                if picked:
+                    expired.append(lot.lot_number)
+                continue
             take = min(lot.quantity_remaining, needed - drawn)
             if take <= 0:
                 continue
@@ -317,11 +324,14 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
         if drawn < needed:
             # Recorded, not raised: the part was built, so the shortfall is a stock
             # accuracy problem to surface, not a reason to refuse the advance.
-            result.shortfalls.append({
+            shortfall = {
                 'material': item.name,
                 'needed': float(needed), 'drawn': float(drawn),
                 'short': float(needed - drawn),
-            })
+            }
+            if expired:
+                shortfall['reason'] = (f"lot {', '.join(expired)} expired after it was staged")
+            result.shortfalls.append(shortfall)
     return result
 
 

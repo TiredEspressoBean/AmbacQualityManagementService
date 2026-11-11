@@ -30,7 +30,7 @@ export type StepGate = {
     revisit_role?: string | null;
 };
 
-type Stage = "START" | "RELEASE";
+type Stage = "START" | "RELEASE" | "BOTH";
 
 /** The gates a step can carry, in the order they're listed. Mirrors
  *  services/mes/step_gates.py (COMPOSABLE_GATES). */
@@ -63,7 +63,7 @@ export const GATE_CATALOG: { gate: string; stage: Stage; label: string; hint: st
       hint: "A quarantined part can't move on from this step until its quarantine is decided." },
     { gate: "qa_signoff", stage: "RELEASE", label: "QA sign-off",
       hint: "QA signs the step off before parts move on." },
-    { gate: "first_piece", stage: "RELEASE", label: "First piece",
+    { gate: "first_piece", stage: "BOTH", label: "First piece",
       hint: "Only the first piece starts until QA buys it off; then the rest start." },
     { gate: "measurement_out_of_spec", stage: "RELEASE", label: "Readings in spec",
       hint: "A part with an out-of-spec reading at this step can't move on until it's dealt with." },
@@ -107,7 +107,11 @@ const REVISIT_OPTIONS = [
     { value: "ROLE", label: "Someone in a role" },
 ];
 
-const STAGE_LABEL: Record<Stage, string> = { START: "Before start", RELEASE: "To move on" };
+// First piece is checked at both: only its pieces start, and they don't move on until
+// QA buys them off.
+const STAGE_LABEL: Record<Stage, string> = {
+    START: "Before start", RELEASE: "To move on", BOTH: "Before start and to move on",
+};
 
 function defaultsFor(gate: string): StepGate {
     if (gate === "first_piece") return { gate, fpi_scope: "PER_WORKORDER", fpi_quantity: 1, qa_assurance: "NONE" };
@@ -193,7 +197,7 @@ export function StepGatesField({
                                         that asks for more). */}
                                     <GateSetting
                                         label="How the inspector signs the buy-off"
-                                        value={g.qa_assurance ?? "NONE"}
+                                        value={g.qa_assurance || "NONE"}
                                         options={QA_ASSURANCE_OPTIONS}
                                         editable={editable}
                                         onChange={(v) => update(g.gate, { qa_assurance: v })}
@@ -226,7 +230,7 @@ export function StepGatesField({
                             {g.gate === "qa_signoff" && (
                                 <GateSetting
                                     label="How the inspector signs"
-                                    value={g.qa_assurance ?? "NONE"}
+                                    value={g.qa_assurance || "NONE"}
                                     options={QA_ASSURANCE_OPTIONS}
                                     editable={editable}
                                     onChange={(v) => update(g.gate, { qa_assurance: v })}
@@ -236,7 +240,7 @@ export function StepGatesField({
                                 <>
                                     <GateSetting
                                         label="Repeat visits are worked by"
-                                        value={g.revisit_assignment ?? "DIFFERENT"}
+                                        value={g.revisit_assignment || "DIFFERENT"}
                                         options={REVISIT_OPTIONS}
                                         editable={editable}
                                         onChange={(v) => update(g.gate, {

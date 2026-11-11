@@ -197,9 +197,9 @@ def _carries(step, code: GateCode) -> bool:
     return step is None or step.has_gate(str(code))
 
 
-def floor_blockers(ctx: StartContext) -> list[Blocker]:
+def floor_blockers(ctx: StartContext, *, only: set | None = None) -> list[Blocker]:
     """The start gates nobody on the floor can override that the step carries, every
-    one that refuses.
+    one that refuses (`only`: just these gates).
 
     - a reman unit parked on the customer's authorisation;
     - a QUARANTINED part: its disposition decides what happens to it (user decision
@@ -210,13 +210,17 @@ def floor_blockers(ctx: StartContext) -> list[Blocker]:
     """
     out: list[Blocker] = []
     part, wo, step = ctx.part, ctx.work_order, ctx.step
-    if part is not None and _carries(step, GateCode.CORE_AWAITING_AUTHORISATION):
+
+    def want(code):
+        return (only is None or code in only) and _carries(step, code)
+
+    if part is not None and want(GateCode.CORE_AWAITING_AUTHORISATION):
         from Tracker.services.reman.core_steps import assert_workable
         try:
             assert_workable(part)
         except ValidationError as exc:
             out.append(Blocker(GateCode.CORE_AWAITING_AUTHORISATION, _refusal_text(exc)))
-    if part is not None and _carries(step, GateCode.PART_QUARANTINED):
+    if part is not None and want(GateCode.PART_QUARANTINED):
         from Tracker.models import PartsStatus
         from Tracker.services.qms.report_supersede import awaiting_recapture
         if part.part_status == PartsStatus.QUARANTINED and not awaiting_recapture(part):
@@ -228,37 +232,59 @@ def floor_blockers(ctx: StartContext) -> list[Blocker]:
                 f"{part.ERP_id} is quarantined — "
                 + (f"{disp.disposition_number} decides what happens to it; work it from there."
                    if disp else "it needs a disposition before any work starts."))))
-    if part is not None and _carries(step, GateCode.PART_ON_HOLD):
+    if part is not None and want(GateCode.PART_ON_HOLD):
         from Tracker.models import PartsStatus
         # REWORK_NEEDED is work to do, not a hold: it stays startable.
         if part.part_status == PartsStatus.ON_HOLD:
             out.append(Blocker(GateCode.PART_ON_HOLD,
                                f"{part.ERP_id} is on hold — release the hold before starting it."))
-    if part is not None and _carries(step, GateCode.LIFE_LIMIT):
+    if part is not None and want(GateCode.LIFE_LIMIT):
         out += [Blocker(GateCode.LIFE_LIMIT, m) for m in _life_limit_refusals(part)]
-    # Tool life is opt-in, so it needs the step's own row. A visit already running
-    # isn't refused by the count its own start made.
-    resuming = ctx.execution is not None and ctx.execution.status == 'IN_PROGRESS'
-    if step is not None and step.has_gate(str(GateCode.TOOL_LIFE)) and not resuming:
+    # Tool life is opt-in, so it needs the step's own row (no `step is None` default).
+    if step is not None and (only is None or GateCode.TOOL_LIFE in only) \
+            and step.has_gate(str(GateCode.TOOL_LIFE)):
         from Tracker.services.life_tracking.tool_life import start_refusals
         out += [Blocker(GateCode.TOOL_LIFE, m) for m in start_refusals(step, ctx.execution)]
-    if step is not None and _carries(step, GateCode.EQUIPMENT_DOWN):
-        machine = start_machine(step, part, ctx.execution)
-        if machine is not None and machine.status != 'IN_SERVICE':
-            out.append(Blocker(GateCode.EQUIPMENT_DOWN, (
-                f"{machine.name} is {machine.get_status_display().lower()} — it can't run "
-                "work until it is back in service.")))
-    if wo is not None and _carries(step, GateCode.DEVIATION_EXPIRED):
+    if step is not None and want(GateCode.EQUIPMENT_DOWN):
+        refusal = machine_refusal(start_machine(step, part, ctx.execution))
+        if refusal:
+            out.append(Blocker(GateCode.EQUIPMENT_DOWN, refusal))
+    if wo is not None and want(GateCode.DEVIATION_EXPIRED):
         from Tracker.services.change_control.temporary import refusal as deviation_refusal
         expired = deviation_refusal(wo)
         if expired:
             out.append(Blocker(GateCode.DEVIATION_EXPIRED, expired))
-    if wo is not None and _carries(step, GateCode.WORK_ORDER_NOT_WORKABLE):
+    if wo is not None and want(GateCode.WORK_ORDER_NOT_WORKABLE):
         from Tracker.services.mes.work_order import start_refusal
         held_or_ended = start_refusal(wo)
         if held_or_ended:
             out.append(Blocker(GateCode.WORK_ORDER_NOT_WORKABLE, held_or_ended))
     return out
+
+
+def machine_refusal(machine) -> str | None:
+    """Why `machine` can't run work now, or None: not in service, or past its
+    calibration (user ruling 2026-11-11: overdue calibration on the production machine
+    refuses the start until it is calibrated; gauges at capture only warn)."""
+    if machine is None:
+        return None
+    if machine.status != 'IN_SERVICE':
+        return (f"{machine.name} is {machine.get_status_display().lower()} — it can't run "
+                "work until it is back in service.")
+    if getattr(machine, 'calibration_status', None) in ('OVERDUE', 'FAILED'):
+        return (f"{machine.name} is past its calibration — it can't run work until it "
+                "is calibrated.")
+    return None
+
+
+def resume_blockers(ctx: StartContext) -> list[Blocker]:
+    """What stops someone going back to a visit they already started. Start-only
+    fit-to-run gates (deviation, life limit, training, machine state…) were decided at
+    the start and aren't re-checked: work begun inside them is finished (user rulings
+    2026-11-11). Only the holds stop it: the work order held or ended, the part on
+    hold or quarantined."""
+    keep = {GateCode.WORK_ORDER_NOT_WORKABLE, GateCode.PART_ON_HOLD, GateCode.PART_QUARANTINED}
+    return floor_blockers(ctx, only=keep)
 
 
 def start_machine(step, part, execution=None):
@@ -284,16 +310,18 @@ def _life_limit_refusals(part) -> list[str]:
     # A reman-cycle count is the remans BEGUN: it refuses a new reman (a core not yet
     # started), never the later steps of the reman that reached the limit.
     starting_reman = core is not None and core.status == 'RECEIVED'
-    out = [f"Life limit reached: {lt.definition.name} ({lt.current_value:g} of "
-           f"{lt.effective_hard_limit:g}) — it needs an approved extension to start."
-           for lt in _life_trackings(part)
-           if lt.is_blocked and (starting_reman or not is_reman_cycles(lt.definition))]
-    if core is not None:
-        from Tracker.services.life_tracking.reman_cycles import untracked_over_limit
-        out += [f"Life limit reached: {d.name} — {part.ERP_id} has been remanned "
-                f"{d.hard_limit:g} times. It needs an approved extension to start."
-                for d in untracked_over_limit(core)]
-    return out
+    if starting_reman:
+        # A core received before its definition existed has no count yet: create it
+        # (from the serial's history) so a refusal has a tracking to extend.
+        from Tracker.services.life_tracking.reman_cycles import ensure_reman_trackings
+        ensure_reman_trackings(core)
+    return [f"Life limit reached: {lt.definition.name} ({lt.current_value:g} of "
+            f"{lt.effective_hard_limit:g}) — it needs an approved extension to start."
+            for lt in _life_trackings(part)
+            # A tracking against a superseded version of its limit doesn't refuse: the
+            # current version's spec does (the revision may have raised it).
+            if lt.definition.is_current_version and not lt.definition.archived
+            and lt.is_blocked and (starting_reman or not is_reman_cycles(lt.definition))]
 
 
 def _floor_applies(ctx: StartContext) -> list[GateCode]:
@@ -301,7 +329,9 @@ def _floor_applies(ctx: StartContext) -> list[GateCode]:
     if ctx.part is not None:
         codes += [GateCode.CORE_AWAITING_AUTHORISATION, GateCode.PART_QUARANTINED,
                   GateCode.PART_ON_HOLD, GateCode.LIFE_LIMIT]
-    codes.append(GateCode.EQUIPMENT_DOWN)
+    # Logged only when there was a machine to judge: a check that didn't run isn't a pass.
+    if ctx.step is not None and start_machine(ctx.step, ctx.part, ctx.execution) is not None:
+        codes.append(GateCode.EQUIPMENT_DOWN)
     if ctx.step is not None and ctx.step.has_gate(str(GateCode.TOOL_LIFE)):
         codes.append(GateCode.TOOL_LIFE)
     if ctx.work_order is not None:

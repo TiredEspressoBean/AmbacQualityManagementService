@@ -78,11 +78,17 @@ def is_tooling(equipment, limited_types: set | None = None) -> bool:
 
 
 def ensure_trackings(equipment) -> list:
-    """The item's life trackings, one per definition of its type, created at zero."""
+    """The item's life trackings, one per definition of its type: created at the count
+    carried from an earlier version of the limit, else zero."""
     from Tracker.models import LifeTracking
+    from Tracker.services.life_tracking.life_tracking import carried_count
     out = []
     for definition in definitions_for(equipment.equipment_type_id):
-        tracking, _ = LifeTracking.for_object(equipment, definition, accumulated=Decimal(0))
+        tracking = LifeTracking.objects.for_object(equipment).filter(definition=definition).first()  # tenant-safe: .objects auto-scopes
+        if tracking is None:
+            carried = carried_count(equipment, definition)
+            tracking, _ = LifeTracking.for_object(
+                equipment, definition, accumulated=carried if carried is not None else Decimal(0))
         out.append(tracking)
     return out
 
@@ -93,7 +99,10 @@ def _trackings(equipment) -> list:
 
 
 def at_hard_limit(equipment) -> list:
-    return [t for t in _trackings(equipment) if t.is_blocked]
+    """Its trackings at the hard limit, against current limits only (a revised limit
+    leaves its old version's tracking behind)."""
+    return [t for t in _trackings(equipment)
+            if t.definition.is_current_version and not t.definition.archived and t.is_blocked]
 
 
 def _limit_text(equipment, tracking) -> str:

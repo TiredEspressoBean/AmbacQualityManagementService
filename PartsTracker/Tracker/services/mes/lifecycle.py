@@ -473,16 +473,22 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     untouched on any raise (all checks precede the save).
     """
     from Tracker.services.mes.gates import (
-        StartRefused, context_for_execution, decide_start, floor_blockers, record_start,
+        StartRefused, context_for_execution, decide_start, record_start, resume_blockers,
     )
+    # A visit that has ended (completed, rolled back, exited) isn't started again: a
+    # stale screen would otherwise reopen it as an orphan that takes captures.
+    if execution.exited_at is not None or execution.status in ('COMPLETED', 'ROLLED_BACK', 'SKIPPED'):
+        from django.core.exceptions import ValidationError
+        raise ValidationError("This visit has ended — work the part's current step instead.")
     ctx = context_for_execution(execution, operator)
     # Resuming your own visit (Start Work on a part you already started) isn't a new
     # start: re-running the gates replaced the start record, dropping the supervisor
     # override / reassignment / revisit override given at the real start — it fell off
     # the Training Overrides review, and an operator started under an override was
-    # "not qualified" again (hunt 2026-11-05). The floor refusals still apply.
+    # "not qualified" again (hunt 2026-11-05). Only the holds stop resumed work; the
+    # start-only gates were decided at the start (user rulings 2026-11-11).
     if execution.status == 'IN_PROGRESS' and execution.assigned_to_id == operator.id:
-        refused = floor_blockers(ctx)
+        refused = resume_blockers(ctx)
         if refused:
             raise StartRefused(refused)
         return execution
