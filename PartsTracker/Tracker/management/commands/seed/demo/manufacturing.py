@@ -460,6 +460,10 @@ DEMO_EQUIPMENT = [
     {'name': 'Digital Caliper CAL-2', 'type': 'Handheld Gauge', 'serial': 'CAL-002', 'calibration_days': 75, 'location': 'Tool Crib'},
     {'name': 'Micrometer MIC-1', 'type': 'Handheld Gauge', 'serial': 'MIC-001', 'calibration_days': -10, 'location': 'Tool Crib'},  # OVERDUE handheld
     {'name': 'Micrometer MIC-2', 'type': 'Handheld Gauge', 'serial': 'MIC-002', 'calibration_days': 50, 'location': 'Tool Crib'},
+    # Body OD's backup: MIC-1 is overdue and refused, so the operator takes the spare
+    # (training ruling 2026-11-12: teach the refusal, seed a good spare). MIC-2 can't
+    # be it — the QA walk fails its calibration.
+    {'name': 'Micrometer MIC-3', 'type': 'Handheld Gauge', 'serial': 'MIC-003', 'calibration_days': 150, 'location': 'Tool Crib'},
 ]
 
 # Demo measurement definitions

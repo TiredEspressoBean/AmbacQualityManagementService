@@ -717,8 +717,7 @@ class DemoQaWalkSeeder(BaseSeeder):
 
     def _fail_gauge(self):
         """A gauge that failed its calibration this morning, so a capture that names it
-        is refused — the other half of the gauge check (an overdue gauge is accepted
-        with a warning; MIC-1 and TW-25 are overdue). Recorded as a calibration result
+        is refused, as an overdue one is (MIC-1 and TW-25 are overdue). Recorded as a calibration result
         and applied through the service, which takes the gauge out of service."""
         from Tracker.models import CalibrationRecord
         from Tracker.services.mes.work_order import apply_calibration_result_to_equipment

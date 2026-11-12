@@ -97,6 +97,21 @@ class DemoSeedFlowsTests(TestCase):
             # Inspection, where its repair is pre-approved and applies at once.
             self.assertFalse(repair.harvested_components.exclude(proposed_grade="").exists())
 
+    def test_body_od_offers_a_good_spare_beside_the_overdue_micrometer(self):
+        """Training ruling 2026-11-12: capture refuses an overdue gauge (P2), so the
+        tracks teach the refusal and the operator takes the backup, MIC-3."""
+        from Tracker.models import MeasurementDefinition
+        from Tracker.services.mes.equipment import gauge_refusal
+        with tenant_context(self.tenant.id):
+            md = MeasurementDefinition.objects.filter(step__name="Machining", label="Body OD").first()
+            self.assertEqual(md.default_equipment.name, "Micrometer MIC-1")
+            self.assertIsNotNone(gauge_refusal(md.default_equipment))
+            self.assertEqual(md.backup_equipment.name, "Micrometer MIC-3")
+            self.assertIsNone(gauge_refusal(md.backup_equipment))
+            bodies = json.dumps(list(Substep.objects.filter(step__name="Machining")
+                                     .values_list("body_blocks", flat=True)))
+            self.assertIn('"backup_equipment_name": "Micrometer MIC-3"', bodies)
+
     def test_reman_capture_nodes_are_authored(self):
         with tenant_context(self.tenant.id):
             bodies = json.dumps(list(Substep.objects.values_list("body_blocks", flat=True)))

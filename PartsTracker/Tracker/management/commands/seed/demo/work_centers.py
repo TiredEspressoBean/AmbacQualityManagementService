@@ -68,7 +68,7 @@ _STATIONS = (
      (),
      ("CMM Zeiss-1", "Keyence Vision IM-7020",
       "Digital Caliper CAL-1", "Digital Caliper CAL-2",
-      "Micrometer MIC-1", "Micrometer MIC-2",
+      "Micrometer MIC-1", "Micrometer MIC-2", "Micrometer MIC-3",
       "Go/No-Go Pin Gauge Set", "Go/No-Go Thread Gauge M8x1")),
     ("RECV-01", "Receiving Dock", WorkCenterKind.RECEIVING,
      "Incoming purchased-material inspection.",

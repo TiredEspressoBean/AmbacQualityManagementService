@@ -106,14 +106,20 @@ _GAUGE_MEASUREMENTS = [
     ("Assembly",          "Thread Fit Go/No-Go", "PASS_FAIL", "Go/No-Go Thread Gauge M8x1"),  # plentiful → not scheduled
     ("Reassembly",        "Thread Fit Go/No-Go", "PASS_FAIL", "Go/No-Go Thread Gauge M8x1"),
     ("Cleaning",          "Post-Clean Bore Dia", "NUMERIC",   "Digital Caliper CAL-1"),    # handheld → not scheduled
-    # MIC-1 is seeded past its calibration due date: a Body OD reading on it is recorded
-    # with the overdue warning ("tell QA so the gauge gets recalibrated").
+    # MIC-1 is seeded past its calibration due date: the picker greys it and a reading
+    # on it is refused, so the operator takes the backup (_BACKUP_GAUGES).
     ("Machining",         "Body OD",             "NUMERIC",   "Micrometer MIC-1"),         # handheld → not scheduled
     # New manufacture
     ("Precision Grinding", "Seat Bore Diameter", "NUMERIC",   "Digital Caliper CAL-2"),    # handheld → not scheduled
     ("Body Inspection",   "Bore Diameter",       "NUMERIC",   "CMM Zeiss-1"),              # specific station → secondary resource
     ("Flow Calibration",  "Spray Angle",         "NUMERIC",   "Keyence Vision IM-7020"),   # specific station → secondary resource
 ]
+
+# A spec's backup gauge (MeasurementDefinition.backup_equipment), offered beside the
+# default in the operator's picker. (step name, measurement label) → equipment name.
+_BACKUP_GAUGES = {
+    ("Machining", "Body OD"): "Micrometer MIC-3",
+}
 
 
 class DemoSchedulingSeeder(BaseSeeder):
@@ -205,7 +211,12 @@ class DemoSchedulingSeeder(BaseSeeder):
             # to sit in `defaults`, so it OVERWROTE an existing one: Spray Angle's
             # 15 ±3 degrees became 10 ±0.05 mm after the DWI node had copied the real
             # spec, and an operator shown "In spec" at 15 was judged out of spec.
-            create_defaults = {"type": mtype, "default_equipment": eq}
+            gauges = {"default_equipment": eq}
+            backup_name = _BACKUP_GAUGES.get((step_name, label))
+            if backup_name:
+                gauges["backup_equipment"] = Equipments.objects.filter(
+                    tenant=self.tenant, name=backup_name).first()
+            create_defaults = {"type": mtype, **gauges}
             if mtype == "NUMERIC":
                 create_defaults.update({"unit": "mm", "nominal": Decimal("10.000000"),
                                         "upper_tol": Decimal("0.050000"),
@@ -213,7 +224,7 @@ class DemoSchedulingSeeder(BaseSeeder):
             for step in self._steps(step_name):
                 MeasurementDefinition.objects.update_or_create(
                     tenant=self.tenant, step=step, label=label,
-                    defaults={"default_equipment": eq}, create_defaults=create_defaults)
+                    defaults=gauges, create_defaults=create_defaults)
                 if eq.is_schedulable:
                     sec_n += 1
 
