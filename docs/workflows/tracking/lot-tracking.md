@@ -170,9 +170,10 @@ The lot is chosen in this order:
    Lots with no expiry sort last: dated stock is the stock that can spoil.
 
 !!! note "Lots that can't be used are skipped, not consumed"
-    A shelf-life-expired lot is refused when it's picked for a job: *"Lot
-    &lt;lot&gt; is shelf-life expired and cannot be used. Extend the shelf life (with
-    evidence) or dispose of the lot."* A lot that expires after it was picked
+    A shelf-life-expired lot is left off the pick list. Recording a pick or a
+    use of a specific expired lot is refused: *"Lot &lt;lot&gt; is shelf-life
+    expired and cannot be used. Extend the shelf life (with evidence) or dispose
+    of the lot."* A lot that expires after it was picked
     isn't drawn when the step finishes. The step still finishes, and the
     shortfall is recorded with the reason, *lot &lt;lot&gt; expired after it was
     staged*. Another customer's property is never drawn into your job at all.

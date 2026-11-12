@@ -40,9 +40,11 @@ As an Operator, you:
 *See everything ready* — you do not have to be told what to work on, and you do
 not start from the Work Orders page. Your own unfinished work leads **Up next**
 (**Finish**), then the plan's order; work someone else is holding isn't offered.
-A job waiting on a first piece shows how many parts can start (*N can start
-until QA buys off the first piece*), and jobs where none can are counted as
-*waiting on QA to buy off a first piece* rather than offered.
+A job waiting on a first piece is offered only for the parts that can start:
+its line reads *&lt;n&gt; pcs waiting · &lt;m&gt; can start until QA buys off the
+first piece*. A job where none can start isn't offered. When nothing else is
+ready, Home says how many are held that way: *&lt;n&gt; jobs waiting on QA to buy
+off a first piece.* Your own first piece in progress still leads.
 
 Shift notes and notifications land here too. A note marked **MUST ACKNOWLEDGE**
 wants a **Got it** before you start; it is how the last shift talks to you.

@@ -318,9 +318,10 @@ While the first piece is pending:
 - Only the first piece's parts can start. Every other part at the step is
   refused at Start Work (under Per shift or Per machine, the parts of that shift
   or machine). The refusal says *Waiting on: QA to buy off the first piece.*
-- The operator's home shows how many can start (*N can start until QA buys off
-  the first piece*), and counts the jobs *waiting on QA to buy off a first
-  piece* rather than offering them as ready work.
+- The operator's home offers only the parts that can start (*&lt;m&gt; can start
+  until QA buys off the first piece*), and doesn't offer a job where none can.
+  When nothing else is ready, it says how many jobs are *waiting on QA to buy
+  off a first piece*.
 - The first piece's parts can't move on until it is bought off.
 - On a step that runs in loads, every part in a load counts: a load with more
   parts than the first piece has places left is refused, and nothing starts. On
