@@ -138,13 +138,18 @@ export default function EditFixtureFormPage() {
   const removeStep = (id: string) => setSelected((xs) => xs.filter((x) => x.id !== id));
 
   function onSubmit(values: FormValues) {
+    const chosenType = equipmentType === "none" ? null : equipmentType;
+    // An edit sends the tracked type only when the user changed it, so a picker that
+    // failed to show the saved type can never clear it (P3 walk, 2026-11-12).
+    const savedType = fixture?.equipment_type ? String(fixture.equipment_type) : null;
+    const typeChanged = mode !== "edit" || chosenType !== savedType;
     const body = {
       name: values.name,
       kind: values.kind,
       quantity: values.quantity,
       lead_time_days: values.lead_time_days ?? null,
-      equipment_type: equipmentType === "none" ? null : equipmentType,
       steps: selected.map((s) => s.id),
+      ...(typeChanged ? { equipment_type: chosenType } : {}),
     };
     const done = () => navigate({ to: "/editor/tooling" });
     if (mode === "edit" && fixtureId) {
@@ -264,7 +269,16 @@ export default function EditFixtureFormPage() {
           <div className="space-y-2">
             <Label htmlFor="fixture-eqtype">Tracked as equipment</Label>
             <Select value={equipmentType} onValueChange={setEquipmentType}>
-              <SelectTrigger id="fixture-eqtype" className="w-full"><SelectValue /></SelectTrigger>
+              {/* The label is given, not looked up from the items: the saved type was set
+                  before the type list loaded and the trigger rendered blank. */}
+              <SelectTrigger id="fixture-eqtype" className="w-full">
+                <SelectValue>
+                  {equipmentType === "none"
+                    ? "Not tracked — use the quantity"
+                    : (equipmentTypes.find((t) => String(t.id) === equipmentType)?.name
+                       ?? "Loading…")}
+                </SelectValue>
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Not tracked — use the quantity</SelectItem>
                 {equipmentTypes.map((t) => (

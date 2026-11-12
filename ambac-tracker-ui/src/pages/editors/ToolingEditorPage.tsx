@@ -34,7 +34,13 @@ export function ToolingEditorPage() {
           renderCell: (f) => <Badge variant="secondary">{KIND_LABELS[f.kind ?? "FIXTURE"] ?? f.kind}</Badge>,
           priority: 1,
         }),
-        col({ header: "Quantity", renderCell: (f) => f.quantity, priority: 1 }),
+        // A tracked resource's availability is its items in service and within life
+        // (`capacity`), not the stored quantity the scheduler then ignores.
+        col({
+          header: "Quantity",
+          renderCell: (f) => (f.equipment_type ? `${f.capacity} (tracked)` : f.quantity),
+          priority: 1,
+        }),
         col({
           header: "Required at",
           renderCell: (f) => {
