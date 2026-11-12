@@ -27,8 +27,9 @@ Equipment records represent:
     equipment type: the scheduler then counts those in service and within their
     life."* The form then shows *Available now: &lt;n&gt; in service and within
     life*, and **Quantity** isn't used. An item that goes out of service, or
-    reaches its life limit, stops counting at once. Left as *Not tracked — use
-    the quantity*, the entry keeps its typed quantity.
+    reaches its life limit, stops counting at once, and the tooling list shows the
+    entry's quantity as *&lt;n&gt; (tracked)*. Left as *Not tracked — use the
+    quantity*, the entry keeps its typed quantity.
 
 !!! note "Equipment does not belong to a work centre"
     A **work centre** groups **steps**, not machines — it is a property of the
