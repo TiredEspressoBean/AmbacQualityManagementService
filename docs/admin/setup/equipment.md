@@ -21,6 +21,15 @@ Equipment records represent:
     with **Reset** and **Request an extension**. See [Tool and fixture
     life](../../workflows/tracking/life-tracking.md#tool-and-fixture-life).
 
+    To make the scheduler count those items instead of a typed quantity, set
+    the tooling entry's **Tracked as equipment** to their equipment type:
+    *"For tooling recorded item by item (each die, each fixture), pick its
+    equipment type: the scheduler then counts those in service and within their
+    life."* The form then shows *Available now: &lt;n&gt; in service and within
+    life*, and **Quantity** isn't used. An item that goes out of service, or
+    reaches its life limit, stops counting at once. Left as *Not tracked — use
+    the quantity*, the entry keeps its typed quantity.
+
 !!! note "Equipment does not belong to a work centre"
     A **work centre** groups **steps**, not machines — it is a property of the
     routing. An individual machine is placed at a **location**, and the
