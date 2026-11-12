@@ -178,6 +178,7 @@ export type ApprovalRequest = {
     id: string;
     str: string;
     material_lot_id?: (string | null) | undefined;
+    page?: (string | null) | undefined;
   };
   content_object_display: string | null;
   requested_by?: (number | null) | undefined;
@@ -4537,6 +4538,7 @@ export type LifeTracking = {
    */
   pending_hard_limit: string | null;
   pending_extension: string | null;
+  item_label: string | null;
   /**
    * History of resets/overhauls
    */
@@ -19678,6 +19680,7 @@ const ApprovalRequest = z.object({
       id: z.string(),
       str: z.string(),
       material_lot_id: z.string().nullish(),
+      page: z.string().nullish(),
     })
     .nullable(),
   content_object_display: z.string().nullable(),
@@ -22793,6 +22796,7 @@ const LifeTracking = z.object({
     .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
     .nullable(),
   pending_extension: z.string().nullable(),
+  item_label: z.string().nullable(),
   reset_history: z.unknown(),
   cached_status: z.string(),
   created_at: z.string().datetime({ offset: true }),
@@ -43658,7 +43662,12 @@ Supports increment, reset (overhaul), and per-instance limit overrides.`,
     method: "post",
     path: "/api/LifeTracking/:id/apply_override/",
     alias: "api_LifeTracking_apply_override_create",
-    description: `Apply per-instance limit override (engineering approval)`,
+    description: `Apply per-instance limit override (engineering approval).
+
+Closed for life limits — a part&#x27;s, a core&#x27;s, a tool&#x27;s (user ruling 2026-11-11):
+they&#x27;re raised only through an extension approval request (request_extension),
+decided by someone other than the requester. A calendar (shelf-life) tracking
+keeps its own path.`,
     requestFormat: "json",
     parameters: [
       {

@@ -219,8 +219,19 @@ class LifeTrackingViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
     @extend_schema(request=LifeTrackingOverrideSerializer, responses={200: LifeTrackingSerializer})
     @action(detail=True, methods=['post'])
     def apply_override(self, request, pk=None):
-        """Apply per-instance limit override (engineering approval)"""
+        """Apply per-instance limit override (engineering approval).
+
+        Closed for life limits — a part's, a core's, a tool's (user ruling 2026-11-11):
+        they're raised only through an extension approval request (request_extension),
+        decided by someone other than the requester. A calendar (shelf-life) tracking
+        keeps its own path."""
         tracking = self.get_object()
+        if not tracking.definition.is_calendar_based:
+            return Response(
+                {'detail': "A life limit is extended through an approval request: use "
+                           "Request an extension (someone else with life-limit authority "
+                           "approves it)."},
+                status=status.HTTP_400_BAD_REQUEST)
         serializer = LifeTrackingOverrideSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

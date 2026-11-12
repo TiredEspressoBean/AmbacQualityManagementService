@@ -15782,7 +15782,13 @@ paths:
   /api/LifeTracking/{id}/apply_override/:
     post:
       operationId: api_LifeTracking_apply_override_create
-      description: Apply per-instance limit override (engineering approval)
+      description: |-
+        Apply per-instance limit override (engineering approval).
+
+        Closed for life limits — a part's, a core's, a tool's (user ruling 2026-11-11):
+        they're raised only through an extension approval request (request_extension),
+        decided by someone other than the requester. A calendar (shelf-life) tracking
+        keeps its own path.
       parameters:
       - in: path
         name: id
@@ -51802,6 +51808,9 @@ components:
             material_lot_id:
               type: string
               nullable: true
+            page:
+              type: string
+              nullable: true
           readOnly: true
         content_object_display:
           type: string
@@ -63007,6 +63016,10 @@ components:
           type: string
           nullable: true
           readOnly: true
+        item_label:
+          type: string
+          nullable: true
+          readOnly: true
         reset_history:
           readOnly: true
           description: History of resets/overhauls
@@ -63039,6 +63052,7 @@ components:
       - hard_limit_override
       - id
       - is_blocked
+      - item_label
       - object_id
       - override_approved_by
       - override_approved_by_name

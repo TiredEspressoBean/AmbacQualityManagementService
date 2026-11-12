@@ -1105,6 +1105,9 @@ class ApprovalRequestSerializer(SecureModelMixin):
             # A receiving inspection report's lot: its page is where the request is
             # decided (accept with the sample unfinished).
             'material_lot_id': {'type': 'string', 'nullable': True},
+            # Where the request is decided, when that's a page of its own (a life-limit
+            # extension: the tool's or part's Life section).
+            'page': {'type': 'string', 'nullable': True},
         },
     })
     def get_content_object_info(self, obj):
@@ -1117,8 +1120,17 @@ class ApprovalRequestSerializer(SecureModelMixin):
                 'id': obj.object_id,
                 'str': str(obj.content_object),
                 'material_lot_id': str(lot_id) if lot_id else None,
+                'page': self._decided_on(obj.content_object),
             }
         return None
+
+    @staticmethod
+    def _decided_on(target):
+        """The page an approval on `target` is decided on, when it has one of its own."""
+        if type(target).__name__ != 'LifeTracking':
+            return None
+        from Tracker.services.life_tracking.extension import item_page
+        return item_page(target)
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_content_object_display(self, obj):

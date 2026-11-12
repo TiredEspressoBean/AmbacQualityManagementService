@@ -75,6 +75,7 @@ def custom_exception_handler(exc, context):
         "code": "machine_readable_error_code"  # optional
     }
     """
+    raw_blockers = None  # a start refusal's blockers, kept typed (see below)
     # Handle Django's PermissionDenied
     if isinstance(exc, DjangoPermissionDenied):
         exc = PermissionDenied(detail=str(exc) if str(exc) else None)
@@ -92,7 +93,7 @@ def custom_exception_handler(exc, context):
             body['detail'] = ' '.join(
                 m if m.rstrip().endswith(('.', '!', '?')) else f"{m}." for m in exc.messages)
             body['code'] = str(blockers[0].code)
-            body['blockers'] = [b.to_dict() for b in blockers]
+            body['blockers'] = raw_blockers = [b.to_dict() for b in blockers]
             # The andon: a refused start calls whoever clears it (services/mes/andon.py).
             from Tracker.services.mes.andon import call_for
             from Tracker.utils.tenant_context import current_tenant_var
@@ -130,5 +131,11 @@ def custom_exception_handler(exc, context):
                 response.data['code'] = list(codes.values())[0]
                 if isinstance(response.data['code'], list):
                     response.data['code'] = response.data['code'][0]
+
+    # DRF's ValidationError turns every value into a string ("False" for a flag): the
+    # start refusal's blockers go back as they were built. Last, since response.data is
+    # the exception's own detail, which get_codes() above walks.
+    if response is not None and raw_blockers is not None and isinstance(response.data, dict):
+        response.data['blockers'] = raw_blockers
 
     return response

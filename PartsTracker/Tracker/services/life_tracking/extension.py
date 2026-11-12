@@ -20,6 +20,41 @@ EXTENSION_TYPE = 'LIFE_LIMIT_EXTENSION'
 AUTHORITY = 'change_lifelimitdefinition'
 
 
+def _item(tracking):
+    """The object a tracking is on (LifeTracking has content_type + object_id, no
+    generic accessor)."""
+    model = tracking.content_type.model_class() if tracking.content_type_id else None
+    if model is None:
+        return None
+    manager = getattr(model, 'unscoped', None) or model._default_manager
+    return manager.filter(tenant_id=tracking.tenant_id, pk=tracking.object_id).first()  # tenant-safe: explicit tenant filter
+
+
+def item_page(tracking) -> str | None:
+    """The page an item's life is shown on — its Life section, where an extension is
+    decided: a tool's equipment page, else the part's (a core's is its part's)."""
+    item = _item(tracking)
+    name = type(item).__name__ if item is not None else ''
+    if name == 'Equipments':
+        return f"/editor/equipment/{item.pk}/edit"
+    if name == 'Parts':
+        return f"/details/Parts/{item.pk}"
+    if name == 'Core' and getattr(item, 'part_id', None):
+        return f"/details/Parts/{item.part_id}"
+    return None
+
+
+def item_label(tracking) -> str | None:
+    """What a tracking is ON, when it isn't the page's own item: a core's limits shown
+    on its part's page say they're the core's."""
+    if tracking.content_type_id is None or tracking.content_type.model != 'core':
+        return None
+    item = _item(tracking)
+    if item is not None:
+        return f"Core {item.serial_number or item.core_number}"
+    return None
+
+
 def open_request(tracking):
     """The tracking's extension request awaiting a decision, or None."""
     from django.contrib.contenttypes.models import ContentType

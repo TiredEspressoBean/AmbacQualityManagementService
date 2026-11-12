@@ -178,6 +178,28 @@ class ToolLifeTests(TenantTestCase):
         self.assertEqual(tracking.effective_hard_limit, Decimal(2))
         self.assertIsNone(tracking.pending_hard_limit)
 
+    def test_the_inbox_routes_an_extension_to_the_tools_page(self):
+        from Tracker.serializers.core import ApprovalRequestSerializer
+        from Tracker.services.life_tracking.extension import request_extension
+        definition = self._limit('parts', 2)
+        tracking = LifeTracking.for_object(self.die, definition, accumulated=Decimal(2))[0]
+        approval = request_extension(tracking, self.user_a, hard_limit=5,
+                                     reason="Re-inspected, edges within wear spec")
+        info = ApprovalRequestSerializer(approval).data['content_object_info']
+        self.assertEqual(info['page'], f"/editor/equipment/{self.die.id}/edit")
+
+    def test_the_direct_override_route_is_closed_for_life_limits(self):
+        definition = self._limit('parts', 2)
+        tracking = LifeTracking.for_object(self.die, definition, accumulated=Decimal(2))[0]
+        self.authenticate_superuser(tenant=self.tenant_a)
+        resp = self.client.post(f"/api/LifeTracking/{tracking.id}/apply_override/",
+                                {'hard_limit': '9', 'reason': 'Straight past the approval tier'},
+                                format='json')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn("approval request", resp.json()['detail'])
+        tracking.refresh_from_db()
+        self.assertIsNone(tracking.hard_limit_override)
+
     def test_an_extension_must_raise_the_limit_and_give_a_reason(self):
         from Tracker.services.life_tracking.extension import request_extension
         definition = self._limit('parts', 2)

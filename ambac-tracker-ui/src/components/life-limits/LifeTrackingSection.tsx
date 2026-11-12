@@ -25,6 +25,7 @@ import { api } from "@/lib/api/generated";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { getCookie } from "@/lib/utils";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { ApprovalSignaturePanel } from "@/components/approval/ApprovalSignaturePanel";
 
 const trackingsOptions = (contentType: string, objectId: string) => queryOptions({
     queryKey: ["life-tracking", contentType, objectId] as const,
@@ -98,7 +99,10 @@ export function LifeTrackingSection({ contentType, objectId }: {
     const row = (t: Tracking) => (
         <div key={String(t.id)} className="border-b py-2 last:border-b-0">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <div className="min-w-40 font-medium">{t.definition_name}</div>
+            <div className="min-w-40 font-medium">
+                {t.definition_name}
+                {t.item_label && <span className="ml-1 text-xs font-normal text-muted-foreground">({t.item_label})</span>}
+            </div>
             <div className="text-sm">
                 {n(t.current_value)} used · soft {n(t.effective_soft_limit)} · hard {n(t.effective_hard_limit)}
                 {t.definition_unit ? ` ${t.definition_unit.toLowerCase()}` : ""}
@@ -133,10 +137,24 @@ export function LifeTrackingSection({ contentType, objectId }: {
                 ) : null;
             })()}
             {t.pending_extension && (
-                <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                    Extension to {n(t.pending_hard_limit)} requested ({t.pending_extension}) —
-                    waiting for approval.
-                </p>
+                <>
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                        Extension to {n(t.pending_hard_limit)} requested ({t.pending_extension}) —
+                        waiting for approval.
+                    </p>
+                    {/* Decided here: someone with life-limit authority other than the
+                        requester signs it (the panel offers it only to them). */}
+                    <div className="mt-2">
+                        <ApprovalSignaturePanel
+                            contentTypeModel="lifetracking"
+                            objectId={String(t.id)}
+                            contentTitle={`${t.definition_name}: raise to ${n(t.pending_hard_limit)}`}
+                            contentKind="Life limit extension"
+                            title="Extension approval"
+                            description="Approve to raise this item's hard limit; reject to leave it as it is."
+                        />
+                    </div>
+                </>
             )}
             {t.hard_limit_override != null && (
                 <p className="mt-1 text-xs text-muted-foreground">

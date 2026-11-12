@@ -5986,7 +5986,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Apply per-instance limit override (engineering approval) */
+        /**
+         * @description Apply per-instance limit override (engineering approval).
+         *
+         *     Closed for life limits — a part's, a core's, a tool's (user ruling 2026-11-11):
+         *     they're raised only through an extension approval request (request_extension),
+         *     decided by someone other than the requester. A calendar (shelf-life) tracking
+         *     keeps its own path.
+         */
         post: operations["api_LifeTracking_apply_override_create"];
         delete?: never;
         options?: never;
@@ -21903,6 +21910,7 @@ export interface components {
                 id: string;
                 str: string;
                 material_lot_id?: string | null;
+                page?: string | null;
             } | null;
             readonly content_object_display: string | null;
             requested_by?: number | null;
@@ -27161,6 +27169,7 @@ export interface components {
              */
             readonly pending_hard_limit: string | null;
             readonly pending_extension: string | null;
+            readonly item_label: string | null;
             /** @description History of resets/overhauls */
             readonly reset_history: unknown;
             /** @description Cached status, updated on save */

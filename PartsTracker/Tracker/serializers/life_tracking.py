@@ -105,6 +105,13 @@ class LifeTrackingSerializer(SecureModelMixin):
     override_approved_by_name = serializers.SerializerMethodField()
     # An extension asked for and awaiting approval: its request number.
     pending_extension = serializers.SerializerMethodField()
+    # What it's on, when not the page's own item ("Core SN-…" on its part's page).
+    item_label = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_item_label(self, obj):
+        from Tracker.services.life_tracking.extension import item_label
+        return item_label(obj)
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_pending_extension(self, obj):
@@ -130,7 +137,7 @@ class LifeTrackingSerializer(SecureModelMixin):
             'effective_hard_limit', 'effective_soft_limit',
             'hard_limit_override', 'soft_limit_override',
             'override_reason', 'override_approved_by', 'override_approved_by_name',
-            'pending_hard_limit', 'pending_extension',
+            'pending_hard_limit', 'pending_extension', 'item_label',
             'reset_history', 'cached_status',
             'created_at', 'updated_at', 'archived'
         )

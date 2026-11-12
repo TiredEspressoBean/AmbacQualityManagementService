@@ -150,6 +150,7 @@ class StartGatesS4Tests(TenantTestCase):
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertEqual(resp.json()['blockers'][0]['waiting_on'], "the part's hold to be released")
         self.assertNotIn(".;", resp.json()['detail'])
+        self.assertIs(resp.json()['blockers'][0]['pending_behind_floor'], False)  # a boolean
         tenant_id, calls, _hour = send.call_args.kwargs['args']
         self.assertEqual(tenant_id, str(self.tenant_a.id))
         self.assertEqual([c['gate'] for c in calls], ['part_on_hold'])
@@ -318,6 +319,7 @@ class StartGatesS4Tests(TenantTestCase):
                                {'content_type': 'tracker.parts', 'object_id': str(core.part_id)})
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual([r['definition'] for r in resp.json()], [str(definition.id)])
+        self.assertEqual(resp.json()[0]['item_label'], "Core SN-PG")  # it's the core's
 
     def test_the_reman_that_reaches_the_limit_is_not_stopped_by_it(self):
         from Tracker.services.mes.gates import StartContext, floor_blockers

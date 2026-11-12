@@ -178,6 +178,10 @@ function getApprovalReferenceUrl(approval: PendingApproval): string {
         return `/quality/change-control/pcns/${id}`;
     }
     // Accepting a receiving lot with its sample unfinished: decided on the lot's page.
+    // A life-limit extension: decided on the tool's or part's page (its Life section).
+    if (approvalType === "LIFE_LIMIT_EXTENSION" && approval.content_object_info?.page) {
+        return approval.content_object_info.page;
+    }
     if (approvalType === "RECEIVING_ACCEPT_INCOMPLETE" && approval.content_object_info?.material_lot_id) {
         return `/production/receiving-inspection/${approval.content_object_info.material_lot_id}`;
     }

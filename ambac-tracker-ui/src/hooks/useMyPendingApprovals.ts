@@ -16,6 +16,9 @@ export interface PendingApproval {
         str?: string;
         /** A receiving inspection report's lot — the page its request is decided on. */
         material_lot_id?: string | null;
+        /** Where the request is decided, when that's a page of its own (a life-limit
+         *  extension: the tool's or part's Life section). */
+        page?: string | null;
     };
     content_object_display?: string | null;
     requested_by: string;
