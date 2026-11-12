@@ -60,6 +60,8 @@ def request_title(tracking) -> str:
     decided, the limit it was about."""
     from Tracker.services.life_tracking.life_tracking import amount
     name = tracking.definition.name
+    # The request's content_object may be a copy loaded before the limit was asked for.
+    tracking.refresh_from_db(fields=['pending_hard_limit'])
     if tracking.pending_hard_limit is not None:
         return f"{name}: raise to {amount(tracking.pending_hard_limit)}"
     return f"{name}: life limit extension"

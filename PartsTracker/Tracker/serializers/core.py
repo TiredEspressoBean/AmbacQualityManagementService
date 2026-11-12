@@ -1118,7 +1118,8 @@ class ApprovalRequestSerializer(SecureModelMixin):
             return {
                 'type': obj.content_type.model,
                 'id': obj.object_id,
-                'str': str(obj.content_object),
+                # The inbox's title: what an extension asks, not the tracking's count.
+                'str': self.get_content_object_display(obj),
                 'material_lot_id': str(lot_id) if lot_id else None,
                 'page': self._decided_on(obj.content_object),
             }

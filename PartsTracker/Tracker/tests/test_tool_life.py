@@ -187,6 +187,7 @@ class ToolLifeTests(TenantTestCase):
                                      reason="Re-inspected, edges within wear spec")
         info = ApprovalRequestSerializer(approval).data['content_object_info']
         self.assertEqual(info['page'], f"/editor/equipment/{self.die.id}/edit")
+        self.assertEqual(info['str'], "Die parts: raise to 5")  # the inbox title
 
     def test_the_direct_override_route_is_closed_for_life_limits(self):
         definition = self._limit('parts', 2)
