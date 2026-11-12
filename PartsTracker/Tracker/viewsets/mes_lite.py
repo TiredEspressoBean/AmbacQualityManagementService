@@ -2096,9 +2096,8 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         "wo_number": "ERP_id",
         "wo number": "ERP_id",
     }
-    # The generated importer (the registry's WorkOrderCSVImportSerializer is keyed
-    # "workorders" and never matched), plus the priority reason and the order line a job
-    # is for, named by its number on the row's Related Order.
+    # The generated importer, plus the priority reason and the order line a job is for,
+    # named by its number on the row's Related Order.
     csv_import_serializer = create_import_serializer_for_model(
         WorkOrder, base=WorkOrderImport,
         meta={'import_only_fields': ['order_line_number'],
