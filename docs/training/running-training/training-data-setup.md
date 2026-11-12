@@ -41,7 +41,7 @@ All demo accounts use password: `demo123`
 | **Quality Reports** | QR-0042-001-FT, QR-0038-003-NI — both are Flow Calibration reports |
 | **Dispositions** | The QA Inspector exhibits' rework on INJ-QA-INSPECT-013, plus the history the quality seeder writes |
 | **CAPA** | CAPA-2024-003 (nozzle defect investigation) |
-| **Equipment** | Flow Test Stand #1, #2, Torque Wrench TW-25 (overdue calibration) |
+| **Equipment** | Flow Test Stand #1, #2, Torque Wrench TW-25 (overdue calibration), Micrometer MIC-1 (overdue; Body OD's default, so the floor can't use it) and Micrometer MIC-3 (in calibration; Body OD's backup) |
 | **Customers** | Midwest Fleet (Tom Bradley), Northern Trucking Co |
 
 ---

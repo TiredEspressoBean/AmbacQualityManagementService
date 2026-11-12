@@ -245,8 +245,8 @@ Approve the hours only once they're right: an approved entry can't be corrected 
 **You will:** undo a step that was finished too soon.
 
 Have Mike finish Machining on all four bodies of `WO-OPS-01` (they move on to
-Precision Grinding together), then find out the micrometer he used was overdue: one
-body needs measuring again.
+Precision Grinding together), then find out the micrometer he used failed its next
+calibration check: one body needs measuring again.
 
 1. **Production** > **WO Control Center**, open `WO-OPS-01`. On `INJ-OPS-001`'s row,
    **Previous step**.

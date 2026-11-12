@@ -250,21 +250,21 @@ disposition, and the part goes back into Body Inspection to run the route again.
 
 ## 7. A gauge past due
 
-**You will:** recognise the overdue-gauge warning from the floor's side, and what
-QA does with it.
+**You will:** see why the floor couldn't use an overdue gauge, and what QA does
+about it.
 
-Body OD at Machining is measured with `Micrometer MIC-1`, which is past its
-calibration due date. An overdue gauge isn't evidence the gauge is wrong, so a
-reading on it is recorded, with a warning.
+Body OD at Machining defaults to `Micrometer MIC-1`, which is past its
+calibration due date. A gauge past its calibration can't record a reading, so the
+floor has to use the backup.
 
 **Exercise 7.1.** Log in as Casey, who is running Machining on `INJ-0042-024`. Open
-its step: the gauge picker reads *Micrometer MIC-1 (default) — calibration overdue*.
-Record a Body OD of **6.002 mm** and a Pass, and complete the step. The warning
-reads: *past its calibration due date — the reading was recorded; tell QA so the
-gauge gets recalibrated.*
+its step: the gauge picker shows *Micrometer MIC-1 (default) — calibration overdue
+since &lt;date&gt;*, greyed out, and nothing pre-selected. Pick **Micrometer MIC-3
+(backup)**, record a Body OD of **6.002 mm** and a Pass, and complete the step.
 
-**Exercise 7.2.** As Sarah, find MIC-1 on **Quality** > **Calibrations** and say what
-the shop should do about the readings taken with it since its due date.
+**Exercise 7.2.** As Sarah, find MIC-1 on **Quality** > **Calibrations**. Say what
+has to happen before the floor can use it again, and what the shop should do about
+any readings taken with it after its due date.
 
 ---
 

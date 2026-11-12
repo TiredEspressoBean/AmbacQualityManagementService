@@ -128,8 +128,10 @@ mistake before it counts.
    `INJ-OPS-001`, and **Start**.
 2. Read the instruction. Each field shows its target and limits: **Body OD** is
    6 mm ± 0.01.
-3. The gauge is **Micrometer MIC-1**, marked *calibration overdue*. You can still
-   record the reading, and you're told to let QA know.
+3. Pick the gauge. **Micrometer MIC-1 (default)** is greyed out: *calibration
+   overdue since &lt;date&gt;*. A gauge past its calibration can't record a
+   reading. Pick **Micrometer MIC-3 (backup)**, and tell your lead MIC-1 needs
+   calibrating.
 
 **Try to break it:** type **6.02**. The field says **Out of spec**. You misread
 the micrometer: correct it to **6.004**, and it says **In spec**. A reading you
