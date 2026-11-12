@@ -242,3 +242,52 @@ class SanitizeTenantHtmlTests(TestCase):
     def test_empty_input_returns_empty(self):
         self.assertEqual(sanitize_tenant_html(''), '')
         self.assertEqual(sanitize_tenant_html(None), '')
+
+
+class SystemTemplateCoverageTests(TestCase):
+    """Every curated system template renders from its event's sample payload, uses only
+    keys the payload has (a mistyped key renders blank, silently), and links to a page
+    (P6, 2026-11-12: eleven events fell through to the generic 'X event fired at now')."""
+
+    def test_curated_templates_render_from_the_events_payload(self):
+        import re
+        from dataclasses import asdict
+        from django.template import Context, Template
+        from Tracker.services.core.notifications import get_event
+        from Tracker.services.core.notifications.system_templates import ALL_TEMPLATES
+
+        # Events with no payload sample or no page of their own to link to.
+        no_link = {"gage.calibration_overdue", "order.shipped", "shift_note.published"}
+        for spec in ALL_TEMPLATES:
+            code = spec["event_code"]
+            if code == "*":
+                continue
+            with self.subTest(code):
+                try:
+                    event = get_event(code)
+                except KeyError:
+                    continue  # an older template for an event nothing emits any more
+                payload = asdict(event.payload_schema.sample())
+                for channel in ("email", "in_app"):
+                    fields = spec.get(channel)
+                    if not fields:
+                        continue
+                    for part in ("subject", "body_text", "body_html", "action_url_template"):
+                        src = fields.get(part, "")
+                        for key in re.findall(r"payload\.(\w+)", src):
+                            self.assertIn(key, payload, f"{code} {channel}.{part} uses payload.{key}")
+                        Template(src).render(Context({"payload": payload, "branding": {}}))
+                    if code not in no_link:
+                        url = Template(fields["action_url_template"]).render(Context({"payload": payload}))
+                        self.assertTrue(url.startswith("/") and "None" not in url, (code, url))
+                        self.assertFalse(url.startswith("/parts/"), (code, url))
+
+    def test_the_eleven_events_have_their_own_template(self):
+        from Tracker.services.core.notifications.system_templates import ALL_TEMPLATES
+        codes = {s["event_code"] for s in ALL_TEMPLATES}
+        for code in ("workorder.held", "workorder.overdue", "training.expired",
+                     "training.expiring_soon", "part.unapproved", "capa.ready_for_verification",
+                     "supplier.qualification_expired", "supplier.qualification_expiring_soon",
+                     "supplier.unqualified", "supplier.standing_review",
+                     "supplier.inspection_discontinued"):
+            self.assertIn(code, codes)

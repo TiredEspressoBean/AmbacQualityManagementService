@@ -116,13 +116,13 @@ Review the part: {{ action_url }}
       </table>""",
             action_label="Review the part",
         ),
-        "action_url_template": "/parts/{{ payload.part_id }}",
+        "action_url_template": "/details/Parts/{{ payload.part_id }}",
         "severity": "warn",
     },
     "in_app": {
         "subject": "{{ payload.part_number }} failed at {{ payload.step_name }}",
         "body_text": "Part {{ payload.part_number }} failed inspection at \"{{ payload.step_name }}\".",
-        "action_url_template": "/parts/{{ payload.part_id }}",
+        "action_url_template": "/details/Parts/{{ payload.part_id }}",
         "severity": "warn",
         "icon": "alert-triangle",
     },
@@ -316,13 +316,13 @@ Open the calibration record: {{ action_url }}
       <p style="margin: 16px 0; padding: 12px; background-color: #fef2f2; border-left: 3px solid #b91c1c; color: #7f1d1d;">This equipment should be removed from service until calibration is completed.</p>""",
             action_label="Open calibration record",
         ),
-        "action_url_template": "/equipment/{{ payload.id }}/calibration",
+        "action_url_template": "/editor/equipment/{{ payload.id }}/edit",
         "severity": "critical",
     },
     "in_app": {
         "subject": "Calibration overdue: {{ payload.gage_id }}",
         "body_text": "{{ payload.days_overdue }} days past due. Should be removed from service.",
-        "action_url_template": "/equipment/{{ payload.id }}/calibration",
+        "action_url_template": "/editor/equipment/{{ payload.id }}/edit",
         "severity": "critical",
         "icon": "alert-octagon",
     },
@@ -533,7 +533,204 @@ Open the tool: {{ action_url }}
     },
 }
 
+# ---------------------------------------------------------------------------
+# Events that fell through to the wildcard (P6, user ruling 2026-11-12): each names
+# its subject in the title and links to the page where it's acted on.
+# ---------------------------------------------------------------------------
+
+def _rows(*rows: tuple[str, str]) -> str:
+    """An email detail table: (label, template value) per row."""
+    cells = "".join(
+        f'<tr><td style="color: #666; padding: 4px 12px 4px 0; white-space: nowrap;">{label}</td>'
+        f'<td>{value}</td></tr>'
+        for label, value in rows)
+    return ('<table cellpadding="6" cellspacing="0" style="border-collapse: collapse; '
+            f'margin: 16px 0; width: 100%; font-size: 14px;">{cells}</table>')
+
+
+def _simple(event_code, *, subject, lead, rows, text_rows, url, action_label, severity,
+            in_app_subject, in_app_body, icon):
+    """A template whose email is a lead sentence plus a detail table."""
+    signoff = "\n\n- {{ branding.company_name|default:'UQMES' }}"
+    return {
+        "event_code": event_code,
+        "email": {
+            "subject": subject,
+            "body_text": f"{lead}\n\n{text_rows}\n\n{action_label}: {{{{ action_url }}}}{signoff}",
+            "body_html": _html(title=subject,
+                               body=f'<p style="margin: 0 0 16px;">{lead}</p>\n      {_rows(*rows)}',
+                               action_label=action_label),
+            "action_url_template": url,
+            "severity": severity,
+        },
+        "in_app": {
+            "subject": in_app_subject,
+            "body_text": in_app_body,
+            "action_url_template": url,
+            "severity": severity,
+            "icon": icon,
+        },
+    }
+
+
+_WO_CONTROL = "/workorder/{{ payload.work_order_id }}/control"
+
+WORKORDER_HELD = _simple(
+    "workorder.held",
+    subject="Work order {{ payload.work_order_number }} on hold{% if payload.hours_open %} for {{ payload.hours_open|floatformat:0 }} h{% endif %}",
+    lead="{{ payload.work_order_number }} has been on hold past the threshold: {{ payload.reason }}.",
+    rows=[("Work order", "<strong>{{ payload.work_order_number }}</strong>"),
+          ("Reason", "{{ payload.reason }}"),
+          ("On hold since", "{{ payload.placed_at|default:'—' }}")],
+    text_rows="Work order:     {{ payload.work_order_number }}\nReason:         {{ payload.reason }}\nOn hold since:  {{ payload.placed_at|default:'—' }}",
+    url=_WO_CONTROL, action_label="Open the work order", severity="warning",
+    in_app_subject="{{ payload.work_order_number }} on hold{% if payload.hours_open %} {{ payload.hours_open|floatformat:0 }} h{% endif %}",
+    in_app_body="Held: {{ payload.reason }}.", icon="pause-circle")
+
+WORKORDER_OVERDUE = _simple(
+    "workorder.overdue",
+    subject="Work order {{ payload.work_order_number }} is overdue",
+    lead="{{ payload.work_order_number }} is past its expected completion{% if payload.expected_completion %} ({{ payload.expected_completion }}){% endif %}.",
+    rows=[("Work order", "<strong>{{ payload.work_order_number }}</strong>"),
+          ("Was due", "{{ payload.expected_completion|default:'—' }}")],
+    text_rows="Work order:  {{ payload.work_order_number }}\nWas due:     {{ payload.expected_completion|default:'—' }}",
+    url=_WO_CONTROL, action_label="Open the work order", severity="warning",
+    in_app_subject="{{ payload.work_order_number }} is overdue",
+    in_app_body="Was due {{ payload.expected_completion|default:'—' }}.", icon="clock-alert")
+
+_TRAINING_ROWS = [("Person", "<strong>{{ payload.user_name }}</strong>"),
+                  ("Training", "{{ payload.training_type_name }} ({{ payload.level_display }})"),
+                  ("Expires", "{{ payload.expires_date }}")]
+_TRAINING_TEXT = ("Person:    {{ payload.user_name }}\n"
+                  "Training:  {{ payload.training_type_name }} ({{ payload.level_display }})\n"
+                  "Expires:   {{ payload.expires_date }}")
+_TRAINING_URL = "/quality/training/records/{{ payload.record_id }}/edit"
+
+TRAINING_EXPIRING_SOON = _simple(
+    "training.expiring_soon",
+    subject="{{ payload.user_name }}'s {{ payload.training_type_name }} expires in {{ payload.days_to_expiry }} days",
+    lead="Schedule requalification before it lapses — after {{ payload.expires_date }}, {{ payload.user_name }} isn't qualified for work that needs it.",
+    rows=_TRAINING_ROWS, text_rows=_TRAINING_TEXT,
+    url=_TRAINING_URL, action_label="Open the training record", severity="info",
+    in_app_subject="{{ payload.user_name }}'s {{ payload.training_type_name }} expires in {{ payload.days_to_expiry }} days",
+    in_app_body="Expires {{ payload.expires_date }}. Schedule requalification.", icon="graduation-cap")
+
+TRAINING_EXPIRED = _simple(
+    "training.expired",
+    subject="{{ payload.user_name }}'s {{ payload.training_type_name }} has expired",
+    lead="{{ payload.user_name }} is no longer qualified for work that needs {{ payload.training_type_name }} until requalified.",
+    rows=_TRAINING_ROWS, text_rows=_TRAINING_TEXT,
+    url=_TRAINING_URL, action_label="Open the training record", severity="warning",
+    in_app_subject="{{ payload.user_name }}'s {{ payload.training_type_name }} expired",
+    in_app_body="Lapsed {{ payload.expires_date }}: not qualified for work that needs it until requalified.",
+    icon="graduation-cap")
+
+_LOT_ROWS = [("Lot", "<strong>{{ payload.lot_number }}</strong>"),
+             ("Supplier", "{{ payload.supplier_name|default:'—' }}"),
+             ("Part type", "{{ payload.part_type_name|default:'—' }}")]
+_LOT_TEXT = ("Lot:        {{ payload.lot_number }}\n"
+             "Supplier:   {{ payload.supplier_name|default:'—' }}\n"
+             "Part type:  {{ payload.part_type_name|default:'—' }}")
+_LOT_URL = "/production/material-lots/{{ payload.material_lot_id }}"
+
+PART_UNAPPROVED = _simple(
+    "part.unapproved",
+    subject="Lot {{ payload.lot_number }} held: {{ payload.part_type_name }} isn't approved from {{ payload.supplier_name }}",
+    lead="The lot was held at receiving: {{ payload.supplier_name }} has no active part approval (PPAP/FAI) for {{ payload.part_type_name }}.",
+    rows=_LOT_ROWS, text_rows=_LOT_TEXT,
+    url=_LOT_URL, action_label="Open the lot", severity="warning",
+    in_app_subject="Lot {{ payload.lot_number }} held: part not approved",
+    in_app_body="{{ payload.part_type_name }} from {{ payload.supplier_name }} has no active part approval (PPAP/FAI).",
+    icon="package-x")
+
+SUPPLIER_UNQUALIFIED = _simple(
+    "supplier.unqualified",
+    subject="Lot {{ payload.lot_number }} held: {{ payload.supplier_name }} isn't qualified",
+    lead="The lot was held at receiving: {{ payload.supplier_name }} isn't qualified for {{ payload.part_type_name }}.",
+    rows=_LOT_ROWS, text_rows=_LOT_TEXT,
+    url=_LOT_URL, action_label="Open the lot", severity="warning",
+    in_app_subject="Lot {{ payload.lot_number }} held: supplier not qualified",
+    in_app_body="{{ payload.supplier_name }} isn't qualified for {{ payload.part_type_name }}.",
+    icon="package-x")
+
+_QUAL_ROWS = [("Supplier", "<strong>{{ payload.supplier_name }}</strong>"),
+              ("Qualification", "{{ payload.qualification_number }}"),
+              ("Scope", "{{ payload.scope }}"),
+              ("Expiry", "{{ payload.expiry_date }}")]
+_QUAL_TEXT = ("Supplier:       {{ payload.supplier_name }}\n"
+              "Qualification:  {{ payload.qualification_number }}\n"
+              "Scope:          {{ payload.scope }}\n"
+              "Expiry:         {{ payload.expiry_date }}")
+_QUAL_URL = "/production/supplier-qualifications/{{ payload.qualification_id }}/edit"
+
+SUPPLIER_QUALIFICATION_EXPIRED = _simple(
+    "supplier.qualification_expired",
+    subject="{{ payload.supplier_name }}'s qualification for {{ payload.scope }} has expired",
+    lead="{{ payload.supplier_name }} is off the approved supplier list for {{ payload.scope }} until re-qualified.",
+    rows=_QUAL_ROWS, text_rows=_QUAL_TEXT,
+    url=_QUAL_URL, action_label="Open the qualification", severity="warning",
+    in_app_subject="{{ payload.supplier_name }} qualification expired: {{ payload.scope }}",
+    in_app_body="Off the approved supplier list for {{ payload.scope }} until re-qualified.", icon="building")
+
+SUPPLIER_QUALIFICATION_EXPIRING_SOON = _simple(
+    "supplier.qualification_expiring_soon",
+    subject="{{ payload.supplier_name }}'s qualification for {{ payload.scope }} expires in {{ payload.days_to_expiry }} days",
+    lead="Re-qualify {{ payload.supplier_name }} before {{ payload.expiry_date }}, or it drops off the approved supplier list for {{ payload.scope }}.",
+    rows=_QUAL_ROWS, text_rows=_QUAL_TEXT,
+    url=_QUAL_URL, action_label="Open the qualification", severity="info",
+    in_app_subject="{{ payload.supplier_name }} qualification expires in {{ payload.days_to_expiry }} days",
+    in_app_body="{{ payload.scope }}: expires {{ payload.expiry_date }}. Re-qualify before then.", icon="building")
+
+SUPPLIER_STANDING_REVIEW = _simple(
+    "supplier.standing_review",
+    subject="Review {{ payload.supplier_name }}'s standing (scorecard {{ payload.rating }})",
+    lead="{{ payload.reason }} This is a recommendation — nothing changes until someone decides.",
+    rows=[("Supplier", "<strong>{{ payload.supplier_name }}</strong>"),
+          ("Scorecard", "{{ payload.rating }}")],
+    text_rows="Supplier:   {{ payload.supplier_name }}\nScorecard:  {{ payload.rating }}",
+    url="/production/supplier-quality", action_label="Open supplier quality", severity="info",
+    in_app_subject="Review {{ payload.supplier_name }}'s standing ({{ payload.rating }})",
+    in_app_body="{{ payload.reason }}", icon="building")
+
+SUPPLIER_INSPECTION_DISCONTINUED = _simple(
+    "supplier.inspection_discontinued",
+    subject="Stop accepting {{ payload.supplier_name }} at {{ payload.step_name }}",
+    lead="Tightened inspection ran 5 lots in a row without returning to normal (Z1.4). Stop accepting this supplier for the step and drive corrective action — a recommendation, not an automatic suspension.",
+    rows=[("Supplier", "<strong>{{ payload.supplier_name }}</strong>"),
+          ("Inspection step", "{{ payload.step_name }}")],
+    text_rows="Supplier:         {{ payload.supplier_name }}\nInspection step:  {{ payload.step_name }}",
+    url="/production/receiving-plans/{{ payload.step_id }}", action_label="Open the receiving plan",
+    severity="critical",
+    in_app_subject="Inspection discontinued: {{ payload.supplier_name }} at {{ payload.step_name }}",
+    in_app_body="Tightened inspection ran 5 lots without returning to normal. Stop accepting and drive corrective action.",
+    icon="octagon-alert")
+
+CAPA_READY_FOR_VERIFICATION = _simple(
+    "capa.ready_for_verification",
+    subject="CAPA {{ payload.capa_number }} is ready for verification",
+    lead="Its tasks and root cause analysis are complete. Verify the action was effective.",
+    rows=[("CAPA", "<strong>{{ payload.capa_number }}</strong>"),
+          ("Type", "{{ payload.capa_type_display }}"),
+          ("Severity", "{{ payload.severity_display }}")],
+    text_rows="CAPA:      {{ payload.capa_number }}\nType:      {{ payload.capa_type_display }}\nSeverity:  {{ payload.severity_display }}",
+    url="/quality/capas/{{ payload.capa_id }}", action_label="Open the CAPA", severity="info",
+    in_app_subject="CAPA {{ payload.capa_number }} ready for verification",
+    in_app_body="{{ payload.severity_display }} {{ payload.capa_type_display }}: tasks and RCA complete.",
+    icon="clipboard-check")
+
+
 ALL_TEMPLATES = [
+    WORKORDER_HELD,
+    WORKORDER_OVERDUE,
+    TRAINING_EXPIRING_SOON,
+    TRAINING_EXPIRED,
+    PART_UNAPPROVED,
+    SUPPLIER_UNQUALIFIED,
+    SUPPLIER_QUALIFICATION_EXPIRED,
+    SUPPLIER_QUALIFICATION_EXPIRING_SOON,
+    SUPPLIER_STANDING_REVIEW,
+    SUPPLIER_INSPECTION_DISCONTINUED,
+    CAPA_READY_FOR_VERIFICATION,
     START_REFUSED,
     FPI_REQUESTED,
     FPI_DECIDED,
