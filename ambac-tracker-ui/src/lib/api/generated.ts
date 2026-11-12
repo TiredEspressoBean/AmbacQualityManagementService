@@ -3343,6 +3343,7 @@ export type Equipments = {
   location_name: string | null;
   status?: EquipmentsStatusEnum | undefined;
   calibration_status: string | null;
+  next_calibration_due: string | null;
   requires_calibration: boolean;
   /**
    * Days between calibrations: the gauge's own interval, else its type's.
@@ -21879,6 +21880,7 @@ const Equipments = z.object({
   location_name: z.string().nullable(),
   status: EquipmentsStatusEnum.optional(),
   calibration_status: z.string().nullable(),
+  next_calibration_due: z.string().nullable(),
   requires_calibration: z.boolean(),
   calibration_interval_effective: z.number().int().nullable(),
   calibration_interval_days: z.number().int().gte(0).lte(2147483647).nullish(),

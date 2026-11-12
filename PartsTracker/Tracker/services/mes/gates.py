@@ -284,7 +284,8 @@ def floor_blockers(ctx: StartContext, *, only: set | None = None) -> list[Blocke
 def machine_refusal(machine) -> str | None:
     """Why `machine` can't run work now, or None: not in service, or past its
     calibration (user ruling 2026-11-11: overdue calibration on the production machine
-    refuses the start until it is calibrated; gauges at capture only warn)."""
+    refuses the start until it is calibrated, as an overdue gauge is refused at
+    capture)."""
     if machine is None:
         return None
     if machine.status != 'IN_SERVICE':

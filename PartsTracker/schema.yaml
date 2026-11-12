@@ -59068,6 +59068,11 @@ components:
           type: string
           nullable: true
           readOnly: true
+        next_calibration_due:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
         requires_calibration:
           type: boolean
           readOnly: true
@@ -59148,6 +59153,7 @@ components:
       - id
       - location_name
       - name
+      - next_calibration_due
       - requires_calibration
       - updated_at
       - version

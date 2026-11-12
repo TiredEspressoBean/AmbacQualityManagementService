@@ -32,6 +32,7 @@ import { useDebouncedAttrs } from "../shared/useDebouncedAttrs";
 import { DecimalAttrInput, TextAttrRow } from "../shared/AttrInputs";
 import { useOperatorResponse } from "../shared/OperatorResponseContext";
 import { useSubstepAuthoringContext } from "../shared/SubstepAuthoringContext";
+import { gaugeUnusableReason } from "../shared/gaugeUse";
 import { useRetrieveMeasurementDefinitions } from "@/hooks/useRetrieveMeasurementDefinitions";
 
 type Attrs = {
@@ -226,18 +227,22 @@ function View(props: NodeViewProps) {
             : null,
     ].filter((o): o is { id: string; name: string; status: string | null; tag: "default" | "backup" } => o !== null);
     // The gauges' live state on the floor: the authored status is a snapshot, and
-    // calibration (overdue / failed) moves on after authoring. Overdue is marked so the
-    // operator knows before the reading (it is recorded, with a warning — 10-07
-    // decision); failed or out of service is left out, as the server refuses it.
+    // calibration (overdue / failed) moves on after authoring. A gauge the server
+    // refuses at capture — out of service, failed or overdue calibration — is listed
+    // greyed with the reason rather than offered and refused on submit.
     const live = useQueries({
         queries: rawEquipmentOptions.map((o) => ({ ...gaugeOptions(o.id), enabled: isOperator })),
         combine: (results) => new Map(results.map((r, i) => [rawEquipmentOptions[i]?.id, r.data])),
     });
-    const unusable = (o: { id: string; status: string | null }) => {
+    const unusableReason = (o: { id: string; status: string | null }) => {
         const g = live.get(o.id);
-        return (g?.status ?? o.status) === "OUT_OF_SERVICE" || g?.calibration_status === "FAILED";
+        return gaugeUnusableReason({
+            status: g?.status ?? o.status,
+            calibration_status: g?.calibration_status,
+            next_calibration_due: g?.next_calibration_due,
+        });
     };
-    const overdue = (o: { id: string }) => live.get(o.id)?.calibration_status === "OVERDUE";
+    const unusable = (o: { id: string; status: string | null }) => unusableReason(o) !== null;
     const equipmentOptions = rawEquipmentOptions.filter((o) => !unusable(o));
     // If the configured default is unusable, don't fall through to it —
     // start with no selection so the operator has to pick a live gauge.
@@ -357,7 +362,7 @@ function View(props: NodeViewProps) {
 
                 {/* Equipment: operator picks which gauge was used (default
                     pre-selected); authoring shows the configured default/backup. */}
-                {equipmentOptions.length > 0 && (
+                {(isOperator ? rawEquipmentOptions : equipmentOptions).length > 0 && (
                     <div className="flex items-center gap-2">
                         <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                             Equipment
@@ -372,13 +377,16 @@ function View(props: NodeViewProps) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value={EQUIP_NONE}>None</SelectItem>
-                                    {equipmentOptions.map((o) => (
-                                        <SelectItem key={o.id} value={o.id}>
-                                            {o.name}
-                                            {o.tag === "default" ? " (default)" : " (backup)"}
-                                            {overdue(o) ? " — calibration overdue" : ""}
-                                        </SelectItem>
-                                    ))}
+                                    {rawEquipmentOptions.map((o) => {
+                                        const reason = unusableReason(o);
+                                        return (
+                                            <SelectItem key={o.id} value={o.id} disabled={reason !== null}>
+                                                {o.name}
+                                                {o.tag === "default" ? " (default)" : " (backup)"}
+                                                {reason ? ` — ${reason}` : ""}
+                                            </SelectItem>
+                                        );
+                                    })}
                                 </SelectContent>
                             </Select>
                         ) : (

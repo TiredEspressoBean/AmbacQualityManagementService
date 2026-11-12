@@ -2349,6 +2349,10 @@ class EquipmentsSerializer(SecureModelMixin):
     def get_calibration_status(self, obj):
         return obj.calibration_status
 
+    # When the latest calibration falls due, so a picker can say "calibration overdue
+    # since <date>". Null when never calibrated.
+    next_calibration_due = serializers.DateField(read_only=True, allow_null=True)
+
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_location_name(self, obj):
         return obj.location.name if obj.location_id else None
@@ -2375,8 +2379,8 @@ class EquipmentsSerializer(SecureModelMixin):
         fields = [
             "id", "name", "equipment_type", "equipment_type_name",
             "serial_number", "manufacturer", "model_number", "location", "location_name", "status",
-            "calibration_status", "requires_calibration", "calibration_interval_effective",
-            "calibration_interval_days", "requires_calibration_override", "operating_shifts",
+            "calibration_status", "next_calibration_due", "requires_calibration",
+            "calibration_interval_effective", "calibration_interval_days", "requires_calibration_override", "operating_shifts",
             "is_schedulable", "runs_unattended", "batch_capacity", "batch_mode", "notes",
             "created_at", "updated_at", "archived", "version",
         ]

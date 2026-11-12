@@ -25322,6 +25322,8 @@ export interface components {
             readonly location_name: string | null;
             status?: components["schemas"]["EquipmentsStatusEnum"];
             readonly calibration_status: string | null;
+            /** Format: date */
+            readonly next_calibration_due: string | null;
             readonly requires_calibration: boolean;
             /** @description Days between calibrations: the gauge's own interval, else its type's. */
             readonly calibration_interval_effective: number | null;

@@ -147,3 +147,6 @@ class EquipmentRosterRefusesUnusableGaugeTests(DwiPhase1BaseTestCase):
         resp = c.get(f"/api/Equipment/{overdue.id}/")
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual(resp.json()["calibration_status"], "OVERDUE")
+        # The pickers grey it out with "calibration overdue since <date>" (P2, 2026-11-12).
+        self.assertEqual(resp.json()["next_calibration_due"],
+                         (today - datetime.timedelta(days=5)).isoformat())
