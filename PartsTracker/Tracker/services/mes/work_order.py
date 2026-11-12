@@ -495,6 +495,12 @@ def change_priority(work_order: WorkOrder, new_priority: int, *, reason: str, us
         raise ValueError(f"Unknown priority: {new_priority}")
     if new_priority == work_order.priority:
         return False
+    # Planning authority (user ruling 2026-11-12): not every staff member who may edit
+    # the order may reprioritise it.
+    if user is not None and not user.has_tenant_perm('change_workorder_priority'):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Changing a work order's priority is a planning call — ask a "
+                               "planner or production manager.")
     reason = (reason or "").strip()
     if not reason:
         raise ValueError("Say why the priority is changing")

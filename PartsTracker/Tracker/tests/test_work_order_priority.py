@@ -28,6 +28,38 @@ class WorkOrderPriorityTests(TenantTestCase):
         self.assertEqual(self.wo.priority, 3)
         self.assertFalse(RecordEdit.objects.filter(object_id=self.wo.id).exists())
 
+    def test_reprioritising_is_planning_authority(self):
+        """User ruling 2026-11-12: change_workorder (every staff role) doesn't carry a
+        priority change; change_workorder_priority (planner, production manager, tenant
+        admin) does. The refusal says who can."""
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        operator = User.objects.create_user(username="pri-op", email="pri-op@t.test",
+                                            password="x", tenant=self.tenant_a)
+        self.grant_tenant_permissions(operator, self.tenant_a,
+                                      ["view_workorder", "change_workorder",
+                                       "full_tenant_access"])
+        self.authenticate_as(operator, self.tenant_a)
+        r = self.client.patch(self.url, {"priority": 1, "priority_reason": "Customer called"},
+                              format="json")
+        self.assertEqual(r.status_code, 403, r.content)
+        self.assertIn("planner or production manager", str(r.data))
+        self.wo.refresh_from_db()
+        self.assertEqual(self.wo.priority, 3)
+        # Other fields stay theirs to edit.
+        r = self.client.patch(self.url, {"notes": "Bench note"}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+
+        planner = User.objects.create_user(username="pri-pl", email="pri-pl@t.test",
+                                           password="x", tenant=self.tenant_a)
+        self.grant_tenant_permissions(planner, self.tenant_a,
+                                      ["view_workorder", "change_workorder",
+                                       "change_workorder_priority", "full_tenant_access"])
+        self.authenticate_as(planner, self.tenant_a)
+        r = self.client.patch(self.url, {"priority": 1, "priority_reason": "Customer called"},
+                              format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+
     def test_a_blank_reason_counts_as_none(self):
         r = self.client.patch(self.url, {"priority": 1, "priority_reason": "   "}, format="json")
         self.assertEqual(r.status_code, 400, r.content)

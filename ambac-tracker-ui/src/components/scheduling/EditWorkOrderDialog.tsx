@@ -16,6 +16,7 @@ import { MakeupPanel } from "@/components/workorders/MakeupPanel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import {
   useWorkOrder,
   useUpdateWorkOrder,
@@ -74,6 +75,7 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
   };
 
   const [priority, setPriority] = useState("");
+  const canPrioritise = usePermissionSet().has("change_workorder_priority");
   // `expected_start` is the solver's earliest-start bound, NOT the release gate — with
   // a real Release action on this dialog now, calling it "release date" would read as
   // the same thing twice.
@@ -135,7 +137,10 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1">
               <Label className="text-xs" title="Lower = higher priority">Priority</Label>
-              <Input type="number" value={priority} onChange={(e) => setPriority(e.target.value)} />
+              {/* Reprioritising is planning authority (user ruling 2026-11-12). */}
+              <Input type="number" value={priority} onChange={(e) => setPriority(e.target.value)}
+                disabled={!canPrioritise}
+                title={canPrioritise ? undefined : "Changing priority is a planning call — ask a planner or production manager."} />
             </div>
             <div className="grid gap-1">
               <Label className="text-xs" title="Parts started on this work order">Parts started</Label>

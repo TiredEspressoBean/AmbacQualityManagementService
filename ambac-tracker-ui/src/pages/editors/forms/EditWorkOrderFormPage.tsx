@@ -39,6 +39,7 @@ import type { Schema } from '@/lib/api/types'
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader.tsx";
 import { isFieldRequired } from '@/lib/zod-config'
 import { parseDateOnly } from "@/lib/date-only";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 const WORKORDER_STATUS = schemas.WorkOrderStatusEnum.options
 const PRIORITY_OPTIONS = [1, 2, 3, 4] as const
@@ -84,6 +85,10 @@ export default function WorkOrderFormPage() {
     const params = useParams({ strict: false })
     const mode = params.id ? "edit" : "create"
     const workOrderId = params.id
+    // Reprioritising an existing order is planning authority (user ruling 2026-11-12);
+    // a new order sets its first priority freely.
+    const { has } = usePermissionSet()
+    const priorityLocked = mode === "edit" && !has("change_workorder_priority")
 
     const [search, setSearch] = useState("")
     const [processSearch, setProcessSearch] = useState("")
@@ -222,7 +227,8 @@ export default function WorkOrderFormPage() {
                         render={({field}) => (
                             <FormItem>
                                 <FormLabel required={required.priority}>Priority</FormLabel>
-                                <Select onValueChange={(val) => field.onChange(parseInt(val, 10))} value={field.value?.toString() ?? ""}>
+                                <Select onValueChange={(val) => field.onChange(parseInt(val, 10))} value={field.value?.toString() ?? ""}
+                                    disabled={priorityLocked}>
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select priority"/>
@@ -238,6 +244,7 @@ export default function WorkOrderFormPage() {
                                 </Select>
                                 <FormDescription>
                                     Work order scheduling priority. Urgent jumps the queue — that's how a job is expedited.
+                                    {priorityLocked && " Changing it is a planning call — ask a planner or production manager."}
                                 </FormDescription>
                                 <FormMessage/>
                             </FormItem>

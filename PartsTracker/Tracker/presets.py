@@ -724,6 +724,7 @@ GROUP_PRESETS = {
         'permissions': [
             'apply_cyclecount',
             'cancel_workorder',
+            'change_workorder_priority',
             *SAMPLING_RULE_DELETE,
             *LOT_HOLD,
             *CORE_DECISION_PERMISSIONS,
@@ -872,6 +873,8 @@ GROUP_PRESETS = {
         'permissions': [
             'apply_cyclecount',
             'cancel_workorder',
+            # Reprioritising is a planning call (user ruling 2026-11-12).
+            'change_workorder_priority',
             *CORE_DECISION_PERMISSIONS,
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
@@ -1080,6 +1083,8 @@ GROUP_PRESETS = {
         'description': 'Owns the plan: releasing work, promising dates, running and '
                        'adjusting the schedule, and the calendars it is built on',
         'permissions': [
+            # Reprioritising is a planning call (user ruling 2026-11-12).
+            'change_workorder_priority',
             *CORE_DECISION_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,

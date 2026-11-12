@@ -3029,6 +3029,10 @@ class WorkOrder(SecureModel):
             # operator could cancel a work order. Manager-tier only, matching the
             # intent the role guides already described.
             ('cancel_workorder', 'Can cancel a work order'),
+            # Reprioritising — expediting — is a planning call (user ruling
+            # 2026-11-12): change_workorder, which every staff role holds for the
+            # order's other fields, doesn't carry it.
+            ('change_workorder_priority', "Can change a work order's priority"),
         ]
 
     @property
