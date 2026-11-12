@@ -169,18 +169,15 @@ placed in error. The history keeps both.
 
 ## 5. Jump a job to the front
 
-**You will:** expedite a work order, with the reason on record.
+**You will:** find out who expedites a work order, and get it done.
 
 There's no Expedite button: *expedited* means the work order's priority is
-**Urgent**.
+**Urgent**, and changing priority is a planning call.
 
-1. Edit `WO-OPS-03` and set **Priority** to **Urgent**.
-
-**Try to break it:** save without a reason. It refuses: *Say why the priority is
-changing.*
-
-2. Give the reason and save. **Priority changes** lists it: *Normal → Urgent*, your
-   name, the time and your reason.
+1. Edit `WO-OPS-03`. **Priority** is locked for you.
+2. Ask the production manager (or a planner) to set it to **Urgent**, and give
+   them the reason. Once they have, **Priority changes** on the work order lists
+   it: *Normal → Urgent*, their name, the time and the reason.
 
 ---
 

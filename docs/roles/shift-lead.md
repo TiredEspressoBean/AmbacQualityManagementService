@@ -92,20 +92,13 @@ There is **no Expedite action**. Jumping a job to the front means setting the
 work order's **priority** to **Urgent** — *Expedited* on the control centre is
 not a state you set, it is simply what priority Urgent looks like.
 
-!!! important "A priority change asks why, and keeps the answer"
-    Changing priority on **Data Management > Work Orders > edit** requires a
-    reason — *"Why change priority from Normal to Urgent?"* — and will not save
-    without one. The reason is stored with the change, and the edit form lists
-    the last five: *Normal → Urgent · who, when*, with the reason beneath.
-
-    So the trail answers *what, who, when* **and** *why*. Setting a priority when you first create the work order needs no
-    reason; there is nothing to explain yet.
-
-!!! note "Changing priority by import"
-    A CSV import or the master workbook's **Work Orders** sheet asks the same:
-    put the reason in a `priority_reason` column beside `priority`. A row that
-    changes priority without one is refused, and the reason is kept with the
-    change as it is from the edit form.
+**Changing priority is a planning call, not yours.** The priority control is
+locked for you on the work order form and the schedule, and a change you attempt
+another way is refused: *"Changing a work order's priority is a planning call —
+ask a planner or production manager."* To push a job up, ask a planner or the
+production manager, and tell them why. They give the reason when they change it,
+and the work order keeps it. See [Production
+Manager](production-manager.md).
 
 ## Speaking to the next shift
 

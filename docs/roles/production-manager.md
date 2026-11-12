@@ -189,6 +189,10 @@ There is **no Expedite action**. Jumping a job to the front means setting the
 work order's priority to **Urgent** — *Expedited* on the control centre is not a
 state you set, it is what Urgent looks like.
 
+Changing priority is planning authority: Production Manager, Planner and Tenant
+Admin hold it (`change_workorder_priority`). Everyone else sees the control
+locked, and shift leads and operators come to you to push a job up.
+
 1. Open the work order for edit
 2. Change the priority
 3. **Say why.** The form asks — *"Why change priority from Normal to Urgent?"* —

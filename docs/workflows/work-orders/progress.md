@@ -30,6 +30,9 @@ Due Date, Customer, Order, and a Details link.
 !!! important "There is no Expedite button — Expedited is derived"
     A work order counts as **Expedited** when its **priority is Urgent**. To jump
     a job to the front, set its priority; the tile and filter follow from that.
+    Changing priority needs planning authority (Production Manager, Planner,
+    Tenant Admin). Anyone else is refused: *"Changing a work order's priority is
+    a planning call — ask a planner or production manager."*
 
 !!! important "A priority change asks why, and keeps the answer"
     Changing priority on **Data Management > Work Orders > edit** requires a

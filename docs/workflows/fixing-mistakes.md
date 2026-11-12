@@ -36,7 +36,7 @@ that explains it.
 | A training override that shouldn't have been given | **Flag for QA review** on the override; the override itself stands | Shift Lead | [An override that shouldn't have been given](quality/training-records.md#an-override-that-shouldnt-have-been-given) |
 | A work order held, or released, by mistake | **Resume** saying it was in error / **Un-release** | Shift Lead, Production Manager | [Undoing one by mistake](work-orders/progress.md#undoing-one-by-mistake) |
 | A work order short-closed by mistake | **Reopen**, with a reason | Production Manager | [Short-closed by mistake](work-orders/basics.md#short-closed-by-mistake) |
-| A priority set wrong | Set it again; it asks why | Production Manager, Shift Lead | [Work Order Progress](work-orders/progress.md) |
+| A priority set wrong | Set it again; it asks why | Production Manager, Planner | [Work Order Progress](work-orders/progress.md) |
 
 ## Quality
 
