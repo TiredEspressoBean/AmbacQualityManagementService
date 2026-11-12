@@ -40,6 +40,9 @@ As an Operator, you:
 *See everything ready* — you do not have to be told what to work on, and you do
 not start from the Work Orders page. Your own unfinished work leads **Up next**
 (**Finish**), then the plan's order; work someone else is holding isn't offered.
+A job waiting on a first piece shows how many parts can start (*N can start
+until QA buys off the first piece*), and jobs where none can are counted as
+*waiting on QA to buy off a first piece* rather than offered.
 
 Shift notes and notifications land here too. A note marked **MUST ACKNOWLEDGE**
 wants a **Got it** before you start; it is how the last shift talks to you.
@@ -125,10 +128,12 @@ forward on their own.
     usually because one part in the lot still has outstanding work.
 
 !!! note "First Piece Inspection can hold the step"
-    If the step has a pending First Piece Inspection, advancing is blocked for
-    every part at that step until the FPI is signed off. **Complete step** stays
-    put — it commits your captures. A separate sign-off button appears next to it
-    for whoever is authorised to buy the first piece off.
+    If the step has a pending First Piece Inspection, only the first piece's
+    parts can start, and they can't move on until it is signed off. Other parts
+    are refused at Start Work (*Waiting on: QA to buy off the first piece.*).
+    **Complete step** stays put — it commits your captures. A separate sign-off
+    button appears next to it for whoever is authorised to buy the first piece
+    off.
 
 ### Quick Tips
 
@@ -255,13 +260,17 @@ If FPI is required at your step:
 
 ### The Process
 
-1. **Start FPI** from the banner — this designates the first piece and holds
-   the run
-2. Run that part's work instruction as normal and **Complete step** — its own
+1. **Start Work** on the first part. That opens the first piece and calls QA.
+   If the step's first piece is several parts (one per fixture nest), the banner
+   says how many more can start as part of it; start those too
+2. Run each piece's work instruction as normal and **Complete step** — its own
    captures *are* the inspection
 3. QA buys it off. There is nothing to submit and nothing queues for review:
    finishing the captures is what makes it ready
-4. Once it passes, the whole step is released and the batch continues
+4. Once it passes, the rest of the parts can start
+5. If the setup changes during the run (a tool change, an offset adjustment, a
+   crash, a repair), press **New setup** on the banner and say what changed. The
+   next part you start is a new first piece
 
 !!! tip "You don't have to go and find QA"
     Once the first piece is ready, a **Get QA sign-off** button appears beside
@@ -271,9 +280,10 @@ If FPI is required at your step:
 
 ### While Waiting
 
-- Other parts are held automatically
-- Continue setup verification
-- Don't proceed until FPI passes
+- Other parts can't be started until it passes; Start Work says what it's
+  waiting on
+- QA has been notified; your home page shows whether they've seen it
+- Work on another job or step in the meantime
 
 ## End of Shift
 

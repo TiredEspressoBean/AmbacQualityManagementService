@@ -274,13 +274,15 @@ the start is refused, naming the disposition. Rework reaches the part through th
 
 ## First Piece Inspection (FPI)
 
-On a step's first pass, one part is the **first piece**. The operator runs the
-work instruction on it; you buy it off before the rest of the batch runs.
+At a step with the **First piece** gate, the first part started (or the first
+**N**, one per fixture nest) is the **first piece**. The operator runs the work
+instruction on it; you buy it off before the rest of the batch can start. You
+are called as soon as the first part starts: *First piece waiting: &lt;step&gt;*.
 
 !!! important "It is a batch gate, not a per-part check"
     The work order's control page says so plainly: *"No part moves past these
-    steps until the first piece is bought off."* A missing or failed FPI holds
-    the whole batch.
+    steps until the first piece is bought off."* Until then, no other part at
+    the step can even start. A missing or failed FPI holds the whole batch.
 
 ### Where it appears
 
@@ -301,10 +303,16 @@ you don't hold `sign_off_fpi`. **Waive** asks for a reason of at least 10
 characters. Sign off and Waive meet the step's password assurance; Fail does not
 need it.
 
-**Fail** asks for the reason. The first piece is quarantined with a FAIL report
-carrying your reason, and its disposition opens, unassigned. The run stays held:
-the control page shows **First piece failed — run held**, with **Start a new first
-piece** for after the setup is corrected.
+A first piece of several parts is bought off whole: until every piece is made,
+sign-off is refused (*"The first piece is 1 more piece short — each nest's piece
+is made before the buy-off."*).
+
+**Fail** asks **Which pieces failed?** and the reason. Each ticked piece is
+quarantined with a FAIL report carrying your reason, and its disposition opens,
+unassigned. The untouched pieces wait and are released when the re-run first
+piece passes. The run stays held: the control page shows **First piece failed —
+run held**. Once the setup is corrected, the next part started is the new first
+piece.
 
 ### Signing off
 
@@ -313,7 +321,8 @@ piece** for after the setup is corrected.
 The dialog states what you are attesting to:
 
 > By signing off you attest that the setup is correct and the first piece
-> conforms, and this releases the run. It is recorded against your name.
+> (&lt;parts&gt;) conforms, and this releases the run. It is recorded against your
+> name.
 
 Add notes — gauges used, observations — and confirm. The banner turns green and
 the run is released.

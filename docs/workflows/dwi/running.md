@@ -9,8 +9,13 @@ player. See [Digital Work Instructions](overview.md) for the concepts.
 2. Open your assigned work order
 3. Click **Start Work**
 4. In the **Start work on parts** dialog, check the parts you'll work on, *in
-   the order you'll work them*
-5. Confirm
+   the order you'll work them*. A part on hold shows as *on hold* and can't be
+   checked
+5. If the step runs on more than one machine, **Machine** shows *As planned*.
+   *"Running it on another machine? Pick it: the checks judge that one, and it's
+   recorded on the work."* A machine that can't run reads *&lt;name&gt; — not
+   available* and is greyed out
+6. Confirm
 
 The player opens on the first part you checked. After you complete a part's
 step, it moves to the next checked part automatically, so you can work through
@@ -19,18 +24,38 @@ a batch without going back to the work order.
 ### What can stop you starting
 
 Every way of starting a step runs the same checks: **Start Work**, starting a
-load, and any other route into the step. Some refusals nobody on the floor can
-override. Their owner has to act first:
+load, and any other route into the step. Which checks apply is set per step (see
+[Gates](../../admin/processes/steps.md#gates)). A refusal reads *Couldn't start
+&lt;part&gt;*, gives the reason, and ends with who the work is waiting on:
+*Waiting on: &lt;who&gt;.*
 
-| Refused because | Who clears it |
-|---|---|
-| The work order is on hold, cancelled or completed | Whoever holds the work order clears the hold |
-| The part is quarantined | QA, by deciding its disposition |
-| The work order runs a temporary change whose end date has passed | Change control: extend it, or move the order back to baseline |
-| A remanufactured unit is waiting on the customer's authorisation | The reman lead records the customer's answer |
+Some refusals nobody on the floor can override. Their owner has to act first,
+and is notified when the start is refused:
+
+| Refused because | Waiting on | Notified |
+|---|---|---|
+| The work order is on hold, cancelled or completed | The work order's hold to clear | Production Manager |
+| The work order runs a temporary change whose end date has passed | Change control to extend the deviation, or the order moved back to baseline | Engineering, Document Controller |
+| The part is quarantined | The part's disposition | QA Manager, QA Inspector |
+| The part is on hold | The part's hold to be released | Shift Lead, Production Manager |
+| A remanufactured unit is waiting on the customer's authorisation | The customer's authorisation | Production Manager |
+| The machine is out of service, in maintenance or in calibration (*"&lt;machine&gt; is in maintenance — it can't run work until it is back in service."*) | The machine back in service | Shift Lead, Production Manager |
+| The part is at its life limit | An approved extension | Engineering, QA Manager |
+| A tool or fixture is at its life limit (*"&lt;tool&gt; has reached its life limit (&lt;limit&gt;: 2 of 2 parts) — reset it after refurbishment, or get an extension approved."*, with **Open** to the tool's page) | The tool reset or extended | Engineering, Shift Lead |
+| The first piece isn't bought off yet | QA to buy off the first piece | QA, already called by the first piece (see [First Piece Inspection](../work-orders/fpi.md)) |
+
+The notification reads *Can't start &lt;part&gt;: waiting on &lt;who&gt;* and opens
+the work order. A repeat of the same refusal within the hour isn't sent again.
+On a work order that's on hold, **Start Work** is disabled up front and shows
+the hold reason.
 
 Others a supervisor can authorize: missing training (below), a repeat-visit
-rule, and a step assigned to someone else.
+rule, and a step assigned to someone else. These notify nobody; the refusal
+says to ask a supervisor. When a start is refused for both kinds, the refusal
+gives the first and adds what's waiting behind it: *"Also needed once that's
+cleared: a supervisor (not qualified: &lt;training&gt;)."* The supervisor sign-in
+opens only once the first is cleared, since signing before then would still
+leave the start refused.
 
 You can't record work on a step nobody has started: *"Start Work on … before
 recording work on it."* Correcting a voided result on a finished step is the
@@ -38,9 +63,11 @@ exception. That is a re-capture, not new work.
 
 ## If you're not qualified for the step
 
-Steps can carry training requirements. If you don't hold the training, the
-system **stops you** and names what is missing — it does not quietly let the
-work proceed and flag it later.
+Steps can carry training requirements, and so can the type of machine you run
+the step on. If you don't hold the training, the system **stops you** and names
+what is missing (*"You are not qualified for this step."*, then e.g. *&lt;training&gt;
+— Not completed (needs Level 3)*). It does not quietly let the work proceed and
+flag it later.
 
 This is a competence control (ISO 9001 **7.2**), and the check runs at the
 moment work starts, not when it is signed off.

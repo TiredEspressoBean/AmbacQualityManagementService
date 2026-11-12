@@ -118,12 +118,19 @@ The properties panel covers:
 
 ### Gates
 
-A step's **Gates** list is every check the step runs. You compose it per step.
-A gate the step doesn't carry isn't checked at all. Each gate shows when it is
-checked:
-- **Before start**: when someone starts work on a part at the step, or starts a
-  load.
+A step's **Gates** list is every check the step runs: *"The checks that stop
+work starting at this step, or hold a part here until they're met."* You compose
+it per step. A gate the step doesn't carry isn't checked at all. Each gate shows
+when it is checked:
+- **Before start**: whenever work on a part starts at the step, whatever the
+  route: Start Work, starting a load or adding to one, sending parts out to a
+  vendor, or a teardown.
 - **To move on**: when the part leaves the step.
+
+A start refused by a gate says what it is waiting on (*Waiting on: …*), notifies
+whoever clears it (see [notification
+rules](../setup/notification-rules.md)), and lists anything a supervisor will
+also need to authorize once it's cleared.
 
 It's in the flow editor's step panel under **Advanced**, and on the step form
 (**Edit Step**). **Add a gate** lists the gates the step doesn't have yet. **×**
@@ -135,27 +142,32 @@ removes one.
 | **Deviation in date** | Before start | *A temporary change past its end date starts no work until change control extends it.* | — |
 | **Part not quarantined** | Before start | *A quarantined part waits for its disposition.* | — |
 | **Customer authorisation** | Before start | *A reman unit parked for the customer's answer isn't worked.* | — |
-| **Operator trained** | Before start | *The operator holds the step's training; a supervisor can authorize past it.* | — |
+| **Part not on hold** | Before start | *A part on hold isn't started until its hold is released. Rework needed stays startable.* | — |
+| **Machine in service** | Before start | *No work starts on a machine that is out of service, in maintenance or in calibration.* The machine is the one the part is started on: picked at Start Work, or the planned one | — |
+| **Life limit** | Before start | *A part at its life limit (including how often a unit has been remanned) doesn't start without an approved extension.* Work started inside the limit may finish | — |
+| **Tool life** | Before start | *No work starts with a tool or fixture at its life limit until it's reset after refurbishment or an extension is approved.* | — |
+| **Operator trained** | Before start | *The operator holds the step's training, and the machine type's; a supervisor can authorize past it.* | — |
 | **Repeat visits** | Before start | *Who may work a part that comes back to this step; a supervisor can authorize past it.* A first visit is never constrained. | **Repeat visits are worked by**: *The same operator as before*, *A different operator*, or *Someone in a role* (then pick the **Role**, which is required) |
 | **Work instruction done** | To move on | *The work instruction's required substeps are complete.* | — |
 | **Qualified operator on record** | To move on | *Work that never passed a start check needs a qualified operator recorded.* | — |
-| **Life limit** | To move on | *A part past its life limit doesn't move on without an approved extension.* | — |
 | **Quarantine hold** | To move on | *A quarantined part can't move on from this step until its quarantine is decided.* | — |
 | **QA sign-off** | To move on | *QA signs the step off before parts move on.* | **How the inspector signs**: *Check off — recorded under their login*, or *Signature + password — they re-enter their own password* |
-| **First piece** | To move on | *The first piece is bought off before the rest move on.* | **First piece covers**: *Per work order*, *Per shift* or *Per machine*. **How the inspector signs the buy-off**: *Check off* or *Signature + password*. If the step's **QA sign-off** asks for a password, the buy-off does too. See [First Piece Inspection](#first-piece-inspection) |
+| **First piece** | Before start and to move on | *Only the first piece starts until QA buys it off; then the rest start.* | **First piece covers**: *Per work order*, *Per shift* or *Per machine*. **Pieces in the first piece**: *The first parts started make up the first piece — one per fixture nest. Until QA buys it off, only these may start.* **How the inspector signs the buy-off**: *Check off* or *Signature + password*. If the step's **QA sign-off** asks for a password, the buy-off does too. See [First Piece Inspection](#first-piece-inspection) |
 | **Readings in spec** | To move on | *A part with an out-of-spec reading at this step can't move on until it's dealt with.* The part is held with *"One or more measurements are out of specification"* | — |
 
 A new step starts with **Work order workable**, **Deviation in date**, **Part
-not quarantined**, **Customer authorisation**, **Operator trained**, **Work
-instruction done**, **Qualified operator on record** and **Life limit**. Any of
-them can be removed, so a step without **Operator trained** doesn't check
+not quarantined**, **Customer authorisation**, **Part not on hold**, **Machine in
+service**, **Life limit**, **Operator trained**, **Work instruction done** and
+**Qualified operator on record**. **Tool life**, **Repeat visits**, **Quarantine
+hold**, **QA sign-off**, **First piece** and **Readings in spec** are added where
+a step needs them. Any gate can be removed, so a step without **Operator trained** doesn't check
 training at all. Removing one is a deliberate decision, and it shows in the
 change history.
 
 Changing a step's gates is a change to the step, like any other edit. On an
 approved process it goes through a draft revision or a process change request.
-The PCR's changes list each one, e.g. *gate:first_piece — off → on (Per
-Shift)*.
+The PCR's changes list each one, e.g. *gate:first_piece on (Per work order, 2
+pieces) → on (Per work order, 2 pieces, buy-off signature + password)*.
 
 !!! warning "A quarantined part keeps moving unless the step has Quarantine hold"
     A quarantined part can **never ship**; that is unconditional. **Part not
@@ -260,8 +272,9 @@ gate it: nothing checks that a document was opened before a part moves on.
 
 ### First Piece Inspection
 
-Add the **First piece** gate to the step. The first part must pass FPI, and the
-remaining parts are held until it does.
+Add the **First piece** gate to the step. The first **N** parts started (its
+**Pieces in the first piece**) make up the first piece. Until QA buys it off,
+only those parts can start; the rest are refused at Start Work.
 
 #### What one first piece covers
 

@@ -106,7 +106,7 @@ A category of defect or non-conformance (e.g., Dimensional, Visual, Functional) 
 ## F
 
 ### First Piece Inspection (FPI)
-A quality check performed on the first part of a production run to verify setup before proceeding with the full batch.
+A quality check on the first part (or first few, one per fixture nest) made at a step, to verify the setup. Until QA buys it off, no other part at the step can start.
 
 ### FPY (First Pass Yield)
 A quality metric: the percentage of parts that pass all steps without rework or rejection.

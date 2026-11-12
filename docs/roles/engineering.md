@@ -90,6 +90,12 @@ travels with the definition rather than being incidental to it.
 Removing a link from the part type page is a soft delete; linking the pair again
 revives it.
 
+A definition with a **Tooling type** limits every tool, die or fixture of that
+equipment type instead, and one whose unit is **remans** on a core type limits
+how many times a unit is remanufactured. You're one of the groups that approves
+someone else's request to extend a limit, and that resets life after a
+refurbishment. See [Life Tracking](../workflows/tracking/life-tracking.md).
+
 ## What you don't hold
 
 | Not yours | Whose |

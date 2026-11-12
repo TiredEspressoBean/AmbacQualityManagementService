@@ -253,7 +253,9 @@ A bypass clears only the kind of block it was requested for.
 These can't:
 
 - **Training.** Use the supervisor override when the work starts.
-- **Life limits.** These need a limit extension.
+- **Life limits.** These are checked when work starts, and need an approved
+  limit extension. See [Extending a
+  limit](life-tracking.md#extending-a-limit).
 - **A required step of the work instruction that isn't done**, including a
   measurement not yet taken. Do the step.
 

@@ -38,8 +38,11 @@ Configuration](../../admin/processes/steps.md#outside-processing).
 
 Sending parts out starts their outside-process step, so the step's start checks
 apply. Parts can't be sent out while their work order is on hold, cancelled or
-completed, or while a part is quarantined. The refusal names each part, and
-nothing ships.
+completed, or while a part is quarantined, and the board doesn't list parts
+whose work order is held, cancelled or completed. A refusal gives one line per
+reason, naming the parts: *"Can't send out &lt;parts&gt;: &lt;work order&gt; is on hold
+(&lt;reason&gt;: &lt;notes&gt;) — clear the hold before sending parts out."* Nothing
+ships.
 
 A part already sent out and received back for this step doesn't return to
 **Ready to ship**, and **Send out** refuses it: *"&lt;part&gt; has already been

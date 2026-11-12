@@ -74,6 +74,26 @@ A tenant is seeded in two passes when it is created.
 | Training expired | QA Manager, Production Manager, and the operator |
 | Shift note posted | The note's audience |
 
+**A start refused by a step's gate** gets one rule per gate, each named *Start
+refused (&lt;gate&gt;) - call &lt;groups&gt;* and conditional on that gate:
+
+| Gate | Routes to |
+|------|-----------|
+| Work order workable | Production Manager |
+| Deviation in date | Engineering, Document Controller |
+| Part not quarantined | QA Manager, QA Inspector |
+| Part not on hold | Shift Lead, Production Manager |
+| Customer authorisation | Production Manager |
+| Machine in service | Shift Lead, Production Manager |
+| Life limit | Engineering, QA Manager |
+| Tool life | Engineering, Shift Lead |
+
+The notification reads *Can't start &lt;part&gt;: waiting on &lt;who&gt;* and links to
+the work order. The same part refused by the same gate is notified once an hour
+at most, whatever the rule's gap. A first-piece refusal has no rule: QA is
+already called by *First Piece Waiting*. Refusals a supervisor clears on the
+spot (training, repeat visits, someone else's work) notify nobody.
+
 **Everything else** is filled in from each event's own default recipient
 groups — this is where rules like *First Piece Waiting* and *Unapproved Part
 Receipt* come from. An event that declares no defaults gets **no rule at all**,

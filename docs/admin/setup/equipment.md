@@ -9,11 +9,17 @@ Equipment records represent:
 - **Production machines** - CNC, presses, assembly stations
 - **Measurement instruments** - CMMs, calipers, gauges, torque tools
 
-!!! note "Fixtures, cutting tools, dies and NC programs are Tooling, not equipment"
+!!! note "Tooling for scheduling, equipment for life"
     Shared tooling has its own editor — **Data Management** > **Tooling**
     (`/editor/tooling`) — with a kind (Fixture, Cutting tool, Die / mold, NC
     program, Other), a quantity, and the steps that require it. The scheduler
     holds back operations that need a tool while every one of it is in use.
+
+    A tool, die or fixture whose **life** is tracked is also recorded here, as
+    equipment: one record per physical item, of an equipment type that has a
+    life limit. Its **Life** section shows what it has used against each limit,
+    with **Reset** and **Request an extension**. See [Tool and fixture
+    life](../../workflows/tracking/life-tracking.md#tool-and-fixture-life).
 
 !!! note "Equipment does not belong to a work centre"
     A **work centre** groups **steps**, not machines — it is a property of the
