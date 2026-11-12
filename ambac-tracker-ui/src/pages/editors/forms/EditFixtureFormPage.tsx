@@ -142,7 +142,7 @@ export default function EditFixtureFormPage() {
     // An edit sends the tracked type only when the user changed it, so a picker that
     // failed to show the saved type can never clear it (P3 walk, 2026-11-12).
     const savedType = fixture?.equipment_type ? String(fixture.equipment_type) : null;
-    const typeChanged = mode !== "edit" || chosenType !== savedType;
+    const typeChanged = mode !== "edit" || (equipmentType !== "" && chosenType !== savedType);
     const body = {
       name: values.name,
       kind: values.kind,
@@ -268,7 +268,11 @@ export default function EditFixtureFormPage() {
 
           <div className="space-y-2">
             <Label htmlFor="fixture-eqtype">Tracked as equipment</Label>
-            <Select value={equipmentType} onValueChange={setEquipmentType}>
+            {/* Radix mirrors the value into a hidden native <select> inside a form; set
+                before the type options load, that select can't hold it and reports "",
+                which Radix passes on — it blanked the saved type (P3 walk 2026-11-12).
+                "" is never a real choice, so it's ignored. */}
+            <Select value={equipmentType} onValueChange={(v) => { if (v) setEquipmentType(v); }}>
               {/* The label is given, not looked up from the items: the saved type was set
                   before the type list loaded and the trigger rendered blank. */}
               <SelectTrigger id="fixture-eqtype" className="w-full">
