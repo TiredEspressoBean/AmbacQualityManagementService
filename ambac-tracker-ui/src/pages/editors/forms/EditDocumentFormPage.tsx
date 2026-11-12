@@ -531,9 +531,7 @@ export default function DocumentFormPage() {
                                 <FormLabel required={required.classification}>Classification Level</FormLabel>
                                 <Select
                                     value={field.value}
-                                    // Ignore Radix's "" for a value it can't match yet, so the
-                                    // stored classification is never blanked behind the user.
-                                    onValueChange={(v) => { if (v !== "") field.onChange(v); }}
+                                    onValueChange={field.onChange}
                                     disabled={classificationLocked}
                                 >
                                     <FormControl>

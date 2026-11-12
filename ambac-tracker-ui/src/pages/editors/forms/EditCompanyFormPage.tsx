@@ -324,16 +324,7 @@ export default function CompanyFormPage() {
                                 <FormLabel>Core fulfilment arrangement</FormLabel>
                                 <Select
                                     value={field.value || UNSET}
-                                    onValueChange={(v) => {
-                                        // Radix emits "" on mount, before the
-                                        // content is mounted to match the value
-                                        // against — which lands AFTER the reset
-                                        // above and silently blanked the loaded
-                                        // arrangement. No SelectItem carries "",
-                                        // so it is never a real choice.
-                                        if (!v) return;
-                                        field.onChange(v === UNSET ? null : v);
-                                    }}
+                                    onValueChange={(v) => field.onChange(v === UNSET ? null : v)}
                                 >
                                     <FormControl>
                                         <SelectTrigger>

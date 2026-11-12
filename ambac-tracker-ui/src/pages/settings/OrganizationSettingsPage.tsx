@@ -477,17 +477,7 @@ export function OrganizationSettingsPage() {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Shop floor timezone</FormLabel>
-                                            {/* Re-key on the value so Radix Select shows the loaded
-                                                value after the async settings fetch populates the
-                                                form — without this the trigger sticks on the
-                                                placeholder. Same workaround as the approval-template
-                                                form. */}
-                                            <Select
-                                                key={`tz-${field.value ?? "empty"}`}
-                                                onValueChange={field.onChange}
-                                                value={field.value}
-                                                defaultValue={field.value}
-                                            >
+                                            <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select timezone" />

@@ -316,16 +316,7 @@ export default function ApprovalTemplateFormPage() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel required={required.approval_type}>Approval Type</FormLabel>
-                                    {/* Re-key on the field value so Radix Select shows
-                                        the loaded value after `form.reset()` fires on
-                                        template load. Without this, the trigger renders
-                                        with the placeholder even though `value` is set. */}
-                                    <Select
-                                        key={`approval-type-${field.value ?? "empty"}`}
-                                        onValueChange={field.onChange}
-                                        value={field.value}
-                                        defaultValue={field.value}
-                                    >
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select approval type" />

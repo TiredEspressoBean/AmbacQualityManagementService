@@ -4,10 +4,28 @@ import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+// Inside a <form>, Radix mirrors the value into a hidden native <select>. A value set
+// before its options exist (an edit form whose list loads after the record) can't be
+// held there, so the native select reports "" and Radix passes it to onValueChange —
+// wiping the saved value in the caller's state, and a save then writes it (2026-11-12,
+// the tooling form's tracked type). "" is never a choice a person makes: Radix forbids
+// an item with value "", and clearing is done through `value`, not onValueChange. So
+// it is dropped here, for every Select.
 function Select({
+  onValueChange,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />
+  const guarded = React.useCallback(
+    (v: string) => { if (v !== "") onValueChange?.(v) },
+    [onValueChange]
+  )
+  return (
+    <SelectPrimitive.Root
+      data-slot="select"
+      onValueChange={onValueChange ? guarded : undefined}
+      {...props}
+    />
+  )
 }
 
 function SelectGroup({

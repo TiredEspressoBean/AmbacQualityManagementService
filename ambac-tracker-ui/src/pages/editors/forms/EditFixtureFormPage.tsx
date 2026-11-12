@@ -121,8 +121,6 @@ export default function EditFixtureFormPage() {
   useEffect(() => {
     if (mode === "edit" && fixture) {
       const f = fixture;
-      // Radix Select doesn't reflect an RHF `values`-driven update, so set kind explicitly.
-      form.setValue("kind", (f.kind ?? "FIXTURE") as FormValues["kind"], { shouldDirty: false });
       const ids: string[] = (f.steps ?? []).map(String);
       const names: string[] = f.step_names ?? [];
       setSelected(ids.map((id, i) => ({ id, label: names[i] ?? "Step" })));
@@ -142,7 +140,7 @@ export default function EditFixtureFormPage() {
     // An edit sends the tracked type only when the user changed it, so a picker that
     // failed to show the saved type can never clear it (P3 walk, 2026-11-12).
     const savedType = fixture?.equipment_type ? String(fixture.equipment_type) : null;
-    const typeChanged = mode !== "edit" || (equipmentType !== "" && chosenType !== savedType);
+    const typeChanged = mode !== "edit" || chosenType !== savedType;
     const body = {
       name: values.name,
       kind: values.kind,
@@ -218,14 +216,7 @@ export default function EditFixtureFormPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Kind</FormLabel>
-                  <Select
-                    // Key by the value so the Select remounts when the value changes — a
-                    // controlled Radix Select won't reflect an RHF value set after mount, but
-                    // it reads the value correctly on a fresh mount.
-                    key={field.value ?? "FIXTURE"}
-                    value={field.value ?? "FIXTURE"}
-                    onValueChange={field.onChange}
-                  >
+                  <Select value={field.value ?? "FIXTURE"} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Select kind" /></SelectTrigger>
                     </FormControl>
@@ -268,11 +259,7 @@ export default function EditFixtureFormPage() {
 
           <div className="space-y-2">
             <Label htmlFor="fixture-eqtype">Tracked as equipment</Label>
-            {/* Radix mirrors the value into a hidden native <select> inside a form; set
-                before the type options load, that select can't hold it and reports "",
-                which Radix passes on — it blanked the saved type (P3 walk 2026-11-12).
-                "" is never a real choice, so it's ignored. */}
-            <Select value={equipmentType} onValueChange={(v) => { if (v) setEquipmentType(v); }}>
+            <Select value={equipmentType} onValueChange={setEquipmentType}>
               {/* The label is given, not looked up from the items: the saved type was set
                   before the type list loaded and the trigger rendered blank. */}
               <SelectTrigger id="fixture-eqtype" className="w-full">
