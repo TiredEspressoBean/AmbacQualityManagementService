@@ -223,15 +223,11 @@ used. It is kept against the measurement, which is what lets quality answer
 
 ### Calibration — the system handles it, you don't have to remember
 
-A gauge whose calibration **failed**, or that is out of service, **cannot be
-used to capture a measurement**. The capture is refused outright: *"Recalibrate
-or pick a different gauge."* Get a different one and tell your lead — the gauge
-is the problem, not your reading.
-
-A gauge that is merely **overdue** is different. The reading is **recorded** and
-you are told, because an overdue check is a scheduling lapse rather than
-evidence the gauge is wrong. Don't ignore the warning, but your work is not
-lost.
+A gauge whose calibration is **overdue** or **failed**, that was never
+calibrated, or that is out of service **cannot be used to capture a
+measurement**. The picker shows it greyed with the reason (*— calibration
+overdue since &lt;date&gt;*), and won't let you choose it. Get a gauge that's in
+calibration and tell your lead — the gauge is the problem, not your reading.
 
 Nobody can quietly put a failed gauge back into service either: returning
 equipment to service is refused until a *passing* calibration is recorded

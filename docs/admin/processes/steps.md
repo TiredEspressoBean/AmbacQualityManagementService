@@ -143,7 +143,7 @@ removes one.
 | **Part not quarantined** | Before start | *A quarantined part waits for its disposition.* | — |
 | **Customer authorisation** | Before start | *A reman unit parked for the customer's answer isn't worked.* | — |
 | **Part not on hold** | Before start | *A part on hold isn't started until its hold is released. Rework needed stays startable.* | — |
-| **Machine in service** | Before start | *No work starts on a machine that is out of service, in maintenance or in calibration.* The machine is the one the part is started on: picked at Start Work, or the planned one | — |
+| **Machine in service** | Before start | *No work starts on a machine that is out of service, in maintenance, in calibration or past its calibration.* The machine is the one the part is started on: picked at Start Work, or the planned one | — |
 | **Life limit** | Before start | *A part at its life limit (including how often a unit has been remanned) doesn't start without an approved extension.* Work started inside the limit may finish | — |
 | **Tool life** | Before start | *No work starts with a tool or fixture at its life limit until it's reset after refurbishment or an extension is approved.* | — |
 | **Operator trained** | Before start | *The operator holds the step's training, and the machine type's; a supervisor can authorize past it.* | — |

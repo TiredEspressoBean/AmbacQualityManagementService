@@ -185,6 +185,13 @@ later counts, so an after-repair Pass recorded the same day as a Fail returns
 the gauge to service. A gauge whose latest calibration failed is listed as
 **Failed**, not Overdue, here and on the Calibration Due report.
 
+Overdue and Failed both stop use. A gauge in either state, or one that was never
+calibrated, can't record a reading: the pickers grey it out with the reason. A
+production machine in either state can't start work at a step with the **Machine
+in service** gate (*"&lt;machine&gt; is past its calibration — it can't run work
+until it is calibrated."*), and QA Manager is notified along with the Shift Lead
+and Production Manager.
+
 ### Recording Calibration
 
 A calibration is its own record, written from **Quality** > **Calibrations**, not

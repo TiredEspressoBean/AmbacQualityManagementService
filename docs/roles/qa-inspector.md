@@ -447,17 +447,11 @@ Escalate to QA Manager as needed.
 
 ### Measurement equipment shows overdue or failed
 
-The two are handled differently, and the system tells you which you have:
-
-- **Failed** calibration, or out of service — the gauge is greyed in the picker
-  and the capture is **refused**. Pick a different gauge; this one cannot be used
-  until a passing calibration is recorded.
-- **Overdue** — marked *calibration overdue* in the picker, and the reading **is
-  accepted**, with a warning. An overdue check is
-  a scheduling lapse, not evidence the gauge is wrong. Record the work, then
-  get it calibrated.
-
-Either way, tell whoever owns calibration.
+Either way the gauge is greyed in the picker with the reason (*calibration
+overdue since &lt;date&gt;*, *calibration failed*, *never calibrated* or *out of
+service*), and a reading naming it is **refused**. Pick a different gauge; this
+one can't be used until a current, passing calibration is recorded. Tell whoever
+owns calibration.
 
 ### Can't find part to inspect
 

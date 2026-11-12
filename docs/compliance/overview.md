@@ -41,10 +41,10 @@ defense, aerospace, automotive and general manufacturing.
     - **Approval workflows**: an approval request's responses, each with its signer, time and signature
     - **Access control**: a customer user sees only the orders they are the customer or a viewer of, and what hangs off them
     - **Training compliance**: an operator whose certification has lapsed is stopped at the step that needs it, unless a supervisor authorises it with a reason
-    - **Calibration**: a gauge that is out of service or whose calibration
-      **failed** is refused on every path that records a reading; one merely
-      **overdue** records the reading and warns —
-      the two are deliberately different controls
+    - **Calibration**: a gauge that is out of service, overdue, never
+      calibrated, or whose calibration **failed** is refused on every path that
+      records a reading, and a production machine past its calibration can't
+      start work
     - **Document control**: version history and approval workflow on a
       controlled document
 

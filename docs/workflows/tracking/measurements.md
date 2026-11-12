@@ -106,18 +106,27 @@ Measurements may require calibrated equipment:
 2. System verifies calibration is current
 3. Measurement is linked to equipment record
 
-!!! warning "Failed calibration is refused; overdue is only a warning"
-    The two are treated differently on purpose.
+!!! warning "A gauge that isn't in calibration can't be used"
+    The gauge pickers list every gauge, but one that can't be used is greyed out
+    with the reason, and a default that can't be used isn't pre-selected:
 
-    | Gauge state | What happens |
-    |-------------|--------------|
-    | **Out of service**, or its last calibration **failed** | The reading is **refused** on every path — operator capture, the measurements API, bulk recording, and an edit to a recorded reading that names the gauge: *"Equipment '&lt;name&gt;' is OUT_OF_SERVICE (failed or missing calibration). Recalibrate or pick a different gauge."* |
-    | Calibration **overdue** | Marked *calibration overdue* in the picker; the reading **is recorded**, and you are told |
+    | Gauge state | In the picker |
+    |-------------|---------------|
+    | Calibration **overdue** | *&lt;gauge&gt; — calibration overdue since &lt;date&gt;* |
+    | Requires calibration, never calibrated | *&lt;gauge&gt; — never calibrated* |
+    | **Out of service** | *&lt;gauge&gt; — out of service* |
+    | Last calibration **failed** | *&lt;gauge&gt; — calibration failed* |
 
-    A failed check is evidence the gauge was wrong, so anything it measures is
-    suspect at the moment of writing — the refusal happens at the source rather
-    than relying on someone noticing later. **Overdue is a scheduling lapse, not
-    evidence of error**, so the reading stands and the nag is the control.
+    A reading naming such a gauge is **refused** on every path that records
+    one (operator capture, the measurements API, bulk recording, re-capture),
+    e.g.
+    *"Equipment '&lt;name&gt;' is past its calibration — it was due &lt;date&gt;.
+    Recalibrate it or pick a different gauge."* Pick a gauge that's in
+    calibration, and tell whoever owns calibration.
+
+    A reading is evidence only if the gauge that took it was known to be good at
+    the time, so the refusal happens at the source rather than relying on someone
+    noticing later.
 
     Both the status flag and the calibration result are checked, so an edit that
     puts the two out of step cannot open a gap.
