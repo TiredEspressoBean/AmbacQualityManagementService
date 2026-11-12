@@ -115,3 +115,22 @@ class PartsStartedTests(MakeupPlanningTests):
         bulk_add_parts_to_workorder(wo, self.pt, self.step, 3, erp_id_start=10, count_as_started=True)
         wo.refresh_from_db()
         self.assertEqual((wo.quantity, wo.target_good_quantity), (8, 5))
+
+    def test_adding_an_imported_jobs_parts_doesnt_count_them_twice(self):
+        """P9 (2026-11-12): an imported work order carries its quantity with no parts;
+        Add Parts for that quantity read double parts started."""
+        from Tracker.services.mes.work_order import bulk_add_parts_to_workorder
+        wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-IMP", workorder_status=WorkOrderStatus.PENDING,
+            quantity=3, process=self.process)
+        bulk_add_parts_to_workorder(wo, self.pt, self.step, 3, count_as_started=True)
+        wo.refresh_from_db()
+        self.assertEqual((wo.quantity, wo.target_good_quantity), (3, 3))
+
+    def test_scrapped_parts_still_count_as_started_when_adding(self):
+        from Tracker.services.mes.work_order import bulk_add_parts_to_workorder
+        wo = self._wo(target=5, started=5)
+        self._scrap(wo, 2)
+        bulk_add_parts_to_workorder(wo, self.pt, self.step, 2, erp_id_start=10, count_as_started=True)
+        wo.refresh_from_db()
+        self.assertEqual(wo.quantity, 7)

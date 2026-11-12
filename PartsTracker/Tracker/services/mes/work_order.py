@@ -15,7 +15,8 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Value
+from django.db.models.functions import Greatest
 from django.utils import timezone
 
 from django.db import IntegrityError
@@ -343,8 +344,14 @@ def bulk_add_parts_to_workorder(
             # so the order quantity doesn't move with the parts started.
             WorkOrder.objects.filter(pk=work_order.pk, target_good_quantity__isnull=True).update(  # tenant-safe: pk
                 target_good_quantity=F('quantity'))
+            # Parts started is at least the parts that exist (cancelled ones never
+            # started; scrapped ones did), not the old count plus the new ones: an
+            # imported job carries its quantity with no parts yet, and adding its parts
+            # read double (2026-11-12, P9).
+            started = Parts.objects.filter(archived=False, work_order=work_order).exclude(
+                part_status=PartsStatus.CANCELLED).count()
             WorkOrder.objects.filter(pk=work_order.pk).update(  # tenant-safe: pk of a scoped WO
-                quantity=F('quantity') + len(new_parts))
+                quantity=Greatest(F('quantity'), Value(started)))
             work_order.refresh_from_db(fields=['quantity', 'target_good_quantity'])
     return new_parts
 
