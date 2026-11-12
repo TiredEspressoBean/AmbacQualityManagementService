@@ -34,6 +34,8 @@ type Props = {
     contentKind: string;
     title?: string;
     description?: string;
+    /** After a decision is submitted: the host refreshes what the decision changed. */
+    onDecided?: () => void;
 };
 
 
@@ -50,6 +52,7 @@ export function ApprovalSignaturePanel({
     contentKind,
     title = "Approval Signatures",
     description = "Signature collection status for this change.",
+    onDecided,
 }: Props) {
     const [showResponseModal, setShowResponseModal] = useState(false);
     const { data: approvalRequests, isLoading } = useApprovalRequestsFor(contentTypeModel, objectId);
@@ -72,11 +75,16 @@ export function ApprovalSignaturePanel({
     const pending = current.status === "PENDING" ? current : null;
     const currentUserId = authUser?.pk;
     const userGroupIds = (authUser?.groups || []).map((g) => String(g.id));
+    // The requester can't decide their own request unless the server says this type
+    // allows it (can_self_approve) — the server refuses it anyway; don't offer it.
+    const ownRequestBarred =
+        !!pending && String(pending.requested_by) === String(currentUserId) && !pending.can_self_approve;
     const canRespond =
         !!pending &&
         isUserAnApprover(currentUserId, userGroupIds, pending) &&
         !hasUserResponded(currentUserId, pending.responses || []) &&
-        !pending?.turn_refusal;
+        !pending?.turn_refusal &&
+        !ownRequestBarred;
 
     const respondedCount = current.responses?.filter((r) => r.decision === "APPROVED").length ?? 0;
     const requiredCount = current.required_approvers_info?.length ?? 0;
@@ -188,6 +196,7 @@ export function ApprovalSignaturePanel({
                     contentType={contentKind}
                     isOpen={showResponseModal}
                     onClose={() => setShowResponseModal(false)}
+                    onSuccess={onDecided}
                 />
             )}
         </>

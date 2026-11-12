@@ -101,7 +101,7 @@ export function LifeTrackingSection({ contentType, objectId }: {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <div className="min-w-40 font-medium">
                 {t.definition_name}
-                {t.item_label && <span className="ml-1 text-xs font-normal text-muted-foreground">({t.item_label})</span>}
+                {t.item_label && <span className="ml-1 text-xs font-normal text-muted-foreground"> ({t.item_label})</span>}
             </div>
             <div className="text-sm">
                 {n(t.current_value)} used · soft {n(t.effective_soft_limit)} · hard {n(t.effective_hard_limit)}
@@ -152,6 +152,7 @@ export function LifeTrackingSection({ contentType, objectId }: {
                             contentKind="Life limit extension"
                             title="Extension approval"
                             description="Approve to raise this item's hard limit; reject to leave it as it is."
+                            onDecided={() => { void qc.invalidateQueries(trackingsOptions(contentType, objectId)); }}
                         />
                     </div>
                 </>

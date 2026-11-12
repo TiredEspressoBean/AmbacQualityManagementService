@@ -1136,6 +1136,10 @@ class ApprovalRequestSerializer(SecureModelMixin):
     def get_content_object_display(self, obj):
         """Human-readable string for the linked content object."""
         if obj.content_object:
+            if obj.approval_type == 'LIFE_LIMIT_EXTENSION':
+                # What's asked, not the tracking's count: "GW Die life: raise to 4".
+                from Tracker.services.life_tracking.extension import request_title
+                return request_title(obj.content_object)
             return str(obj.content_object)
         return None
 

@@ -140,6 +140,19 @@ class StartGatesS4Tests(TenantTestCase):
         _tenant, calls, _hour = send.call_args.kwargs['args']
         self.assertEqual([c['gate'] for c in calls], ['equipment_down'])  # the floor only
 
+    # --- one open visit per part and step (gate walk 2026-11-12, D1)
+    def test_a_create_for_a_part_with_an_open_visit_starts_that_visit(self):
+        self.authenticate_superuser(tenant=self.tenant_a)
+        resp = self.client.post("/api/StepExecutions/", {
+            'part': str(self.part.id), 'step': str(self.step.id), 'status': 'IN_PROGRESS',
+        }, format='json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()['id'], str(self.visit.id))
+        open_visits = StepExecution.objects.filter(part=self.part, step=self.step,
+                                                   exited_at__isnull=True)
+        self.assertEqual(open_visits.count(), 1)
+        self.assertEqual(open_visits.first().status, 'IN_PROGRESS')
+
     # --- the andon
     def test_a_refused_start_at_the_api_calls_whoever_clears_it(self):
         from unittest import mock

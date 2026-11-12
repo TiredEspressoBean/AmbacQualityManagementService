@@ -55,6 +55,16 @@ def item_label(tracking) -> str | None:
     return None
 
 
+def request_title(tracking) -> str:
+    """An extension request's title: what's asked ("GW Die life: raise to 4"), or, once
+    decided, the limit it was about."""
+    from Tracker.services.life_tracking.life_tracking import amount
+    name = tracking.definition.name
+    if tracking.pending_hard_limit is not None:
+        return f"{name}: raise to {amount(tracking.pending_hard_limit)}"
+    return f"{name}: life limit extension"
+
+
 def open_request(tracking):
     """The tracking's extension request awaiting a decision, or None."""
     from django.contrib.contenttypes.models import ContentType

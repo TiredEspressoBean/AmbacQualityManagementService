@@ -3572,6 +3572,27 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
         from Tracker.services.mes.gates import StartContext, assert_machine_eligible, decide_start
         self._pending_start = None
         self._chosen = None
+        # One open visit per part and step: a create for a part that already has one
+        # there (a retry, a scan, a race with the list-then-claim) starts THAT visit,
+        # through the same start decision as claim — it made a second open visit
+        # (gate walk 2026-11-12). Anything else is refused.
+        open_visit = self._open_visit(request)
+        if open_visit is not None:
+            if str(request.data.get('status', '')).upper() != 'IN_PROGRESS':
+                return Response({'detail': "This part already has an open visit at this step.",
+                                 'execution': str(open_visit.id)},
+                                status=status.HTTP_400_BAD_REQUEST)
+            from Tracker.services.mes.lifecycle import start_execution
+            machine, bad = self._chosen_machine(request)
+            if bad is not None:
+                return bad
+            reason = request.data.get('override_reason')
+            _, err = self._gated_start(request, lambda auth: start_execution(
+                open_visit, request.user, authorizer=auth, reason=reason, machine=machine))
+            if err is not None:
+                return err
+            open_visit.refresh_from_db()
+            return Response(self.get_serializer(open_visit).data, status=status.HTTP_200_OK)
         if str(request.data.get('status', '')).upper() == 'IN_PROGRESS':
             part = Parts.objects.filter(pk=request.data.get('part')).first() if request.data.get('part') else None  # tenant-safe: .objects auto-scopes to the request tenant
             step = Steps.objects.filter(pk=request.data.get('step')).first()
@@ -3646,6 +3667,16 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
             if execution.part_id:
                 from Tracker.services.reman.core_steps import on_step_started
                 on_step_started(execution.part, self.request.user)
+
+    def _open_visit(self, request):
+        """The part's open visit at the step the request names, or None."""
+        part_id, step_id = request.data.get('part'), request.data.get('step')
+        if not part_id or not step_id:
+            return None
+        return (StepExecution.objects  # tenant-safe: .objects auto-scopes
+                .filter(part_id=part_id, step_id=step_id, exited_at__isnull=True, archived=False,
+                        status__in=['PENDING', 'CLAIMED', 'IN_PROGRESS'])
+                .order_by('-entered_at').first())
 
     def _chosen_machine(self, request):
         """The production machine chosen at Start Work (`equipment`), or None; a 400
