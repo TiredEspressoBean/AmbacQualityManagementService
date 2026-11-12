@@ -256,7 +256,6 @@ class StartRefusedPayload:
     tenant_id: str
     gate: str                     # services.mes.gates.GateCode value — rules route on it
     waiting_on: str               # what the floor waits for, in words
-    cause: str                    # '' or why, where one gate has two ('calibration') — rules route on it
     message: str
     part_id: str | None
     part_number: str
@@ -264,6 +263,9 @@ class StartRefusedPayload:
     step_name: str
     work_order_id: str | None
     work_order_number: str
+    # '' or why, where one gate has two ('calibration') — rules route on it. Defaulted:
+    # a call queued in the older shape (no cause) must still deliver.
+    cause: str = ''
 
     @classmethod
     def sample(cls) -> 'StartRefusedPayload':

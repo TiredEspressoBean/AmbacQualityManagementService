@@ -231,6 +231,12 @@ class StartGatesS4Tests(TenantTestCase):
         self.assertEqual(down.to_dict()['waiting_on'], "the machine to return to service")
         self.assertEqual(_payload(cal, self.tenant_a.id)['cause'], 'calibration')
         self.assertEqual(_payload(down, self.tenant_a.id)['cause'], '')
+        # A call queued before `cause` existed still builds its payload (the P1 re-walk
+        # lost six calls to "missing 1 required positional argument: 'cause'").
+        from Tracker.services.mes.events import StartRefusedPayload
+        old_shape = _payload(down, self.tenant_a.id)
+        old_shape.pop('cause')
+        self.assertEqual(StartRefusedPayload(**old_shape).cause, '')
 
     # --- resume
     def test_resuming_your_own_visit_is_not_refused_by_a_start_only_gate(self):
