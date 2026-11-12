@@ -12,8 +12,9 @@ const fmtDate = (iso: string) =>
     new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 export function gaugeUnusableReason(g: GaugeState): string | null {
-    if (g.status === "OUT_OF_SERVICE") return "out of service";
+    // Failed first: a failed calibration also sets out of service, and is the reason.
     if (g.calibration_status === "FAILED") return "calibration failed";
+    if (g.status === "OUT_OF_SERVICE") return "out of service";
     if (g.calibration_status === "OVERDUE") {
         return g.next_calibration_due
             ? `calibration overdue since ${fmtDate(g.next_calibration_due)}`

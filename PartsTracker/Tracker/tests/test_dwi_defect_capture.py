@@ -96,7 +96,7 @@ class EquipmentRosterRefusesUnusableGaugeTests(DwiPhase1BaseTestCase):
                                 "rows": [{"equipment_id": str(self.gauge.id), "role": "GAUGE"}]},
                                {"node_id": self.s_node, "kind": "status", "status": "PASS"},
                            ])
-        self.assertIn("OUT_OF_SERVICE", " ".join(ctx.exception.messages))
+        self.assertIn("is out of service", " ".join(ctx.exception.messages))
 
     def test_an_overdue_gauge_is_refused(self):
         """Overdue calibration refuses the capture, like out-of-service (user ruling
@@ -147,6 +147,19 @@ class EquipmentRosterRefusesUnusableGaugeTests(DwiPhase1BaseTestCase):
         resp = c.get(f"/api/Equipment/{overdue.id}/")
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual(resp.json()["calibration_status"], "OVERDUE")
+        # Equipment with no type (the form allows it) lists with a null type name; the
+        # schema said non-null, so the client rejected the WHOLE list and the pickers
+        # came up empty (P2 walk, 2026-11-12).
+        Equipments.objects.create(tenant=self.tenant, name="GW-UNTYPED", serial_number="GW-U",
+                                  status=EquipmentStatus.IN_SERVICE)
+        listed = c.get("/api/Equipment/", {"limit": 500})
+        self.assertEqual(listed.status_code, 200, listed.content)
+        untyped = [e for e in listed.json()["results"] if e["name"] == "GW-UNTYPED"]
+        self.assertEqual(untyped[0]["equipment_type_name"], None)
+        from drf_spectacular.generators import SchemaGenerator
+        schema = SchemaGenerator().get_schema(request=None, public=True)
+        self.assertTrue(schema["components"]["schemas"]["Equipments"]["properties"]
+                        ["equipment_type_name"].get("nullable"))
         # The pickers grey it out with "calibration overdue since <date>" (P2, 2026-11-12).
         self.assertEqual(resp.json()["next_calibration_due"],
                          (today - datetime.timedelta(days=5)).isoformat())

@@ -113,7 +113,7 @@ export default function MeasurementDefinitionForm({
   const createMutation = useCreateMeasurementDefinition();
   const updateMutation = useUpdateMeasurementDefinition();
 
-  const { data: equipmentsResp } = useRetrieveEquipments();
+  const { data: equipmentsResp } = useRetrieveEquipments({ limit: 500 });
   const equipments = (equipmentsResp?.results ?? []) as Array<{ id: string; name: string }>;
 
   const watchedType = form.watch("type");

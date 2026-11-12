@@ -59045,6 +59045,7 @@ components:
         equipment_type_name:
           type: string
           readOnly: true
+          nullable: true
         serial_number:
           type: string
           maxLength: 100

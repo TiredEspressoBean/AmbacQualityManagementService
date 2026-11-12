@@ -77,9 +77,14 @@ def gauge_refusal(equipment) -> str | None:
     from Tracker.models.mes_standard import EquipmentStatus
     if equipment is None:
         return None
-    if equipment.status == EquipmentStatus.OUT_OF_SERVICE or equipment.calibration_status == 'FAILED':
-        return (f"Equipment '{equipment.name}' is OUT_OF_SERVICE (failed or "
-                f"missing calibration). Recalibrate or pick a different gauge.")
+    # A failed calibration also sets OUT_OF_SERVICE; name the more specific reason, as
+    # the pickers do (frontend dwi/shared/gaugeUse.ts).
+    if equipment.calibration_status == 'FAILED':
+        return (f"Equipment '{equipment.name}': its last calibration failed — recalibrate it "
+                f"or pick a different gauge.")
+    if equipment.status == EquipmentStatus.OUT_OF_SERVICE:
+        return (f"Equipment '{equipment.name}' is out of service — recalibrate it or pick a "
+                f"different gauge.")
     if equipment.calibration_status == 'OVERDUE':
         due = equipment.next_calibration_due
         when = f"was due {due:%d %b %Y}" if due else "has never been calibrated"

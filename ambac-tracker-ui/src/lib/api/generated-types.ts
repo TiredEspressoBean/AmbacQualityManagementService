@@ -25313,7 +25313,7 @@ export interface components {
             name: string;
             /** Format: uuid */
             equipment_type?: string | null;
-            readonly equipment_type_name: string;
+            readonly equipment_type_name: string | null;
             serial_number?: string;
             manufacturer?: string;
             model_number?: string;

@@ -251,7 +251,7 @@ class FailedGaugeTests(TenantTestCase):
             "recorded_by": self.user_a.id,
         }, format="json")
         self.assertEqual(r.status_code, 400, r.content)
-        self.assertIn("OUT_OF_SERVICE", r.content.decode())
+        self.assertIn("its last calibration failed", r.content.decode())
         self.assertFalse(StepExecutionMeasurement.objects.filter(equipment=self.gauge).exists())
 
     def test_a_recorded_reading_is_not_edited_or_deleted(self):
@@ -278,7 +278,7 @@ class FailedGaugeTests(TenantTestCase):
         }, format="json")
         body = r.json()
         self.assertEqual(body["created_count"], 0, body)
-        self.assertIn("OUT_OF_SERVICE", body["errors"][0]["detail"])
+        self.assertIn("its last calibration failed", body["errors"][0]["detail"])
         self.assertFalse(StepExecutionMeasurement.objects.filter(equipment=self.gauge).exists())
 
 

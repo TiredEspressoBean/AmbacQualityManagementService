@@ -2339,7 +2339,7 @@ class EquipmentsSerializer(SecureModelMixin):
     `create_new_version`. Archiving and operational status changes go
     through a plain save.
     """
-    equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
+    equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True, allow_null=True)
     location_name = serializers.SerializerMethodField()
     # CURRENT / DUE_SOON / OVERDUE / FAILED, or null when the gauge isn't calibrated —
     # so a picker can say "calibration overdue" before the reading is taken.
@@ -2421,7 +2421,7 @@ class EquipmentsSerializer(SecureModelMixin):
 
 class EquipmentSerializer(SecureModelMixin):
     """Legacy equipment serializer"""
-    equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
+    equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True, allow_null=True)
     location_name = serializers.SerializerMethodField()
 
     @extend_schema_field(serializers.CharField(allow_null=True))

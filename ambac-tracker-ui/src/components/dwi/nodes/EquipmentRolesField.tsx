@@ -113,7 +113,7 @@ function View(props: NodeViewProps) {
     const { value, setValue } = useOperatorResponse(a.node_id);
     const rows: ResponseRow[] = Array.isArray(value) ? (value as ResponseRow[]) : [];
 
-    const { data: equipResp } = useRetrieveEquipments();
+    const { data: equipResp } = useRetrieveEquipments({ limit: 500 });
     const equipments = (equipResp?.results ?? []) as Array<{ id: string; name: string } & GaugeState>;
     // A gauge the server refuses at capture (out of service, failed or overdue
     // calibration) is listed greyed with the reason, never offered then refused.

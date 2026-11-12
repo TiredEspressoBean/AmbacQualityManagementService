@@ -3326,7 +3326,7 @@ export type Equipments = {
    */
   name: string;
   equipment_type?: (string | null) | undefined;
-  equipment_type_name: string;
+  equipment_type_name: string | null;
   serial_number?: /**
    * @maxLength 100
    */
@@ -21872,7 +21872,7 @@ const Equipments = z.object({
   id: z.string().uuid(),
   name: z.string().max(100),
   equipment_type: z.string().uuid().nullish(),
-  equipment_type_name: z.string(),
+  equipment_type_name: z.string().nullable(),
   serial_number: z.string().max(100).optional(),
   manufacturer: z.string().max(100).optional(),
   model_number: z.string().max(100).optional(),

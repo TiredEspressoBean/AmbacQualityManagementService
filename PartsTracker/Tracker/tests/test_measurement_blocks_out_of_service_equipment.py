@@ -87,7 +87,7 @@ class OutOfServiceEquipmentBlocksMeasurementTests(TenantContextMixin, VectorTest
                 cap, substep=self.substep, step_execution=self.step_execution,
                 user=self.user,
             )
-        self.assertIn('OUT_OF_SERVICE', str(ctx.exception))
+        self.assertIn('is out of service', str(ctx.exception))
         self.assertIn('Broken Micrometer', str(ctx.exception))
 
     def test_measurement_against_in_service_gauge_proceeds(self):
