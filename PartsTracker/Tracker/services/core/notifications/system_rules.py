@@ -151,6 +151,20 @@ STARTER_RULES = [
         ("life_limit", "Life limit", ["Engineering", "QA Manager"]),
         ("tool_life", "Tool life", ["Engineering", "Shift Lead"]),
     )
+] + [
+    # A machine past its calibration also calls QA, who own calibration (user-approved
+    # andon map; P1 walk 2026-11-12). The Machine in service rule above calls the floor.
+    {
+        "event_code": "start.refused",
+        "name": "Start refused (Machine calibration) - call QA Manager",
+        "description": "Default starter rule. A start refused because the machine is past "
+                       "its calibration calls QA, who own calibration.",
+        "recipient_strategy": "static",
+        "recipient_group_names": ["QA Manager"],
+        "channels": ["in_app"],
+        "min_gap_seconds": 0,
+        "conditions_source": 'payload.gate == "equipment_down" && payload.cause == "calibration"',
+    },
 ]
 
 

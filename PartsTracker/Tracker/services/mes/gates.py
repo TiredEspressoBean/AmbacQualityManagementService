@@ -132,6 +132,13 @@ _SPECS = [
 ]
 SPECS: dict[GateCode, GateSpec] = {s.code: s for s in _SPECS}
 
+# A gate whose cause changes what the floor waits on (and who the andon calls):
+# a machine past its calibration waits on calibration, not maintenance (P1 walk,
+# 2026-11-12). Keyed (gate, cause).
+CAUSE_WAITING_ON = {
+    (GateCode.EQUIPMENT_DOWN, 'calibration'): "the machine to be calibrated",
+}
+
 
 @dataclass(frozen=True)
 class Blocker:
@@ -143,6 +150,9 @@ class Blocker:
     # clears — listed so nobody is surprised twice (P5, user ruling 2026-11-11). It
     # doesn't refuse on its own here, and the andon doesn't call for it.
     pending: bool = False
+    # Why, where one gate has more than one cause the floor or the andon tells apart
+    # (CAUSE_WAITING_ON; 'calibration' on equipment_down). Empty otherwise.
+    cause: str = ''
     # What it holds back, for the andon's call (services/mes/andon.py). Set by the
     # start decision; not part of the API body.
     part: Optional['Parts'] = field(default=None, compare=False, repr=False)
@@ -153,10 +163,14 @@ class Blocker:
     def spec(self) -> GateSpec:
         return SPECS[self.code]
 
+    @property
+    def waiting_on(self) -> str:
+        return CAUSE_WAITING_ON.get((self.code, self.cause), self.spec.waiting_on)
+
     def to_dict(self) -> dict:
         return {'code': str(self.code), 'message': self.message, 'stage': str(self.spec.stage),
                 'escape': str(self.spec.escape), 'clears': self.spec.clears,
-                'waiting_on': self.spec.waiting_on, 'link': self.link,
+                'waiting_on': self.waiting_on, 'cause': self.cause, 'link': self.link,
                 'pending_behind_floor': self.pending}
 
 
@@ -263,9 +277,11 @@ def floor_blockers(ctx: StartContext, *, only: set | None = None) -> list[Blocke
         out += [Blocker(GateCode.TOOL_LIFE, m, link=f"/editor/equipment/{tool.id}/edit")
                 for tool, m in start_refusals(step, ctx.execution)]
     if step is not None and want(GateCode.EQUIPMENT_DOWN):
-        refusal = machine_refusal(start_machine(step, part, ctx.execution, ctx.machine))
+        machine = start_machine(step, part, ctx.execution, ctx.machine)
+        refusal = machine_refusal(machine)
         if refusal:
-            out.append(Blocker(GateCode.EQUIPMENT_DOWN, refusal))
+            out.append(Blocker(GateCode.EQUIPMENT_DOWN, refusal,
+                               cause='calibration' if machine.status == 'IN_SERVICE' else ''))
     if wo is not None and want(GateCode.DEVIATION_EXPIRED):
         from Tracker.services.change_control.temporary import refusal as deviation_refusal
         expired = deviation_refusal(wo)

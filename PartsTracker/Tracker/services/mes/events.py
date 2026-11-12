@@ -256,6 +256,7 @@ class StartRefusedPayload:
     tenant_id: str
     gate: str                     # services.mes.gates.GateCode value — rules route on it
     waiting_on: str               # what the floor waits for, in words
+    cause: str                    # '' or why, where one gate has two ('calibration') — rules route on it
     message: str
     part_id: str | None
     part_number: str
@@ -271,6 +272,7 @@ class StartRefusedPayload:
             tenant_id='00000000-0000-0000-0000-000000000000',
             gate='work_order_not_workable',
             waiting_on="the work order's hold to clear",
+            cause='',
             message='WO-2026-0007 is on hold (Material) — clear the hold before starting work.',
             part_id='00000000-0000-0000-0000-0000000000b1',
             part_number='WO-2026-0007-001',

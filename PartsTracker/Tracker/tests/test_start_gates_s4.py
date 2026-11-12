@@ -77,6 +77,7 @@ class StartGatesS4Tests(TenantTestCase):
             self._start()
         self.assertEqual(self._codes(ctx), [GateCode.EQUIPMENT_DOWN])
         self.assertIn("calibration", ctx.exception.messages[0])
+        self.assertEqual(ctx.exception.blockers[0].cause, 'calibration')
 
     # --- the machine chosen at Start Work
     def _second_machine(self, status="IN_SERVICE"):
@@ -215,6 +216,21 @@ class StartGatesS4Tests(TenantTestCase):
                  for r in list_starter_rule_specs() if r['event_code'] == 'start.refused'}
         self.assertEqual(rules['payload.gate == "work_order_not_workable"'], ["Production Manager"])
         self.assertNotIn('payload.gate == "first_piece_pending"', rules)
+        # A machine past its calibration also calls QA (P1 walk, 2026-11-12).
+        self.assertEqual(rules['payload.gate == "equipment_down" && payload.cause == "calibration"'],
+                         ["QA Manager"])
+
+    def test_a_calibration_lapse_waits_on_calibration_and_says_so(self):
+        """P1 walk 2026-11-12: a machine past its calibration read 'waiting on the machine
+        to return to service'; it waits on calibration, and the andon payload says why."""
+        from Tracker.services.mes.andon import _payload
+        from Tracker.services.mes.gates import Blocker, GateCode
+        cal = Blocker(GateCode.EQUIPMENT_DOWN, "Lathe is past its calibration", cause='calibration')
+        down = Blocker(GateCode.EQUIPMENT_DOWN, "Lathe is in maintenance")
+        self.assertEqual(cal.to_dict()['waiting_on'], "the machine to be calibrated")
+        self.assertEqual(down.to_dict()['waiting_on'], "the machine to return to service")
+        self.assertEqual(_payload(cal, self.tenant_a.id)['cause'], 'calibration')
+        self.assertEqual(_payload(down, self.tenant_a.id)['cause'], '')
 
     # --- resume
     def test_resuming_your_own_visit_is_not_refused_by_a_start_only_gate(self):

@@ -46,7 +46,7 @@ export const GATE_CATALOG: { gate: string; stage: Stage; label: string; hint: st
     { gate: "part_on_hold", stage: "START", label: "Part not on hold",
       hint: "A part on hold isn't started until its hold is released. Rework needed stays startable." },
     { gate: "equipment_down", stage: "START", label: "Machine in service",
-      hint: "No work starts on a machine that is out of service, in maintenance or in calibration." },
+      hint: "No work starts on a machine that is out of service, in maintenance, in calibration or past its calibration." },
     { gate: "life_limit", stage: "START", label: "Life limit",
       hint: "A part at its life limit (including how often a unit has been remanned) doesn't start without an approved extension." },
     { gate: "tool_life", stage: "START", label: "Tool life",
