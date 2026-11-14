@@ -468,9 +468,14 @@ def notify_fpi_requested(fpi: FPIRecord) -> None:
 
 
 def notify_fpi_decided(fpi: FPIRecord) -> None:
-    """Emit `fpi.decided` — the verdict back to the floor (pass/fail/waive)."""
+    """Emit `fpi.decided` — the verdict back to the floor (pass/fail/waive). The
+    decision also changes what may start (the run is released, or stays held), so the
+    plan is marked stale (scheduling review 2026-11-13)."""
     from Tracker.services.core.notifications import emit
     from Tracker.services.qms.events import FpiDecidedPayload
+    from Tracker.services.scheduling.staleness import mark_active_schedule_stale
+
+    mark_active_schedule_stale(fpi.tenant_id)
 
     emit(
         "fpi.decided",

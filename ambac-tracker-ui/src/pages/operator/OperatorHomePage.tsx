@@ -340,6 +340,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     const heroRow: WorkQueueRow | undefined = readyRows[0];
     const thenRows = readyRows.slice(1, 7);
     const blockedRows = queueRows.filter((r) => r.readiness === "blocked");
+    // Why, in the queue's own words (a hold, a machine down, a tool at its limit…).
+    const blockedSummary = [...new Set(blockedRows.map((r) => r.blocked_reason).filter(Boolean))].join(" ");
     // Pieces wait while their first piece isn't bought off: only its N pieces start.
     const waitingFpiRows = queueRows.filter((r) => r.readiness === "waiting_fpi");
     // WorkOrder.priority is IntegerChoices (1=Urgent, 2=High, 3=Normal, 4=Low —
@@ -594,7 +596,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                             <p className="text-sm font-medium text-foreground">Nothing ready right now</p>
                             {blockedRows.length > 0 && (
                                 <p className="max-w-xs text-xs">
-                                    {blockedRows.length} job{blockedRows.length === 1 ? "" : "s"} blocked — waiting on holds to clear.
+                                    {blockedRows.length} job{blockedRows.length === 1 ? "" : "s"} blocked: {blockedSummary}
                                 </p>
                             )}
                             {waitingFpiRows.length > 0 && (
@@ -765,7 +767,9 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                     <div className="mt-2 flex items-center gap-4">
                         {blockedRows.length > 0 && (
                             <span className="text-xs text-muted-foreground">
-                                {blockedRows.length} job{blockedRows.length === 1 ? "" : "s"} blocked — waiting on holds
+                                <span title={blockedSummary}>
+                                    {blockedRows.length} job{blockedRows.length === 1 ? "" : "s"} blocked
+                                </span>
                             </span>
                         )}
                         {waitingFpiRows.length > 0 && (

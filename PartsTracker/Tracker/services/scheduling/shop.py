@@ -45,6 +45,9 @@ class Shop:
         # overflow long enough to say what didn't fit.
         self.H_ext = 3 * H
         self.wos = data.get_active_workorders(tenant)
+        # wo -> minute its deviation ends (no start from then on; <= 0: already ended).
+        self.deviation_end = {wid: _minute(at, horizon.start)
+                              for wid, at in data.get_deviation_ends(tenant, self.wos).items()}
         self.timings = data.get_step_timings(tenant)
         self.affinities = data.get_step_equipment_affinities(tenant)
         self.availability = data.get_machine_availability(tenant, horizon)

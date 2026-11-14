@@ -207,6 +207,7 @@ class _RefData:
 
 def _load_reference(tenant) -> _RefData:
     from Tracker.models import Steps, WorkCenter
+    from Tracker.services.mes.gates import machine_refusal
 
     timings = sched_data.get_step_timings(tenant)
     labor_models = sched_data.get_step_labor_models(tenant)
@@ -235,6 +236,10 @@ def _load_reference(tenant) -> _RefData:
         lights_out = attended = 0
         for eq in wc.equipment.all():
             if not getattr(eq, 'is_schedulable', False):
+                continue
+            # A machine out of service or past its calibration can't run work (the start
+            # gate refuses it), so it's no capacity (scheduling review 2026-11-13).
+            if machine_refusal(eq) is not None:
                 continue
             if eq.id in attended_only:
                 attended += 1

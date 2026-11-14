@@ -42072,6 +42072,7 @@ export interface components {
             machine_name: string | null;
             qty_startable: number;
             readiness: string;
+            blocked_reason: string | null;
             is_held: boolean;
         };
         WorkingWindow: {

@@ -112,7 +112,9 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
     # written to the board; its work orders are recorded so Not scheduled can say so.
     past_horizon: list = []
     if tasks and placed:
-        past_horizon = sorted({str(t['wo_id']) for t in tasks if start_of(t) >= shop.H})
+        # A start at or past its deviation's end is left out the same way (solver).
+        past_horizon = sorted({str(t['wo_id']) for t in tasks
+                               if start_of(t) >= min(shop.H, t.get('deadline', shop.H))})
 
     # Proven optimality gap: how far the found objective is from the solver's best
     # bound. 0.0 when OPTIMAL; small positive on a time-limited FEASIBLE result.
@@ -175,8 +177,8 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
         rows = []
         for t in tasks:
             start_min = start_of(t)
-            if start_min >= shop.H:
-                continue   # past the horizon: reported in Not scheduled, not drawn
+            if start_min >= min(shop.H, t.get('deadline', shop.H)):
+                continue   # past the horizon or its deviation's end: reported, not drawn
             machine_id = machine_of(t)
             start_dt = horizon.start + timedelta(minutes=start_min)
             end_dt = horizon.start + timedelta(minutes=end_of(t))

@@ -202,4 +202,7 @@ def declare_new_setup(*, step, work_order, user, reason_code: str, reason: str =
         # Its release no longer stands for new work: the setup it verified is gone.
         QaApproval.objects.filter(fpi_record=standing, archived=False).update(  # tenant-safe: scoped FK
             archived=True, updated_at=timezone.now())
+    # A new first piece holds the rest of the run back: the plan no longer holds.
+    from Tracker.services.scheduling.staleness import mark_active_schedule_stale
+    mark_active_schedule_stale(standing.tenant_id)
     return standing

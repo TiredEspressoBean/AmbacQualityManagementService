@@ -512,7 +512,7 @@ def cascade_schedule_slots_on_workorder_complete(sender, instance, **kwargs):
 
 # Part statuses that meaningfully change the schedulable set (a part leaving the
 # flow, or being held out of it).
-_DISRUPTIVE_PART_STATUSES = frozenset({'SCRAPPED', 'CANCELLED', 'QUARANTINED'})
+_DISRUPTIVE_PART_STATUSES = frozenset({'SCRAPPED', 'CANCELLED', 'QUARANTINED', 'ON_HOLD'})
 
 
 def _mark_active_schedule_stale(tenant_id) -> None:

@@ -48,8 +48,12 @@ class WorkQueueRowSerializer(serializers.Serializer):
     # (user decision 2026-11-11). Equal to qty_ready otherwise.
     qty_startable = serializers.IntegerField()
 
-    # Readiness bucket: 'blocked' when the WO has an active hold; 'waiting_fpi' when
-    # pieces are waiting but none may start until the first piece is bought off;
-    # else 'ready'. Upstream-done is implicit (open executions exist here).
+    # Readiness bucket: 'blocked' when no waiting piece can start — the WO on hold, its
+    # deviation ended, the step's machine down or past calibration, a tool it needs at
+    # its life limit, or every waiting part on hold / quarantined / at a life limit
+    # (`blocked_reason` says which); 'waiting_fpi' when pieces are waiting but none may
+    # start until the first piece is bought off; else 'ready'. Upstream-done is
+    # implicit (open executions exist here). qty_ready leaves out parts that can't start.
     readiness = serializers.CharField()
+    blocked_reason = serializers.CharField(allow_null=True)
     is_held = serializers.BooleanField()

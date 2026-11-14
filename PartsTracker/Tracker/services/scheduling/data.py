@@ -477,6 +477,44 @@ def _release_mode(tenant) -> str:
     return cfg.release_mode if cfg else ReleaseMode.AUTO
 
 
+def _life_limited_part_ids(tenant) -> set:
+    """Parts the start gate would refuse at their life limit (gates._life_limit_refusals,
+    read-only here): a tracking on the part — or on the core it is — past its hard
+    limit, against the current version of its definition. A reman-cycle count refuses
+    only a core not yet started (RECEIVED), never the later steps of the reman that
+    reached it. Such a part can't start, so it isn't planned (scheduling review
+    2026-11-13)."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import Core, LifeTracking, Parts
+    from Tracker.services.life_tracking.reman_cycles import is_reman_cycles
+
+    part_ct = ContentType.objects.get_for_model(Parts)
+    core_ct = ContentType.objects.get_for_model(Core)
+    blocked = set()
+    core_ids = set()
+    for lt in (LifeTracking.objects.filter(  # tenant-safe: explicit tenant filter
+                   tenant=tenant, content_type__in=[part_ct, core_ct],
+                   definition__is_current_version=True, definition__archived=False)
+               .select_related('definition')):
+        if not lt.is_blocked:
+            continue
+        if lt.content_type_id == part_ct.id:
+            if not is_reman_cycles(lt.definition):
+                blocked.add(lt.object_id)
+        else:
+            core_ids.add((lt.object_id, is_reman_cycles(lt.definition)))
+    if core_ids:
+        cores = {str(c.pk): c for c in Core.objects.filter(  # tenant-safe: explicit tenant filter
+            tenant=tenant, pk__in={cid for cid, _ in core_ids})}
+        for cid, reman in core_ids:
+            core = cores.get(str(cid))
+            if core is None or core.part_id is None:
+                continue
+            if not reman or core.status == 'RECEIVED':
+                blocked.add(core.part_id)
+    return {str(b) for b in blocked}
+
+
 def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrderData]:
     """Schedulable work orders with a process, each carrying its schedulable parts
     (current step) and the process routing graph (steps + edges). Excludes finished
@@ -550,6 +588,8 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
     open_execs = {(se['part_id'], se['step_id']): se['started_at']
                   for se in open_rows if se['started_at'] is not None}
 
+    life_limited = _life_limited_part_ids(tenant)
+
     graph_cache: dict[UUID, tuple] = {}
     result: list[WorkOrderData] = []
     for wo in wos:
@@ -567,8 +607,10 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
                 individual=_under_rebuild(p),
             )
             for p in wo.parts.all()
-            # A deleted part is not work to schedule (read off the prefetch).
+            # A deleted part is not work to schedule (read off the prefetch); nor is one
+            # at its life limit, which can't start — unless it's already running.
             if not p.archived and p.part_status not in _UNSCHEDULABLE_PART_STATUSES
+            and (str(p.id) not in life_limited or (p.id, p.step_id) in open_execs)
         )
         consumes_step_id = (wo.pegged_to_bom_line.consumed_at_step_id
                             if wo.pegged_to_bom_line_id else None)
@@ -676,10 +718,17 @@ def get_step_operator_pools(tenant) -> dict[UUID, frozenset]:
 
 
 def get_unrunnable_steps(tenant, horizon: HorizonData) -> dict:
-    """Machine-bound steps that can't run anywhere in the horizon: every eligible
-    schedulable machine is down for all of it (open-ended downtime, say).
-    `step_id -> "why"`. Like an uncovered certification, the solver plans up to such
-    a step rather than failing the whole plan, and Not scheduled says why."""
+    """Steps that can't run anywhere in the horizon, `step_id -> (kind, why)`:
+
+    - 'machine_down': every eligible schedulable machine is down for all of it
+      (open-ended downtime, say);
+    - 'tooling_unavailable': a tooling resource the step requires has none available —
+      every tracked item out of service or at its life limit (P3), or a typed quantity
+      of 0. Left in, a zero-capacity cumulative made the WHOLE tenant's solve
+      infeasible (scheduling review 2026-11-13).
+
+    Like an uncovered certification, the solver plans up to such a step rather than
+    failing the whole plan, and Not scheduled says why."""
     from Tracker.models import DowntimeEvent, Equipments
 
     downtime = get_machine_downtime(tenant, horizon)
@@ -713,8 +762,35 @@ def get_unrunnable_steps(tenant, horizon: HorizonData) -> dict:
                 until = (f" until {timezone.localtime(ev.end_time):%b %d}"
                          if ev is not None and ev.end_time else "")
                 reasons.append(f"{names.get(e, 'a machine')} is down{until}{why}")
-            out[sid] = "; ".join(reasons)
+            out[sid] = ('machine_down', "; ".join(reasons))
+
+    from Tracker.models import Fixture
+    from Tracker.services.life_tracking.tool_life import fixture_capacity
+    for f in Fixture.objects.filter(archived=False, tenant=tenant).prefetch_related('steps'):
+        if fixture_capacity(f) > 0:
+            continue
+        why = (f"none of {f.name} is available — every tracked item is out of service or "
+               f"at its life limit" if f.equipment_type_id is not None
+               else f"{f.name} has a quantity of 0")
+        for s in f.steps.all():
+            out.setdefault(s.id, ('tooling_unavailable', why))
     return out
+
+
+def get_deviation_ends(tenant, wos) -> dict:
+    """When a work order on a temporary change (a deviation) may no longer start work:
+    `wo_id -> datetime`, the start of the day after `temporary_until` — the start gate
+    allows work through that date and refuses it after (change_control.temporary).
+    Only work orders whose process is temporary with an end date."""
+    from datetime import time as _time
+    from Tracker.models import Processes
+
+    by_process = {p_id: until for p_id, until in Processes.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, id__in={w.process_id for w in wos if w.process_id},
+        is_temporary=True, temporary_until__isnull=False).values_list('id', 'temporary_until')}
+    return {w.wo_id: timezone.make_aware(datetime.combine(by_process[w.process_id] + timedelta(days=1),
+                                                          _time.min))
+            for w in wos if w.process_id in by_process}
 
 
 def get_operator_qualification_lapses(tenant, horizon: HorizonData) -> dict:

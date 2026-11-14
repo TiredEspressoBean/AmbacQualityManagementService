@@ -32,6 +32,8 @@ const TONE: Record<UnscheduledReason, string> = {
   no_timings: "border-l-red-500",
   unstaffable: "border-l-red-500",
   machine_down: "border-l-red-500",
+  tooling_unavailable: "border-l-red-500",
+  deviation_expired: "border-l-red-500",
   outside_horizon: "border-l-sky-500",
   material_gated: "border-l-amber-500",
   material_short: "border-l-amber-500",
@@ -161,7 +163,9 @@ export function UnscheduledPanel({ open, onOpenChange, onOpenWorkOrder }: Props)
                       {r.open_units > 0 && (
                         <span className="ml-auto shrink-0 text-xs tabular-nums text-muted-foreground">
                           {/* Every unit has tasks, but only up to the uncovered step. */}
-                          {(r.reason === "unstaffable" || r.reason === "machine_down") && r.scheduled_units >= r.open_units
+                          {(r.reason === "unstaffable" || r.reason === "machine_down"
+                            || r.reason === "tooling_unavailable" || r.reason === "deviation_expired")
+                            && r.scheduled_units >= r.open_units
                             ? "placed up to the gap"
                             : `${r.scheduled_units}/${r.open_units} placed`}
                         </span>

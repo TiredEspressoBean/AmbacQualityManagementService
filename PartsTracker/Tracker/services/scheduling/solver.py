@@ -223,8 +223,12 @@ class _Phase:
         # and everything after it on this lot wait, and Not scheduled says why
         # (diagnostics). A running op is already staffed, so it stays.
         # Same for a step whose every machine is down for the whole horizon.
+        # A deviation that has already ended: no step may start (change_control.
+        # temporary), so nothing is planned beyond a step already running.
+        deviation_end = shop.deviation_end.get(wo.wo_id)
+        ended = deviation_end is not None and deviation_end <= 0
         cut = {sid for sid in route_ids
-               if ((sid, wo.process_id) in shop.unstaffable or sid in shop.unrunnable)
+               if ((sid, wo.process_id) in shop.unstaffable or sid in shop.unrunnable or ended)
                and not (lot.get('in_progress') and sid == lot['step'])}
         if cut:
             frontier = list(cut)
@@ -263,6 +267,15 @@ class _Phase:
             node_end[step_id] = end
             node_task[step_id] = task
             lot_ends.append(end)
+            # A deviation ending inside the plan: no start from its end on. Soft (like a
+            # cure window) so a crowded shop can't make the whole solve infeasible; work
+            # still landing past it isn't written, and Not scheduled says why.
+            if (deviation_end is not None and 0 < deviation_end < shop.H_ext
+                    and not (lot.get('in_progress') and step_id == lot['step'])):
+                viol = model.NewBoolVar(f"dev_{key}")
+                model.Add(start < deviation_end).OnlyEnforceIf(viol.Not())
+                self.max_time_penalty.append(viol * _CURE_WINDOW_WEIGHT)
+                task['deadline'] = deviation_end
 
         # Merge-capable precedence: for each DEFAULT edge
         # start[to] >= end[from] + move_min (inter-op transport/queue gap);
@@ -753,6 +766,11 @@ class _Phase:
         # Fixtures: cumulative — at most `quantity` concurrent users.
         for fixture_id, intervals in self.fixture_intervals.items():
             capacity = self.shop.fixtures[fixture_id].quantity
+            # None available: its steps are cut (data.get_unrunnable_steps), so what's
+            # left here is work already running, which holds its tool. A cap of 0
+            # against it made the whole plan infeasible.
+            if capacity <= 0:
+                continue
             self.model.AddCumulative(intervals, [1] * len(intervals), capacity)
 
     def _add_capacity(self, intervals, windows, tag):

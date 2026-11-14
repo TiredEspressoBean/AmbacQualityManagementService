@@ -30,6 +30,8 @@ REASON_ORDER = (
     'no_timings',
     'unstaffable',
     'machine_down',
+    'tooling_unavailable',
+    'deviation_expired',
     'outside_horizon',
     'material_gated',
     'material_short',
@@ -49,6 +51,8 @@ REASON_LABELS = {
     'no_timings': "No timings authored",
     'unstaffable': "No qualified operator rostered",
     'machine_down': "No machine available",
+    'tooling_unavailable': "No tooling available",
+    'deviation_expired': "Past the deviation's end",
     'material_short': "Material short",
     'material_gated': "Waiting on material",
     'outside_horizon': "Starts past the horizon",
@@ -328,6 +332,15 @@ def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
                 f"(terminal step, or off this process version's graph).",
                 "Check the unit's current step against the process routing.")
 
+    # A deviation that has ended: nothing on it may start, so nothing is planned
+    # (solver; the start gate refuses the same work).
+    from Tracker.services.change_control.temporary import refusal as deviation_refusal
+    ended = deviation_refusal(wo)
+    if ended:
+        return ('deviation_expired', ended,
+                "Extend the deviation through change control, or return the order to its "
+                "baseline process.")
+
     untimed = [sid for sid in route_ids
                if _is_untimed(timings.get(sid))]
     if len(untimed) == len(route_ids):
@@ -351,8 +364,14 @@ def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
     down = [(sid, (unrunnable or {})[sid]) for sid in route_ids if sid in (unrunnable or {})]
     if down:
         from Tracker.models import Steps
-        sid, why = down[0]
+        sid, (kind, why) = down[0]
         name = Steps.objects.filter(pk=sid).values_list('name', flat=True).first() or 'A step'  # tenant-safe: pk from this tenant's routing
+        if kind == 'tooling_unavailable':
+            return ('tooling_unavailable',
+                    f"“{name}” has no tooling to run with: {why}. Planned up to the step "
+                    f"before it; it and what follows wait.",
+                    "Return an item to service, or reset or extend one at its life limit "
+                    "(the tool's page).")
         return ('machine_down',
                 f"“{name}” has no machine to run on: {why}. Planned up to the step before "
                 f"it; it and what follows wait.",
@@ -392,6 +411,15 @@ def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
     # The shop was full: the solve placed this work past the horizon end rather than
     # fail the whole plan, and kept it off the board.
     if str(wo.id) in (schedule.past_horizon or ()):
+        # Left off because it would start after its deviation ends (inside the horizon).
+        process = wo.process
+        until = getattr(process, 'temporary_until', None) if getattr(process, 'is_temporary', False) else None
+        if until is not None and until < horizon_end_date:
+            return ('deviation_expired',
+                    f"{open_units - covered} unit(s) can't start before the deviation ends "
+                    f"on {until:%b %d} — no work on it may start after that.",
+                    "Extend the deviation through change control, or return the order to "
+                    "its baseline process.")
         return ('past_horizon',
                 f"{open_units - covered} unit(s) don't fit before {horizon_end_date:%b %d}: "
                 f"the work ahead of them fills the horizon.",

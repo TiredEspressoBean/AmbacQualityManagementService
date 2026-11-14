@@ -92232,9 +92232,13 @@ components:
           type: integer
         readiness:
           type: string
+        blocked_reason:
+          type: string
+          nullable: true
         is_held:
           type: boolean
       required:
+      - blocked_reason
       - earliest_entered_at
       - expected_completion
       - is_held

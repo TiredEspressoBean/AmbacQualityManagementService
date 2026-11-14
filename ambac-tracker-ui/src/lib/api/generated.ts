@@ -12878,6 +12878,7 @@ export type WorkQueueRow = {
   machine_name: string | null;
   qty_startable: number;
   readiness: string;
+  blocked_reason: string | null;
   is_held: boolean;
 };
 export type PartApprovalRequest = {
@@ -29344,6 +29345,7 @@ const WorkQueueRow = z.object({
   machine_name: z.string().nullable(),
   qty_startable: z.number().int(),
   readiness: z.string(),
+  blocked_reason: z.string().nullable(),
   is_held: z.boolean(),
 });
 const PaginatedWorkQueueRowList = z.object({

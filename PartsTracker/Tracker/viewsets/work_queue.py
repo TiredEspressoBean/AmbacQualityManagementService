@@ -5,9 +5,11 @@ Grain: one row per (WorkOrder, Step) with open StepExecutions, with distinct-
 parts qty_ready + aging + a is_held flag. Ranked priority → due → aging, after the
 asker's own in-progress work (qty_mine); work someone else has in hand is left out.
 
-v1 readiness = 'blocked' when the WO has an active hold, else 'ready'. Upstream-
-done is implicit for open executions. Cert / calibration / downtime / manual-
-blocker predicates layer on later as those systems mature (see design doc §9).
+Readiness = 'blocked' when no waiting piece can start — the start gate's floor
+refusals: a hold, an ended deviation, the machine down or past calibration, a tool at
+its life limit, or every waiting part held / quarantined / life-limited — with
+`blocked_reason`; 'waiting_fpi' at an unbought first piece; else 'ready'. Upstream-
+done is implicit for open executions.
 """
 from datetime import timedelta
 
@@ -80,6 +82,18 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     "machine_id": r["machine_id"],
                     "machine_name": r["machine__name"],
                 }
+        # A stale plan's machine isn't what a start runs on: the gate falls back to the
+        # step's authored machine (parts.authored_machine), so the queue names that one
+        # too (scheduling review 2026-11-13). Its order still guides the queue.
+        if active.is_stale:
+            from Tracker.services.mes.parts import authored_machine
+            by_step: dict = {}
+            for (wo_id, step_id), m in meta.items():
+                if step_id not in by_step:
+                    by_step[step_id] = authored_machine(step_id)
+                fallback = by_step[step_id]
+                m["machine_id"] = fallback.id if fallback is not None else None
+                m["machine_name"] = fallback.name if fallback is not None else None
         return meta
 
     def _apply_first_piece(self, rows) -> None:
@@ -127,6 +141,49 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             if row["qty_startable"] == 0 and row["qty_ready"] > 0 and not row.get("qty_mine"):
                 row["readiness"] = "waiting_fpi"
 
+    def _apply_blockers(self, rows) -> None:
+        """A row nobody can start is blocked, and says why — the floor refusals a start
+        would meet (scheduling review 2026-11-13): the work order held (set already),
+        its deviation ended, the step's machine down or past calibration, a tool it
+        needs at its life limit, or every waiting part on hold, quarantined or at its
+        life limit. Your own in-progress work isn't blocked by them: it's resumed, not
+        started."""
+        from Tracker.models import Steps
+        from Tracker.services.change_control.temporary import refusal as deviation_refusal
+        from Tracker.services.life_tracking.tool_life import start_refusals
+        from Tracker.services.mes.gates import machine_refusal
+        from Tracker.models import Equipments
+        from Tracker.services.mes.parts import authored_machine
+        steps = {s.id: s for s in Steps.unscoped.filter(  # tenant-safe: ids from the tenant's own rows
+            tenant=self.tenant, id__in={r["step"] for r in rows})}
+        orders = {wo.id: wo for wo in WorkOrder.unscoped.filter(  # tenant-safe: explicit tenant filter
+            tenant=self.tenant, id__in={r["work_order"] for r in rows}).select_related("process")}
+        machines: dict = {}
+        tools: dict = {}
+        for row in rows:
+            if row["readiness"] == "blocked" or row["qty_mine"]:
+                continue
+            step, wo = steps.get(row["step"]), orders.get(row["work_order"])
+            reason = deviation_refusal(wo) if wo is not None else None
+            if reason is None and step is not None:
+                key = row["machine"] or ("authored", step.id)
+                if key not in machines:
+                    m = (Equipments.unscoped.filter(tenant=self.tenant, id=row["machine"]).first()  # tenant-safe: explicit tenant filter
+                         if row["machine"] else authored_machine(step.id))
+                    machines[key] = machine_refusal(m)
+                reason = machines[key]
+            if reason is None and step is not None and step.has_gate("tool_life"):
+                if step.id not in tools:
+                    refused = start_refusals(step)
+                    tools[step.id] = refused[0][1] if refused else None
+                reason = tools[step.id]
+            if reason is None and row["qty_ready"] == 0 and row["qty_unavailable"]:
+                reason = (f"{row['qty_unavailable']} waiting part(s) can't start: on hold, "
+                          f"quarantined or at a life limit.")
+            if reason:
+                row["readiness"] = "blocked"
+                row["blocked_reason"] = reason
+
     def _rows(self):
         """Compute the ranked aggregate as a Python list of row dicts."""
         tenant = self.tenant
@@ -147,6 +204,12 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         # for anyone else, so it drops out; our own in-progress visits lead the queue.
         me = getattr(self.request.user, "pk", None)
         mine = Q(status="IN_PROGRESS", assigned_to_id=me)
+        # Parts that can't start aren't ready: on hold, quarantined, or at a life limit
+        # (the start gate refuses each). Counted apart so a row of only those says why
+        # (scheduling review 2026-11-13).
+        from Tracker.services.scheduling.data import _life_limited_part_ids
+        life_limited = list(_life_limited_part_ids(tenant))
+        cant_start = Q(part__part_status__in=["ON_HOLD", "QUARANTINED"]) | Q(part_id__in=life_limited)
         in_open_load = Exists(BatchExecution.unscoped.filter(  # tenant-safe: explicit tenant filter
             tenant=tenant, step_id=OuterRef("step_id"), parts=OuterRef("part_id"),
             completed_at__isnull=True))
@@ -174,7 +237,8 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             )
             .annotate(
                 # Waiting = nobody's started it; our own in-progress pieces count apart.
-                qty_ready=Count("part_id", distinct=True, filter=~mine),
+                qty_ready=Count("part_id", distinct=True, filter=~mine & ~cant_start),
+                qty_unavailable=Count("part_id", distinct=True, filter=~mine & cant_start),
                 qty_mine=Count("part_id", distinct=True, filter=mine),
                 earliest_entered_at=Min("entered_at"),
                 is_held=Exists(active_holds),
@@ -254,7 +318,9 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             "work_order__expected_completion", "part_type__name", "step_id", "step__name",
             "step__work_center_id", "step__work_center__kind",
         ).annotate(
-            qty_ready=Count("id", distinct=True),
+            # Unstarted parts are PENDING, so only a life limit stops them here.
+            qty_ready=Count("id", distinct=True, filter=~Q(id__in=life_limited)),
+            qty_unavailable=Count("id", distinct=True, filter=Q(id__in=life_limited)),
             earliest_entered_at=Min("work_order__released_at"),
             is_held=Exists(active_holds_part),
         )
@@ -263,6 +329,7 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             key = (u["work_order_id"], u["step_id"])
             if key in merged:
                 merged[key]["qty_ready"] += u["qty_ready"]
+                merged[key]["qty_unavailable"] += u["qty_unavailable"]
                 continue
             merged[key] = {
                 "part__work_order_id": u["work_order_id"],
@@ -273,7 +340,7 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "step_id": u["step_id"], "step__name": u["step__name"],
                 "step__work_center_id": u["step__work_center_id"],
                 "step__work_center__kind": u["step__work_center__kind"],
-                "qty_ready": u["qty_ready"], "qty_mine": 0,
+                "qty_ready": u["qty_ready"], "qty_unavailable": u["qty_unavailable"], "qty_mine": 0,
                 "earliest_entered_at": u["earliest_entered_at"],
                 "is_held": u["is_held"],
             }
@@ -299,7 +366,9 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "qty_mine": r["qty_mine"],
                 "earliest_entered_at": r["earliest_entered_at"],
                 "is_held": r["is_held"],
+                "qty_unavailable": r.get("qty_unavailable", 0),
                 "readiness": "blocked" if r["is_held"] else "ready",
+                "blocked_reason": "The work order is on hold." if r["is_held"] else None,
                 "work_center": r["step__work_center_id"],
                 "work_center_kind": r["step__work_center__kind"],
                 "scheduled_start": _meta(r["part__work_order_id"], r["step_id"]).get("start"),
@@ -310,13 +379,14 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             for r in ranked
         ]
         self._apply_first_piece(rows)
+        self._apply_blockers(rows)
 
         # Stable re-rank onto the schedule: blocked still sink last; scheduled
         # rows lead, ordered by planned start; unscheduled rows keep their
         # heuristic order (Python sort is stable). The mixed int/datetime third
         # key is safe — it's only compared within a same-`scheduled?` group.
         rows.sort(key=lambda row: (
-            row["is_held"],
+            row["readiness"] == "blocked",
             0 if row["qty_mine"] else 1,  # finish your own work first
             0 if row["scheduled_start"] is not None else 1,
             row["scheduled_start"] if row["scheduled_start"] is not None else 0,
