@@ -46,6 +46,13 @@ first piece*. A job where none can start isn't offered. When nothing else is
 ready, Home says how many are held that way: *&lt;n&gt; jobs waiting on QA to buy
 off a first piece.* Your own first piece in progress still leads.
 
+A job that can't start at all (its work order on hold, its machine down or past
+calibration, a tool at its life limit, a temporary change that has ended) isn't
+offered either. Home counts it as *&lt;n&gt; job blocked*, and the reason shows when
+you point at it (e.g. *The work order is on hold.*). When nothing else is ready,
+the reasons are listed in the caption. Parts on hold or quarantined aren't
+counted as ready to start.
+
 Shift notes and notifications land here too. A note marked **MUST ACKNOWLEDGE**
 wants a **Got it** before you start; it is how the last shift talks to you.
 

@@ -141,7 +141,7 @@ time](../workflows/scheduling/gantt.md#when-the-solver-runs-out-of-time).
 ### Why isn't my job on the board?
 
 **Not scheduled** answers it directly, grouped by reason, each row naming the
-work order, how many units were placed, and the fix. There are sixteen reasons,
+work order, how many units were placed, and the fix. There are eighteen reasons,
 and they are checked in order — the first that applies is the one you are shown:
 
 | | Reason | What it means |
@@ -155,20 +155,25 @@ and they are checked in order — the first that applies is the one you are show
 | 7 | **No routing to schedule** | The process has no usable route |
 | 8 | **No timings authored** | Operations carry no cycle time |
 | 9 | **No qualified operator rostered** | Nobody certified and rostered can run a gated step. It's planned up to the step before; that step and what follows wait |
-| 10 | **No machine available** | Every machine eligible for a step is down for the whole window. Planned up to the step before; that step and what follows wait |
-| 11 | **Starts past the horizon** | Real, but beyond the window solved for |
-| 12 | **Waiting on material** | Gated on material that has not arrived |
-| 13 | **Material short** | Not enough to cover it |
-| 14 | **Added since the last solve** | The board simply predates it |
-| 15 | **Doesn't fit in the horizon** | The shop is full: the work ahead of it fills the window |
-| 16 | **Not placed by the last solve** | Nothing above explains it — the solve most likely ran out of time |
+| 10 | **No machine available** | Every machine eligible for a step is down or past its calibration for the whole window. Planned up to the step before; that step and what follows wait |
+| 11 | **No tooling available** | A tool or fixture the step needs has none available: every tracked item is out of service or at its life limit. Planned up to the step before; that step and what follows wait |
+| 12 | **Past the deviation's end** | The work order runs a temporary change that has ended, or would end before the work could start. Start Work would refuse it, so it isn't planned past that point |
+| 13 | **Starts past the horizon** | Real, but beyond the window solved for |
+| 14 | **Waiting on material** | Gated on material that has not arrived |
+| 15 | **Material short** | Not enough to cover it |
+| 16 | **Added since the last solve** | The board simply predates it |
+| 17 | **Doesn't fit in the horizon** | The shop is full: the work ahead of it fills the window |
+| 18 | **Not placed by the last solve** | Nothing above explains it — the solve most likely ran out of time |
 
 The order matters when you are reading a long list: a job showing **Not
 released** may *also* have no timings, and you will not see the second until you
 fix the first.
 
 Several resolve themselves on the next solve, and the dialog says so when the
-schedule is stale. Number 9 is the one that never does — see *Labour* above.
+schedule is stale. A machine leaving service, a part going on hold, and a
+first-piece decision all mark the schedule stale. The plan leaves out parts
+that are on hold, quarantined or at their life limit, because Start Work would
+refuse them. Number 9 is the one that never does — see *Labour* above.
 
 ### Dispatch
 
