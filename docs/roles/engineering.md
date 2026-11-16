@@ -70,14 +70,15 @@ are yours, set on the step in a process draft.
 | Solver input | Who sets it, by default |
 |--------------|-------------------------|
 | A step's **timing** and **expected duration** | **You**, in the process editor. Production Manager and Tenant Admin can also edit timings under Data Management |
-| **Machine eligibility** — which machines can run a step | Production Manager, Tenant Admin |
+| **Machine eligibility** — which machines can run a step | Production Manager, Tenant Admin, on a step that isn't yet in an approved process. On an approved process, through a process change |
 | **Changeovers** | Production Manager, Tenant Admin, Planner |
 
-!!! warning "Time every step; machines are Production Manager's"
-    You author the route and its times, but not which machines run it. When a
-    new routing goes live, time every step and hand machine eligibility to
-    Production Manager. Capacity Planning names the orders that still have
-    operations with no timing at all. See [Scheduling
+!!! warning "Time every step, and settle its machines before approval"
+    A step's machines (and the tooling it needs) are part of the process: once
+    the process is approved they change only through a process change. So
+    before a new routing is approved, time every step and get its machines
+    right in the draft, with Production Manager. Capacity Planning names the
+    orders that still have operations with no timing at all. See [Scheduling
     Setup](../workflows/scheduling/setup.md).
 
 ## Life limits

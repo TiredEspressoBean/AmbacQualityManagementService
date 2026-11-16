@@ -70,10 +70,11 @@ routing and its properties are edited together.
 !!! note "The standalone step form"
     `/editor/steps/{id}/edit` exposes a reduced set of fields, and is read-only
     for step content when the step belongs to a process — use the Process Flow
-    editor for that. **Timing** and **Machines** stay editable there, because
-    they are scheduling data on the step row rather than its controlled
-    content; a change there reaches every process version still sharing the
-    row. The API refuses the same content edit — see [Where step content is
+    editor for that. **Timing** stays editable there, because it is scheduling
+    data on the step row rather than its controlled content; a change there
+    reaches every process version still sharing the row. **Machines** is part
+    of the process: on an approved process it's read-only there, with *change
+    its machines through a process change*. The API refuses the same content edit — see [Where step content is
     edited](overview.md#where-step-content-is-edited).
 
 ## Step Properties
@@ -95,6 +96,7 @@ The properties panel covers:
 | **Setup (min)** | Setup time |
 | **Cycle, per piece (min)** | Run time per piece |
 | **Operator attention** | e.g. tied to the machine for the whole run |
+| **First-piece buy-off** | Minutes to plan for QA's first-piece buy-off at a step with the **First piece** gate. The plan runs the first piece, waits this long, then runs the rest. Blank: the wait isn't planned. On a **Per shift** step, each shift change during a run adds the buy-off before the next step |
 
 !!! warning "Cycle time feeds capacity planning"
     A step with no cycle time contributes **no load**, so capacity planning
@@ -246,13 +248,32 @@ Equipment relates to a step in two distinct ways:
 | Mechanism | Purpose |
 |-----------|---------|
 | **Machines** | The machines that can run this step, and how well — used by scheduling, which only places the step on machines listed here |
+| **Tooling this step needs** | Shared tooling the step needs one of while it runs: a shim kit, a set of collet chucks, an NC program. Each is a tooling entry with a quantity, or with **Tracked as equipment**. The scheduler won't run more at once than are available |
 | **Equipment + roles capture** | What equipment was *actually* used, recorded by the operator on a substep |
 
+Material the step uses up (shims, inserts) isn't tooling: it's a BOM line
+consumed at the step.
+
 !!! note "Where each is set"
-    **Machines** is in the flow editor's step panel (**Configuration** >
-    **Machines**), and is also the **Machines** card on the standalone step
-    form. The capture is configured when [authoring work
+    **Machines** and **Tooling this step needs** are in the flow editor's step
+    panel (**Configuration**). The capture is configured when [authoring work
     instructions](../../workflows/dwi/authoring.md).
+
+!!! important "Machines and tooling change through a process change"
+    A step's machines (and how well each runs it) and the tooling it needs are
+    part of the process. On an approved process they change only in a draft,
+    through a process change, and the change request lists them, e.g.
+    *Machines: added CNC-4 (preferred); CNC-2 eligible → preferred; removed
+    CNC-1*. The step form, the machine's page and **Machine Eligibility** show
+    them read-only for an approved process's steps. Choosing which listed
+    machine runs a particular job stays a planning call: dispatch, moving a
+    task on the Gantt, or the machine picker at Start Work.
+
+    **Timing** and **changeovers** stay editable on an approved process.
+
+    The setup workbook can load machine eligibility onto approved processes
+    until the first work is started, and those loads are marked in the history
+    as loaded by the setup workbook.
 
 Used for:
 - Equipment utilization tracking

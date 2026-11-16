@@ -21,7 +21,8 @@ admitted, and where it runs** — the planning and scheduling side of uqmes.
 
         A Planner does **not** hold two of the solver's own inputs: **step
         timings** (cycle times) and **machine eligibility**. Those sit with
-        Production Manager and Tenant Admin. So when the plan is wrong *because
+        Production Manager and Tenant Admin, and on an approved process a
+        step's machines change only through a process change. So when the plan is wrong *because
         the model is wrong*, a standalone Planner can diagnose it and cannot fix
         it — they have to hand it over. Worth knowing before you staff the role
         on its own.
@@ -154,7 +155,7 @@ and they are checked in order — the first that applies is the one you are show
 | 6 | **Nothing left to work** | Every unit is finished, shipped, scrapped or quarantined |
 | 7 | **No routing to schedule** | The process has no usable route |
 | 8 | **No timings authored** | Operations carry no cycle time |
-| 9 | **No qualified operator rostered** | Nobody certified and rostered can run a gated step. It's planned up to the step before; that step and what follows wait |
+| 9 | **No qualified operator rostered** | Nobody certified and rostered can run a gated step, counting the training its machine's type needs as well as the step's. It's planned up to the step before; that step and what follows wait |
 | 10 | **No machine available** | Every machine eligible for a step is down or past its calibration for the whole window. Planned up to the step before; that step and what follows wait |
 | 11 | **No tooling available** | A tool or fixture the step needs has none available: every tracked item is out of service or at its life limit. Planned up to the step before; that step and what follows wait |
 | 12 | **Past the deviation's end** | The work order runs a temporary change that has ended, or would end before the work could start. Start Work would refuse it, so it isn't planned past that point |
@@ -187,9 +188,9 @@ operators listed when you reassign a task on the Gantt. The machine judged is
 the one the start would use: the task's machine, otherwise the step's authored
 one.
 
-The solve itself checks only the step's training. A freshly solved plan can
-show an operator who lacks the machine type's training; dispatching clears
-them, and leaves the task unassigned if nobody qualified is free.
+The solve applies the same rule: the plan only puts an operator on a machine
+they hold its type's training for. Work nobody qualified can do is planned
+uncovered.
 
 ### Moving something by hand
 
@@ -205,7 +206,7 @@ separately. **Unpin** is what a pinned-successor refusal is asking for.
 | Symptom | Look at | Yours to fix? |
 |---------|---------|---------------|
 | Dates look too comfortable | [Step Timings](../workflows/scheduling/setup.md#step-timings) — an operation with no timing of any kind contributes no load | **No** — Production Manager or Tenant Admin; a step's own expected duration is [Engineering](engineering.md)'s |
-| Work lands on the wrong machine | [Machine Eligibility](../workflows/scheduling/setup.md#machine-eligibility) | **No** — Production Manager or Tenant Admin |
+| Work lands on the wrong machine | [Machine Eligibility](../workflows/scheduling/setup.md#machine-eligibility) | **No** — on an approved process, a process change. For one job, move the task to another listed machine on the Gantt |
 | The solver interleaves similar jobs | [Changeovers](../workflows/scheduling/setup.md#changeovers) | Yes |
 | Nobody can run a gated step | The training matrix — a binding resource can be a certification | Rostering yes; the certification itself no |
 | The calendar is wrong | Shifts, overtime, holidays, PTO | Yes |

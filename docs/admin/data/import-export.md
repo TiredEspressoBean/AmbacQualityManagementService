@@ -288,6 +288,20 @@ milestones → training (job roles, types, requirements, records) → calibratio
 records → Orders → Work Orders → Parts → Cores → **Stock on Hand** → **On
 Order**.
 
+!!! note "Machine eligibility onto approved processes, during setup only"
+    A step's machines are part of the process, so on an approved process they
+    normally change only through a process change. The workbook's **Machine
+    Eligibility** sheet is the exception while the plant is being set up: it
+    can load eligibility onto approved processes until the first work is
+    started in UQMES. Each row loaded that way is recorded in the history as
+    loaded by the setup workbook, and the result row says *loaded during setup
+    (no process change)*. After the first start, those rows are refused like
+    any other edit to an approved process. The per-table import never has the
+    exception.
+
+    The Tooling sheet has no steps column: the tooling a step needs is set on
+    the step.
+
 !!! tip "The Cores sheet loads reman cores already in the building"
     They arrive at **Received**. A row needs a **core type** and a **condition
     grade**. The customer has to exist as a **customer** — or as a **supplier**,

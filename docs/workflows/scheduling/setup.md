@@ -113,6 +113,12 @@ Each row pairs a machine with a step it is allowed to run, and grades the pairin
 — *Dialed in (proven best)* down to a machine that merely can. The solver prefers
 the better pairing when it has a choice.
 
+A step's machines are part of its process. Rows for a step in an **approved
+process** are read-only here and refused on save: they change through a process
+change, in the draft (see [Step
+Configuration](../../admin/processes/steps.md#equipment-requirements)). Which
+listed machine runs a particular job stays a planning call.
+
 | Column | Means |
 |--------|-------|
 | **Affinity** | How well that machine runs that step |

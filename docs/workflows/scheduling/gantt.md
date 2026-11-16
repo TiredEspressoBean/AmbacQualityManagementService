@@ -357,6 +357,15 @@ their machine, and the waiting parts are planned in full, after or alongside
 them. A re-solve while parts wait, for example on a first-piece buy-off, doesn't
 shorten their time.
 
+At a step with the **First piece** gate and a **First-piece buy-off** time in its
+timing, the plan runs the first piece (its first N parts), leaves that many
+minutes for QA's buy-off, then runs the rest, so the board doesn't show a whole
+lot running from the start when the floor can only start the first piece. On a
+**Per machine** step the rest stays on the first piece's machine. On a **Per
+shift** step, each shift change during a run adds the buy-off before the next
+step. Once a first piece has passed or been waived, the plan doesn't wait for it
+again.
+
 When a start is refused, the refusal stays with the work until it starts. The
 board shows it on a missed operation, and a late operation's cause names it
 first: *Refused at start (&lt;check&gt;) — &lt;reason&gt;*. A refusal a supervisor
