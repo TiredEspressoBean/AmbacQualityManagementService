@@ -181,6 +181,10 @@ Dispatch assigns operators to placed tasks, **per lot rather than per piece**.
 Until it runs, late tasks read *Uncovered — no operator assigned*, which is a
 one-click problem rather than a training one.
 
+Dispatch only offers an operator the machine they're trained for: a machine
+type's own training counts along with the step's. The same applies to the
+operators listed when you reassign a task on the Gantt.
+
 ### Moving something by hand
 
 Drag a task and the rest of that unit's route **ripples with it**. Two checks run

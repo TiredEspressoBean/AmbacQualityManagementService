@@ -335,7 +335,7 @@ person** chooses the rows. It shows the live plan only, not a draft.
 |--------------|-------|
 | A bar drawn where the work **actually** ran, coloured by its finish against its planned end | Green: within **On time within ±**. Blue: finished early, beyond it. Amber: late. Red: later than **Very late after** |
 | A bar from its actual start to now (▶) | Running |
-| A red dashed outline at the planned slot | **Due, never started**: its slot has passed and the work wasn't started. A unit that arrived and is waiting counts here |
+| A red dashed outline at the planned slot | **Due, never started**: its slot has passed and the work wasn't started. A unit that arrived and is waiting counts here. If a start was refused, it says why: *Refused at start: &lt;reason&gt;* |
 | Grey, *Started before planned* | Work already under way before any plan had it. It can't be judged, so it's left out of the figure |
 | Uncoloured, to the right of now | To come, from the live plan |
 
@@ -356,6 +356,13 @@ plan shows them separately: the started parts finish their remaining time on
 their machine, and the waiting parts are planned in full, after or alongside
 them. A re-solve while parts wait, for example on a first-piece buy-off, doesn't
 shorten their time.
+
+When a start is refused, the refusal stays with the work until it starts. The
+board shows it on a missed operation, and a late operation's cause names it
+first: *Refused at start (&lt;check&gt;) — &lt;reason&gt;*. A refusal a supervisor
+could have cleared on the spot (training, a repeat visit, someone else's work)
+is kept too, when nobody signed for it. A running operation's detail shows
+whoever holds the work as its operator.
 
 **Early is a deviation too.** Blue can mean the floor ran something ahead of its
 turn, so the job that should have run then is late, or that the step's standard time
