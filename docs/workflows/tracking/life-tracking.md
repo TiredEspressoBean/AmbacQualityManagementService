@@ -212,9 +212,16 @@ instruction captures. Life is counted by the definition's unit:
 
 At the soft limit, the tool's owners get *Tool near its life limit: &lt;tool&gt;*
 (*"&lt;limit&gt;: N used, soft limit S, hard limit H. Plan the refurbishment."*),
-linking to the tool. At the hard limit, a step with the **Tool life** gate
-refuses to start with it, and a work instruction refuses to record it as used,
-until it's reset or an extension is approved. No supervisor can override it.
+linking to the tool. At the hard limit, a work instruction refuses to record it
+as used, and a step with the **Tool life** gate won't start with it, until it's
+reset or an extension is approved. No supervisor can override it.
+
+When a step names several interchangeable tools (dialed in or preferred), work
+starts as long as one of them is within life. The start uses the first usable
+one, and only that one is counted. The start is refused only when every one of
+them is at its limit, and the refusal names them. A tool recorded on the work
+itself is refused at its limit. A tool reaching its limit, or being reset or
+extended, marks the plan for a re-solve.
 
 ## Reman cycles
 
