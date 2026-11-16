@@ -487,8 +487,8 @@ on the board"* and groups them by reason, each row naming the work order, how
 many of its units were placed (*"0/2 placed"*), the specific detail, and the fix:
 
 > **STARTS PAST THE HORIZON — 1**
-> WO-1042 · Common Rail Injector · 0/2 placed
-> Releases Oct 22, past the Oct 21 horizon.
+> &lt;work order&gt; · &lt;part type&gt; · 0/2 placed
+> Releases &lt;date&gt;, past the &lt;date&gt; horizon.
 > → Pull the release date in, or widen the planning horizon.
 
 The reasons, in the order they're checked (a work order shows the first that
@@ -505,7 +505,9 @@ applies):
 | **No routing to schedule** | The process has no steps |
 | **No timings authored** | Steps exist with no cycle time — nothing to place |
 | **No qualified operator rostered** | No one qualified could run a training-gated step; planned up to the step before (see [When nobody can run a step](#when-nobody-can-run-a-step)) |
-| **No machine available** | Every machine eligible for a step is down for the whole window; planned up to the step before |
+| **No machine available** | Every machine eligible for a step has downtime for the whole window; planned up to the step before |
+| **No tooling available** | A tool or fixture the step needs has none available (every tracked item out of service or at its life limit); planned up to the step before |
+| **Past the deviation's end** | The order's temporary change has ended, or would end before the work could start |
 | **Starts past the horizon** | It releases beyond the planning window |
 | **Waiting on material** | Gated until stock arrives |
 | **Material short** | Nothing on hand, nothing on order |

@@ -63,7 +63,11 @@ own.
     **Pull in work**, capacity planning, the Schedule board's work order dialog,
     **Release (N)** on the WO Control Center and **Release** on a work order's
     own page all go through the same release: the readiness check, the override
-    reason when it refuses, and the record of who released it and when.
+    reason when it refuses, and the record of who released it and when. They
+    all need `release_workorder`, held by the Planner, Production Manager, Shift
+    Lead and Engineering. Without it, the Schedule board's buttons are disabled
+    (*Releasing work orders is for planners, production managers, shift leads
+    and engineering.*) and the others don't show.
 
     Releasing does **not** change the job's status. It reads *In progress* only
     once someone actually starts work. On a released job the work order page

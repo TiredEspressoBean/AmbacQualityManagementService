@@ -156,7 +156,7 @@ and they are checked in order — the first that applies is the one you are show
 | 7 | **No routing to schedule** | The process has no usable route |
 | 8 | **No timings authored** | Operations carry no cycle time |
 | 9 | **No qualified operator rostered** | Nobody certified and rostered can run a gated step, counting the training its machine's type needs as well as the step's. It's planned up to the step before; that step and what follows wait |
-| 10 | **No machine available** | Every machine eligible for a step is down or past its calibration for the whole window. Planned up to the step before; that step and what follows wait |
+| 10 | **No machine available** | Every machine eligible for a step has downtime for the whole window. Planned up to the step before; that step and what follows wait. A step whose machines are all out of service or past calibration is planned on no machine instead, like a step with none eligible |
 | 11 | **No tooling available** | A tool or fixture the step needs has none available: every tracked item is out of service or at its life limit. Planned up to the step before; that step and what follows wait |
 | 12 | **Past the deviation's end** | The work order runs a temporary change that has ended, or would end before the work could start. Start Work would refuse it, so it isn't planned past that point |
 | 13 | **Starts past the horizon** | Real, but beyond the window solved for |

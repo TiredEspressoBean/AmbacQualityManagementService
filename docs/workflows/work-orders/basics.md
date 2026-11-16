@@ -303,7 +303,9 @@ permission as short-closing and a required reason, kept on the work order.
 |------------|--------|
 | `view_workorder` | View work orders |
 | `add_workorder` | Create work orders |
-| `change_workorder` | Edit, release, place on hold and resume — one at a time or in bulk from the Control Center. By default every staff role except Auditor holds it; without it those buttons are hidden |
+| `change_workorder` | Edit, and place on hold — one at a time or in bulk from the Control Center. By default every staff role except Auditor holds it |
+| `release_workorder` | Release and un-release, one at a time or in bulk (**Pull in work** too) — Planner, Production Manager, Shift Lead, Engineering and Tenant Admin. Without it the buttons are hidden, or disabled on the Schedule board |
+| `clear_workorder_hold` | Clear a hold of any kind (**Resume**, **Clear hold**), one at a time or in bulk — Shift Lead, Production Manager, QA Manager, QA Inspector and Tenant Admin. Anyone else who can edit work orders clears one work order at a time only with one of them signing in to authorise it |
 | `delete_workorder` | Delete work orders |
 | `cancel_workorder` | Cancel or short-close a work order — Tenant Admin and Production Manager |
 

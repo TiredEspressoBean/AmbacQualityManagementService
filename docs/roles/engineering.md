@@ -129,9 +129,9 @@ These are the default groups an organisation starts with. Group permissions can 
     Approval](../workflows/documents/approval.md).
 
 !!! note "Releasing work *is* yours"
-    Release, unrelease and bulk release run on the same write right as the rest
-    of your work-order editing, so you can release work orders. What you cannot
-    do is **solve the schedule** — that is the Planner's.
+    You hold `release_workorder`, so you can release, un-release and bulk
+    release work orders. What you cannot do is **solve the schedule**, which is
+    the Planner's, or clear a hold.
 
 ## If you got something wrong
 

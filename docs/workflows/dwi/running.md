@@ -40,7 +40,8 @@ and is notified when the start is refused:
 | The part is on hold | The part's hold to be released | Shift Lead, Production Manager |
 | A remanufactured unit is waiting on the customer's authorisation | The customer's authorisation | Production Manager |
 | The machine is out of service, in maintenance or in calibration (*"&lt;machine&gt; is in maintenance — it can't run work until it is back in service."*) | The machine back in service | Shift Lead, Production Manager |
-| The machine is past its calibration, or its last calibration failed (*"&lt;machine&gt; is past its calibration — it can't run work until it is calibrated."*) | The machine to be calibrated | Shift Lead, Production Manager, QA Manager |
+| The machine has open downtime (*"&lt;machine&gt; is down (&lt;reason&gt;) since &lt;date&gt; &lt;time&gt; — it can't run work until the downtime is resolved."*). A machine that is also out of service reads as out of service (row above) | The machine's downtime to be resolved | Shift Lead, Production Manager |
+| The machine is past its calibration due date (*"&lt;machine&gt; is past its calibration — it can't run work until it is calibrated."*). A failed calibration takes a machine out of service, so it reads as out of service (row above) | The machine to be calibrated | Shift Lead, Production Manager, QA Manager |
 | The part is at its life limit | An approved extension | Engineering, QA Manager |
 | A tool or fixture is at its life limit (*"&lt;tool&gt; has reached its life limit (&lt;limit&gt;: 2 of 2 parts) — reset it after refurbishment, or get an extension approved."*, with **Open** to the tool's page) | The tool reset or extended | Engineering, Shift Lead |
 | The first piece isn't bought off yet | QA to buy off the first piece | QA, already called by the first piece (see [First Piece Inspection](../work-orders/fpi.md)) |
@@ -155,7 +156,7 @@ isn't complete yet"*, naming the check still missing.
 Completing the load finishes the step for its parts, but a part still moves on
 with the rest of its lot. If some can't yet — a lot-mate is on hold, say — you're
 told which and why: *"Load complete, but its parts didn't move: Done at Cleaning —
-the lot waits for CORE-240212-0009 (on hold). Split it from the lot to let the rest
+the lot waits for &lt;serial&gt; (on hold). Split it from the lot to let the rest
 move."*, or *"Load complete: N moved on, M waiting"* when some did.
 
 Each check is recorded once, for the load. A confirmed check shows **Captured**

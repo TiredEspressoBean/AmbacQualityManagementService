@@ -135,7 +135,7 @@ Guides](../../roles/index.md).
 | **Release** | Not yet released, and not on hold | Releases the job — the readiness check runs, and if it refuses, *Not ready to release* lists the blockers and asks for a **reason to release anyway**. It does **not** change the status |
 | **Un-release** | Released | Withdraws the authorisation |
 | **Hold** (*Place on hold* on the control page) | Pending or in progress | Asks for a reason — waiting on material, quality hold, tooling, operator unavailable, customer hold, other — with optional details. The hold record keeps them |
-| **Resume** | On hold | Clears the hold. The work order returns to **In progress** if any work has started, otherwise to **Pending**. A quality or tooling hold needs **What resolved it** before it clears |
+| **Resume** | On hold | Clears the hold. The work order returns to **In progress** if any work has started, otherwise to **Pending**. A quality or tooling hold needs **What resolved it** before it clears. Someone who can't clear holds (an operator, a planner) gets the same dialog with **Supervisor authorization**: a shift lead, production manager or QA signs in on their screen |
 | **Cancel** | Not completed or cancelled | Asks to confirm, then cancels — see [Cancelling](basics.md#cancelling-work-orders) |
 | **Short-close** | Not on hold, completed or cancelled (refused when nothing has finished) | Completes it short, deciding each unfinished unit — see [Short-closing](basics.md#short-closing-a-work-order) |
 
@@ -215,7 +215,9 @@ A work order's own changes, including priority with its reasons, are on the
 | Permission | Allows |
 |------------|--------|
 | `view_workorder` | View progress |
-| `change_workorder` | Update status |
+| `change_workorder` | Place on hold |
+| `release_workorder` | **Release** and **Un-release** |
+| `clear_workorder_hold` | **Resume** (clear a hold) directly, or authorise someone else's |
 | `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar |
 
 ## Next Steps

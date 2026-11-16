@@ -74,8 +74,9 @@ A tenant is seeded in two passes when it is created.
 | Training expired | QA Manager, Production Manager, and the operator |
 | Shift note posted | The note's audience |
 
-**A start refused by a step's gate** gets one rule per gate, each named *Start
-refused (&lt;gate&gt;) - call &lt;groups&gt;* and conditional on that gate:
+**A start refused by a step's gate** gets a rule per gate, each named *Start
+refused (&lt;gate&gt;) - call &lt;groups&gt;* and conditional on that gate. A machine
+past its calibration gets a second rule as well:
 
 | Gate | Routes to |
 |------|-----------|
@@ -85,6 +86,7 @@ refused (&lt;gate&gt;) - call &lt;groups&gt;* and conditional on that gate:
 | Part not on hold | Shift Lead, Production Manager |
 | Customer authorisation | Production Manager |
 | Machine in service | Shift Lead, Production Manager |
+| Machine in service, machine past its calibration | QA Manager, in addition to the rule above |
 | Life limit | Engineering, QA Manager |
 | Tool life | Engineering, Shift Lead |
 

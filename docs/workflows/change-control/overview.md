@@ -95,7 +95,8 @@ it moves the end date and changes no routing.)
 
 The PCR's **proposed changes** list everything the draft changes against the
 approved version: steps and their content, gates, a step's machines (with how
-well each runs it, e.g. *added CNC-4 (preferred)*) and the tooling it needs.
+well each runs it, shown as the list before and after, e.g. *machines CNC-1
+(eligible) → CNC-1 (eligible), CNC-4 (preferred)*) and the tooling it needs.
 
 !!! important "Editing a submitted PCR's draft resets its approvals"
     The draft stays editable while the PCR is under review, so a reviewer's

@@ -197,10 +197,11 @@ the gauge to service. A gauge whose latest calibration failed is listed as
 
 Overdue and Failed both stop use. A gauge in either state, or one that was never
 calibrated, can't record a reading: the pickers grey it out with the reason. A
-production machine in either state can't start work at a step with the **Machine
-in service** gate (*"&lt;machine&gt; is past its calibration — it can't run work
-until it is calibrated."*), and QA Manager is notified along with the Shift Lead
-and Production Manager.
+production machine past its calibration due date can't start work at a step with
+the **Machine in service** gate (*"&lt;machine&gt; is past its calibration — it
+can't run work until it is calibrated."*), and QA Manager is notified along with
+the Shift Lead and Production Manager. A failed calibration takes the machine out
+of service, so it's refused as out of service.
 
 ### Recording Calibration
 
@@ -289,23 +290,34 @@ Equipment due and overdue for calibration is listed under
 ## Downtime
 
 A machine being down is recorded as a **downtime event** against the equipment,
-the work centre, or both. Record one from a work order's **Report…** dialog:
-choose **Downtime (equipment / resource)**, pick the machine and a category,
-and give a reason. The event starts when you record it and ends when someone
-resolves it from the exceptions list. The categories are:
+the work centre, or both. Record one from a work order's **Report…** dialog, or
+from the operator's **Machine problem**, which opens the same dialog: choose
+**Downtime (equipment / resource)**, pick the machine and a category, and give a
+reason. The event starts when you record it and ends when someone resolves it
+from the exceptions list. The categories are:
 
 **Planned maintenance** · **Unplanned / breakdown** · **Changeover / setup** ·
 **Calibration** · **No work available** · **No operator available** · **Waiting
 for material** · **Quality issue** · **Other**
 
 Open events show on the work order control pages and on the operator's home.
+
+While a machine's downtime is open, no work starts on it at a step with the
+**Machine in service** gate: *"&lt;machine&gt; is down (&lt;reason&gt;) since
+&lt;date&gt; &lt;time&gt; — it can't run work until the downtime is resolved."* The
+Start Work machine picker (at a step with a choice of machines) and the work queue
+treat it as unavailable too. The
+Shift Lead and Production Manager are notified of the refused start. Resolving
+the event frees the machine.
 Equipment whose type has **Track Downtime** off is not offered in the dialog,
 and uqmes refuses an event against it from anywhere else.
 
 **Recorded it wrong?** The wrong machine, category or times: **Correct…** on the
 event's row in **WO Control Center** > **Exceptions** (turn off **Open only** to
-find a resolved one). Change what was wrong, give a **reason**, and each change is
-kept on the event with it. The downtime totals below follow the corrected times.
+find a resolved one). A resolved row names who resolved it (*… · &lt;reporter&gt; ·
+resolved by &lt;name&gt;*), and **Correct…** shows both (*Reported by … · resolved by
+…*). Change what was wrong, give a **reason**, and each change is kept on the
+event with it. The downtime totals below follow the corrected times.
 
 ### Where downtime adds up
 

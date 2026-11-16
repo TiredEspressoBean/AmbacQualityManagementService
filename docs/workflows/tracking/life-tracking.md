@@ -144,8 +144,8 @@ part's detail page has the same section for the part's own limits and its
 core's, labelled *&lt;limit&gt; (Core &lt;serial&gt;)*.
 
 Each row reads *&lt;limit&gt; — N used · soft S · hard H &lt;unit&gt;*, with its status
-(OK, WARNING or EXPIRED), the last reset (*Last reset &lt;date&gt; by &lt;name&gt; —
-&lt;reason&gt;*) and the last extension (*Extended to N, approved by &lt;name&gt; —
+(OK, WARNING or EXPIRED), the last reset (*Last reset &lt;date&gt; by &lt;name&gt;, at
+&lt;count before the reset&gt; — &lt;reason&gt;*) and the last extension (*Extended to N, approved by &lt;name&gt; —
 &lt;reason&gt;*). Limits from a revised definition's earlier versions are folded
 under *Earlier versions of these limits (n)*.
 
@@ -162,7 +162,8 @@ and QA Manager for a part; Engineering and Shift Lead for a tool).
 ## Extending a limit
 
 An extension raises the hard limit for one item or part, leaving the definition
-untouched. It takes **two people**. **Request an extension** on the Life row:
+untouched. It takes **two people**. **Extend** on the Life row opens *Request an
+extension*:
 *"Asks for this item's hard limit to be raised (now N). Someone with life-limit
 authority, other than you, approves it; the limit rises only then. Say why it's
 safe to run longer."* It confirms with *Extension requested — waiting for
@@ -175,7 +176,9 @@ default **QA Manager, QA Inspector, Engineering and Tenant Admin**, titled
 **Extension approval** panel (*"Approve to raise this item's hard limit; reject
 to leave it as it is."*) and responds with a signature and password. On approval
 the limit rises, with the approver recorded. A rejection needs a comment and
-changes nothing. The requester doesn't see Sign or Respond on their own request.
+changes nothing. The requester isn't offered their own request in the Inbox, even
+when their group approves extensions; on the item's page the panel tells them *You
+asked for this approval, so someone else approves it.*
 
 Any staff member can request one. A **Production Manager can't approve** one:
 running past a published life is an engineering and quality call. There is no

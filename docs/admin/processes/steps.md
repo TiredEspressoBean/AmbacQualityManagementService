@@ -145,7 +145,7 @@ removes one.
 | **Part not quarantined** | Before start | *A quarantined part waits for its disposition.* | — |
 | **Customer authorisation** | Before start | *A reman unit parked for the customer's answer isn't worked.* | — |
 | **Part not on hold** | Before start | *A part on hold isn't started until its hold is released. Rework needed stays startable.* | — |
-| **Machine in service** | Before start | *No work starts on a machine that is out of service, in maintenance, in calibration or past its calibration.* The machine is the one the part is started on: picked at Start Work, or the planned one | — |
+| **Machine in service** | Before start | *No work starts on a machine that is out of service, in maintenance, in calibration, past its calibration, or down with downtime not yet resolved.* The machine is the one the part is started on: picked at Start Work, or the planned one | — |
 | **Life limit** | Before start | *A part at its life limit (including how often a unit has been remanned) doesn't start without an approved extension.* Work started inside the limit may finish | — |
 | **Tool life** | Before start | *No work starts with a tool or fixture at its life limit until it's reset after refurbishment or an extension is approved.* | — |
 | **Operator trained** | Before start | *The operator holds the step's training, and the machine type's; a supervisor can authorize past it.* | — |
@@ -262,9 +262,9 @@ consumed at the step.
 !!! important "Machines and tooling change through a process change"
     A step's machines (and how well each runs it) and the tooling it needs are
     part of the process. On an approved process they change only in a draft,
-    through a process change, and the change request lists them, e.g.
-    *Machines: added CNC-4 (preferred); CNC-2 eligible → preferred; removed
-    CNC-1*. The step form, the machine's page and **Machine Eligibility** show
+    through a process change, and the change request lists them as the list
+    before and after, e.g. *machines CNC-1 (eligible), CNC-2 (eligible) → CNC-2
+    (preferred), CNC-4 (preferred)*. The step form, the machine's page and **Machine Eligibility** show
     them read-only for an approved process's steps. Choosing which listed
     machine runs a particular job stays a planning call: dispatch, moving a
     task on the Gantt, or the machine picker at Start Work.

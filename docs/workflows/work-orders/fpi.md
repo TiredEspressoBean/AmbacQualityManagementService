@@ -98,9 +98,11 @@ passes, or ticked by hand on the report form, and nothing waits on it.
 
 QA is notified as soon as the first piece opens, at its first start:
 *First piece waiting: &lt;step&gt;*, naming the parts started so far and the work
-order, with a link to the work order. The verdict goes back the same way:
-*First piece passed: &lt;step&gt; … the run may go ahead*, or on a fail *correct
-the setup and re-run the first piece; the run stays held.*
+order, with a link to the work order. The verdict goes to the Production
+Manager: *First piece passed: &lt;step&gt; … the run may go ahead*, or on a fail
+*correct the setup and re-run the first piece; the run stays held.* Who receives
+each is a [notification rule](../../admin/setup/notification-rules.md) you can
+change.
 
 **Start FPI** is refused, with the reason shown, when no part of the context is
 at the step yet (*No part has reached this step yet — start the FPI from a part
@@ -124,7 +126,8 @@ sampling), QA buys off on sight. The dialog warns that nothing was recorded.
 
 - **Notes** are optional — gauges used, observations.
 - If the step's **First piece** gate is set to *Signature + password*, or its
-  **QA sign-off** gate asks for a password, you re-enter **your own** password.
+  **QA sign-off** gate asks for a password, you re-enter **your own** password to
+  pass or waive. A fail doesn't ask for it.
 
 !!! warning "You can't buy off a first piece you signed"
     The buy-off is a second person's judgement. If you signed any of the first
@@ -337,8 +340,9 @@ After it passes, the other parts can start, and the first piece's parts move on.
 When FPI fails:
 
 1. **The failed pieces** are quarantined, each with a disposition
-2. **The floor** is told: *First piece failed … correct the setup and re-run
-   the first piece; the run stays held*
+2. **The Production Manager** is told: *First piece failed … correct the setup
+   and re-run the first piece; the run stays held*, and the step's banner and the
+   work order's control page show the run held
 3. **Remaining parts** can't start; the untouched first-piece parts wait
 4. **The next part started** after the adjustment is the new first piece
 5. **QA buys off** the new first piece, which releases the run

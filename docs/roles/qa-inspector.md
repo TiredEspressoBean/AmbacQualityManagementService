@@ -310,9 +310,9 @@ is made before the buy-off."*).
 **Fail** asks **Which pieces failed?** and the reason. Each ticked piece is
 quarantined with a FAIL report carrying your reason, and its disposition opens,
 unassigned. The untouched pieces wait and are released when the re-run first
-piece passes. The run stays held: the control page shows **First piece failed —
-run held**. Once the setup is corrected, the next part started is the new first
-piece.
+piece passes. The run stays held: the control page shows **First piece failed at
+&lt;step&gt; — run held**. Once the setup is corrected, the next part started is the
+new first piece.
 
 ### Signing off
 
