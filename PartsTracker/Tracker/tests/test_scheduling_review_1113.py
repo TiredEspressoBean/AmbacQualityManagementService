@@ -62,10 +62,12 @@ class SchedulingReviewTests(TenantTestCase):
                     if r['erp_id'] == erp)
 
     def _second_machine(self):
+        # Preferred, not eligible: an eligible machine is a candidate set, never the
+        # authored default a start falls back to.
         m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
         StepEquipmentAffinity.objects.create(
             tenant=self.tenant, step=self.step1, equipment=m2,
-            affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
+            affinity=StepEquipmentAffinity.Affinity.PREFERRED)
         return m2
 
     # 1 ------------------------------------------------------------------------

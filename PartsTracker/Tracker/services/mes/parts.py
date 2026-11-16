@@ -119,17 +119,18 @@ def planned_production_machine(step_id, part_id):
 
 
 def authored_machine(step_id):
-    """The step's authored machine to run on when no fresh plan says: the first that
-    can run work now (dialed-in, then preferred, then eligible), else the first
-    dialed-in / preferred one so the start gate refuses with its real reason. A
-    machine leaving service marks the plan stale; falling back to that same machine
-    refused every start at the step (scheduling review 2026-11-13)."""
+    """The step's authored machine to run on when no fresh plan says: the first
+    dialed-in / preferred one that can run work now, else the first of them so the
+    start gate refuses with its real reason. A machine leaving service marks the plan
+    stale; falling back to that same machine refused every start at the step
+    (scheduling review 2026-11-13). ELIGIBLE machines are a candidate set, not an
+    authored default: an eligible-only step has none, and the operator picks at Start
+    Work."""
     from Tracker.services.mes.gates import machine_refusal
-    every = production_machines(step_id)
-    for m in every:
+    preferred = production_machines(step_id, preferred_only=True)
+    for m in preferred:
         if machine_refusal(m) is None:
             return m
-    preferred = production_machines(step_id, preferred_only=True)
     return preferred[0] if preferred else None
 
 
