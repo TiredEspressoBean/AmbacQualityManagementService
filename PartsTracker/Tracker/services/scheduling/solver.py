@@ -129,16 +129,20 @@ def _lots(wo, prev_map) -> list[dict]:
     pdata = {p.part_id: p for p in wo.parts}
     part_batches: dict = defaultdict(list)
     for p in wo.parts:
-        part_batches[(p.current_step_id, _group_key(p))].append(p.part_id)
+        # Started parts and waiting parts at the same step are separate lots: the
+        # started ones are running (only their remaining time is left); the rest
+        # haven't begun. One lot holding both shrank by the started part's elapsed
+        # time on every re-solve — with one first piece running and the rest waiting
+        # for its buy-off, down to a minute (scheduling review 2026-11-13, item 8).
+        part_batches[(p.current_step_id, _group_key(p), p.in_progress)].append(p.part_id)
     lots = []
-    for (step, gk), pids in part_batches.items():
-        # A lot is in-progress if any of its parts has already started this step;
-        # elapsed = the longest-running part (earliest start → most elapsed), so
-        # the solver schedules only the remaining duration of the running lot.
-        ip_parts = [pdata[pid] for pid in pids if pdata[pid].in_progress]
-        lots.append({'label': f"b{wo.wo_id}:{step}:{gk[0]}", 'step': step,
-                     'part_ids': tuple(pids), 'count': len(pids),
-                     'in_progress': bool(ip_parts),
+    for (step, gk, started), pids in part_batches.items():
+        # elapsed = the longest-running started part (earliest start → most elapsed),
+        # so the solver schedules only the remaining duration of the running lot.
+        ip_parts = [pdata[pid] for pid in pids] if started else []
+        lots.append({'label': f"b{wo.wo_id}:{step}:{gk[0]}{':run' if started else ''}",
+                     'step': step, 'part_ids': tuple(pids), 'count': len(pids),
+                     'in_progress': started,
                      'elapsed': max((p.elapsed_minutes for p in ip_parts), default=0.0)})
     return lots
 

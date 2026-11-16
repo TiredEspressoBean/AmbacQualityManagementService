@@ -70,6 +70,21 @@ class SchedulingReviewTests(TenantTestCase):
             affinity=StepEquipmentAffinity.Affinity.PREFERRED)
         return m2
 
+    # 8 ------------------------------------------------------------------------
+    def test_started_and_waiting_parts_are_separate_lots(self):
+        """One first piece started and the rest waiting for its buy-off: the waiting
+        parts keep their whole time; only the started one is a running remainder."""
+        from types import SimpleNamespace as NS
+        from Tracker.services.scheduling.solver import _lots
+        part = lambda pid, started, elapsed=0.0: NS(  # noqa: E731
+            part_id=pid, current_step_id="S1", individual=False, split_from_lot=False,
+            in_progress=started, elapsed_minutes=elapsed)
+        wo = NS(wo_id="W", parts=[part("a", True, 30.0), part("b", False), part("c", False)])
+        lots = {lot['in_progress']: lot for lot in _lots(wo, {})}
+        self.assertEqual((lots[True]['count'], lots[True]['elapsed']), (1, 30.0))
+        self.assertEqual((lots[False]['count'], lots[False]['elapsed']), (2, 0.0))
+        self.assertNotEqual(lots[True]['label'], lots[False]['label'])
+
     # 1 ------------------------------------------------------------------------
     def test_tooling_with_none_available_cuts_its_step_not_the_solve(self):
         from Tracker.models import Fixture
