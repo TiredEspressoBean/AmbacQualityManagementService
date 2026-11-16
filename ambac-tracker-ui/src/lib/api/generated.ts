@@ -8429,6 +8429,7 @@ export type ProcessChangeRequest = {
    */
   string | undefined;
   temporary_info: TemporaryChangeInfo;
+  diff_refreshes: Array<PcrDiffRefresh>;
 };
 export type ProcessChangeStatusEnum =
   /**
@@ -8469,6 +8470,11 @@ export type TemporaryWorkOrder = {
   erp_id: string;
   status: string;
   base_version: number | null;
+};
+export type PcrDiffRefresh = {
+  at: string;
+  by: string | null;
+  reason: string;
 };
 export type PaginatedProcessWithStepsList = {
   /**
@@ -10415,9 +10421,13 @@ export type StepEquipmentAffinity = {
     (number | null)
     | undefined;
   /**
-   * The step belongs to an approved process: this row changes only through a process change (10b).
+   * Not editable here: the step belongs to an approved process (it changes through a process change, 10b), or it is a copy no process uses.
    */
   step_locked: boolean;
+  /**
+   * The step is a copy no process uses; the process's own copy is edited.
+   */
+  step_orphaned: boolean;
   archived?: boolean | undefined;
 };
 export type AffinityEnum =
@@ -26626,6 +26636,7 @@ const StepEquipmentAffinity = z.object({
   affinity: AffinityEnum.optional(),
   cycle_time_override: z.number().gte(0).nullish(),
   step_locked: z.boolean(),
+  step_orphaned: z.boolean(),
   archived: z.boolean().optional(),
 });
 const PaginatedStepEquipmentAffinityList = z.object({
@@ -30331,6 +30342,11 @@ const TemporaryChangeInfo = z.object({
   expired: z.boolean(),
   work_orders: z.array(TemporaryWorkOrder),
 });
+const PcrDiffRefresh = z.object({
+  at: z.string().datetime({ offset: true }),
+  by: z.string().nullable(),
+  reason: z.string(),
+});
 const ProcessChangeRequest = z.object({
   id: z.string().uuid(),
   tenant: z.string().uuid().nullable(),
@@ -30366,6 +30382,7 @@ const ProcessChangeRequest = z.object({
   extends_request_number: z.string().nullable(),
   customer_agreement: z.string().optional(),
   temporary_info: TemporaryChangeInfo.nullable(),
+  diff_refreshes: z.array(PcrDiffRefresh),
 });
 const PaginatedProcessChangeRequestList = z.object({
   count: z.number().int(),
@@ -32187,6 +32204,7 @@ export const schemas = {
   ChangeControlPriorityEnum,
   TemporaryWorkOrder,
   TemporaryChangeInfo,
+  PcrDiffRefresh,
   ProcessChangeRequest,
   PaginatedProcessChangeRequestList,
   ProcessChangeRequestRequest,

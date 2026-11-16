@@ -1883,6 +1883,7 @@ export function SchedulingGanttPage() {
                   machineId={detailTask.machine}
                   operatorId={(detailTask.operator_id ?? detailTask.assigned_operator) == null
                     ? null : String(detailTask.operator_id ?? detailTask.assigned_operator)}
+                  operatorName={detailTask.operator_name}
                 />
               )}
               <DialogFooter className="flex-wrap gap-2 sm:justify-between">

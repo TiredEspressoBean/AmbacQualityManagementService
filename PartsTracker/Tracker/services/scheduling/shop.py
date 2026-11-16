@@ -153,6 +153,22 @@ class Shop:
         (9B), or None when the type doesn't — no restriction beyond the step's."""
         return self.machine_type_pools.get((step_id, self.machine_type_of.get(equipment_id)))
 
+    def may_run_unplaced(self, step_id, op) -> bool:
+        """For an op the solve places on no machine (its machines aren't scheduled):
+        whether `op` may run it on one of the step's authored machines — the one Start
+        Work picks, whose type's training the start gate checks (9B, Session walk
+        2026-11-16). True when the step lists no machine. The step's production
+        machines, as the gate reads them — a tool it names isn't a machine it runs on."""
+        cache = self.__dict__.setdefault('_production_machines', {})
+        if step_id not in cache:
+            from Tracker.services.mes.parts import production_machines
+            cache[step_id] = [e.id for e in production_machines(step_id)]
+        authored = cache[step_id]
+        if not authored:
+            return True
+        return any(pool is None or op in pool
+                   for pool in (self.machine_type_pool(step_id, e) for e in authored))
+
     def frozen_refusal(self, *, prev_raw, **kw):
         """Why a frozen or planner-pinned operation can't be held where the live plan
         put it, as `(code, text)` — or None, when it is held exactly.
@@ -203,6 +219,10 @@ class Shop:
             op_dur = dur_free or 1
             if _overlaps(ps, ps + op_dur, self.closure_gaps):
                 return ('closure', "the plant is closed in that slot")
+            if lm != 'off' and self.machine_type_pools and not any(
+                    self.may_run_unplaced(step_id, o) for o in self.all_op_ids):
+                return ('machine_untrained',
+                        "nobody on the crew holds the training its machine's type needs")
         att_len = front_len if front_len is not None else op_dur
         if lm != 'off' and att_len and self.crew_segs:
             # The crew on shift is a hard cap on attended work at once. Held work
@@ -219,7 +239,8 @@ class Shop:
             if pool is not None and op not in pool:
                 return ('operator_unqualified', "its operator is no longer qualified for it")
             type_pool = self.machine_type_pool(step_id, eq) if choices else None
-            if type_pool is not None and op not in type_pool:   # 9B
+            if ((type_pool is not None and op not in type_pool)
+                    or (not choices and not self.may_run_unplaced(step_id, op))):   # 9B
                 return ('operator_unqualified',
                         "its operator lacks the training its machine's type needs")
             att = front_len if front_len is not None else op_dur

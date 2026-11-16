@@ -163,7 +163,9 @@ def _diff_routing(a, b) -> Dict[str, Dict[str, Any]]:
     def machines(step):
         rows = step.equipment_affinities.filter(archived=False).select_related('equipment') \
             if hasattr(step, 'equipment_affinities') else []
-        return ", ".join(sorted(f"{r.equipment.name} ({r.get_affinity_display().lower()})"
+        # The grade's short name ("dialed in"), not its long label ("Dialed in (proven
+        # best)"), which read as nested brackets in the diff.
+        return ", ".join(sorted(f"{r.equipment.name} ({r.affinity.replace('_', ' ')})"
                                 for r in rows)) or "none"
 
     def tooling(step):

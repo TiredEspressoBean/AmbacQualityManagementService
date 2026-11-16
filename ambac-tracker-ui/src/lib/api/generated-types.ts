@@ -34156,6 +34156,13 @@ export interface components {
             /** @default  */
             reason: string;
         };
+        /** @description One refresh of a change's proposed changes: the draft edited under review. */
+        PcrDiffRefresh: {
+            /** Format: date-time */
+            at: string;
+            by: string | null;
+            reason: string;
+        };
         PcrExtendInputRequest: {
             /** Format: date */
             temporary_until: string;
@@ -34655,6 +34662,7 @@ export interface components {
             /** @description The customer's answer, when customer_notification_required - recorded here or as an attached document. Not an approval gate. */
             customer_agreement?: string;
             readonly temporary_info: components["schemas"]["TemporaryChangeInfo"] | null;
+            readonly diff_refreshes: components["schemas"]["PcrDiffRefresh"][];
         };
         /**
          * @description Read/write serializer for PCRs.
@@ -37851,8 +37859,10 @@ export interface components {
              * @description Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
              */
             cycle_time_override?: number | null;
-            /** @description The step belongs to an approved process: this row changes only through a process change (10b). */
+            /** @description Not editable here: the step belongs to an approved process (it changes through a process change, 10b), or it is a copy no process uses. */
             readonly step_locked: boolean;
+            /** @description The step is a copy no process uses; the process's own copy is edited. */
+            readonly step_orphaned: boolean;
             archived?: boolean;
         };
         /** @description A machine that can run a step, how well, and optionally its own cycle time. */

@@ -40,6 +40,7 @@ type PcrRow = {
     extends_request_number?: string | null;
     customer_agreement?: string;
     temporary_info?: TemporaryInfo | null;
+    diff_refreshes?: { at: string; by: string | null; reason: string }[];
 };
 
 const STATUS_VARIANTS: Record<string, "default" | "outline" | "secondary" | "destructive"> = {
@@ -243,6 +244,21 @@ export function PcrDetailPage() {
                 </CardHeader>
                 <CardContent>
                     <PcrDiffViewer diff={pcr.proposed_change_diff ?? null} />
+                    {/* The draft edited under review: each refresh of these changes, and
+                        the approvals it withdrew (user ruling 2026-11-16). */}
+                    {(pcr.diff_refreshes?.length ?? 0) > 0 && (
+                        <div className="mt-4 border-t pt-3">
+                            <p className="text-sm font-medium">History</p>
+                            <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                                {pcr.diff_refreshes!.map((r, i) => (
+                                    <li key={i}>
+                                        <span className="tabular-nums">{new Date(r.at).toLocaleString()}</span>
+                                        {" — "}Proposed changes refreshed — {r.reason}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

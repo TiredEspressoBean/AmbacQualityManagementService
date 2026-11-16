@@ -642,3 +642,64 @@ def capture_execution_actuals(sender, instance, **kwargs):
     write is a bulk update that bypasses ScheduledTask signals."""
     from Tracker.services.scheduling.actuals import record_execution_actuals
     record_execution_actuals(instance)
+
+# ---------------------------------------------------------------------------
+# A submitted change's draft edited: its proposed changes refresh, approvals given
+# are withdrawn, approvers notified (user ruling 2026-11-16;
+# services/change_control/draft_refresh.py). Each receiver only finds the drafts
+# under review; the refresh runs once per draft after the transaction commits.
+# ---------------------------------------------------------------------------
+
+def _refresh_drafts_for_step(step_id):
+    from Tracker.services.change_control.draft_refresh import (
+        drafts_under_review_for_step, schedule_refresh,
+    )
+    from Tracker.services.core.request_user import current_user
+    drafts = drafts_under_review_for_step(step_id)
+    if drafts:
+        schedule_refresh(drafts, user=current_user())
+
+
+def _refresh_draft(process_id):
+    from Tracker.models import ProcessChangeRequest
+    from Tracker.services.change_control.draft_refresh import schedule_refresh
+    from Tracker.services.core.request_user import current_user
+    if ProcessChangeRequest.objects.filter(  # tenant-safe: .objects auto-scopes
+            draft_process_version_id=process_id,
+            status__in=('SUBMITTED', 'UNDER_REVIEW')).exists():
+        schedule_refresh([process_id], user=current_user())
+
+
+@receiver([post_save, post_delete], sender='Tracker.ProcessStep')
+@receiver([post_save, post_delete], sender='Tracker.StepEdge')
+def refresh_draft_on_routing_change(sender, instance, **kwargs):
+    """The draft's routing: a step added, removed or reordered, an edge changed."""
+    _refresh_draft(instance.process_id)
+
+
+@receiver(post_save, sender='Tracker.Steps')
+def refresh_draft_on_step_change(sender, instance, **kwargs):
+    """A step's content (a version forked or edited in place for the draft)."""
+    _refresh_drafts_for_step(instance.id)
+
+
+@receiver([post_save, post_delete], sender='Tracker.StepEquipmentAffinity')
+@receiver([post_save, post_delete], sender='Tracker.StepRequirement')
+def refresh_draft_on_step_part_change(sender, instance, **kwargs):
+    """A step's machines (and grade) or its gates."""
+    _refresh_drafts_for_step(instance.step_id)
+
+
+def refresh_draft_on_tooling_change(sender, instance, action, **kwargs):
+    """The tooling a step needs (10b)."""
+    if action in ('post_add', 'post_remove', 'post_clear') and hasattr(instance, 'required_tooling'):
+        _refresh_drafts_for_step(instance.id)
+
+
+def _connect_tooling_refresh():
+    from Tracker.models import Steps
+    m2m_changed.connect(refresh_draft_on_tooling_change, sender=Steps.required_tooling.through,
+                        dispatch_uid='refresh_draft_on_tooling_change')
+
+
+_connect_tooling_refresh()

@@ -40,7 +40,27 @@ export function StepEquipmentAffinitiesPage() {
             }
             columns={[
                 col({ header: "Machine", priority: 1, renderCell: (a) => <span className="font-medium">{a.equipment_name}</span> }),
-                col({ header: "Step", priority: 1, renderCell: (a) => a.step_name }),
+                col({
+                    header: "Step", priority: 1,
+                    // A released process's step changes its machines through a process
+                    // change (10b): shown, not editable here.
+                    renderCell: (a) => (
+                        <>
+                            {a.step_name}
+                            {a.step_orphaned ? (
+                                <span className="ml-2 text-xs text-muted-foreground"
+                                    title="This copy of the step isn't used by any process. Change the machines on the copy the process uses.">
+                                    · locked
+                                </span>
+                            ) : a.step_locked && (
+                                <span className="ml-2 text-xs text-muted-foreground"
+                                    title="The step belongs to an approved process. Change its machines through a process change.">
+                                    · approved process
+                                </span>
+                            )}
+                        </>
+                    ),
+                }),
                 col({
                     header: "Affinity",
                     priority: 1,
@@ -62,8 +82,8 @@ export function StepEquipmentAffinitiesPage() {
                 <RowActions
                     label={`${a.equipment_name} for ${a.step_name}`}
                     editTo={`/editor/equipment/${a.equipment}/edit`}
-                    canEdit={allows("change_stepequipmentaffinity")}
-                    canDelete={allows("delete_stepequipmentaffinity")}
+                    canEdit={allows("change_stepequipmentaffinity") && !a.step_locked}
+                    canDelete={allows("delete_stepequipmentaffinity") && !a.step_locked}
                     onDelete={() => del.mutate(a.id, {
                         onSuccess: () => toast.success("Eligibility deleted"),
                         onError: (e) => toastApiError(e),

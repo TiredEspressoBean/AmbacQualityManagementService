@@ -675,8 +675,16 @@ class _Phase:
         the operator lacks (9B). Returns `can_run(op)`: whether the operator may run at
         least one of the step's machines — coverage is only made hard when someone can."""
         shop, model = self.shop, self.model
-        if not choices or not shop.machine_type_pools:
+        if not shop.machine_type_pools:
             return lambda op: True
+        if not choices:
+            # Placed on no machine (its machines aren't scheduled): Start Work still
+            # puts it on an authored one, and the gate checks that machine's type.
+            barred = {op for op, _ in named_assign if not shop.may_run_unplaced(step_id, op)}
+            for op, lit in named_assign:
+                if op in barred:
+                    model.Add(lit == 0)
+            return lambda op: op not in barred
         allowed: dict = {}   # op -> may run some machine
         for mlit, eq_id in choices:
             pool = shop.machine_type_pool(step_id, eq_id)

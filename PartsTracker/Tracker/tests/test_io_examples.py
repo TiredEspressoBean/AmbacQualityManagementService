@@ -89,21 +89,19 @@ class FixtureImportExportTests(ImportExportTestCase):
                 ProcessStep.objects.create(process=proc, step=st, order=i)
                 cls.steps[(pname, sname)] = st
         jig = Fixture.objects.create(tenant=cls.tenant, name="Drill jig", quantity=2)
-        jig.steps.set([cls.steps[("Pump Build", "Drill")], cls.steps[("Pump Repair", "Tap")]])
+        # The step names the tooling it needs (10b); the fixture lists them read-only.
+        cls.steps[("Pump Build", "Drill")].required_tooling.add(jig)
+        cls.steps[("Pump Repair", "Tap")].required_tooling.add(jig)
 
-    def test_steps_are_named_with_their_process(self):
+    def test_an_import_does_not_attach_steps(self):
+        """Which steps need a tool is authored on the step, under change control with
+        its process (10b) — a tooling import names the tool, not where it's used."""
         from Tracker.models import Fixture
         body = self.import_csv(
             'name,quantity,steps\n"Tap guide",1,"Pump Build > Tap; Pump Repair > Drill"\n',
             mode="create")
         self.assertEqual(body["summary"]["created"], 1, body)
-        got = set(Fixture.objects.get(name="Tap guide").steps.values_list("id", flat=True))
-        self.assertEqual(got, {self.steps[("Pump Build", "Tap")].id,
-                               self.steps[("Pump Repair", "Drill")].id})
-
-    def test_a_bare_step_name_in_two_processes_is_refused(self):
-        body = self.import_csv("name,steps\nAmbiguous,Drill\n", mode="create")
-        self.assert_row_errors(body, mentions="Name it with its process")
+        self.assertFalse(Fixture.objects.get(name="Tap guide").required_by_steps.exists())
 
     def test_a_deleted_fixture_no_longer_constrains_the_schedule(self):
         """The scheduling settings' Remove button archives a fixture; the solver read
@@ -115,9 +113,11 @@ class FixtureImportExportTests(ImportExportTestCase):
         self.assertEqual(self.client.delete(f"/api/Fixtures/{jig.id}/").status_code, 204)
         self.assertNotIn(jig.id, get_fixture_availability(self.tenant))
 
-    def test_the_export_writes_the_steps_as_it_reads_them(self):
+    def test_the_export_does_not_write_the_steps(self):
+        """It writes only what an import reads back; the steps are on the step (10b)."""
         csv_text = self.export("csv").decode("utf-8-sig")
-        self.assertIn("Pump Build > Drill; Pump Repair > Tap", csv_text)
+        self.assertIn("Drill jig", csv_text)
+        self.assertNotIn("Pump Build > Drill", csv_text)
 
     def test_an_export_imports_back_unchanged(self):
         from Tracker.models import Fixture

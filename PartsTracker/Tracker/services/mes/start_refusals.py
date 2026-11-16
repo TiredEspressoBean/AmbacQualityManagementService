@@ -114,3 +114,10 @@ class StartRefusalMiddleware:
                     logger.exception("start refusal: could not record for part %s",
                                      entry['part_id'])
         return response
+
+
+def as_cause(refused_at, message) -> str:
+    """A kept refusal as a missed op's or a late task's cause. It's history — still a
+    true cause after its condition clears, so it's dated rather than re-checked (lead
+    ruling 2026-11-16)."""
+    return f"Last refused at start ({timezone.localdate(refused_at):%Y-%m-%d}): {message}"

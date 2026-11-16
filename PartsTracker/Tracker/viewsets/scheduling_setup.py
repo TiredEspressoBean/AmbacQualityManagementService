@@ -136,6 +136,13 @@ class StepEquipmentAffinityViewSet(ReviveOnCreateMixin, TenantScopedMixin, ListM
         meta={'revive_key': ('step', 'equipment')})
     revive_key = ('step', 'equipment')
 
+    def get_queryset(self):
+        # An archived step's rows go with it — listed only under "Show archived".
+        qs = super().get_queryset()
+        if self.action == 'list' and not self._include_archived():
+            qs = qs.filter(step__archived=False)
+        return qs
+
     def perform_destroy(self, instance):
         # A released process's step loses a machine only through a process change (10b).
         from django.core.exceptions import ValidationError as DjangoValidationError

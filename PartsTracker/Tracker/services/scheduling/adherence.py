@@ -98,17 +98,18 @@ def adherence_ops(tenant, *, days: int = 7, now=None) -> list[dict]:
             missed[key] = t   # a later schedule's miss replaces an earlier one
     # Why a missed op didn't begin, when a start was tried and refused: the refusal kept
     # on its open visit (services/mes/start_refusals.py; scheduling review item 11).
-    refused = {(r['part_id'], r['step_id']): r['last_refusal_message']
+    from Tracker.services.mes.start_refusals import as_cause
+    refused = {(r['part_id'], r['step_id']): as_cause(r['last_refused_at'], r['last_refusal_message'])
                for r in StepExecution.objects  # tenant-safe: explicit tenant filter
                .filter(tenant=tenant, exited_at__isnull=True, status='PENDING',
                        part_id__in={k[0] for k in missed}, last_refused_at__isnull=False)
-               .values('part_id', 'step_id', 'last_refusal_message')}
+               .values('part_id', 'step_id', 'last_refused_at', 'last_refusal_message')}
     for key, t in missed.items():
         out.append({
             'id': str(t.id), 'state': 'missed', 'judged': True,
             'planned_start': t.start_time, 'planned_end': t.end_time,
             'actual_start': None, 'actual_end': None,
-            'missed_cause': (f"Refused at start: {refused[key]}" if key in refused else None),
+            'missed_cause': refused.get(key),
             **_unit(t),
         })
     return out

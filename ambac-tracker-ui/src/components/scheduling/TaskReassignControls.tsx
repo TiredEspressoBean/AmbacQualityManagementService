@@ -21,9 +21,11 @@ type Props = {
   taskId: string;
   machineId: string | null;
   operatorId: string | null;
+  /** Who's on it now, for when they aren't among the qualified on-shift crew. */
+  operatorName?: string | null;
 };
 
-export function TaskReassignControls({ taskId, machineId, operatorId }: Props) {
+export function TaskReassignControls({ taskId, machineId, operatorId, operatorName }: Props) {
   const { data, isLoading } = useReassignOptions(taskId);
   const reassignMachine = useReassignMachine();
   const reassignOperator = useReassignOperator();
@@ -79,6 +81,12 @@ export function TaskReassignControls({ taskId, machineId, operatorId }: Props) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={UNASSIGNED}>— Unassigned —</SelectItem>
+            {/* The person on it now (a running op's holder) when the list of qualified
+                crew on shift doesn't include them — else the value matches no item and
+                the picker reads blank. */}
+            {operatorId && !operators.some((o) => String(o.id) === operatorId) && (
+              <SelectItem value={operatorId}>{operatorName ?? "Current operator"} (on it now)</SelectItem>
+            )}
             {operators.map((o) => (
               <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
             ))}

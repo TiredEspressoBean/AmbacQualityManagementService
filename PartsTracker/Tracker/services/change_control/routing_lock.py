@@ -47,6 +47,20 @@ def released_owner(step):
     return link.process if link is not None else None
 
 
+def orphaned_copy(step) -> bool:
+    """A copy of a step that no process uses any more, though another version of it is
+    — what a draft's re-fork used to leave behind (walk 2026-11-16). Its machines are
+    edited on the copy the process uses, not on this one. (A standalone step, such as a
+    receiving inspection plan, has no other version and isn't one.)"""
+    from Tracker.models import ProcessStep, Steps
+    if step is None or not getattr(step, 'pk', None):
+        return False
+    if ProcessStep.objects.filter(step=step).exists():  # tenant-safe: FK-correlated to a scoped step
+        return False
+    return (Steps.objects  # tenant-safe: .objects auto-scopes
+            .filter(identity_id=step.identity_id).exclude(pk=step.pk).exists())
+
+
 def tenant_has_started_work(tenant_id) -> bool:
     from Tracker.models import StepExecution
     return StepExecution.unscoped.filter(  # tenant-safe: explicit tenant filter
@@ -66,6 +80,10 @@ def assert_step_routing_editable(step, *, what: str = "machines") -> bool:
     Raises:
         ValidationError: the step belongs to a released process.
     """
+    if orphaned_copy(step):
+        raise ValidationError(
+            f"This copy of {step.name} isn't used by any process — change the machines on "
+            f"the copy the process uses.")
     owner = released_owner(step)
     if owner is None:
         return False

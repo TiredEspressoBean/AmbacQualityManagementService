@@ -8,14 +8,14 @@ combination: the step; the step + machine; the machine + from step + to step.
 from Tracker.tests.io_base import ImportExportTestCase
 
 
-def _build_routing(cls):
+def _build_routing(cls, status="APPROVED"):
     """Two processes that both have a "Drill" and a "Tap" step, and two machines."""
     from Tracker.models import Equipments, PartTypes, Processes, ProcessStep, Steps
     pt = PartTypes.objects.create(tenant=cls.tenant, name="Pump")
     cls.steps = {}
     for pname in ("Pump Build", "Pump Repair"):
         proc = Processes.objects.create(tenant=cls.tenant, name=pname, part_type=pt,
-                                        status="APPROVED")
+                                        status=status)
         for i, sname in enumerate(("Drill", "Tap"), start=1):
             st = Steps.objects.create(tenant=cls.tenant, part_type=pt, name=sname)
             ProcessStep.objects.create(process=proc, step=st, order=i)
@@ -87,7 +87,9 @@ class StepEquipmentAffinityImportExportTests(ImportExportTestCase):
     @classmethod
     def build_fixtures(cls):
         from Tracker.models import StepEquipmentAffinity
-        _build_routing(cls)
+        # Draft processes: an approved process's machines change only through a process
+        # change (10b), which test_routing_lock_10b covers.
+        _build_routing(cls, status="DRAFT")
         StepEquipmentAffinity.objects.create(
             tenant=cls.tenant, step=cls.steps[("Pump Build", "Drill")], equipment=cls.mill1,
             affinity="preferred", cycle_time_override=2.0)

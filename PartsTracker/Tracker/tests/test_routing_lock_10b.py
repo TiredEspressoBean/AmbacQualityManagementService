@@ -137,3 +137,84 @@ class RoutingLockTests(TenantTestCase):
         changes = _diff_routing(self.step, other)
         self.assertEqual(changes["machines"], {"from": "none", "to": "Press 1 (preferred)"})
         self.assertEqual(changes["tooling"], {"from": "none", "to": "Shim kit"})
+
+
+class SubmittedDraftTests(TenantTestCase):
+    """User rulings 2026-11-16: a submitted change's draft stays editable, and any edit
+    refreshes the diff and withdraws the approvals given; a draft edits its own copy of
+    a step in place; a copy no process uses is locked."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.services.change_control.process_change import propose_process_change
+        from Tracker.services.mes.steps import step_for_draft
+        from Tracker.tests.test_change_control import _make_approved_process, _make_pcr_template
+        self.pt = PartTypes.objects.create(tenant=self.tenant_a, name="Body")
+        self.process, self.step = _make_approved_process(self.tenant_a, self.user_a, self.pt)
+        _make_pcr_template(self.tenant_a)
+        self.pcr, self.draft = propose_process_change(
+            self.process, user=self.user_a, title="Second press", proposed_change="Add a press",
+            justification="Capacity", risk_analysis="None")
+        self.mill1 = Equipments.objects.create(tenant=self.tenant_a, name="Mill 1")
+        self.mill2 = Equipments.objects.create(tenant=self.tenant_a, name="Mill 2")
+        # The draft's own copy of the step, with a machine the approved one lacks.
+        self.fork = step_for_draft(self.step, self.draft, user=self.user_a)
+        StepEquipmentAffinity.objects.create(tenant=self.tenant_a, step=self.fork,
+                                             equipment=self.mill1, affinity="preferred")
+        self.authenticate_superuser(self.tenant_a)
+
+    def test_an_edit_under_review_withdraws_the_approvals_and_refreshes_the_diff(self):
+        from Tracker.models import ApprovalResponse, ProcessChangeRequest, RecordEdit
+        from Tracker.services.change_control.process_change import submit_pcr
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        request = submit_pcr(self.pcr, user=self.user_a)
+        # Two required approvers: one approval leaves the change under review.
+        second = User.objects.create_user(username="pcr-second", password="x", tenant=self.tenant_a)
+        request.set_approvers([self.user_a, second])
+        approval = ApprovalResponse.objects.create(
+            tenant=self.tenant_a, approval_request=request, approver=self.user_a,
+            decision="APPROVED")
+        self.pcr.refresh_from_db()
+        self.assertEqual(self.pcr.status, ProcessChangeRequest.Status.SUBMITTED)
+        self.assertNotIn("Mill 2", str(self.pcr.proposed_change_diff))
+        with self.captureOnCommitCallbacks(execute=True):
+            r = self.client.post("/api/StepEquipmentAffinities/", {
+                "step": str(self.fork.id), "equipment": str(self.mill2.id), "affinity": "eligible",
+            }, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        approval.refresh_from_db()
+        self.assertEqual(approval.decision, "WITHDRAWN")
+        self.pcr.refresh_from_db()
+        self.assertIn("Mill 2", str(self.pcr.proposed_change_diff))
+        self.assertTrue(RecordEdit.objects.filter(
+            object_id=self.pcr.id, field_name="proposed_change_diff").exists())
+        self.assertTrue(RecordEdit.objects.filter(
+            object_id=approval.id, field_name="decision", new_value="WITHDRAWN").exists())
+        self.assertEqual(self.pcr.status, ProcessChangeRequest.Status.SUBMITTED)
+
+    def test_the_drafts_own_copy_is_edited_in_place(self):
+        before = Steps.objects.filter(identity_id=self.fork.identity_id).count()
+        for name in ("Final Inspection A", "Final Inspection B"):
+            r = self.client.patch(f"/api/Steps/{self.fork.id}/?process={self.draft.id}",
+                                  {"name": name}, format="json")
+            self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(Steps.objects.filter(identity_id=self.fork.identity_id).count(), before)
+        self.fork.refresh_from_db()
+        self.assertEqual(self.fork.name, "Final Inspection B")
+        self.assertTrue(ProcessStep.objects.filter(process=self.draft, step=self.fork).exists())
+        # The approved version keeps its own step (structural sharing untouched).
+        self.assertTrue(ProcessStep.objects.filter(process=self.process, step=self.step).exists())
+
+    def test_a_copy_no_process_uses_is_locked(self):
+        orphan = Steps.objects.create(tenant=self.tenant_a, name="Final Inspection",
+                                      part_type=self.pt, identity_id=self.step.identity_id)
+        aff = StepEquipmentAffinity.objects.create(tenant=self.tenant_a, step=orphan,
+                                                   equipment=self.mill1, affinity="preferred")
+        r = self.client.get(f"/api/StepEquipmentAffinities/{aff.id}/")
+        self.assertIs(r.json()["step_locked"], True)
+        r = self.client.post("/api/StepEquipmentAffinities/", {
+            "step": str(orphan.id), "equipment": str(self.mill2.id), "affinity": "eligible",
+        }, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("isn't used by any process", str(r.data))

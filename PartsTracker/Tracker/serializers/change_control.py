@@ -29,6 +29,13 @@ class TemporaryWorkOrderSerializer(serializers.Serializer):
     base_version = serializers.IntegerField(allow_null=True)
 
 
+class PcrDiffRefreshSerializer(serializers.Serializer):
+    """One refresh of a change's proposed changes: the draft edited under review."""
+    at = serializers.DateTimeField()
+    by = serializers.CharField(allow_null=True)
+    reason = serializers.CharField()
+
+
 class TemporaryChangeInfoSerializer(serializers.Serializer):
     version_id = serializers.CharField()
     version = serializers.IntegerField()
@@ -74,6 +81,22 @@ class ProcessChangeRequestSerializer(SecureModelMixin):
     extends_request_number = serializers.CharField(
         source='extends_request.artifact_number', read_only=True, allow_null=True)
     temporary_info = serializers.SerializerMethodField()
+    diff_refreshes = serializers.SerializerMethodField()
+
+    @extend_schema_field(PcrDiffRefreshSerializer(many=True))
+    def get_diff_refreshes(self, obj):
+        """Each time the draft was edited under review: the proposed changes refreshed
+        and the approvals given withdrawn (services/change_control/draft_refresh.py),
+        newest first."""
+        from django.contrib.contenttypes.models import ContentType
+        from Tracker.models import RecordEdit
+        rows = (RecordEdit.objects  # tenant-safe: .objects auto-scopes
+                .filter(content_type=ContentType.objects.get_for_model(ProcessChangeRequest),
+                        object_id=obj.id, field_name='proposed_change_diff')
+                .select_related('edited_by').order_by('-edited_at'))
+        return [{'at': r.edited_at, 'reason': r.reason,
+                 'by': (r.edited_by.get_full_name() or r.edited_by.get_username())
+                 if r.edited_by_id else None} for r in rows]
 
     @extend_schema_field(TemporaryChangeInfoSerializer(allow_null=True))
     def get_temporary_info(self, obj):
@@ -141,6 +164,7 @@ class ProcessChangeRequestSerializer(SecureModelMixin):
             'extends_request_number',
             'customer_agreement',
             'temporary_info',
+            'diff_refreshes',
         ]
         read_only_fields = [
             'extends_request',

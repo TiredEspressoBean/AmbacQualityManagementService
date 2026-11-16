@@ -66,17 +66,24 @@ class StepEquipmentAffinitySerializer(SecureModelMixin):
     class Meta:
         model = StepEquipmentAffinity
         fields = ('id', 'step', 'step_name', 'equipment', 'equipment_name', 'affinity',
-                  'cycle_time_override', 'step_locked', 'archived')
-        read_only_fields = ('id', 'step_name', 'equipment_name', 'step_locked')
+                  'cycle_time_override', 'step_locked', 'step_orphaned', 'archived')
+        read_only_fields = ('id', 'step_name', 'equipment_name', 'step_locked', 'step_orphaned')
 
     step_locked = serializers.SerializerMethodField(
-        help_text="The step belongs to an approved process: this row changes only through a "
-                  "process change (10b).")
+        help_text="Not editable here: the step belongs to an approved process (it changes "
+                  "through a process change, 10b), or it is a copy no process uses.")
+    step_orphaned = serializers.SerializerMethodField(
+        help_text="The step is a copy no process uses; the process's own copy is edited.")
 
     @extend_schema_field(serializers.BooleanField())
     def get_step_locked(self, obj):
         from Tracker.services.change_control.routing_lock import released_owner
-        return released_owner(obj.step) is not None
+        return released_owner(obj.step) is not None or self.get_step_orphaned(obj)
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_step_orphaned(self, obj):
+        from Tracker.services.change_control.routing_lock import orphaned_copy
+        return orphaned_copy(obj.step)
 
     def validate(self, attrs):
         """A released process's step changes its machines only through a process change

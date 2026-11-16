@@ -103,9 +103,14 @@ export function MachineEligibilityTable({ owner, readOnly = false }: { owner: Ow
                                     {byStep ? r.equipment_name : r.step_name}
                                     {/* A released process's step changes its machines through a
                                         process change (10b) — shown, not editable here. */}
-                                    {r.step_locked && (
-                                        <span className="ml-2 text-xs font-normal text-muted-foreground"
-                                            title="This step belongs to an approved process: change its machines through a process change.">
+                                    {r.step_orphaned ? (
+                                        <span className="ml-2 inline-block text-xs font-normal text-muted-foreground"
+                                            title="This copy of the step isn't used by any process. Change the machines on the copy the process uses.">
+                                            · locked
+                                        </span>
+                                    ) : r.step_locked && (
+                                        <span className="ml-2 inline-block text-xs font-normal text-muted-foreground"
+                                            title="The step belongs to an approved process. Change its machines through a process change.">
                                             · approved process
                                         </span>
                                     )}

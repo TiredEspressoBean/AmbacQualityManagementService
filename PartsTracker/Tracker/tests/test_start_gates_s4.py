@@ -123,7 +123,9 @@ class StartGatesS4Tests(TenantTestCase):
                                             end_time=now + timedelta(hours=1))
         attribute_late_causes(sched)
         task.refresh_from_db()
-        self.assertIn("Refused at start (equipment down)", task.late_cause)
+        self.assertEqual(task.late_cause,
+                         f"Last refused at start ({timezone.localdate(now):%Y-%m-%d}): "
+                         "Haas VF-2 is in maintenance.")
 
     def test_a_machine_past_its_calibration_refuses_the_start(self):
         mill = EquipmentType.objects.create(tenant=self.tenant_a, name="CNC mill",

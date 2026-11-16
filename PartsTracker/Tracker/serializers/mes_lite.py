@@ -1701,9 +1701,21 @@ class StepsSerializer(_StepGateFieldsMixin, SecureModelMixin):
             # used. A step in a process changes in that process — a draft, or a PCR.
             raise serializers.ValidationError(
                 "This step is part of a process. Its content is edited there, so every other "
-                "version of the process keeps the step as it was. Timing and machines can "
-                "still be changed here.")
-        if gates_changed and not set(validated_data) - self._NON_VERSIONING_FIELDS:
+                "version of the process keeps the step as it was. Timing can still be "
+                "changed here.")
+        # Already the draft's own copy — no other process version uses this row: edit it
+        # in place. Forking it again on every save left each replaced copy behind as an
+        # orphan, still listed with editable machines (10b walk, 2026-11-16). A step
+        # shared with any other version still forks, so every other version keeps it.
+        # The same test as the process editor's save (steps.step_for_draft).
+        from Tracker.services.mes.steps import step_used_elsewhere
+        own_draft_step = (
+            process is not None and process.status == 'DRAFT'
+            and process.process_steps.filter(step=instance).exists()
+            and not step_used_elsewhere(instance, process))
+        if own_draft_step:
+            updated = super().update(instance, validated_data) if validated_data else instance
+        elif gates_changed and not set(validated_data) - self._NON_VERSIONING_FIELDS:
             # Only the gates changed: still a new version, so every other process
             # version keeps the step's gates as they were.
             updated = instance.create_new_version(**version_kwargs)

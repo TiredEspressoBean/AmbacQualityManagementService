@@ -206,7 +206,9 @@ class SecondPersonThrottleTests(TenantContextMixin, TestCase):
         resp = self._start(self.operator, override_email="sup@thr.test",
                            override_password="suppass",
                            override_reason="trainee supervised")
-        self.assertEqual(resp.status_code, 201, resp.content)
+        # 200, not 201: the refused attempts gave the part its visit (to carry the
+        # refusal to the board, scheduling review item 11), and this starts that visit.
+        self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual(self._counter(), 0)
 
     def test_missing_permission_does_not_consume_budget(self):

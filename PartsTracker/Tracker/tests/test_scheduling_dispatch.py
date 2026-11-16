@@ -161,6 +161,40 @@ class DispatchTests(TenantContextMixin, TestCase):
         self.assertNotIn(untrained.id, assigned)
         self.assertIn(trained.id, assigned)
 
+    def test_an_unscheduled_machines_type_training_still_binds_the_solve(self):
+        """9B (Session walk 2026-11-16): the step's only machine isn't scheduled, so the
+        solve places the op on no machine — but Start Work puts it on that machine and
+        the gate checks its type, so the solve mustn't hand it to someone untrained."""
+        from Tracker.models import EquipmentType
+        press = EquipmentType.objects.create(tenant=self.tenant, name="Press")
+        Equipments.objects.filter(pk=self.machine.pk).update(equipment_type=press,
+                                                             is_schedulable=False)
+        die_cert = TrainingType.objects.create(tenant=self.tenant, name="Die setup")
+        TrainingRequirement.objects.create(tenant=self.tenant, training_type=die_cert,
+                                           equipment_type=press,
+                                           min_level=CompetencyLevel.QUALIFIED)
+        # The step also names a die (tooling, its type with no training of its own):
+        # it isn't the machine the step runs on, so it doesn't open the step to anyone.
+        from decimal import Decimal
+        from Tracker.models.life_tracking import LifeLimitDefinition
+        die_type = EquipmentType.objects.create(tenant=self.tenant, name="Die")
+        LifeLimitDefinition.objects.create(tenant=self.tenant, name="Die hits", unit="parts",
+                                           unit_label="Parts", hard_limit=Decimal(1000),
+                                           equipment_type=die_type)
+        die = Equipments.objects.create(tenant=self.tenant, name="Die 1", equipment_type=die_type)
+        StepEquipmentAffinity.objects.create(tenant=self.tenant, step=self.step1, equipment=die,
+                                             affinity=StepEquipmentAffinity.Affinity.DIALED_IN)
+        trained = self._operator("op-die")
+        untrained = self._operator("op-no-die")
+        self._cert(trained, die_cert)
+        # The solve names operators (as on the walk's tenant).
+        Steps.objects.filter(id__in=[self.step1.id, self.step2.id]).update(labor_model='named')
+        self._wo("WO-DIE", 1)
+        result = solve_schedule(self.tenant)
+        solved = set(result.tasks.values_list('assigned_operator_id', flat=True))
+        self.assertNotIn(untrained.id, solved)
+        self.assertIn(trained.id, solved)
+
     def test_operator_cannot_be_in_two_places_at_once(self):
         # Dispatch's own operator no-overlap, in isolation: two lots overlap in time
         # (built directly, bypassing the solver's labor cap, which would otherwise

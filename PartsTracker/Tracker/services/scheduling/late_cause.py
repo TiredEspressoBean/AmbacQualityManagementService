@@ -38,11 +38,12 @@ def attribute_late_causes(schedule) -> int:
     # A start tried and refused (a gate held it) is the plainest reason it runs late:
     # the refusal kept on the open visit (services/mes/start_refusals.py; item 11).
     from Tracker.models import StepExecution
-    refused = {(r['part_id'], r['step_id']): (r['last_refusal_code'], r['last_refusal_message'])
+    from Tracker.services.mes.start_refusals import as_cause
+    refused = {(r['part_id'], r['step_id']): as_cause(r['last_refused_at'], r['last_refusal_message'])
                for r in StepExecution.objects  # tenant-safe: parts from this schedule's tasks
                .filter(exited_at__isnull=True, status='PENDING', last_refused_at__isnull=False,
                        part_id__in={t.part_id for t in tasks if t.part_id})
-               .values('part_id', 'step_id', 'last_refusal_code', 'last_refusal_message')}
+               .values('part_id', 'step_id', 'last_refused_at', 'last_refusal_message')}
 
     # Immediately-preceding op end per task on the same machine (for contention detection).
     by_machine: dict = defaultdict(list)
@@ -67,8 +68,7 @@ def attribute_late_causes(schedule) -> int:
         cause = ""
         if late:
             if (t.part_id, t.step_id) in refused:
-                code, message = refused[(t.part_id, t.step_id)]
-                cause = f"Refused at start ({code.replace('_', ' ')}) — {message}"[:200]
+                cause = refused[(t.part_id, t.step_id)][:200]
             elif t.material_shortage:
                 cause = "Material short — no incoming receipt"
             elif t.requires_operator and t.assigned_operator_id is None:

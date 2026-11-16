@@ -75778,6 +75778,23 @@ components:
         reason:
           type: string
           default: ''
+    PcrDiffRefresh:
+      type: object
+      description: 'One refresh of a change''s proposed changes: the draft edited
+        under review.'
+      properties:
+        at:
+          type: string
+          format: date-time
+        by:
+          type: string
+          nullable: true
+        reason:
+          type: string
+      required:
+      - at
+      - by
+      - reason
     PcrExtendInputRequest:
       type: object
       properties:
@@ -76795,6 +76812,11 @@ components:
           - $ref: '#/components/schemas/TemporaryChangeInfo'
           nullable: true
           readOnly: true
+        diff_refreshes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PcrDiffRefresh'
+          readOnly: true
       required:
       - affected_workorders_count
       - affected_workorders_snapshot
@@ -76804,6 +76826,7 @@ components:
       - created_by
       - created_by_username
       - data_origin
+      - diff_refreshes
       - extends_request
       - extends_request_number
       - id
@@ -83505,8 +83528,14 @@ components:
         step_locked:
           type: boolean
           readOnly: true
-          description: 'The step belongs to an approved process: this row changes
-            only through a process change (10b).'
+          description: 'Not editable here: the step belongs to an approved process
+            (it changes through a process change, 10b), or it is a copy no process
+            uses.'
+        step_orphaned:
+          type: boolean
+          readOnly: true
+          description: The step is a copy no process uses; the process's own copy
+            is edited.
         archived:
           type: boolean
       required:
@@ -83516,6 +83545,7 @@ components:
       - step
       - step_locked
       - step_name
+      - step_orphaned
     StepEquipmentAffinityRequest:
       type: object
       description: A machine that can run a step, how well, and optionally its own
