@@ -351,6 +351,12 @@ days finished on time or early*. Click a bar for the detail, for example *planne
     is judged against that. Finished work stays on the view after a re-solve too:
     it is drawn from every plan that was live while it ran.
 
+When some of a work order's parts have started a step and others haven't, the
+plan shows them separately: the started parts finish their remaining time on
+their machine, and the waiting parts are planned in full, after or alongside
+them. A re-solve while parts wait, for example on a first-piece buy-off, doesn't
+shorten their time.
+
 **Early is a deviation too.** Blue can mean the floor ran something ahead of its
 turn, so the job that should have run then is late, or that the step's standard time
 is padded. **Mark out-of-order starts** flags ops started well ahead of plan.
