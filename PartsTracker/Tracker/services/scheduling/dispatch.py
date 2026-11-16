@@ -197,7 +197,7 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
             return not any(bs < e and s < be for bs, be in brk_min.get(o, []))
 
         tasks = list(
-            schedule.tasks.select_related('step', 'part__work_order').all()
+            schedule.tasks.select_related('step', 'part__work_order', 'machine__equipment_type').all()
         )
 
         # Group the part-rows into LOT-operations. The Layer-1 solver ran a WO's parts at
@@ -214,10 +214,14 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
         # Cache qualified operators per (step, process) — reused across lots.
         qual_cache: dict = {}
 
-        def _qualified(step, process):
-            ck = (step.id, getattr(process, 'id', None))
+        def _qualified(step, process, machine=None):
+            # The machine's type has its own training (scheduling review item 9): an
+            # operator without it would be refused at the start, so isn't offered.
+            eq_type = getattr(machine, 'equipment_type', None)
+            ck = (step.id, getattr(process, 'id', None), getattr(eq_type, 'id', None))
             if ck not in qual_cache:
-                users = get_qualified_users_for_step(step, process=process, tenant=tenant)
+                users = get_qualified_users_for_step(step, process=process,
+                                                     equipment_type=eq_type, tenant=tenant)
                 qual_cache[ck] = {u.id for u in users} & op_ids
             return qual_cache[ck]
 
@@ -257,7 +261,7 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
             weight = _PRIORITY_WEIGHT.get(getattr(wo, 'priority', 3), 100)
             step_wc = getattr(rep.step, 'work_center_id', None)
 
-            candidates = _qualified(rep.step, process)
+            candidates = _qualified(rep.step, process, rep.machine if rep.machine_id else None)
             lits = {}
             for op_id in candidates:
                 lit = model.NewBoolVar(f"a_{rep.id}_{op_id}")

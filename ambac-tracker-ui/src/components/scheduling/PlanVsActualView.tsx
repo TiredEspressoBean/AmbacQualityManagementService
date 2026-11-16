@@ -60,6 +60,8 @@ type AdherenceOp = {
     step_name: string | null;
     machine_name: string | null;
     operator_name: string | null;
+    /** Why a missed op never began, when a start was tried and refused. */
+    missed_cause?: string | null;
 };
 
 // unplanned: finished, but started before any schedule had it — drawn, never judged.
@@ -79,6 +81,8 @@ type Op = {
     judged: boolean;
     outOfOrder: boolean;
     isLate: boolean;
+    /** A missed op's refused start, if one was tried. */
+    cause: string | null;
 };
 
 const MIN = 60_000;
@@ -149,7 +153,7 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
         type Unit = {
             id: string; lane: string; what: string; step: string; ps: number; pe: number;
             as: number | null; ae: number | null; state: "done" | "running" | "missed" | "future"; late: boolean;
-            judged: boolean;
+            judged: boolean; cause: string | null;
         };
         const units: Unit[] = [];
         const seen = new Set<string>();
@@ -161,7 +165,7 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
                 step: a.step_name ?? "", ps: new Date(a.planned_start).getTime(), pe: new Date(a.planned_end).getTime(),
                 as: a.actual_start ? new Date(a.actual_start).getTime() : null,
                 ae: a.actual_end ? new Date(a.actual_end).getTime() : null, state: a.state, late: false,
-                judged: a.judged,
+                judged: a.judged, cause: a.missed_cause ?? null,
             });
         }
         for (const t of liveTasks) {
@@ -170,7 +174,7 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
                 id: t.id, lane: laneOf(t.machine_name, t.operator_name),
                 what: groupBy === "machine" ? (t.work_order ?? t.part_erp ?? t.core_number ?? "job") : (t.machine_name ?? "—"),
                 step: t.step_name ?? "", ps: new Date(t.start_time).getTime(), pe: new Date(t.end_time).getTime(),
-                as: null, ae: null, state: "future", late: t.is_late, judged: true,
+                as: null, ae: null, state: "future", late: t.is_late, judged: true, cause: null,
             });
         }
         const cycles = new Map<string, Unit[]>();
@@ -190,6 +194,7 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
                 actualStart: u.as != null ? new Date(u.as) : null, actualEnd: ae != null ? new Date(ae) : null,
                 kind: "future", deviation: null, judged: u.judged, outOfOrder: false,
                 isLate: us.some((x) => x.late),
+                cause: us.find((x) => x.cause)?.cause ?? null,
             };
             if (u.state === "missed") return { ...op, kind: "missed" };
             const early = u.judged && u.as != null && u.as < u.ps - Math.max(60, 2 * tolerance) * MIN;
@@ -275,7 +280,7 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
 
     const describe = (o: Op) => {
         const planned = `planned ${fmtTime(o.plannedStart)}–${fmtTime(o.plannedEnd)}`;
-        if (o.kind === "missed") return `${planned} · never started`;
+        if (o.kind === "missed") return `${planned} · never started${o.cause ? ` — ${o.cause}` : ""}`;
         if (!o.judged && o.actualStart) {
             const ran = `started ${fmtTime(o.actualStart)}${o.actualEnd ? `, finished ${fmtTime(o.actualEnd)}` : ", running"}`;
             return `${ran} · started before it was planned, so not judged`;

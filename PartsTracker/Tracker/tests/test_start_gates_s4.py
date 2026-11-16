@@ -69,6 +69,44 @@ class StartGatesS4Tests(TenantTestCase):
         self._machine()
         self._start()
 
+    def test_a_refused_start_is_kept_on_the_visit_until_it_starts(self):
+        """Scheduling review item 11: the refusal is kept for planning (written by a
+        task outside the refused request), and a start clears it."""
+        from unittest import mock
+        from Tracker.services.mes import start_refusals
+        machine = self._machine(status="IN_MAINTENANCE")
+        with mock.patch.object(start_refusals.record_start_refusal, 'apply_async',
+                               side_effect=lambda args: start_refusals.record_start_refusal(*args)):
+            with self.assertRaises(StartRefused):
+                self._start()
+        v = StepExecution.objects.get(pk=self.visit.pk)
+        self.assertEqual(v.last_refusal_code, 'equipment_down')
+        self.assertIn("Haas VF-2", v.last_refusal_message)
+        self.assertIsNotNone(v.last_refused_at)
+        Equipments.objects.filter(pk=machine.pk).update(status="IN_SERVICE")
+        self._start()
+        v.refresh_from_db()
+        self.assertEqual((v.last_refusal_code, v.last_refusal_message, v.last_refused_at),
+                         ('', '', None))
+
+    def test_late_cause_names_a_refused_start(self):
+        from datetime import timedelta
+        from Tracker.models import ScheduleResult, ScheduledTask
+        from Tracker.services.scheduling.late_cause import attribute_late_causes
+        now = timezone.now()
+        StepExecution.objects.filter(pk=self.visit.pk).update(
+            last_refusal_code='equipment_down', last_refusal_message="Haas VF-2 is in maintenance.",
+            last_refused_at=now)
+        WorkOrder.objects.filter(pk=self.wo.pk).update(expected_completion=now.date() - timedelta(days=1))
+        sched = ScheduleResult.objects.create(tenant=self.tenant_a, horizon_start=now,
+                                              horizon_end=now + timedelta(days=7), is_active=True)
+        task = ScheduledTask.objects.create(tenant=self.tenant_a, schedule=sched, part=self.part,
+                                            step=self.step, start_time=now,
+                                            end_time=now + timedelta(hours=1))
+        attribute_late_causes(sched)
+        task.refresh_from_db()
+        self.assertIn("Refused at start (equipment down)", task.late_cause)
+
     def test_a_machine_past_its_calibration_refuses_the_start(self):
         mill = EquipmentType.objects.create(tenant=self.tenant_a, name="CNC mill",
                                             requires_calibration=True)

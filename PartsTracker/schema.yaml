@@ -51592,6 +51592,9 @@ components:
         operator_name:
           type: string
           nullable: true
+        missed_cause:
+          type: string
+          nullable: true
       required:
       - actual_end
       - actual_start

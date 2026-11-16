@@ -21820,6 +21820,7 @@ export interface components {
             step_name: string | null;
             machine_name: string | null;
             operator_name: string | null;
+            missed_cause?: string | null;
         };
         /**
          * @description * `done` - done

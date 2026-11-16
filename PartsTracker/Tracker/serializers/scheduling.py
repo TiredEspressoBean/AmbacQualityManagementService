@@ -199,6 +199,15 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_operator_name(self, obj):
         u = obj.assigned_operator
+        if u is None and obj.in_progress and obj.part_id:
+            # A running op isn't dispatched (it's pinned): who's on it is the visit's
+            # holder, not "unattended" (plan-vs-actual walk 2026-11-16).
+            from Tracker.models import StepExecution
+            visit = (StepExecution.objects  # tenant-safe: FK-correlated to a scoped task's part
+                     .filter(part_id=obj.part_id, step_id=obj.step_id, status='IN_PROGRESS',
+                             exited_at__isnull=True)
+                     .select_related('assigned_to').first())
+            u = visit.assigned_to if visit is not None else None
         if u is None:
             return None
         return (f"{u.first_name or ''} {u.last_name or ''}".strip() or u.get_username())

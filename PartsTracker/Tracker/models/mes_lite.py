@@ -1619,6 +1619,13 @@ class StepExecution(SecureModel):
         default=False,
         help_text="Flag indicating operator reassignment is needed"
     )
+    # Why the last start attempt on this visit was refused (a floor gate, or a
+    # supervisor gate nobody signed for), until it starts — so the plan-vs-actual board
+    # and late-cause can say why planned work didn't begin (scheduling review item 11).
+    # Written by a task outside the refused request's transaction; cleared on a start.
+    last_refusal_code = models.CharField(max_length=40, blank=True, default='')
+    last_refusal_message = models.TextField(blank=True, default='')
+    last_refused_at = models.DateTimeField(null=True, blank=True)
 
     # Training authorization snapshot, captured when work STARTS on this
     # execution (competence evidence at the point of work — AS9100 clause 7.2).

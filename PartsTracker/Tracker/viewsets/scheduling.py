@@ -229,6 +229,8 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             'step_name': serializers.CharField(allow_null=True),
             'machine_name': serializers.CharField(allow_null=True),
             'operator_name': serializers.CharField(allow_null=True),
+            # A missed op whose start was refused: why (the refusal kept on the visit).
+            'missed_cause': serializers.CharField(allow_null=True, required=False),
         })},
         description="Plan vs actual: every op started, running, or due-and-never-started in "
                     "the window, from every schedule that was live — each judged against the "
@@ -1269,9 +1271,13 @@ class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         # when a step has no training requirement — customers and office staff included.
         from Tracker.services.scheduling.data import get_dispatchable_operators
         crew = {o.user_id for o in get_dispatchable_operators(self.tenant)}
+        # Qualified on THIS task's machine too: its type may need its own training.
+        wo = task.part.work_order if task.part_id else None
         operators = [
             {'id': str(u.id), 'name': (u.get_full_name() or u.username)}
-            for u in get_qualified_users_for_step(task.step, tenant=self.tenant)
+            for u in get_qualified_users_for_step(
+                task.step, process=getattr(wo, 'process', None),
+                equipment_type=getattr(task.machine, 'equipment_type', None), tenant=self.tenant)
             if u.id in crew
         ]
         return Response({'machines': machines, 'operators': operators})

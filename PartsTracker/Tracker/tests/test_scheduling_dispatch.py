@@ -138,6 +138,26 @@ class DispatchTests(TenantContextMixin, TestCase):
         self.assertEqual(s1.assigned_operator_id, a.id,
                          "only the certified operator may take the gated step")
 
+    def test_dispatch_needs_the_machines_type_training_too(self):
+        """Scheduling review item 9: the machine's type can carry its own training; an
+        operator without it is refused at the start, so dispatch doesn't offer them."""
+        from Tracker.models import EquipmentType
+        lathe = EquipmentType.objects.create(tenant=self.tenant, name="CNC lathe")
+        Equipments.objects.filter(pk=self.machine.pk).update(equipment_type=lathe)
+        lathe_cert = TrainingType.objects.create(tenant=self.tenant, name="Lathe cert")
+        TrainingRequirement.objects.create(tenant=self.tenant, training_type=lathe_cert,
+                                           equipment_type=lathe,
+                                           min_level=CompetencyLevel.QUALIFIED)
+        trained = self._operator("op-lathe")
+        untrained = self._operator("op-no-lathe")
+        self._cert(trained, lathe_cert)
+        self._wo("WO-LATHE", 1)
+        result = solve_schedule(self.tenant)
+        dispatch_operators(self.tenant, schedule=result)
+        assigned = set(result.tasks.values_list('assigned_operator_id', flat=True))
+        self.assertNotIn(untrained.id, assigned)
+        self.assertIn(trained.id, assigned)
+
     def test_operator_cannot_be_in_two_places_at_once(self):
         # Dispatch's own operator no-overlap, in isolation: two lots overlap in time
         # (built directly, bypassing the solver's labor cap, which would otherwise

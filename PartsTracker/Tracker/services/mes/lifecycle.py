@@ -501,7 +501,12 @@ def start_execution(execution, operator, *, authorizer=None, reason=None, machin
             raise StartRefused(refused)
         return execution
 
-    decision = decide_start(ctx, authorizer=authorizer, reason=reason)
+    from Tracker.services.mes import start_refusals
+    try:
+        decision = decide_start(ctx, authorizer=authorizer, reason=reason)
+    except (StartRefused, StartGateError) as exc:
+        start_refusals.record(execution, exc)   # kept for planning (item 11)
+        raise
     reassigned = 'reassignment' in decision.snapshot
     # The machine it starts on, judged above: resolved before the row says it's running.
     on = (start_machine(execution.step, ctx.part, execution, machine)
@@ -510,6 +515,8 @@ def start_execution(execution, operator, *, authorizer=None, reason=None, machin
     execution.assigned_to = operator
     execution.status = 'IN_PROGRESS'
     execution.training_authorization = decision.snapshot
+    for name, value in start_refusals.clear_fields().items():
+        setattr(execution, name, value)   # it started: no refusal stands
     execution.save()
     record_machine(execution, on)
     record_start(execution, decision, by=operator)

@@ -124,6 +124,7 @@ export type AdherenceOp = {
   step_name: string | null;
   machine_name: string | null;
   operator_name: string | null;
+  missed_cause?: (string | null) | undefined;
 };
 export type AdherenceOpStateEnum =
   /**
@@ -25995,6 +25996,7 @@ const AdherenceOp = z.object({
   step_name: z.string().nullable(),
   machine_name: z.string().nullable(),
   operator_name: z.string().nullable(),
+  missed_cause: z.string().nullish(),
 });
 const CtpBindingResource = z.object({
   resource: z.string(),
