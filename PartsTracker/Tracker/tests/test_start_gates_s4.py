@@ -69,6 +69,42 @@ class StartGatesS4Tests(TenantTestCase):
         self._machine()
         self._start()
 
+    def test_open_downtime_refuses_the_start_until_it_is_resolved(self):
+        """User ruling 2026-11-16: downtime recorded on a machine (Report exception, or the
+        operator's Machine problem — both post this) refuses starts on it until it is
+        resolved; the andon waits on the downtime, routed as a machine down."""
+        from unittest import mock
+        machine = self._machine()
+        self.authenticate_superuser(tenant=self.tenant_a)
+        r = self.client.post("/api/DowntimeEvents/", {
+            "equipment": str(machine.id), "category": "UNPLANNED", "reason": "Spindle drive fault",
+            "description": "", "start_time": timezone.now().isoformat(), "work_order": None,
+        }, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        with mock.patch('Tracker.services.mes.andon.notify_start_refused.apply_async') as send:
+            resp = self.client.post(f"/api/StepExecutions/{self.visit.id}/claim/", {}, format='json')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        blocker = resp.json()['blockers'][0]
+        self.assertEqual(blocker['code'], 'equipment_down')
+        self.assertIn("Haas VF-2 is down (Spindle drive fault) since", blocker['message'])
+        self.assertIn("until the downtime is resolved", blocker['message'])
+        self.assertEqual(blocker['waiting_on'], "the machine's downtime to be resolved")
+        _tenant, calls, _hour = send.call_args.kwargs['args']
+        self.assertEqual([(c['gate'], c['cause']) for c in calls], [('equipment_down', 'downtime')])
+        # Resolved: the machine runs work again.
+        r = self.client.post(f"/api/DowntimeEvents/{r.json()['id']}/resolve/", {}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self._start()
+
+    def test_downtime_already_over_does_not_refuse(self):
+        from Tracker.models import DowntimeEvent
+        machine = self._machine()
+        start = timezone.now() - timedelta(hours=3)
+        DowntimeEvent.objects.create(tenant=self.tenant_a, equipment=machine, category="PLANNED",
+                                     reason="Seal change", start_time=start,
+                                     end_time=start + timedelta(hours=1), reported_by=self.user_a)
+        self._start()
+
     def test_a_refused_start_is_kept_on_the_visit_until_it_starts(self):
         """Scheduling review item 11: the refusal is kept for planning, and a start
         clears it."""
@@ -111,6 +147,7 @@ class StartGatesS4Tests(TenantTestCase):
         from datetime import timedelta
         from Tracker.models import ScheduleResult, ScheduledTask
         from Tracker.services.scheduling.late_cause import attribute_late_causes
+        from Tracker.services.core.clock import plant_tz
         now = timezone.now()
         StepExecution.objects.filter(pk=self.visit.pk).update(
             last_refusal_code='equipment_down', last_refusal_message="Haas VF-2 is in maintenance.",
@@ -124,7 +161,7 @@ class StartGatesS4Tests(TenantTestCase):
         attribute_late_causes(sched)
         task.refresh_from_db()
         self.assertEqual(task.late_cause,
-                         f"Last refused at start ({timezone.localdate(now):%Y-%m-%d}): "
+                         f"Last refused at start ({now.astimezone(plant_tz()).date():%Y-%m-%d}): "
                          "Haas VF-2 is in maintenance.")
 
     def test_a_machine_past_its_calibration_refuses_the_start(self):

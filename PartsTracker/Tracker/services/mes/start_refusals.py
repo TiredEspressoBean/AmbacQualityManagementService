@@ -120,4 +120,6 @@ def as_cause(refused_at, message) -> str:
     """A kept refusal as a missed op's or a late task's cause. It's history — still a
     true cause after its condition clears, so it's dated rather than re-checked (lead
     ruling 2026-11-16)."""
-    return f"Last refused at start ({timezone.localdate(refused_at):%Y-%m-%d}): {message}"
+    from Tracker.services.core.clock import plant_tz
+    on = refused_at.astimezone(plant_tz()).date()   # the plant's date, not the server's
+    return f"Last refused at start ({on:%Y-%m-%d}): {message}"

@@ -137,6 +137,7 @@ SPECS: dict[GateCode, GateSpec] = {s.code: s for s in _SPECS}
 # 2026-11-12). Keyed (gate, cause).
 CAUSE_WAITING_ON = {
     (GateCode.EQUIPMENT_DOWN, 'calibration'): "the machine to be calibrated",
+    (GateCode.EQUIPMENT_DOWN, 'downtime'): "the machine's downtime to be resolved",
 }
 
 
@@ -279,10 +280,9 @@ def floor_blockers(ctx: StartContext, *, only: set | None = None) -> list[Blocke
                 for tool, m in start_refusals(step, ctx.execution)]
     if step is not None and want(GateCode.EQUIPMENT_DOWN):
         machine = start_machine(step, part, ctx.execution, ctx.machine)
-        refusal = machine_refusal(machine)
-        if refusal:
-            out.append(Blocker(GateCode.EQUIPMENT_DOWN, refusal,
-                               cause='calibration' if machine.status == 'IN_SERVICE' else ''))
+        down = machine_down(machine)
+        if down:
+            out.append(Blocker(GateCode.EQUIPMENT_DOWN, down[0], cause=down[1]))
     if wo is not None and want(GateCode.DEVIATION_EXPIRED):
         from Tracker.services.change_control.temporary import refusal as deviation_refusal
         expired = deviation_refusal(wo)
@@ -303,15 +303,45 @@ def machine_refusal(machine) -> str | None:
     calibration (user ruling 2026-11-11: overdue calibration on the production machine
     refuses the start until it is calibrated, as an overdue gauge is refused at
     capture)."""
+    found = machine_down(machine)
+    return found[0] if found else None
+
+
+def machine_down(machine) -> tuple[str, str] | None:
+    """`(message, cause)` when `machine` can't run work now, else None. The cause tells
+    the andon what the floor waits on (CAUSE_WAITING_ON): 'calibration', 'downtime',
+    or '' for a machine not in service.
+
+    An open downtime record — started, not resolved — refuses it too (user ruling
+    2026-11-16): the plan already keeps work off a machine for its downtime, so the
+    start gate now agrees, and resolving the downtime clears it."""
     if machine is None:
         return None
     if machine.status != 'IN_SERVICE':
         return (f"{machine.name} is {machine.get_status_display().lower()} — it can't run "
-                "work until it is back in service.")
+                "work until it is back in service.", '')
+    down = open_downtime(machine)
+    if down is not None:
+        from Tracker.services.core.clock import plant_tz
+        since = down.start_time.astimezone(plant_tz(machine.tenant_id))   # the plant's clock
+        return (f"{machine.name} is down ({down.reason}) since {since:%Y-%m-%d %H:%M} — it "
+                "can't run work until the downtime is resolved.", 'downtime')
     if getattr(machine, 'calibration_status', None) in ('OVERDUE', 'FAILED'):
         return (f"{machine.name} is past its calibration — it can't run work until it "
-                "is calibrated.")
+                "is calibrated.", 'calibration')
     return None
+
+
+def open_downtime(machine):
+    """The machine's downtime in force now — started, and not resolved (or ending
+    later) — or None. The same window the plan keeps work out of."""
+    from django.db.models import Q
+    from Tracker.models import DowntimeEvent
+    now = timezone.now()
+    return (DowntimeEvent.objects  # tenant-safe: .objects auto-scopes
+            .filter(equipment=machine, archived=False, start_time__lte=now)
+            .filter(Q(end_time__isnull=True) | Q(end_time__gt=now))
+            .order_by('start_time').first())
 
 
 def resume_blockers(ctx: StartContext) -> list[Blocker]:
