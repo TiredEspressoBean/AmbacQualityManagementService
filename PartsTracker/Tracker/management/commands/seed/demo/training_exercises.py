@@ -336,6 +336,18 @@ class TrainingExercisesSeeder(BaseSeeder):
                                         is_voided=False).exists():
             return
         manager = User.objects.filter(email='jennifer.mgr@demo.ambac.com').first()
+        # Released first, as the job was, then held: released after the hold, its release
+        # reason claimed a readiness override for the hold (walk 2026-11-16).
+        if work_order.released_at is None:
+            from Tracker.services.mes.release import ReleaseBlocked, release_work_order
+            try:
+                release_work_order(work_order, manager)
+            except ReleaseBlocked as e:
+                release_work_order(work_order, manager, override_reason=(
+                    f"Released for production when the job was started. "
+                    f"Readiness at release: {e}")[:500])
+            type(work_order).objects.filter(pk=work_order.pk).update(
+                released_at=work_order.created_at)
         place_on_hold(work_order, 'QUALITY', manager, notes=config['description'])
 
     def _determine_part_step(self, steps, part_index, config):

@@ -68,7 +68,19 @@ _AFFINITIES = {
     "Nozzle Replacement": [("Rework Station RW-1", "dialed_in")],
 }
 
-# step name -> (setup, cycle, load_unload, attention)
+# The press-fit dies Assembly needs (a tracked tooling pool, see _press_fit_dies): PF-1
+# at its hard limit, PF-2 well within life.
+_DIE_TYPE = "Press-fit Die"
+_DIE_LIMIT = "Press-fit die life"
+_DIE_POOL = "Press-fit dies"
+_DIE_SOFT, _DIE_HARD = 4500, 5000
+_DIES = [("Press-fit Die PF-1", 5000), ("Press-fit Die PF-2", 1200)]
+
+# Minutes QA takes to buy a first piece off, after it's made (scheduling review item 7):
+# the plan runs the first piece, waits this long, then the rest. Body Inspection's is the
+# planner track's example; the others are blank (the wait isn't planned).
+_BUYOFF_MINUTES = {"Body Inspection": 20}
+
 # step name -> (setup, cycle, load_unload, attention). Every scheduled in-house step
 # gets an honest duration (machine-less steps included). Omitted on purpose:
 # "Nitride Coating" on either route (OSP — its time is vendor lead time) and
@@ -159,7 +171,8 @@ class DemoSchedulingSeeder(BaseSeeder):
                     tenant=self.tenant, step=step,
                     defaults={"setup_minutes": setup, "cycle_time_minutes": cycle,
                               "load_unload_per_piece": lu, "attention_type": attention,
-                              "external_setup_minutes": 0})
+                              "external_setup_minutes": 0,
+                              "first_piece_buyoff_minutes": _BUYOFF_MINUTES.get(step_name)})
                 tim_n += 1
 
         # Machine affinities for the production steps.
@@ -245,4 +258,46 @@ class DemoSchedulingSeeder(BaseSeeder):
         self.log(f"  {len(machines)} machines schedulable, {aff_n} affinities, "
                  f"{tim_n} timings, {sec_n} secondary-gauge resources, "
                  f"{rostered} operators rostered to {shift.code}.")
-        return {"shift": shift, "machines": machines}
+        dies = self._press_fit_dies()
+        return {"shift": shift, "machines": machines, "dies": dies}
+
+    def _press_fit_dies(self):
+        """Assembly presses the control valve seat into the body with a press-fit die.
+        The dies are a tracked tooling pool the step needs (Steps.required_tooling, 10b):
+        each counts the bodies pressed against its life limit. PF-1 is worn out — at
+        its hard limit, waiting for refurbishment (Reset) or an extension; PF-2 is well
+        within life, so Assembly starts on PF-2 and counts only it. The pool refuses a
+        start only when no die is usable."""
+        from Tracker.models import EquipmentType, Fixture, LifeLimitDefinition, LifeTracking
+        from Tracker.services.mes.step_gates import rows_of, set_step_gates
+        die_type, _ = EquipmentType.objects.update_or_create(
+            tenant=self.tenant, name=_DIE_TYPE,
+            defaults={"description": "Press-fit dies for the valve seat; refurbished when worn.",
+                      "requires_calibration": False, "track_downtime": False})
+        limit, _ = LifeLimitDefinition.objects.update_or_create(
+            tenant=self.tenant, name=_DIE_LIMIT,
+            defaults={"unit": "parts", "unit_label": "Bodies pressed",
+                      "is_calendar_based": False, "soft_limit": Decimal(_DIE_SOFT),
+                      "hard_limit": Decimal(_DIE_HARD), "equipment_type": die_type})
+        dies = []
+        for name, pressed in _DIES:
+            die, _ = Equipments.objects.update_or_create(
+                tenant=self.tenant, name=name,
+                defaults={"equipment_type": die_type, "status": "IN_SERVICE",
+                          "is_schedulable": False})
+            tracking, _ = LifeTracking.for_object(die, limit, accumulated=Decimal(pressed))
+            if tracking.accumulated != Decimal(pressed):
+                tracking.accumulated = Decimal(pressed)
+                tracking.save()
+            dies.append(die)
+        pool, _ = Fixture.objects.update_or_create(
+            tenant=self.tenant, name=_DIE_POOL,
+            defaults={"kind": "DIE", "equipment_type": die_type, "quantity": len(dies)})
+        for step in self._steps("Assembly"):
+            step.required_tooling.add(pool)
+            rows = rows_of(step)
+            if not any(r["gate"] == "tool_life" for r in rows):
+                set_step_gates(step, rows + [{"gate": "tool_life"}])
+        self.log(f"  Tooling: {_DIE_POOL} ({', '.join(f'{n} {p} of {_DIE_HARD}' for n, p in _DIES)}) "
+                 f"required at Assembly")
+        return dies

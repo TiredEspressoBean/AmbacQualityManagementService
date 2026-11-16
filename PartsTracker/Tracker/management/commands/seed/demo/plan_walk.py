@@ -12,7 +12,9 @@ that plan:
     WO-PLAN-02  early         started and finished well ahead of its slot
     WO-PLAN-03  late          finished half an hour past its planned end
     WO-PLAN-04  very late     finished an hour and a half past its planned end
-    WO-PLAN-05  never started its slot passed with nobody on it
+    WO-PLAN-05  never started its slot passed with nobody on it — Dave tried it while
+                              the lathe was in maintenance and was refused, so
+                              its cause reads "Last refused at start (<date>): …"
 
 The walk runs in seconds, so its visits are re-dated against their slots afterwards,
 the way qa_walk dates a shift, and the plan-vs-actual stamp is re-run so it reads the
@@ -129,6 +131,7 @@ class DemoPlanWalkSeeder(DemoQaWalkSeeder):
         for wo_id, _serial, outcome, start_off, end_off in PLAN_DAY:
             result['outcomes'][wo_id] = outcome
             if start_off is None:
+                result['refused'] = self._refused_in_its_slot(parts[wo_id], slots[wo_id])
                 continue
             part = parts[wo_id]
             self._run_step_for([part], STEP, walk, operator=self.dave)
@@ -139,6 +142,42 @@ class DemoPlanWalkSeeder(DemoQaWalkSeeder):
         self.log(f"  Morning plan ({result.get('morning_tasks')} ops) dated back {result['dated_back']}; "
                  + ", ".join(f"{w}: {o}" for w, o in result['outcomes'].items()))
         return result
+
+    def _refused_in_its_slot(self, part, task):
+        """Why the never-started slot was missed: Dave tried it while its lathe was in
+        maintenance, and the start was refused (kept on the waiting visit, item 11). The
+        lathe is back in service now; the refusal is dated inside the slot, so Plan vs
+        actual reads it as "Last refused at start (<date>): …"."""
+        from Tracker.services.mes.gates import StartRefused
+        from Tracker.services.mes.lifecycle import start_execution
+        machine = task.machine
+        if machine is None:
+            self.log("  Warning: the never-started slot has no machine; no refusal seeded.",
+                     warning=True)
+            return None
+        status = machine.status
+        type(machine).objects.filter(pk=machine.pk).update(status='IN_MAINTENANCE')
+        machine.refresh_from_db()   # the gate judges the instance it's given
+        part.refresh_from_db()
+        visit = StepExecution.get_current_execution(part) or StepExecution.objects.create(
+            tenant=self.tenant, part=part, step=part.step, visit_number=1, status='PENDING')
+        try:
+            start_execution(visit, self.dave, machine=machine)   # on its slot's lathe
+            self.log(f"  Warning: {part.ERP_id} started on a lathe in maintenance.", warning=True)
+        except StartRefused:
+            pass   # what the walk wants: start_execution kept the refusal on the visit
+        finally:
+            type(machine).objects.filter(pk=machine.pk).update(status=status)
+        visit = (StepExecution.objects.filter(part=part, step=self.step[STEP], status='PENDING',
+                                              last_refused_at__isnull=False).first())
+        if visit is None:
+            self.log(f"  Warning: no refusal recorded for {part.ERP_id}.", warning=True)
+            return None
+        task.refresh_from_db()
+        StepExecution.objects.filter(pk=visit.pk).update(
+            last_refused_at=task.start_time + timedelta(minutes=5),
+            entered_at=min(visit.entered_at, task.start_time))
+        return visit
 
     def _release(self, wo, part_type, serial):
         from Tracker.services.mes.release import ReleaseBlocked, release_work_order

@@ -385,6 +385,46 @@ class DemoSeedDarkExhibitTests(TestCase):
         self.assertTrue(tolerance < drift('WO-PLAN-03') <= timedelta(minutes=60))
         self.assertGreater(drift('WO-PLAN-04'), timedelta(minutes=60))
         self.assertEqual(by_wo['WO-PLAN-05']['state'], 'missed')
+        # Dave tried it while its lathe was in maintenance (item 11, training pass).
+        self.assertTrue((by_wo['WO-PLAN-05']['missed_cause'] or '').startswith(
+            "Last refused at start ("), by_wo['WO-PLAN-05']['missed_cause'])
+
+    def test_the_training_pass_exhibits(self):
+        """Training pass 2026-11-16: a new setup to declare (WO-OPS-04), a two-piece
+        first piece half made (WO-QA-INSPECT-07), a worn die beside a good one, and
+        Body Inspection's planned buy-off."""
+        from Tracker.models import Equipments, FPIRecord, Parts, StepTiming
+        from Tracker.services.life_tracking.tool_life import at_hard_limit, start_refusals
+        from Tracker.services.qms.first_piece import pieces_missing
+        with tenant_context(self.tenant.id):
+            # b) a passed first piece at Body Inspection, two bodies still to run there.
+            self.assertTrue(FPIRecord.objects.filter(
+                work_order__ERP_id='WO-OPS-04', step__name='Body Inspection',
+                status='PASSED').exists())
+            self.assertEqual(sorted(Parts.objects.filter(
+                work_order__ERP_id='WO-OPS-04', step__name='Body Inspection')
+                .values_list('ERP_id', flat=True)), ['INJ-OPS-032', 'INJ-OPS-033'])
+            # d) Final Test's first piece is a pair, one of it made.
+            fpi = FPIRecord.objects.get(work_order__ERP_id='WO-QA-INSPECT-07',
+                                        step__name='Final Test', status='PENDING')
+            self.assertEqual(pieces_missing(fpi), 1)
+            # f) PF-1 worn out, PF-2 usable: Assembly isn't refused.
+            pf1 = Equipments.objects.get(name='Press-fit Die PF-1')
+            pf2 = Equipments.objects.get(name='Press-fit Die PF-2')
+            self.assertTrue(at_hard_limit(pf1))
+            self.assertFalse(at_hard_limit(pf2))
+            assembly = Parts.objects.get(ERP_id='INJ-OPS-021').step
+            self.assertEqual(start_refusals(assembly), [])
+            # c) the held order was released before it was held: its release reason
+            # doesn't claim an override for the hold.
+            from Tracker.models import WorkOrder
+            held = WorkOrder.objects.get(ERP_id='WO-TRAIN-HOLD')
+            self.assertIsNotNone(held.released_at)
+            self.assertEqual(held.workorder_status, 'ON_HOLD')
+            self.assertNotIn('on hold', held.release_override_reason or '')
+            # g) the plan waits 20 minutes for Body Inspection's buy-off.
+            self.assertTrue(StepTiming.objects.filter(
+                step__name='Body Inspection', first_piece_buyoff_minutes=20).exists())
 
     def test_a_decided_verification_carries_when_it_was_decided(self):
         """Corrections #16 (2026-10-26): the lock that freezes a decided CAPA verification

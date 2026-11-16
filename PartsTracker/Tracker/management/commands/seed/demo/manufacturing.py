@@ -295,7 +295,9 @@ DEMO_BUILD_PROCESS = {
         {**_BUILD_STEP, **_QA_GATE, 'name': 'Final Test', 'order': 8,
          'description': 'Leak and pressure test of the finished injector',
          'sampling_required': True, 'min_sampling_rate': 10.0,
-         'override_expiry_hours': 4},
+         'override_expiry_hours': 4,
+         # The leak fixture has two nests: a first piece is the pair it tests together.
+         'fpi_quantity': 2},
         {**_BUILD_STEP, 'name': 'Marking & Packaging', 'order': 9,
          'description': 'Laser-mark the serial and pack for shipping',
          'undo_window_minutes': 60},
@@ -790,6 +792,10 @@ class DemoManufacturingSeeder(BaseSeeder):
             revisit_assignment=step_data.get('revisit_assignment', 'ANY'),
             revisit_role=revisit_role,
         )
+        if step_data.get('fpi_quantity'):
+            from Tracker.models import StepRequirement
+            StepRequirement.objects.filter(step=step, gate='first_piece', archived=False).update(
+                fpi_quantity=step_data['fpi_quantity'])
 
     def _create_build_process(self, part_type):
         """The new-manufacture route (DEMO_BUILD_PROCESS), with its own steps."""

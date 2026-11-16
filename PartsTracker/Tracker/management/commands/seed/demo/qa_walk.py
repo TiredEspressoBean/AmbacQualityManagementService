@@ -100,6 +100,13 @@ OVERSIZE_BORE = 4.007
 FALSE_FAIL_WO = 'WO-QA-INSPECT-06'
 FALSE_FAIL_PARTS = ['INJ-QA-INSPECT-051', 'INJ-QA-INSPECT-052']
 
+# QA Inspector: a first piece of two. Final Test's leak fixture has two nests, so its
+# first piece is a pair (manufacturing: Final Test, pieces 2). 061 is started at Final
+# Test — one of the two made — and 062 waits: the buy-off is refused one piece short
+# until 062 is started, then either piece can be failed on its own.
+PAIR_WO = 'WO-QA-INSPECT-07'
+PAIR_PARTS = ['INJ-QA-INSPECT-061', 'INJ-QA-INSPECT-062']
+
 # QA Manager: a failed load to decide. Three bodies washed together; the bath ran hot,
 # so the cycle failed and the whole load is held under one disposition. Sarah has
 # contained it; deciding it (the whole load, or chosen parts) is Maria's.
@@ -199,6 +206,12 @@ class DemoQaWalkSeeder(BaseSeeder):
         self._space_out(wo, self.today - timedelta(hours=2, minutes=30))
 
         with transaction.atomic():
+            wo = self._work_order(order, process, PAIR_WO, len(PAIR_PARTS))
+            parts = self._parts(wo, part_type, PAIR_PARTS)
+            self._walk_pair_first_piece(wo, parts, result)
+        self._space_out(wo, self.today - timedelta(minutes=35))
+
+        with transaction.atomic():
             wo = self._work_order(order, process, FAILED_LOAD_WO, len(FAILED_LOAD_PARTS))
             parts = self._parts(wo, part_type, FAILED_LOAD_PARTS)
             result['failed_load_disposition'] = self._walk_failed_load(wo, parts, result)
@@ -226,6 +239,8 @@ class DemoQaWalkSeeder(BaseSeeder):
         ff = result.get('false_fail_disposition')
         self.log(f"  {FALSE_FAIL_WO}: {FALSE_FAIL_PARTS[1]} failed for a burr that wasn't "
                  f"there, {ff.disposition_number if ff else 'no disposition'} open")
+        self.log(f"  {PAIR_WO}: {PAIR_PARTS[0]} started at Final Test (first piece 1 of 2), "
+                 f"{PAIR_PARTS[1]} waiting")
         fl = result.get('failed_load_disposition')
         self.log(f"  {FAILED_LOAD_WO}: Wash load failed (bath {HOT_BATH:g} °C), "
                  f"{fl.disposition_number if fl else 'no disposition'} holds "
@@ -341,6 +356,26 @@ class DemoQaWalkSeeder(BaseSeeder):
         if disposition is None:
             self.log(f"  Warning: no disposition opened for {failed.ERP_id}.", warning=True)
         return disposition
+
+    def _walk_pair_first_piece(self, wo, parts, result):
+        """Both bodies made, inspected, nitrided, assembled and calibrated (first pieces
+        bought off along the way); at Final Test Mike starts 061, which opens the
+        two-piece first piece with one of its two. 062 waits."""
+        first, second = parts
+        self._make_bodies(wo, parts, result)
+        self._run_step_for([first], 'Body Inspection', result, advance=False)
+        self._buy_off(wo, 'Body Inspection', first)
+        self._advance(first, 'PASS')
+        self._run_step_for([second], 'Body Inspection', result)
+        self._nitride(parts)
+        self._run_step_for(parts, 'Assembly', result, operator=self.mike)
+        self._run_step_for([first], 'Flow Calibration', result, advance=False,
+                           operator=self.mike)
+        self._buy_off(wo, 'Flow Calibration', first)
+        self._advance(first, 'PASS', self.mike)
+        self._run_step_for([second], 'Flow Calibration', result, operator=self.mike)
+        first.refresh_from_db()
+        self._start(first, result, operator=self.mike)
 
     def _walk_failed_load(self, wo, parts, result):
         """Machined and ground, then washed together: the load is sealed and its

@@ -8,6 +8,9 @@ The operator track's day is Mike Rodriguez's, on the new-build route (Injector B
   Dave and left running: the load Mike takes over, through the reassignment gate.
 - WO-OPS-03: two bodies inspected (first piece bought off by Sarah) and back from the
   plater, waiting at Assembly: where Mike's component lots are drawn for him.
+- WO-OPS-04: three bodies at Body Inspection, the first (INJ-OPS-031) bought off by
+  Sarah: Mike declares a new setup (the CMM probe replaced), and the next start is the
+  new first piece.
 - Two shift notes from Casey, one he must acknowledge at clock-in.
 - WO-PM-MAKEUP-01: the Production Manager's exhibit, a job one body short after a
   scrap, its disposition decided and verified, waiting for the PM to close it and
@@ -32,6 +35,11 @@ WASH_WO = 'WO-OPS-02'
 WASH_PARTS = ['INJ-OPS-011', 'INJ-OPS-012', 'INJ-OPS-013', 'INJ-OPS-014']
 ASSEMBLY_WO = 'WO-OPS-03'
 ASSEMBLY_PARTS = ['INJ-OPS-021', 'INJ-OPS-022']
+# A new setup: the first body's first piece bought off at Body Inspection by Sarah, the
+# other two waiting there. Declaring a new setup (the CMM probe replaced) re-opens the
+# first piece, so the next start becomes the new one.
+SETUP_WO = 'WO-OPS-04'
+SETUP_PARTS = ['INJ-OPS-031', 'INJ-OPS-032', 'INJ-OPS-033']
 
 # A job one good unit short: its first body scrapped at Machining (the PM's make-up).
 MAKEUP_WO = 'WO-PM-MAKEUP-01'
@@ -130,6 +138,20 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
             result['work_orders'].append(wo)
         self._space_out(wo, self._last_shift_end(hours=2))
 
+        with transaction.atomic():
+            wo = self._work_order(order, process, SETUP_WO, len(SETUP_PARTS))
+            parts = self._parts(wo, part_type, SETUP_PARTS)
+            self._run_step_for(parts, 'Machining', walk, operator=self.dave)
+            self._run_step_for(parts, 'Precision Grinding', walk, operator=self.dave)
+            self._run_batch_step(wo, parts, 'Wash', walk)
+            first = parts[0]
+            self._run_step_for([first], 'Body Inspection', walk, advance=False,
+                               operator=self.dave)
+            self._buy_off(wo, 'Body Inspection', first)
+            self._advance(first, 'PASS', self.dave)
+            result['work_orders'].append(wo)
+        self._space_out(wo, self._last_shift_end(hours=1))
+
         result['makeup'] = self._makeup_short_job(order, process, part_type, walk)
 
         result['teardown_cores'] = self._cores_to_teardown()
@@ -143,7 +165,8 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
         result['shift_notes'] = self._shift_notes()
         self.log(f"  {UP_NEXT_WO}: {len(UP_NEXT_PARTS)} bodies waiting at Machining; "
                  f"{WASH_WO}: a Wash load Dave started; {ASSEMBLY_WO}: "
-                 f"{len(ASSEMBLY_PARTS)} bodies at Assembly; "
+                 f"{len(ASSEMBLY_PARTS)} bodies at Assembly; {SETUP_WO}: first piece "
+                 f"bought off, {len(SETUP_PARTS) - 1} bodies at Body Inspection; "
                  f"{len(result['shift_notes'])} shift notes")
         return result
 
