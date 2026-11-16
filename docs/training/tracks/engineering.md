@@ -217,7 +217,7 @@ few real runs.
 | Release a controlled document | Document controller |
 | Decide a disposition or approve a CAPA | QA manager |
 | Solve the schedule | Planner, production manager |
-| Machine eligibility | Production manager |
+| Machine eligibility on an approved process | A process change (set it in the draft, with the production manager) |
 | Changeovers | Planner, production manager |
 
 ---
