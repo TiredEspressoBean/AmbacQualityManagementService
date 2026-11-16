@@ -183,7 +183,13 @@ one-click problem rather than a training one.
 
 Dispatch only offers an operator the machine they're trained for: a machine
 type's own training counts along with the step's. The same applies to the
-operators listed when you reassign a task on the Gantt.
+operators listed when you reassign a task on the Gantt. The machine judged is
+the one the start would use: the task's machine, otherwise the step's authored
+one.
+
+The solve itself checks only the step's training. A freshly solved plan can
+show an operator who lacks the machine type's training; dispatching clears
+them, and leaves the task unassigned if nobody qualified is free.
 
 ### Moving something by hand
 
