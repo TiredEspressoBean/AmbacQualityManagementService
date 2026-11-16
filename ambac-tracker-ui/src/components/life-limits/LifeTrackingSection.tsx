@@ -92,7 +92,7 @@ export function LifeTrackingSection({ contentType, objectId }: {
 
     const lastReset = (t: Tracking) => {
         const h = (Array.isArray(t.reset_history) ? t.reset_history : []) as
-            { at?: string; by?: string; reason?: string }[];
+            { at?: string; by?: string; reason?: string; from_value?: number }[];
         return h.length ? h[h.length - 1] : null;
     };
 
@@ -132,7 +132,10 @@ export function LifeTrackingSection({ contentType, objectId }: {
                 return r ? (
                     <p className="mt-1 text-xs text-muted-foreground">
                         Last reset {r.at ? new Date(r.at).toLocaleDateString() : ""}
-                        {r.by ? ` by ${r.by}` : ""}{r.reason ? ` — ${r.reason}` : ""}
+                        {r.by ? ` by ${r.by}` : ""}
+                        {/* The figure it replaced, so the reset can be checked. */}
+                        {r.from_value != null ? `, at ${n(r.from_value)}` : ""}
+                        {r.reason ? ` — ${r.reason}` : ""}
                     </p>
                 ) : null;
             })()}

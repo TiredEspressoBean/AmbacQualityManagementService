@@ -68,6 +68,7 @@ function adaptDowntime(e: DowntimeEvent): ExceptionItem {
         closed_at: e.end_time ?? null,
         work_order_ids: woIds,
         reported_by: e.reported_by_name ?? "—",
+        resolved_by: e.end_time != null ? (e.resolved_by_name ?? null) : null,
         source_ref: `DowntimeEvent/${e.id}`,
     };
 }

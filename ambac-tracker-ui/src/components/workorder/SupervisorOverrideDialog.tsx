@@ -66,7 +66,12 @@ export function SupervisorOverrideDialog({
                 onGateChange(e.gate);
                 toast.error(e.gate.detail);
             } else {
-                toast.error("Override failed", {
+                // Refused by something a supervisor can't sign away (a first piece
+                // pending, a machine down…): the sign-in can't help, so it closes and
+                // says why.
+                reset();
+                onCancel();
+                toast.error("Couldn't start", {
                     description: e instanceof Error ? e.message : undefined,
                 });
             }

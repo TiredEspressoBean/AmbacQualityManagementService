@@ -182,6 +182,8 @@ export function ApprovalSignaturePanel({
                                 ? "You have already submitted your response."
                                             : pending?.turn_refusal
                                             ? pending.turn_refusal
+                                : ownRequestBarred
+                                ? "You asked for this approval, so someone else approves it."
                                 : "You are not assigned as an approver for this change."}
                         </p>
                     )}

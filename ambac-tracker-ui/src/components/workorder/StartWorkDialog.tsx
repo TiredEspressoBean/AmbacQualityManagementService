@@ -301,18 +301,11 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
 
     const handleStart = async () => {
         if (selectedIds.length === 0) return;
-        // Pre-flight the first part (the one we launch). If the operator isn't
-        // qualified, open the gate panel straight away — no doomed create — so
-        // the resume path (existing execution) is gated too, not just create.
-        const firstAuth = authByPart.get(selectedIds[0]);
-        if (firstAuth && !firstAuth.authorized) {
-            showGate({
-                code: "training_not_authorized",
-                detail: "You are not qualified for this step.",
-                missing: firstAuth.missing,
-            });
-            return;
-        }
+        // Always ask the server: a floor refusal (a first piece pending, a machine
+        // down…) comes first, with the supervisor listed as also needed once it's
+        // cleared (P5). The training pre-flight opened the supervisor sign-in ahead of
+        // it, and the override then failed on the floor refusal (training walk
+        // 2026-11-16). The sign-in opens only when the server asks for it.
         setSubmitting(true);
         try {
             await launch();

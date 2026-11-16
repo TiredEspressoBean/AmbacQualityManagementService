@@ -163,7 +163,9 @@ export async function ensureStepExecution(
                         }
                         : {}),
                 },
-                { params: { id: existing.id }, headers },
+                // The start dialog says why; the 403 interceptor's "Permission Denied"
+                // doubled a refused override (walk 2026-11-16).
+                { params: { id: existing.id }, headers, suppressErrorToast: true },
             );
         } catch (e) {
             rethrow(e, "Claim failed");
@@ -188,7 +190,7 @@ export async function ensureStepExecution(
                     }
                     : {}),
             },
-            { headers },
+            { headers, suppressErrorToast: true },
         );
         if (!created?.id) throw new Error("Create returned no id");
         return { executionId: String(created.id), created: true };

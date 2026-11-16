@@ -78,7 +78,8 @@ export function useCreateBatchExecution() {
                         override_reason: override.reason,
                     }
                     : data,
-                { headers: csrfHeaders() },
+                // A refused override is a 403: the panel says why, not the interceptor too.
+                { headers: csrfHeaders(), suppressErrorToast: true },
             ),
         onSuccess: () => invalidateBatches(qc),
         meta: {

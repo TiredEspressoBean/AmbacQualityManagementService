@@ -189,3 +189,19 @@ class ApprovalClaimTestCase(TenantContextMixin, VectorTestCase):
         )
         response = client.post(f'/api/ApprovalRequests/{request.id}/claim/')
         self.assertEqual(response.status_code, 400)
+
+    def test_a_requester_isnt_offered_their_own_request(self):
+        """Training walk 2026-11-16: a life-limit extension's requester, in an eligible
+        group, was offered it to claim. It's never self-approved, so it isn't theirs to
+        claim — but a type that may be self-approved still is."""
+        own = self._group_routed_request(approval_type='LIFE_LIMIT_EXTENSION',
+                                         requested_by=self.member)
+        base = ApprovalRequest.objects.all()
+        self.assertNotIn(own, claimable_approvals(base, self.member))
+        self.assertIn(own, claimable_approvals(base, self.other_member))
+        with self.assertRaises(PermissionDenied):
+            claim_approval(own, self.member)
+        # A CAPA plan's sole eligible approver may approve their own (self-approval).
+        capa = self._group_routed_request(requested_by=self.member)
+        UserRole.objects.filter(user=self.other_member).delete()
+        self.assertIn(capa, claimable_approvals(base, self.member))

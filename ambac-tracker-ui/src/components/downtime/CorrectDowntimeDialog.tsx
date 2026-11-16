@@ -86,6 +86,12 @@ export function CorrectDowntimeDialog({ eventId, open, onOpenChange }: {
                         Recorded wrong — the machine, times or reason. Each change and your reason are kept on the event.
                     </DialogDescription>
                 </DialogHeader>
+                {event && (
+                    <p className="text-xs text-muted-foreground">
+                        Reported by {event.reported_by_name ?? "—"}
+                        {event.end_time ? ` · resolved by ${event.resolved_by_name ?? "—"}` : " · not resolved yet"}
+                    </p>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="col-span-2 space-y-1.5">
                         <Label>Machine</Label>

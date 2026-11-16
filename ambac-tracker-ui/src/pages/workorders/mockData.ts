@@ -124,6 +124,8 @@ export type ExceptionItem = {
     closed_at: string | null;
     work_order_ids: string[];
     reported_by: string;
+    /** Who resolved it, once resolved (downtime). */
+    resolved_by?: string | null;
     source_ref: string;
 };
 

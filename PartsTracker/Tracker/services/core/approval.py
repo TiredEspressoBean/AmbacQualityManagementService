@@ -152,6 +152,12 @@ def claim_approval(request: ApprovalRequest, user) -> ApproverAssignment:
         claim_for_turn(request, user, group_id)
         return request.approver_assignments.get(user=user)
 
+    # The requester doesn't take their own request where it can't be self-approved
+    # (a life-limit extension, say) — claiming it would only stall it (training walk
+    # 2026-11-16).
+    if request.requested_by_id == user.id and not self_approval_permitted(request, user):
+        raise PermissionDenied("You asked for this approval; someone else approves it.")
+
     user_groups = user.get_tenant_groups() if hasattr(user, 'get_tenant_groups') else []
     if not request.group_assignments.filter(group_id__in=[g.id for g in user_groups]).exists():
         raise PermissionDenied("You are not in any group eligible for this approval.")
@@ -174,15 +180,19 @@ def claim_approval(request: ApprovalRequest, user) -> ApproverAssignment:
 def claimable_approvals(queryset, user):
     """Filter a (tenant-scoped) ApprovalRequest queryset to what `user` can claim:
     PENDING, routed to one of their groups, no individual assignment yet,
-    and not already responded to by them."""
+    and not already responded to by them — nor their own request, unless it may be
+    self-approved."""
     user_groups = user.get_tenant_groups() if hasattr(user, 'get_tenant_groups') else []
-    return queryset.filter(
+    qs = queryset.filter(
         status=Approval_Status_Type.PENDING,
         group_assignments__group_id__in=[g.id for g in user_groups],
         approver_assignments__isnull=True,
     ).exclude(
         responses__approver=user,
     ).distinct()
+    own_barred = [r.pk for r in qs.filter(requested_by=user)
+                  if not self_approval_permitted(r, user)]
+    return qs.exclude(pk__in=own_barred) if own_barred else qs
 
 
 # =========================================================================
