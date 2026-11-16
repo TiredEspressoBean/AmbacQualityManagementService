@@ -49,9 +49,12 @@ export function RecordArchiveCard({ endpoint, id, model, listPath, thingName }: 
             await (destroy as (b: undefined, c: unknown) => Promise<unknown>)(undefined, {
                 params: { id }, headers: { "X-CSRFToken": getCookie("csrftoken") },
             });
-            toast.success(`Archived. "Show archived" on the list can restore it.`);
-            queryClient.invalidateQueries();
-            navigate({ to: listPath ?? table?.list ?? "/Edit" });
+            toast.success(`${thing.charAt(0).toUpperCase()}${thing.slice(1)} archived. "Show archived" on the list can restore it.`);
+            // Leave first: invalidating while this page is still mounted refetched its
+            // queries for the archived record — each a 404 toast (Session walk 2026-11-16).
+            // Once it's gone they're inactive, and only the list's queries refetch.
+            await navigate({ to: listPath ?? table?.list ?? "/Edit" });
+            void queryClient.invalidateQueries();
         } catch (e) {
             const body = apiErrorBody(e);
             toast.error(apiErrorField(body, "detail") ?? apiErrorField(body, "non_field_errors")
