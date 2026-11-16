@@ -57,8 +57,10 @@ Editing a shift doesn't lose its first piece. With no shifts set up, it keys on
 the plant date.
 
 Under **Per machine**, the machine is the one the part is started on: the
-machine picked at **Start Work**, or the planned machine (the live schedule's,
-otherwise the one authored on the step). If no machine is planned, the start is
+machine picked at **Start Work**, or the planned machine: the live schedule's,
+otherwise the step's first dialed-in or preferred machine that can run work. A
+step whose machines are only *eligible* plans none. If no machine is planned,
+the start is
 refused: *"&lt;step&gt; needs a first piece per machine, and no machine is planned
 for &lt;part&gt;. Pick the machine at Start Work."*
 
