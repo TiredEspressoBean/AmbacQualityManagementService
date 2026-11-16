@@ -93,6 +93,31 @@ draft is the same as the approved routing — there is nothing to review."* Make
 change in the draft first. (An extension of a temporary change is the exception:
 it moves the end date and changes no routing.)
 
+The PCR's **proposed changes** list everything the draft changes against the
+approved version: steps and their content, gates, a step's machines (with how
+well each runs it, e.g. *added CNC-4 (preferred)*) and the tooling it needs.
+
+!!! important "Editing a submitted PCR's draft resets its approvals"
+    The draft stays editable while the PCR is under review, so a reviewer's
+    "fix this" doesn't mean withdrawing and resubmitting. But any edit to the
+    draft (step content, gates, machines, tooling, routing) refreshes the
+    proposed changes. Approvals already given are withdrawn, and the approvers
+    are asked again: the request is back in their Inbox as waiting, and they're
+    emailed. The PCR page's **History**, under **Proposed changes**, records
+    each refresh: *&lt;time&gt; — Proposed changes refreshed — &lt;who&gt; edited the
+    draft; N approvals withdrawn*. An approval always
+    applies to the changes as they currently stand, so nothing is approved that
+    a reviewer didn't see. An edit that leaves the changes as they were
+    withdraws nothing.
+
+    Editing a step in a draft makes the draft's own copy of it once; later
+    edits change that copy in place. A step the draft shares with the approved
+    version still gets its own copy on the first edit.
+
+    A draft keeps the step as it was when it was forked. A machine added to the
+    approved step afterwards isn't carried into the draft: the proposed changes
+    show it as removed, so the reviewer sees it and the author can add it back.
+
 !!! important "What a PCR points at is fixed when it is proposed"
     The **target process** and the **draft** it forked are set at proposal and
     cannot be edited afterwards — not in Draft, not at any later status. An

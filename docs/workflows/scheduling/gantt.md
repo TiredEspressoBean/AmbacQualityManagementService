@@ -335,7 +335,7 @@ person** chooses the rows. It shows the live plan only, not a draft.
 |--------------|-------|
 | A bar drawn where the work **actually** ran, coloured by its finish against its planned end | Green: within **On time within ±**. Blue: finished early, beyond it. Amber: late. Red: later than **Very late after** |
 | A bar from its actual start to now (▶) | Running |
-| A red dashed outline at the planned slot | **Due, never started**: its slot has passed and the work wasn't started. A unit that arrived and is waiting counts here. If a start was refused, it says why: *Refused at start: &lt;reason&gt;* |
+| A red dashed outline at the planned slot | **Due, never started**: its slot has passed and the work wasn't started. A unit that arrived and is waiting counts here. If a start was tried and refused, it says why: *Last refused at start (&lt;date&gt;): &lt;reason&gt;* |
 | Grey, *Started before planned* | Work already under way before any plan had it. It can't be judged, so it's left out of the figure |
 | Uncoloured, to the right of now | To come, from the live plan |
 
@@ -368,7 +368,8 @@ again.
 
 When a start is refused, the refusal stays with the work until it starts. The
 board shows it on a missed operation, and a late operation's cause names it
-first: *Refused at start (&lt;check&gt;) — &lt;reason&gt;*. A refusal a supervisor
+first: *Last refused at start (&lt;date&gt;): &lt;reason&gt;*. It's kept as history
+after the condition clears, since it's still why the work is late. A refusal a supervisor
 could have cleared on the spot (training, a repeat visit, someone else's work)
 is kept too, when nobody signed for it. A running operation's detail shows
 whoever holds the work as its operator.

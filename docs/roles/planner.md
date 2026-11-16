@@ -189,8 +189,9 @@ the one the start would use: the task's machine, otherwise the step's authored
 one.
 
 The solve applies the same rule: the plan only puts an operator on a machine
-they hold its type's training for. Work nobody qualified can do is planned
-uncovered.
+they hold its type's training for, including for a step whose machine isn't
+itself scheduled (the training of the machine Start Work would use still
+counts). Work nobody qualified can do is planned uncovered.
 
 ### Moving something by hand
 

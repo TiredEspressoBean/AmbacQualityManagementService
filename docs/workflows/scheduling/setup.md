@@ -117,7 +117,8 @@ A step's machines are part of its process. Rows for a step in an **approved
 process** are read-only here and refused on save: they change through a process
 change, in the draft (see [Step
 Configuration](../../admin/processes/steps.md#equipment-requirements)). Which
-listed machine runs a particular job stays a planning call.
+listed machine runs a particular job stays a planning call. A step copy that no
+process uses is shown locked: change the machines on the copy the process uses.
 
 | Column | Means |
 |--------|-------|
