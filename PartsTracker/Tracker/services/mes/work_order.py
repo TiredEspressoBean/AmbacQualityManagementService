@@ -599,9 +599,14 @@ HOLD_REASONS_NEEDING_RESOLUTION = frozenset({
     WorkOrderHoldReason.QUALITY, WorkOrderHoldReason.TOOLING})
 
 
-def clear_hold(work_order: WorkOrder, cleared_by, notes: str = "") -> WorkOrderHold | None:
+def clear_hold(work_order: WorkOrder, cleared_by, notes: str = "",
+               authorized_by=None) -> WorkOrderHold | None:
     """Close the open hold on a work order, recording what resolved it. Returns the
     cleared hold, or None if nothing was open. The order returns to what it was doing.
+
+    `authorized_by`: the supervisor who signed in for someone who may not clear holds
+    (user ruling 2026-11-16) — recorded beside `cleared_by`. Checking that they may is
+    the caller's (the viewset's second-person check).
 
     Raises:
         ValueError: a Quality or Tooling hold cleared without a resolution note.
@@ -622,8 +627,10 @@ def clear_hold(work_order: WorkOrder, cleared_by, notes: str = "") -> WorkOrderH
 
     hold.cleared_at = timezone.now()
     hold.cleared_by = cleared_by
+    hold.cleared_authorized_by = authorized_by
     hold.clear_notes = notes
-    hold.save(update_fields=['cleared_at', 'cleared_by', 'clear_notes', 'updated_at'])
+    hold.save(update_fields=['cleared_at', 'cleared_by', 'cleared_authorized_by', 'clear_notes',
+                             'updated_at'])
     # Back to what the order was doing. Clearing a hold used to leave the status at
     # ON_HOLD, so a cleared order still read "On hold" everywhere.
     if work_order.workorder_status == WorkOrderStatus.ON_HOLD:

@@ -19485,6 +19485,7 @@ export type WorkOrderHoldHistoryItem = {
   placed_by_name: string | null;
   cleared_at: string;
   cleared_by_name: string | null;
+  cleared_authorized_by_name: string | null;
   clear_notes: string;
 };
 export type WorkOrderCore = {
@@ -29111,6 +29112,7 @@ const WorkOrderHoldHistoryItem = z.object({
   placed_by_name: z.string().nullable(),
   cleared_at: z.string().datetime({ offset: true }),
   cleared_by_name: z.string().nullable(),
+  cleared_authorized_by_name: z.string().nullable(),
   clear_notes: z.string(),
 });
 const WorkOrderCore = z.object({
@@ -29213,7 +29215,11 @@ const WorkOrderBulkAddPartsResponse = z.object({
   created_part_ids: z.array(z.string().uuid()),
 });
 const WorkOrderClearHoldInputRequest = z
-  .object({ notes: z.string() })
+  .object({
+    notes: z.string(),
+    supervisor_email: z.string(),
+    supervisor_password: z.string(),
+  })
   .partial();
 const WorkOrderCreateMakeupResponse = z.object({
   created: z.number().int(),
@@ -65426,19 +65432,15 @@ already shipped/completed (can&#x27;t undo delivered work).`,
     method: "post",
     path: "/api/WorkOrders/:id/clear_hold/",
     alias: "api_WorkOrders_clear_hold_create",
-    description: `Work Orders CRUD with CSV import/export support.
-
-Import/Export endpoints (auto-configured from model):
-- GET /import-template/ - Download import template (CSV or Excel)
-- POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
-- GET /import-status/{task_id}/ - Check status of background import
-- GET /export/ - Export filtered data to CSV/Excel`,
+    description: `Clear the open hold. Holders of clear_workorder_hold clear it directly;
+anyone else who may change the order clears it with a supervisor who holds it
+signing in on their screen (user ruling 2026-11-16) — both are recorded.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: z.object({ notes: z.string() }).partial(),
+        schema: WorkOrderClearHoldInputRequest,
       },
       {
         name: "id",

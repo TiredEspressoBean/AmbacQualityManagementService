@@ -17747,13 +17747,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Work Orders CRUD with CSV import/export support.
-         *
-         *     Import/Export endpoints (auto-configured from model):
-         *     - GET /import-template/ - Download import template (CSV or Excel)
-         *     - POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
-         *     - GET /import-status/{task_id}/ - Check status of background import
-         *     - GET /export/ - Export filtered data to CSV/Excel
+         * @description Clear the open hold. Holders of clear_workorder_hold clear it directly;
+         *     anyone else who may change the order clears it with a supervisor who holds it
+         *     signing in on their screen (user ruling 2026-11-16) — both are recorded.
          */
         post: operations["api_WorkOrders_clear_hold_create"];
         delete?: never;
@@ -41777,6 +41773,9 @@ export interface components {
         WorkOrderClearHoldInputRequest: {
             /** @description What resolved the hold. Required for Quality and Tooling holds. */
             notes?: string;
+            /** @description Someone who may not clear holds: the supervisor authorising it. */
+            supervisor_email?: string;
+            supervisor_password?: string;
         };
         /**
          * @description A core on a teardown work order, for the control surface.
@@ -41821,6 +41820,7 @@ export interface components {
             /** Format: date-time */
             cleared_at: string;
             cleared_by_name: string | null;
+            cleared_authorized_by_name: string | null;
             clear_notes: string;
         };
         WorkOrderHoursReport: {

@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { ClearHoldDialog } from "@/components/workorders/ClearHoldDialog";
+import { ClearHoldDialog, type HoldSupervisor } from "@/components/workorders/ClearHoldDialog";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { apiErrorBody } from "@/lib/api/describeApiError";
 import { WorkOrderHoldBanner } from "@/components/workorders/WorkOrderHoldBanner";
 import { QualityResultBadge } from "@/components/quality/QualityResultBadge";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1386,8 +1388,19 @@ export function WorkOrderControlPage() {
         );
     }
     const [clearHoldOpen, setClearHoldOpen] = useState(false);
-    function clearHold(notes: string) {
-        clearHoldMutation.mutate({ id: workOrderId, notes }, { onSuccess: () => setClearHoldOpen(false) });
+    // Without clear_workorder_hold, a supervisor who holds it signs in on this screen
+    // (user ruling 2026-11-16).
+    const mayClearHold = usePermissionSet().has("clear_workorder_hold");
+    function clearHold(notes: string, supervisor?: HoldSupervisor) {
+        clearHoldMutation.mutate({ id: workOrderId, notes, supervisor }, {
+            onSuccess: () => setClearHoldOpen(false),
+            onError: (e) => {
+                const detail = (apiErrorBody(e) as { detail?: unknown } | undefined)?.detail;
+                toast.error("Couldn't clear the hold", {
+                    description: typeof detail === "string" ? detail : undefined,
+                });
+            },
+        });
     }
 
     const stepById = useMemo(() => {
@@ -1519,6 +1532,7 @@ export function WorkOrderControlPage() {
                                     </div>
                                     <span className="whitespace-nowrap text-[11px] text-muted-foreground">
                                         {hoursSince(e.opened_at)}h · {e.reported_by}
+                                        {e.resolved_by ? ` · resolved by ${e.resolved_by}` : ""}
                                     </span>
                                     {e.kind === "DOWNTIME" && (
                                         <Button
@@ -1620,7 +1634,7 @@ export function WorkOrderControlPage() {
                             </Button>
                             <ClearHoldDialog open={clearHoldOpen} onOpenChange={setClearHoldOpen}
                                              hold={currentHold} pending={clearHoldMutation.isPending}
-                                             onConfirm={clearHold} />
+                                             onConfirm={clearHold} needsSupervisor={!mayClearHold} />
                         </>
                     ) : (
                         <Button variant="outline" onClick={() => setHoldDialogOpen(true)}>

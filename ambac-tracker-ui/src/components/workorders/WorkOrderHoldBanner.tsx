@@ -42,6 +42,8 @@ export type ClearedHold = WorkOrderHold & {
     id: string;
     cleared_at: string;
     cleared_by_name?: string | null;
+    /** The supervisor who signed in to authorise it, when the clearer may not clear holds. */
+    cleared_authorized_by_name?: string | null;
     clear_notes?: string | null;
 };
 
@@ -62,6 +64,7 @@ export function WorkOrderHoldHistory({ holds }: { holds: readonly ClearedHold[] 
                             Placed{h.placed_by_name ? ` by ${h.placed_by_name}` : ""}
                             {h.placed_at ? ` ${new Date(h.placed_at).toLocaleString()}` : ""}
                             {" · "}cleared{h.cleared_by_name ? ` by ${h.cleared_by_name}` : ""}
+                            {h.cleared_authorized_by_name ? `, authorised by ${h.cleared_authorized_by_name}` : ""}
                             {` ${new Date(h.cleared_at).toLocaleString()}`}
                         </div>
                         <div className="text-xs">

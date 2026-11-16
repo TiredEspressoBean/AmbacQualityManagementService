@@ -938,11 +938,14 @@ def _serialize_hold_history(wo, limit=10):
         return (u.get_full_name().strip() or u.username) if u else None
     holds = (WorkOrderHold.objects  # tenant-safe: keyed to an in-tenant work order
              .filter(work_order=wo, cleared_at__isnull=False, is_voided=False)
-             .select_related('placed_by', 'cleared_by').order_by('-cleared_at')[:limit])
+             .select_related('placed_by', 'cleared_by', 'cleared_authorized_by')
+             .order_by('-cleared_at')[:limit])
     return [{
         'id': str(h.id), 'reason': h.reason, 'notes': h.notes,
         'placed_at': h.placed_at, 'placed_by_name': name(h.placed_by),
         'cleared_at': h.cleared_at, 'cleared_by_name': name(h.cleared_by),
+        # The supervisor who signed in for a clearer who may not clear holds.
+        'cleared_authorized_by_name': name(h.cleared_authorized_by),
         'clear_notes': h.clear_notes,
     } for h in holds]
 
@@ -1220,6 +1223,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         'placed_by_name': serializers.CharField(allow_null=True),
         'cleared_at': serializers.DateTimeField(),
         'cleared_by_name': serializers.CharField(allow_null=True),
+        'cleared_authorized_by_name': serializers.CharField(allow_null=True),
         'clear_notes': serializers.CharField()}))
     def get_hold_history(self, obj):
         return _serialize_hold_history(obj)

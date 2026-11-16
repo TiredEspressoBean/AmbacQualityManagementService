@@ -34,10 +34,10 @@ import { usePlaceOnHoldWorkOrder } from "@/hooks/usePlaceOnHoldWorkOrder";
 import { useClearHoldWorkOrder } from "@/hooks/useClearHoldWorkOrder";
 import { HOLD_REASONS, type HoldReason } from "@/pages/workorders/constants";
 import type { WorkOrderHold } from "@/components/workorders/WorkOrderHoldBanner";
-import { ClearHoldDialog } from "@/components/workorders/ClearHoldDialog";
+import { ClearHoldDialog, type HoldSupervisor } from "@/components/workorders/ClearHoldDialog";
 import { useCancelWorkOrder, useReleaseForScheduling, useUnreleaseForScheduling } from "@/hooks/useScheduling";
 import { ShortCloseDialog } from "@/components/workorders/ShortCloseDialog";
-import { apiErrorBlockers } from "@/lib/api/describeApiError";
+import { apiErrorBlockers, apiErrorBody } from "@/lib/api/describeApiError";
 import { apiErrorStatus } from "@/lib/api-error";
 import { toast } from "sonner";
 import type { WorkOrderStatusEnum } from "@/lib/api/generated";
@@ -102,12 +102,18 @@ export function WorkOrderStatusActions({
     };
 
     const [resumeOpen, setResumeOpen] = useState(false);
-    const handleResume = (notes: string) => {
-        clearHold.mutate({ id: workOrderId, notes }, {
+    const handleResume = (notes: string, supervisor?: HoldSupervisor) => {
+        clearHold.mutate({ id: workOrderId, notes, supervisor }, {
             onSuccess: () => {
                 toast.success("Hold cleared");
                 setResumeOpen(false);
                 onStatusChange?.();
+            },
+            onError: (e) => {
+                const detail = (apiErrorBody(e) as { detail?: unknown } | undefined)?.detail;
+                toast.error("Couldn't clear the hold", {
+                    description: typeof detail === "string" ? detail : undefined,
+                });
             },
         });
     };
@@ -147,12 +153,18 @@ export function WorkOrderStatusActions({
     };
 
     // Determine available actions based on current status
-    // Release, hold and resume all change the order — the server gates them on
-    // change_workorder, so they aren't offered without it.
+    // Each is offered only with the permission the server gates it on: placing a hold
+    // on change_workorder; releasing / un-releasing on release_workorder, and clearing
+    // a hold of any kind on clear_workorder_hold, or with a supervisor who holds it (user
+    // rulings 2026-11-16).
     const canChange = hasPerm("change_workorder");
-    const canRelease = canChange && !releasedAt && currentStatus !== "ON_HOLD";
-    const canUnrelease = canChange && !!releasedAt;
+    const mayRelease = hasPerm("release_workorder");
+    const canRelease = mayRelease && !releasedAt && currentStatus !== "ON_HOLD";
+    const canUnrelease = mayRelease && !!releasedAt;
     const canHold = canChange && (currentStatus === "IN_PROGRESS" || currentStatus === "PENDING");
+    // Resume is offered to anyone who may change the order; without clear_workorder_hold
+    // a supervisor who holds it signs in on their screen (user ruling 2026-11-16).
+    const mayClearHold = hasPerm("clear_workorder_hold");
     const canResume = canChange && currentStatus === "ON_HOLD";
     // Status alone isn't enough: cancelling abandons a commitment to a customer,
     // so the server gates it on `cancel_workorder` (manager tier). Mirror that here
@@ -314,7 +326,8 @@ export function WorkOrderStatusActions({
                         Resume
                     </Button>
                     <ClearHoldDialog open={resumeOpen} onOpenChange={setResumeOpen} hold={currentHold}
-                                     pending={clearHold.isPending} onConfirm={handleResume} />
+                                     pending={clearHold.isPending} onConfirm={handleResume}
+                                     needsSupervisor={!mayClearHold} />
                 </>
             )}
 

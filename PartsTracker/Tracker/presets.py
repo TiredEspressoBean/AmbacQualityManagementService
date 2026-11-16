@@ -705,6 +705,13 @@ SCHEDULING_PLANNER_PERMISSIONS = [
     'add_volumeforecast', 'change_volumeforecast',
 ]
 
+# Clearing a work order hold (any kind): leads and up (user ruling 2026-11-16).
+# Placing a hold is unchanged.
+WORK_ORDER_HOLD_CLEAR = ['clear_workorder_hold']
+# Releasing work to the floor and un-releasing it (user ruling 2026-11-16): planners,
+# production, leads and engineering — everyone who could release before, but operators.
+WORK_ORDER_RELEASE = ['release_workorder']
+
 GROUP_PRESETS = {
     # -------------------------------------------------------------------------
     # SYSTEM ADMIN - Platform admin (your business - SaaS provider)
@@ -722,6 +729,8 @@ GROUP_PRESETS = {
         'name': 'Tenant Admin',
         'description': 'Tenant administrator - full access within their organization',
         'permissions': [
+            *WORK_ORDER_RELEASE,
+            *WORK_ORDER_HOLD_CLEAR,
             'apply_cyclecount',
             'cancel_workorder',
             'change_workorder_priority',
@@ -783,6 +792,7 @@ GROUP_PRESETS = {
         'name': 'QA Manager',
         'description': 'Quality management, approvals, CAPA control',
         'permissions': [
+            *WORK_ORDER_HOLD_CLEAR,
             'apply_cyclecount',
             *SAMPLING_RULE_DELETE,
             *LOT_HOLD,
@@ -835,6 +845,7 @@ GROUP_PRESETS = {
         'name': 'QA Inspector',
         'description': 'Perform inspections, create quality reports, initiate CAPAs',
         'permissions': [
+            *WORK_ORDER_HOLD_CLEAR,
             *LOT_HOLD,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
@@ -871,6 +882,8 @@ GROUP_PRESETS = {
         'name': 'Production Manager',
         'description': 'Manage production operations, work orders, scheduling',
         'permissions': [
+            *WORK_ORDER_RELEASE,
+            *WORK_ORDER_HOLD_CLEAR,
             'apply_cyclecount',
             'cancel_workorder',
             # Reprioritising is a planning call (user ruling 2026-11-12).
@@ -935,6 +948,8 @@ GROUP_PRESETS = {
         'name': 'Shift Lead',
         'description': 'Floor supervisor: runs work like an operator plus team visibility and quality oversight',
         'permissions': [
+            *WORK_ORDER_RELEASE,
+            *WORK_ORDER_HOLD_CLEAR,
             'apply_cyclecount',
             *CORE_DECISION_PERMISSIONS,
             *GATE_SIGNATURE_CLEAR_PERMISSIONS,
@@ -1003,6 +1018,7 @@ GROUP_PRESETS = {
         'name': 'Engineering',
         'description': 'Engineering changes, drawing control, design work',
         'permissions': [
+            *WORK_ORDER_RELEASE,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
@@ -1083,6 +1099,7 @@ GROUP_PRESETS = {
         'description': 'Owns the plan: releasing work, promising dates, running and '
                        'adjusting the schedule, and the calendars it is built on',
         'permissions': [
+            *WORK_ORDER_RELEASE,
             # Reprioritising is a planning call (user ruling 2026-11-12).
             'change_workorder_priority',
             *CORE_DECISION_PERMISSIONS,

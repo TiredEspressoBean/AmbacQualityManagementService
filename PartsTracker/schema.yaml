@@ -43991,13 +43991,9 @@ paths:
     post:
       operationId: api_WorkOrders_clear_hold_create
       description: |-
-        Work Orders CRUD with CSV import/export support.
-
-        Import/Export endpoints (auto-configured from model):
-        - GET /import-template/ - Download import template (CSV or Excel)
-        - POST /import/ - Import data from CSV/Excel file (small files immediate, large files queued)
-        - GET /import-status/{task_id}/ - Check status of background import
-        - GET /export/ - Export filtered data to CSV/Excel
+        Clear the open hold. Holders of clear_workorder_hold clear it directly;
+        anyone else who may change the order clears it with a supervisor who holds it
+        signing in on their screen (user ruling 2026-11-16) — both are recorded.
       parameters:
       - in: path
         name: id
@@ -91570,6 +91566,12 @@ components:
         notes:
           type: string
           description: What resolved the hold. Required for Quality and Tooling holds.
+        supervisor_email:
+          type: string
+          description: 'Someone who may not clear holds: the supervisor authorising
+            it.'
+        supervisor_password:
+          type: string
     WorkOrderCore:
       type: object
       description: |-
@@ -91681,11 +91683,15 @@ components:
         cleared_by_name:
           type: string
           nullable: true
+        cleared_authorized_by_name:
+          type: string
+          nullable: true
         clear_notes:
           type: string
       required:
       - clear_notes
       - cleared_at
+      - cleared_authorized_by_name
       - cleared_by_name
       - id
       - notes

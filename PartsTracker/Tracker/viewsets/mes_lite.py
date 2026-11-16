@@ -2059,7 +2059,8 @@ class MilestoneViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, views
 
 # ===== WORK ORDER VIEWSETS =====
 
-class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
+class WorkOrderViewSet(TenantScopedMixin, SecondPersonMixin, ListMetadataMixin, CSVImportMixin,
+                       DataExportMixin, viewsets.ModelViewSet):
     """
     Work Orders CRUD with CSV import/export support.
 
@@ -2166,9 +2167,11 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
     # change_workorder and exempt it from the POST->add_workorder default so a planner
     # who may re-plan work but not raise it can still release.
     action_permissions = {
-        'release': ['change_workorder'],
-        'unrelease': ['change_workorder'],
-        'bulk_release': ['change_workorder'],
+        # Releasing and un-releasing: release_workorder (user ruling 2026-11-16) — not
+        # change_workorder, which operators hold.
+        'release': ['release_workorder'],
+        'unrelease': ['release_workorder'],
+        'bulk_release': ['release_workorder'],
         # Cancelling abandons a commitment and strands whatever is already on the
         # job. Exempt from the POST->add_workorder default, which every staff role
         # holds — without this an operator could cancel a work order.
@@ -2180,9 +2183,11 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         # move it on or off hold — a status edit is refused). change_workorder is what
         # the work order page's Hold / Resume needed when they were a PATCH.
         'place_on_hold': ['change_workorder'],
+        # Clearing a hold of any kind: leads and up, or anyone who may change the order
+        # with one of them signed in (user rulings 2026-11-16) — checked in the action.
         'clear_hold': ['change_workorder'],
         'bulk_place_on_hold': ['change_workorder'],
-        'bulk_clear_hold': ['change_workorder'],
+        'bulk_clear_hold': ['clear_workorder_hold'],
     }
     crud_exempt_actions = {'release', 'unrelease', 'bulk_release', 'cancel', 'short_close', 'reopen',
                            'place_on_hold', 'clear_hold',
@@ -2607,14 +2612,44 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             "notes": serializers.CharField(
                 required=False, allow_blank=True,
                 help_text="What resolved the hold. Required for Quality and Tooling holds."),
+            "supervisor_email": serializers.CharField(
+                required=False, allow_blank=True,
+                help_text="Someone who may not clear holds: the supervisor authorising it."),
+            "supervisor_password": serializers.CharField(required=False, allow_blank=True),
         }),
         responses={200: dict})
     @action(detail=True, methods=["post"], url_path="clear_hold")
     def clear_hold(self, request, pk=None):
+        """Clear the open hold. Holders of clear_workorder_hold clear it directly;
+        anyone else who may change the order clears it with a supervisor who holds it
+        signing in on their screen (user ruling 2026-11-16) — both are recorded."""
         from Tracker.services.mes.work_order import clear_hold as svc
         wo = self.get_object()
+        authorizer = None
+        if not request.user.has_tenant_perm('clear_workorder_hold'):
+            authorizer, err = self.verify_second_person(
+                request,
+                permission='clear_workorder_hold',
+                throttle_prefix='hold_clear_fail',
+                code_prefix='hold_clear',
+                email_field='supervisor_email',
+                password_field='supervisor_password',
+                messages={
+                    'auth_failed': 'Supervisor sign-in failed — check the email and password.',
+                    'self': 'The supervisor must be someone other than you.',
+                    'not_permitted': "That person can't clear holds — a shift lead, production "
+                                     "manager or QA must authorise it.",
+                })
+            if err is not None:
+                return self.second_person_error_response(err)
+            if authorizer is None:
+                return Response({'detail': "Clearing a hold needs a shift lead, production manager "
+                                           "or QA — one of them signs in to authorise it.",
+                                 'code': 'hold_clear_needs_supervisor'},
+                                status=status.HTTP_403_FORBIDDEN)
         try:
-            hold = svc(wo, cleared_by=request.user, notes=request.data.get("notes", "") or "")
+            hold = svc(wo, cleared_by=request.user, notes=request.data.get("notes", "") or "",
+                       authorized_by=authorizer)
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         if hold is None:

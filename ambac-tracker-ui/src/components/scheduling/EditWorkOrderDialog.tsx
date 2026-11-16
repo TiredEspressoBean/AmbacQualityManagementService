@@ -38,6 +38,9 @@ const dstr = (v: unknown) => (typeof v === "string" ? v.slice(0, 10) : "");
 const PRIORITY_LABEL: Record<number, string> = { 1: "Urgent", 2: "High", 3: "Normal", 4: "Low" };
 const priorityName = (p: number) => PRIORITY_LABEL[p] ?? String(p);
 
+const NO_RELEASE = "Releasing work orders is for planners, production managers, shift leads and engineering.";
+const NO_CLEAR_HOLD = "Clearing a hold is for shift leads, production managers and QA.";
+
 export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
   const { data, isLoading } = useWorkOrder(workOrderId);
   const update = useUpdateWorkOrder();
@@ -75,7 +78,12 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
   };
 
   const [priority, setPriority] = useState("");
-  const canPrioritise = usePermissionSet().has("change_workorder_priority");
+  const perms = usePermissionSet();
+  const canPrioritise = perms.has("change_workorder_priority");
+  // Releasing / withdrawing a release, and clearing a hold, are gated on their own
+  // permissions (user rulings 2026-11-16) — shown, but not usable, without them.
+  const mayRelease = perms.has("release_workorder");
+  const mayClearHold = perms.has("clear_workorder_hold");
   // `expected_start` is the solver's earliest-start bound, NOT the release gate — with
   // a real Release action on this dialog now, calling it "release date" would read as
   // the same thing twice.
@@ -194,7 +202,8 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
                       : "Withdraw the release? The next solve takes this order off the plan until it is released again.";
                     if (window.confirm(msg)) unrelease.mutate(workOrderId);
                   }}
-                  disabled={unrelease.isPending}
+                  disabled={unrelease.isPending || !mayRelease}
+                  title={mayRelease ? undefined : NO_RELEASE}
                 >
                   Withdraw release
                 </Button>
@@ -205,9 +214,11 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
                   // Once refused, the same request without a reason is refused again —
                   // require the justification before re-offering the button.
                   disabled={
+                    !mayRelease ||
                     release.isPending ||
                     (blockers.length > 0 && overrideReason.trim() === "")
                   }
+                  title={mayRelease ? undefined : NO_RELEASE}
                 >
                   {blockers.length ? "Release anyway" : "Release"}
                 </Button>
@@ -267,7 +278,8 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
               <Button
                 variant="outline" size="sm"
                 onClick={() => setClearingHold(true)}
-                disabled={releaseHold.isPending}
+                disabled={releaseHold.isPending || !mayClearHold}
+                title={mayClearHold ? undefined : NO_CLEAR_HOLD}
               >
                 Release hold
               </Button>

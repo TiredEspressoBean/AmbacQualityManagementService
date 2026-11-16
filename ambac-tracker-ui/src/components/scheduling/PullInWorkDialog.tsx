@@ -11,6 +11,7 @@ import { AlertTriangle, CheckCircle2, Plus } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,6 +50,8 @@ export function PullInWorkDialog({ open, onOpenChange, onNewWorkOrder }: Props) 
   const { data, isLoading } = useReleaseQueue(open);
   const rec = data?.recommendation;
   const bulkRelease = useBulkRelease();
+  // Releasing is gated on its own permission (user ruling 2026-11-16).
+  const mayRelease = usePermissionSet().has("release_workorder");
 
 
   // Memoised: `rows` feeds an effect and two memos, and a fresh [] each render
@@ -278,7 +281,9 @@ export function PullInWorkDialog({ open, onOpenChange, onNewWorkOrder }: Props) 
             <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
             <Button
               onClick={submit}
-              disabled={!selected.size || needsReason || bulkRelease.isPending}
+              disabled={!mayRelease || !selected.size || needsReason || bulkRelease.isPending}
+              title={mayRelease ? undefined
+                : "Releasing work orders is for planners, production managers, shift leads and engineering."}
             >
               {bulkRelease.isPending
                 ? "Releasing…"

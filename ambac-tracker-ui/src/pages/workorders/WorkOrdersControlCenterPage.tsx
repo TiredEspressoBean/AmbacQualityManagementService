@@ -876,16 +876,18 @@ function FleetBulkBar({
     const [holdReason, setHoldReason] = useState<HoldReason>("MATERIAL");
     const [holdNotes, setHoldNotes] = useState("");
 
-    // Release, hold and clear hold change the orders: the server gates each on
-    // change_workorder, so without it none is offered.
-    const canChange = usePermissionSet().has("change_workorder");
+    // Each is offered only with the permission the server gates it on: placing a hold
+    // on change_workorder, releasing on release_workorder, clearing a hold on
+    // clear_workorder_hold (user rulings 2026-11-16).
+    const perms = usePermissionSet();
+    const canChange = perms.has("change_workorder");
     const selectedWOs = workOrders.filter((w) => selectedIds.includes(w.id));
-    const releasable = canChange
+    const releasable = perms.has("release_workorder")
         ? selectedWOs.filter((w) => w.status === "PENDING").map((w) => w.id) : [];
     const holdable = canChange
         ? selectedWOs.filter((w) => w.status === "IN_PROGRESS" || w.status === "PENDING").map((w) => w.id)
         : [];
-    const holdcleared = canChange
+    const holdcleared = perms.has("clear_workorder_hold")
         ? selectedWOs.filter((w) => w.status === "ON_HOLD").map((w) => w.id) : [];
 
     return (
@@ -1335,6 +1337,7 @@ function ExceptionsList({
                                         </Badge>
                                         <span className="text-[11px] text-muted-foreground">
                                             {hoursSince(e.opened_at)}h ago · {e.reported_by}
+                                            {e.resolved_by ? ` · resolved by ${e.resolved_by}` : ""}
                                         </span>
                                         <span className="text-[10px] font-mono text-muted-foreground">
                                             {e.source_ref}

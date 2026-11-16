@@ -3048,6 +3048,12 @@ class WorkOrder(SecureModel):
             # 2026-11-12): change_workorder, which every staff role holds for the
             # order's other fields, doesn't carry it.
             ('change_workorder_priority', "Can change a work order's priority"),
+            # Clearing a hold of any kind is for leads and up (user ruling 2026-11-16):
+            # an operator had it through change_workorder.
+            ('clear_workorder_hold', 'Can clear a work order hold'),
+            # Releasing to the floor, and taking back, is for planners, production,
+            # leads and engineering (user ruling 2026-11-16) — not operators.
+            ('release_workorder', 'Can release and un-release work orders'),
         ]
 
     @property
@@ -3290,6 +3296,15 @@ class WorkOrderHold(SecureModel, VoidableModel):
         related_name='+',
     )
     cleared_at = models.DateTimeField(null=True, blank=True)
+    # The supervisor who signed in to authorise a clear by someone who may not clear
+    # holds themselves (user ruling 2026-11-16); null when the clearer held the right.
+    cleared_authorized_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
     clear_notes = models.TextField(
         blank=True,
         help_text="What resolved the hold, recorded when it is cleared. Required for "
