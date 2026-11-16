@@ -105,6 +105,12 @@ puts it back.
    place, so on a re-solve it isn't a quality score.
 3. Open the task again: it's where you pinned it. **Not scheduled** no longer lists
    the work you released.
+4. Find a work order planned at **Body Inspection** whose first piece hasn't been
+   bought off yet, for example `WO-ASSESS-004`. Its first body runs alone, then
+   there's a gap of at least 20 minutes, then the rest. Body Inspection's
+   **First-piece buy-off** is 20 minutes: the plan leaves QA at least that long
+   before the rest can start, because the floor can't start them sooner. A longer
+   gap is the plan fitting other work or the shift around it.
 
 ---
 
@@ -214,7 +220,8 @@ and never got to the fifth.
 1. On the schedule, **Plan vs actual** (at the end of Machines / People / Work
    orders). It opens on now; the four runs are in the days before today, so scroll
    back to them. Finished work is drawn **where it actually ran**, not where it was planned.
-2. Find the five on the lathe's row and read their colours:
+2. Switch the board to **By machine**, find the five on the lathe's row and read
+   their colours:
 
     | Colour | Means | Here |
     |--------|-------|------|
@@ -225,7 +232,10 @@ and never got to the fifth.
     | Red dashed outline, at the planned slot | Due, and never started | `WO-PLAN-05` |
 
 3. Click `WO-PLAN-04`: *planned … · actual … · +N min*. That is the whole story of
-   the slip, in one line.
+   the slip, in one line. Then click `WO-PLAN-05`'s outline. Dave tried to start it
+   in its slot and was refused: *Last refused at start (&lt;date&gt;): CNC Lathe HL-1
+   is in maintenance — it can't run work until it is back in service.* The lathe is
+   back now, but the refusal stays, because it's still why the job missed its slot.
 4. Read the headline: the counts, and *Adherence: N% of M ops due in the last 7 days
    finished on time or early*. Most of the outlines are the bodies' next steps:
    machined, then left waiting at the grinder past their slots. A part waiting past

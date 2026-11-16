@@ -70,6 +70,18 @@ control so there's a record of what changed, why, and who agreed.
    makes a new routing for a new product, with no change trail: not for revisions.)
 2. Turn on **Edit Mode**, select **Wash**, and change its description to add a rinse
    and air-dry. **Save**. Only the draft changes; the approved routing is untouched.
+
+   While you're in the draft, look (don't change anything) at what else a step
+   carries:
+   - Select **Body Inspection** and open **Advanced**. **Gates** lists every check
+     the step runs, each marked *Before start*, *To move on*, or both. Its **First
+     piece** gate (*Before start and to move on*) covers *Per work order*, with
+     *Pieces in the first piece* 1: the first body started is the first piece, and
+     the rest wait for QA's buy-off.
+   - Select **Assembly**. In the step panel, **Machines** and **Tooling this step
+     needs** list what it runs on and the shared tooling it ties up. They're part
+     of the routing too: once a routing is approved, the draft is the only place
+     they change.
 3. **Submit for approval**: a title, what's changing, why, and the risk. The
    difference from the approved version is captured with the request.
 4. **View PCR** shows the request: what's proposed, the in-flight work orders it
@@ -208,9 +220,46 @@ is planned as taking no time.
 Time a step from the floor, not from the brochure: take the setup and cycle from a
 few real runs.
 
+A step with a first piece has one more time: **First-piece buy-off**, how long QA
+usually takes to buy it off. **Body Inspection** has 20 minutes, so the schedule runs
+the first body, leaves 20 minutes, then the rest, instead of promising the whole lot
+from the start. Leave it blank and the wait isn't planned.
+
 ---
 
-## 8. What isn't yours
+## 8. A die at its life limit
+
+**You will:** read a tool's life, and bring a worn one back the two controlled ways.
+
+Assembly presses the nozzle into the body with a press-fit die, and a die is good for
+so many bodies. The shop has two: **Press-fit Die PF-1** has pressed 5000 bodies,
+its hard limit, and **PF-2** has pressed about 1200. Assembly starts as long as one
+die is within life, so the floor is running on PF-2. No work starts on PF-1, and no
+supervisor can override that.
+
+1. **Data Management** > **Equipment**, open **Press-fit Die PF-1**. Its **Life**
+   section reads *Press-fit die life — 5000 used · soft 4500 · hard 5000 bodies
+   pressed — EXPIRED*.
+2. **Extend** opens *Request an extension*: raise the hard limit to `5500`, and say
+   why it's safe to run longer. *Extension requested — waiting for approval*. Running past a
+   published life takes two people: a QA manager, inspector or another engineer
+   approves it, not you.
+
+**Try to break it:** look for the request in your Inbox. Engineering is one of the
+groups that approves extensions, but your own request isn't offered to you there
+(*You're all caught up!*). On
+PF-1's page the approval panel says *You asked for this approval, so someone else
+approves it.* Nobody approves their own extension.
+
+3. When a die comes back from refurbishment, it's **Reset** instead: **Reset** on
+   the same row, and say what was done (*re-lapped and re-measured*). *Life reset*.
+   The row reads *Last reset &lt;date&gt; by Jordan Reyes, at 5000 — re-lapped and
+   re-measured*. The count it replaced stays on the record, which is what makes the
+   claim of a refurbishment checkable.
+
+---
+
+## 9. What isn't yours
 
 | Not yours | Whose |
 |-----------|-------|

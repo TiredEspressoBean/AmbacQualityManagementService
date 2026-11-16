@@ -134,6 +134,14 @@ severity.
 1. **Report exception**. Type **Downtime**, the machine (**Ultrasonic Cleaner
    UC-1**), the category, a reason (*Transducer fault*) and what happened. **Record
    downtime**. It starts now and shows in the list.
+
+   While it's open, no work starts on UC-1. An operator who tries is refused:
+   *"Ultrasonic Cleaner UC-1 is down (&lt;reason&gt;) since &lt;date&gt; &lt;time&gt; — it
+   can't run work until the downtime is resolved."* At a step with a choice of
+   machines, the Start Work picker shows it as unavailable. You and the production
+   manager are notified: *Can't
+   start &lt;part&gt;: waiting on the machine's downtime to be resolved*. Nobody can
+   override it. Resolving the downtime is what frees the machine.
 2. When the machine is back, **Resolve** it. The record keeps when it went down and
    came back, who reported it and who resolved it.
 
@@ -164,6 +172,11 @@ A quarantine or a CAPA is raised on its own form, not here.
 
 A hold put on the wrong order comes off the same way: **Clear hold**, and say it was
 placed in error. The history keeps both.
+
+An operator can't clear a hold alone. Their **Resume** asks for a supervisor, and you
+sign in on their screen with your own email and password. The history then reads
+*cleared by &lt;operator&gt;, authorised by Casey Cross*. Sign only when you know the
+cause is resolved: your name is what makes the clear stand.
 
 ---
 
@@ -245,7 +258,7 @@ Approve the hours only once they're right: an approved entry can't be corrected 
 **You will:** undo a step that was finished too soon.
 
 Have Mike finish Machining on all four bodies of `WO-OPS-01` (they move on to
-Precision Grinding together), then find out the micrometer he used failed its next
+Precision Grinding together), then find out a gauge he used failed its next
 calibration check: one body needs measuring again.
 
 1. **Production** > **WO Control Center**, open `WO-OPS-01`. On `INJ-OPS-001`'s row,

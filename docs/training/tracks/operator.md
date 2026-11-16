@@ -184,6 +184,11 @@ start the cycle.
 3. 021 waits for its lot-mate. Do the same for `INJ-OPS-022`: when it's complete,
    both move on together.
 
+Assembly also uses a press-fit die, and a die is good for so many bodies. **PF-1**
+is at its life limit, so the start uses **PF-2**, and counts the body against it.
+If every die were worn out, the start would be refused until one is refurbished or
+an extension is approved, and Engineering and your lead would be told.
+
 ---
 
 ## 7. When you can't run a job
@@ -204,6 +209,31 @@ with your station's machine and the job you're running already picked, and the
 reason filled in. Add a description and **Record downtime**: the machine is down
 from now until it's back. Then tell your lead.
 
+While it's down, nothing starts on that machine, for you or anyone else: *"&lt;machine&gt;
+is down (&lt;reason&gt;) since &lt;date&gt; &lt;time&gt; — it can't run work until the
+downtime is resolved."* Your lead and the production manager are told. Your lead
+resolves the downtime when the machine is back.
+
+Some refusals have nothing to do with you, and nobody on the floor can override
+them. The refusal says who it's waiting on, and they're notified.
+
+**A held job.** Scan `WO-TRAIN-HOLD`. The production manager put it on hold for a
+quality concern, so **Start Work** is disabled and says why. Once the concern is
+resolved, you can clear the hold with your lead's help, much as when you took over
+Dave's load:
+
+1. **Resume** opens *Clear the hold and resume?*, with who placed the hold and why.
+2. **What resolved it** is required for a quality hold: *Quality concern reviewed
+   with QA; parts re-checked*.
+
+**Try to break it:** type your own email under **Supervisor authorization**. *"The
+supervisor must be someone other than you."* Clearing a hold needs a shift lead,
+production manager or QA to authorise it.
+
+3. Casey signs in with their own email and password. **Clear hold**. The work order
+   comes off hold, and its **Hold history** reads *cleared by Mike Rodriguez,
+   authorised by Casey Cross*, with your note.
+
 ---
 
 ## 8. A step you're not trained for
@@ -218,11 +248,41 @@ from now until it's back. Then tell your lead.
 2. Casey signs in on your screen and authorises it, with the reason. The record keeps
    who worked it, who authorised it, why, and what training was missing.
 
-Body Inspection holds the run for a **first piece** check: the first body's
-inspection is bought off by an inspector before the rest go through. That's the
-inspector's job, in the [QA Inspector](qa-inspector.md) track. Your home page shows
-where it stands: finish `INJ-OPS-011`'s inspection and its first piece shows above
-the tiles, *Not seen yet* until an inspector picks it up.
+Body Inspection has a **first piece** check: the first body you start *is* the first
+piece, and starting it calls QA. Until an inspector buys it off, no other body on the
+work order can start at Body Inspection. The banner says so: *First Piece Inspection
+in progress*.
+
+**Try to break it:** go back and **Start Work** on `INJ-OPS-012`. You're refused:
+*"Body Inspection is waiting on its first piece (INJ-OPS-011): QA buys it off before
+INJ-OPS-012 starts."* Because you're not trained for the step either, it adds what's
+waiting behind that: *Also needed once that's cleared: a supervisor (not qualified:
+Dimensional Inspection Certification).* That's the point of a first piece: nothing
+else is made on a setup nobody has checked.
+
+The buy-off is the inspector's job, in the [QA Inspector](qa-inspector.md) track.
+Your home page shows where it stands: once `INJ-OPS-011` is started, its first piece
+shows above the tiles, *Not seen yet* until an inspector picks it up. Finish its
+inspection so the inspector has readings to buy off.
+
+**When the setup changes.** On `WO-OPS-04`, Sarah has already bought off
+`INJ-OPS-031`'s first piece at Body Inspection; 032 and 033 wait there. Then the CMM
+probe is replaced.
+
+1. Open `WO-OPS-04`, **Start Work**, tick `INJ-OPS-032`, and **Start**. Casey
+   authorises past the training gate, as before. 032 starts: it's covered by the
+   first piece Sarah passed.
+2. The green banner reads *First Piece Inspection signed off*. The probe change
+   means the setup she checked is gone: press **New setup**, choose **Repair** under
+   **What changed?**, write *CMM probe replaced*, and **Record new setup**. *New
+   setup recorded — the next part started is a new first piece.*
+3. Start `INJ-OPS-033` (with Casey again). It's the new first piece: QA is called,
+   and it shows above your tiles. Sarah's pass stays on the record, marked
+   superseded.
+
+Record a new setup whenever the setup a first piece checked has changed: a tool,
+an offset, a crash, a repair. Parts started before it stay covered by the old
+buy-off.
 
 ---
 

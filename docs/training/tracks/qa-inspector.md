@@ -82,9 +82,11 @@ module 3.
 **You will:** buy off a first piece, fail one, waive one, and know why you can't
 sign your own.
 
-A first piece holds its run: no other part moves past the step until a second person
-has judged it. The buy-off dialog shows the first piece's readings, who took them
-and when. **The readings are what you are signing.**
+A first piece holds its run: until a second person has judged it, no other part at
+the step can even start. You're called the moment the first part starts (*First
+piece waiting — &lt;step&gt;*), because the floor is waiting on you. The buy-off dialog
+shows the first piece's readings, who took them and when. **The readings are what
+you are signing.**
 
 **Watch, then do it:** `WO-QA-INSPECT-01`, first piece `INJ-QA-INSPECT-001` at Body
 Inspection.
@@ -98,11 +100,14 @@ Inspection.
 
 **Fail one:** `WO-QA-INSPECT-04`, first piece `INJ-QA-INSPECT-031`.
 
-1. **Fail**, with a reason a shift lead can act on: what was wrong, what to correct.
+1. **Fail**, give a reason a shift lead can act on (what was wrong, what to
+   correct), and **Record failure**.
 2. The first piece is quarantined and a disposition opens in the unassigned queue,
    described as *Failed quality report:* followed by your reason.
-3. WO Control shows **First piece failed — run held**, with your reason and **Start
-   a new first piece**. The run stays held until a new first piece is bought off.
+3. WO Control shows **First piece failed at Body Inspection — run held**, with your
+   reason. The run stays held: once the setup is corrected, the next part started is
+   the new first piece (or **Start a new first piece** on that card), and it's bought
+   off like the first.
 
 **Waive one:** `WO-QA-INSPECT-05`, first piece `INJ-QA-INSPECT-041`.
 
@@ -118,6 +123,21 @@ own email, signature and password; the buy-off is recorded under Casey's name.
 
 > **Why it refuses:** a buy-off is a second person's judgement. Whoever signed the
 > first piece's inspection can't also release the run.
+
+**A first piece of two:** `WO-QA-INSPECT-07`, at Final Test.
+
+Final Test's **First piece** gate has *Pieces in the first piece* 2: the first two
+parts started make up the first piece. Mike has started `INJ-QA-INSPECT-061`; `062` hasn't
+started yet.
+
+**Try to break it:** open `WO-QA-INSPECT-07`'s WO Control and try to **Sign off**.
+You're refused: *"The first piece is 1 more piece short — each nest's piece is made
+before the buy-off."* A first piece of several parts is judged whole, once every
+piece is made.
+
+When a first piece of several parts fails, **Fail** asks **Which pieces failed?**.
+Tick only the bad ones. Each ticked piece is quarantined with your reason. The
+others wait and are released when the re-run first piece passes.
 
 ---
 
