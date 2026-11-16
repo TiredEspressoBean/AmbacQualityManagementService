@@ -102,6 +102,38 @@ class ToolLifeTests(TenantTestCase):
         self._tracking(parts).reset(user=self.user_a, reason="Refurbished")
         start_execution(self._visit(1), self.user_a)
 
+    def test_interchangeable_tools_refuse_only_when_none_is_within_life(self):
+        """Scheduling review item 10 (user ruling 2026-11-16): the step's authored
+        tools are one pool, as the plan counts them. One die at its limit doesn't stop
+        the start while another is within life; the start runs with, and counts, the
+        usable one."""
+        from Tracker.models.qms import StepExecutionEquipment
+        die2 = Equipments.objects.create(tenant=self.tenant_a, name="Die #2",
+                                         equipment_type=self.die_type)
+        StepEquipmentAffinity.objects.create(tenant=self.tenant_a, step=self.step, equipment=die2,
+                                             affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        parts = self._limit('parts', 1)
+        tool_life.ensure_trackings(self.die)[0].increment(1)   # Die #1 at its limit
+        v = self._visit(0)
+        start_execution(v, self.user_a)
+        used = list(StepExecutionEquipment.objects.filter(step_execution=v).values_list(
+            'equipment__name', flat=True))
+        self.assertEqual(used, ["Die #2"])
+        self.assertEqual(LifeTracking.objects.for_object(self.die).get(definition=parts).current_value, 1)
+        # Both at their limit now: refused, naming both.
+        with self.assertRaises(StartRefused) as ctx:
+            start_execution(self._visit(1), self.user_a)
+        text = " ".join(ctx.exception.messages)
+        self.assertIn("Die #1", text)
+        self.assertIn("Die #2", text)
+
+    def test_a_tool_crossing_its_limit_marks_the_plan_stale(self):
+        from unittest import mock
+        self._limit('parts', 1)
+        with mock.patch('Tracker.services.scheduling.staleness.mark_active_schedule_stale') as stale:
+            start_execution(self._visit(0), self.user_a)   # counted to its limit
+        stale.assert_called_once_with(self.tenant_a.id)
+
     def test_without_the_gate_row_the_start_goes_ahead(self):
         self._limit('parts', 1)
         set_step_gates(self.step, [{'gate': g} for g in FLOOR_GATES])

@@ -195,11 +195,15 @@ class LifeTrackingViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
     @action(detail=True, methods=['post'])
     def increment(self, request, pk=None):
         """Increment accumulated value (after operation/cycle)"""
+        from Tracker.services.life_tracking.tool_life import plan_capacity_changed
         tracking = self.get_object()
         serializer = LifeTrackingIncrementSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        was_blocked = tracking.is_blocked
         tracking.increment(serializer.validated_data['value'])
+        if tracking.is_blocked != was_blocked:
+            plan_capacity_changed(tracking)
         return Response(LifeTrackingSerializer(tracking, context={'request': request}).data)
 
     @extend_schema(request=LifeTrackingResetSerializer, responses={200: LifeTrackingSerializer})
@@ -210,10 +214,14 @@ class LifeTrackingViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
         serializer = LifeTrackingResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        from Tracker.services.life_tracking.tool_life import plan_capacity_changed
+        was_blocked = tracking.is_blocked
         tracking.reset(
             user=request.user,
             reason=serializer.validated_data.get('reason', '')
         )
+        if tracking.is_blocked != was_blocked:
+            plan_capacity_changed(tracking)
         return Response(LifeTrackingSerializer(tracking, context={'request': request}).data)
 
     @extend_schema(request=LifeTrackingOverrideSerializer, responses={200: LifeTrackingSerializer})

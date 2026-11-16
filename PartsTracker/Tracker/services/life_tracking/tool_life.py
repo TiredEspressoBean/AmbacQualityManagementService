@@ -129,7 +129,9 @@ def authored_tools(step) -> list:
     links = (StepEquipmentAffinity.objects  # tenant-safe: .objects auto-scopes
              .filter(step=step, archived=False, affinity__in=[aff.DIALED_IN, aff.PREFERRED])
              .select_related('equipment'))
-    return [l.equipment for l in links if is_tooling(l.equipment, limited)]
+    rank = {aff.DIALED_IN: 0, aff.PREFERRED: 1}
+    ordered = sorted(links, key=lambda l: (rank.get(l.affinity, 9), l.equipment.name))
+    return [l.equipment for l in ordered if is_tooling(l.equipment, limited)]
 
 
 def visit_tools(execution) -> list:
@@ -141,9 +143,33 @@ def visit_tools(execution) -> list:
 
 
 def start_refusals(step, execution=None) -> list[tuple]:
-    """Each tool a start would use that is at its hard limit, as (tool, why)."""
-    tools = {e.id: e for e in authored_tools(step) + visit_tools(execution)}
-    return [(e, _limit_text(e, t)) for e in tools.values() for t in at_hard_limit(e)]
+    """Each tool a start would use that is at its hard limit, as (tool, why).
+
+    A tool the visit recorded (DWI capture) is the one in use: at its limit, it refuses.
+    With none recorded, the step's authored tools are interchangeable — the plan counts
+    them as one pool — so they refuse only when NONE of them is within life, naming
+    each (user ruling 2026-11-16; scheduling review item 10)."""
+    recorded = visit_tools(execution)
+    if recorded:
+        tools = {e.id: e for e in recorded}
+        return [(e, _limit_text(e, t)) for e in tools.values() for t in at_hard_limit(e)]
+    authored = {e.id: e for e in authored_tools(step)}
+    limits = {e.id: at_hard_limit(e) for e in authored.values()}
+    if not authored or any(not hits for hits in limits.values()):
+        return []
+    return [(e, _limit_text(e, t)) for e in authored.values() for t in limits[e.id]]
+
+
+def plan_capacity_changed(tracking) -> None:
+    """A tool's tracking crossed into or out of its hard limit (counted to it, reset,
+    extended): the tooling the plan counted on changed, so the plan is stale
+    (scheduling review item 10). Not on every count — only a crossing changes
+    capacity."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import Equipments
+    from Tracker.services.scheduling.staleness import mark_active_schedule_stale
+    if tracking.content_type_id == ContentType.objects.get_for_model(Equipments).id:
+        mark_active_schedule_stale(tracking.tenant_id)
 
 
 # --- counting -------------------------------------------------------------
@@ -151,9 +177,12 @@ def start_refusals(step, execution=None) -> list[tuple]:
 def _count(tracking, equipment, by) -> None:
     soft = tracking.effective_soft_limit
     before = tracking.current_value
+    was_blocked = tracking.is_blocked
     tracking.increment(by)
     if soft is not None and before < soft <= tracking.current_value:
         _notify_soft_limit(tracking, equipment)
+    if tracking.is_blocked != was_blocked:
+        plan_capacity_changed(tracking)
 
 
 def _counted_part_before(equipment, execution) -> bool:
@@ -202,11 +231,16 @@ def stamp(execution, equipment, role='TOOL') -> bool:
 
 
 def on_start(execution) -> None:
-    """The visit started: its authored tools go on it, and every tool on it is counted."""
+    """The visit started: the authored tool it runs with goes on it, and every tool on
+    it is counted. The step's authored tools are interchangeable (one pool), so only
+    one is in use: the first within life — counting them all wore tools that weren't
+    used (scheduling review item 10). With a tool already captured, that's the one."""
     if execution.step_id is None:
         return
-    for equipment in authored_tools(execution.step):
-        stamp(execution, equipment)
+    if not visit_tools(execution):
+        usable = [e for e in authored_tools(execution.step) if not at_hard_limit(e)]
+        if usable:
+            stamp(execution, usable[0])
     for equipment in visit_tools(execution):
         count_start(execution, equipment)
 

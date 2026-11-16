@@ -132,7 +132,11 @@ def decided(tracking, request, approved: bool) -> None:
     tracking.pending_hard_limit = None
     tracking.save(update_fields=['pending_hard_limit', 'updated_at'])
     if approved and pending is not None:
+        from Tracker.services.life_tracking.tool_life import plan_capacity_changed
+        was_blocked = tracking.is_blocked
         apply_life_override(tracking, hard_limit=pending,
                             soft_limit=tracking.soft_limit_override,  # kept as it was
                             reason=(request.reason or '')[:200],
                             approved_by=request.get_primary_approver())
+        if tracking.is_blocked != was_blocked:
+            plan_capacity_changed(tracking)
