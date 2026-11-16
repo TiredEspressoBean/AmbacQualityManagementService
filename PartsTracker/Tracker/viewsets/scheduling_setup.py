@@ -106,6 +106,24 @@ class StepTimingViewSet(ReviveOnCreateMixin, TenantScopedMixin, ListMetadataMixi
         return Response(MeasuredStepTimingSerializer(rows, many=True).data)
 
 
+from Tracker.serializers.csv_import import BaseCSVImportSerializer  # noqa: E402
+
+
+class StepAffinityImport(BaseCSVImportSerializer):
+    """Machine eligibility's import. The API serializer refuses a released process's
+    step (10b); under the setup workbook's exception the row loads, and says so."""
+
+    def import_row(self, row):
+        instance, created, warnings = super().import_row(row)
+        from Tracker.services.change_control.routing_lock import (
+            released_owner, setup_exception_applies,
+        )
+        step = getattr(instance, 'step', None)
+        if step is not None and released_owner(step) is not None and setup_exception_applies(step):
+            warnings = list(warnings or []) + ["Loaded during setup (no process change)."]
+        return instance, created, warnings
+
+
 class StepEquipmentAffinityViewSet(ReviveOnCreateMixin, TenantScopedMixin, ListMetadataMixin,
                                    CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
     """CRUD for step-to-machine eligibility: a machine that can run a step, how well
@@ -114,9 +132,20 @@ class StepEquipmentAffinityViewSet(ReviveOnCreateMixin, TenantScopedMixin, ListM
     serializer_class = StepEquipmentAffinitySerializer
     # Unique on (step, equipment): a row is found by that pair.
     csv_import_serializer = create_import_serializer_for_model(
-        StepEquipmentAffinity, lookup_fields=['id', ('step', 'equipment')],
+        StepEquipmentAffinity, base=StepAffinityImport, lookup_fields=['id', ('step', 'equipment')],
         meta={'revive_key': ('step', 'equipment')})
     revive_key = ('step', 'equipment')
+
+    def perform_destroy(self, instance):
+        # A released process's step loses a machine only through a process change (10b).
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from rest_framework.exceptions import ValidationError
+        from Tracker.services.change_control.routing_lock import assert_step_routing_editable
+        try:
+            assert_step_routing_editable(instance.step)
+        except DjangoValidationError as e:
+            raise ValidationError({'step': e.messages})
+        super().perform_destroy(instance)
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     filterset_fields = ['step', 'equipment', 'affinity']
     search_fields = ['step__name', 'equipment__name']

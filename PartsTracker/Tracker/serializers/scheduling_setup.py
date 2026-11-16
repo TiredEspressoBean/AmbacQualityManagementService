@@ -12,6 +12,7 @@ the Steps serializer; it is left as it is. The standalone one here carries the s
 All three inherit `SecureModelMixin`, so a step / machine ID from another tenant is
 rejected rather than linked.
 """
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from Tracker.models.scheduling import (
@@ -27,7 +28,8 @@ class StepTimingRecordSerializer(SecureModelMixin):
     class Meta:
         model = StepTiming
         fields = ('id', 'step', 'step_name', 'setup_minutes', 'cycle_time_minutes',
-                  'load_unload_per_piece', 'attention_type', 'external_setup_minutes', 'archived')
+                  'load_unload_per_piece', 'attention_type', 'external_setup_minutes',
+                  'first_piece_buyoff_minutes', 'archived')
         read_only_fields = ('id', 'step_name')
 
 
@@ -64,8 +66,33 @@ class StepEquipmentAffinitySerializer(SecureModelMixin):
     class Meta:
         model = StepEquipmentAffinity
         fields = ('id', 'step', 'step_name', 'equipment', 'equipment_name', 'affinity',
-                  'cycle_time_override', 'archived')
-        read_only_fields = ('id', 'step_name', 'equipment_name')
+                  'cycle_time_override', 'step_locked', 'archived')
+        read_only_fields = ('id', 'step_name', 'equipment_name', 'step_locked')
+
+    step_locked = serializers.SerializerMethodField(
+        help_text="The step belongs to an approved process: this row changes only through a "
+                  "process change (10b).")
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_step_locked(self, obj):
+        from Tracker.services.change_control.routing_lock import released_owner
+        return released_owner(obj.step) is not None
+
+    def validate(self, attrs):
+        """A released process's step changes its machines only through a process change
+        (10b, user ruling 2026-11-16) — the old step and, if moved, the new one."""
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.change_control.routing_lock import assert_step_routing_editable
+        attrs = super().validate(attrs)
+        steps = {attrs.get('step') or getattr(self.instance, 'step', None)}
+        if self.instance is not None:
+            steps.add(self.instance.step)
+        try:
+            for step in steps - {None}:
+                assert_step_routing_editable(step)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({'step': e.messages})
+        return attrs
 
 
 class WorkCenterChangeoverSerializer(SecureModelMixin):

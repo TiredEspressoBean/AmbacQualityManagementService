@@ -3613,8 +3613,20 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, StartGateMixin,
                     visit_number=StepExecution.get_visit_count(part, step) + 1 if part is not None else 1,
                     machine=machine)
                 reason = request.data.get('override_reason')
-                decision, err = self._gated_start(
-                    request, lambda auth: decide_start(ctx, authorizer=auth, reason=reason))
+
+                def decide(auth):
+                    # A refusal is kept for planning, on the visit this part would have
+                    # (made for it if it has none; scheduling review item 11).
+                    from Tracker.services.mes import start_refusals
+                    from Tracker.services.mes.gates import StartRefused
+                    from Tracker.services.mes.lifecycle import StartGateError
+                    try:
+                        return decide_start(ctx, authorizer=auth, reason=reason)
+                    except (StartRefused, StartGateError) as exc:
+                        start_refusals.record(exc, part=part, step=step)
+                        raise
+
+                decision, err = self._gated_start(request, decide)
                 if err is not None:
                     return err
                 self._pending_start = decision

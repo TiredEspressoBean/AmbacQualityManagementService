@@ -705,6 +705,14 @@ class Steps(SecureModel):
                   "material it inspects. Only a RECEIVING step may carry one.")
     """The raw material a standalone RECEIVING step (RIP) inspects, when not a part type."""
 
+    # Pooled reusable tooling the step needs (shim kits, identical collet chucks, an NC
+    # program): its own link, on the step, so it versions with the process and goes
+    # through change control (user ruling 2026-11-16, 10b). Numbered items stay machine
+    # affinities; consumed material stays BOM lines. The Fixture is capacity only.
+    required_tooling = models.ManyToManyField(
+        'Tracker.Fixture', related_name='required_by_steps', blank=True,
+        help_text="Tooling this step needs: each running op ties up one of it.")
+
     work_center = models.ForeignKey(
         'Tracker.WorkCenter',
         on_delete=models.PROTECT,

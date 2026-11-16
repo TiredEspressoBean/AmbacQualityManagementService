@@ -25,6 +25,9 @@ class FixtureSerializer(serializers.ModelSerializer):
 
     With an `equipment_type`, the capacity is that type's items in service and within
     life (`capacity`), and `quantity` is not used."""
+    # The steps that need it, read-only: authored on the step (Steps.required_tooling),
+    # under change control with the process (10b, user ruling 2026-11-16).
+    steps = serializers.PrimaryKeyRelatedField(source='required_by_steps', many=True, read_only=True)
     step_names = serializers.SerializerMethodField()
     capacity = serializers.SerializerMethodField()
     # Tenant-scoped: another company's equipment type id is refused.
@@ -36,7 +39,7 @@ class FixtureSerializer(serializers.ModelSerializer):
         # `archived` so a deleted fixture shows as such and can be restored (PATCH it false).
         fields = ('id', 'name', 'kind', 'quantity', 'equipment_type', 'capacity', 'lead_time_days',
                   'steps', 'step_names', 'archived')
-        read_only_fields = ('id', 'step_names', 'capacity')
+        read_only_fields = ('id', 'steps', 'step_names', 'capacity')
 
     @extend_schema_field(serializers.IntegerField())
     def get_capacity(self, obj):
@@ -45,7 +48,7 @@ class FixtureSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_step_names(self, obj):
-        return [s.name for s in obj.steps.all()]
+        return [s.name for s in obj.required_by_steps.all()]
 
 
 class PlanWorkOrderInputSerializer(serializers.Serializer):
@@ -143,6 +146,8 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
     step_name = serializers.SerializerMethodField()
     machine_name = serializers.SerializerMethodField()
     operator_name = serializers.SerializerMethodField()
+    # The assigned operator, or a running op's visit holder (who's on it now).
+    operator_id = serializers.SerializerMethodField()
     work_order = serializers.SerializerMethodField()
     work_order_id = serializers.SerializerMethodField()
     work_center = serializers.SerializerMethodField()
@@ -157,7 +162,7 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'schedule', 'part', 'part_erp', 'core_number',
             'step', 'step_name', 'machine', 'machine_name',
-            'assigned_operator', 'operator_name', 'requires_operator',
+            'assigned_operator', 'operator_name', 'operator_id', 'requires_operator',
             'work_order', 'work_order_id', 'work_center', 'due_date', 'is_late',
             'start_time', 'end_time', 'is_pinned', 'fence_zone', 'material_shortage',
             'material_detail', 'late_cause', 'in_progress', 'actual_start', 'actual_end',
@@ -196,21 +201,30 @@ class ScheduledTaskSerializer(serializers.ModelSerializer):
     def get_machine_name(self, obj):
         return obj.machine.name if obj.machine_id else None
 
-    @extend_schema_field(serializers.CharField(allow_null=True))
-    def get_operator_name(self, obj):
+    def _operator(self, obj):
+        """Who's on the task: its assigned operator, or — for a running op, which isn't
+        dispatched (it's pinned) — the visit's holder, not "unattended" (walk 2026-11-16)."""
         u = obj.assigned_operator
         if u is None and obj.in_progress and obj.part_id:
-            # A running op isn't dispatched (it's pinned): who's on it is the visit's
-            # holder, not "unattended" (plan-vs-actual walk 2026-11-16).
             from Tracker.models import StepExecution
             visit = (StepExecution.objects  # tenant-safe: FK-correlated to a scoped task's part
                      .filter(part_id=obj.part_id, step_id=obj.step_id, status='IN_PROGRESS',
                              exited_at__isnull=True)
                      .select_related('assigned_to').first())
             u = visit.assigned_to if visit is not None else None
+        return u
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_operator_name(self, obj):
+        u = self._operator(obj)
         if u is None:
             return None
         return (f"{u.first_name or ''} {u.last_name or ''}".strip() or u.get_username())
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_operator_id(self, obj):
+        u = self._operator(obj)
+        return u.pk if u is not None else None
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_work_order(self, obj):

@@ -59,6 +59,26 @@ def _get_operator_for_step(part: Parts, step, visit_number: int):
     return last.completed_by if last else None
 
 
+def arrival_visit(part, step):
+    """The PENDING visit a part gets on arriving at `step`: the next visit number (the
+    step's executions locked while it's read), the operator the revisit rule assigns,
+    its substep sampling decisions and its planned machine. Shared by advancement and
+    by a refused start on a part that never got one (Add Parts places parts at their
+    first step without a visit; scheduling review item 11)."""
+    visit_number = StepExecution.get_visit_count_for_update(part, step) + 1
+    new_exec = StepExecution.objects.create(
+        part=part,
+        step=step,
+        visit_number=visit_number,
+        assigned_to=_get_operator_for_step(part, step, visit_number),
+        status='PENDING',
+    )
+    from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
+    evaluate_substep_sampling(new_exec)
+    _stamp_production_equipment(new_exec)
+    return new_exec
+
+
 def _stamp_production_equipment(execution) -> None:
     """Attribute the step's production machine to a freshly-created execution as a
     PRODUCTION `StepExecutionEquipment` link — the as-built equipment record (plan
@@ -522,21 +542,7 @@ def advance_part_step(
     # Individual part advancement. Lock the target step's executions for this
     # part while assigning the visit number (see batch path above) so concurrent
     # advances into the same step can't mint duplicate visit numbers.
-    visit_number = StepExecution.get_visit_count_for_update(part, next_step) + 1
-    assigned_operator = _get_operator_for_step(part, next_step, visit_number)
-
-    new_exec = StepExecution.objects.create(
-        part=part,
-        step=next_step,
-        visit_number=visit_number,
-        assigned_to=assigned_operator,
-        status='PENDING',
-    )
-
-    # Phase 3: write per-substep SamplingDecision rows.
-    from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
-    evaluate_substep_sampling(new_exec)
-    _stamp_production_equipment(new_exec)
+    arrival_visit(part, next_step)
 
     part.step = next_step
     # Preserve HELD statuses through the step transition. A QUARANTINED

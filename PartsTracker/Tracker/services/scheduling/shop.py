@@ -45,6 +45,11 @@ class Shop:
         # overflow long enough to say what didn't fit.
         self.H_ext = 3 * H
         self.wos = data.get_active_workorders(tenant)
+        # First pieces (item 7): what stands per (wo, step), and the shift changes
+        # (minutes) a per-shift first piece is made again at.
+        self.fp_state = data.get_first_piece_state(tenant, self.wos)
+        self.shift_changes = sorted({_minute(at, horizon.start)
+                                     for at in calendars.get_shift_changes(tenant, horizon)})
         # wo -> minute its deviation ends (no start from then on; <= 0: already ended).
         self.deviation_end = {wid: _minute(at, horizon.start)
                               for wid, at in data.get_deviation_ends(tenant, self.wos).items()}
@@ -59,6 +64,9 @@ class Shop:
          self.material_detail) = data.get_material_gates(tenant, horizon)  # buy-side
         self.op_windows = calendars.get_operator_shift_windows(tenant, horizon)  # rostered crew
         self.skill_pools = data.get_step_operator_pools(tenant)  # gated step -> qualified crew
+        # 9B: who may run a step on a machine whose type has its own training, and each
+        # such machine's type.
+        self.machine_type_pools, self.machine_type_of = data.get_machine_type_pools(tenant)
         # step -> {op: minute their cert for it lapses}, for lapses inside the horizon.
         self.qual_lapse = {
             sid: {uid: max(0, _minute(lapse, horizon.start))
@@ -140,6 +148,11 @@ class Shop:
         counts = [c for sa, sb, c in self.crew_segs if sa < b and a < sb]
         return min(counts) if counts else 0
 
+    def machine_type_pool(self, step_id, equipment_id):
+        """Who may run `step_id` on `equipment_id` when its type carries its own training
+        (9B), or None when the type doesn't — no restriction beyond the step's."""
+        return self.machine_type_pools.get((step_id, self.machine_type_of.get(equipment_id)))
+
     def frozen_refusal(self, *, prev_raw, **kw):
         """Why a frozen or planner-pinned operation can't be held where the live plan
         put it, as `(code, text)` — or None, when it is held exactly.
@@ -159,8 +172,9 @@ class Shop:
 
         Only reasons it CAN'T happen there: its order may not start yet or its material
         isn't in; its machine is out of service, no longer eligible or blocked
-        (downtime, closure, off-shift); the crew on shift is already taken; or its
-        operator is off the crew, no longer qualified or not on shift then. A slot that
+        (downtime, closure, off-shift), or its type needs training nobody on the crew
+        holds; the crew on shift is already taken; or its operator is off the crew, no
+        longer qualified (for the step, or for its machine's type) or not on shift then. A slot that
         has passed, or a predecessor running late, is not a reason: held work slides
         later in its order. A part that moved on, was scrapped or shipped, or whose
         order is held or cancelled, simply isn't in this solve, so its old slot isn't
@@ -179,6 +193,12 @@ class Shop:
             if _overlaps(ps, ps + op_dur, self.machine_gaps(eq)):
                 return ('machine_blocked',
                         "its machine is down, closed or off-shift in that slot")
+            # 9B: a machine whose type has its own training needs someone who holds it
+            # (the start gate checks it); held there with nobody trained, it can't run.
+            type_pool = self.machine_type_pool(step_id, eq)
+            if lm != 'off' and type_pool is not None and not (type_pool & self.all_op_ids):
+                return ('machine_untrained',
+                        "nobody on the crew holds the training its machine's type needs")
         else:
             op_dur = dur_free or 1
             if _overlaps(ps, ps + op_dur, self.closure_gaps):
@@ -198,6 +218,10 @@ class Shop:
             pool = self.skill_pools.get(step_id)
             if pool is not None and op not in pool:
                 return ('operator_unqualified', "its operator is no longer qualified for it")
+            type_pool = self.machine_type_pool(step_id, eq) if choices else None
+            if type_pool is not None and op not in type_pool:   # 9B
+                return ('operator_unqualified',
+                        "its operator lacks the training its machine's type needs")
             att = front_len if front_len is not None else op_dur
             if att and not _covered(ps, ps + att, self.op_minutes.get(op, ())):
                 return ('operator_unavailable',

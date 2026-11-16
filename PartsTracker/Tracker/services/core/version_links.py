@@ -198,7 +198,6 @@ LINKS = {
     'BatchExecution.step': STAYS,
     'CAPA.step': STAYS,
     'FPIRecord.step': STAYS,
-    'Fixture.steps': COPIES,
     'MaterialStaging.step': STAYS,
     'MaterialUsage.step': STAYS,
     'MeasurementDefinition.step': MANAGED,

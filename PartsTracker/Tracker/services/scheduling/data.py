@@ -60,6 +60,9 @@ class TimingData:
     attention_type: str  # 'full' | 'load_unload' | 'unattended'
     cycle_source: str  # 'timing' | 'measured' | 'expected' | 'none'
     setup_source: str = 'timing'  # 'timing' | 'measured' | 'none'
+    # At a first-piece step: minutes from the first piece done to QA's buy-off, which
+    # the rest of the run waits in the plan. None: the wait isn't planned (item 7).
+    first_piece_buyoff: int | None = None
 
     def machine_wall_time(self, quantity: int) -> float:
         """Minutes the machine is occupied for a batch: internal setup + run."""
@@ -127,6 +130,10 @@ class StepNode:
     is_terminal: bool
     requires_first_piece_inspection: bool
     order: int  # ProcessStep.order — the linear fallback when a process has no edges
+    # The first piece (the step's first_piece gate row): how many pieces make it, and
+    # what one releases (services/qms/fpi_scope). 0 = no first piece (item 7).
+    first_piece_n: int = 0
+    fpi_scope: str = 'PER_WORKORDER'
 
 
 @dataclass(frozen=True)
@@ -254,6 +261,7 @@ def get_step_timings(tenant, measured=None) -> dict[UUID, TimingData]:
             attention_type=t.attention_type if t else AttentionType.FULL,
             cycle_source=source,
             setup_source=setup_source,
+            first_piece_buyoff=t.first_piece_buyoff_minutes if t else None,
         )
     return result
 
@@ -401,11 +409,11 @@ def get_fixture_availability(tenant) -> dict[UUID, FixtureData]:
     from Tracker.services.life_tracking.tool_life import fixture_capacity
 
     result: dict[UUID, FixtureData] = {}
-    for f in Fixture.objects.filter(archived=False, tenant=tenant).prefetch_related('steps'):
+    for f in Fixture.objects.filter(archived=False, tenant=tenant).prefetch_related('required_by_steps'):
         result[f.id] = FixtureData(
             fixture_id=f.id,
             quantity=fixture_capacity(f),
-            step_ids=frozenset(s.id for s in f.steps.all()),
+            step_ids=frozenset(s.id for s in f.required_by_steps.all()),
         )
     return result
 
@@ -448,13 +456,17 @@ def process_graph(process_id, cache: dict | None = None) -> tuple:
     """`(steps, edges)` for a process — the shape `routing.resolve_route` consumes.
     Pass a dict as `cache` to resolve each process once across many work orders."""
     from Tracker.models import ProcessStep, StepEdge
+    from Tracker.services.qms.first_piece import quantity as first_piece_quantity
 
     if cache is not None and process_id in cache:
         return cache[process_id]
     steps = tuple(
         StepNode(step_id=ps.step_id, is_terminal=ps.step.is_terminal,
                  requires_first_piece_inspection=ps.step.requires_first_piece_inspection,
-                 order=ps.order)
+                 order=ps.order,
+                 first_piece_n=(first_piece_quantity(ps.step)
+                                if ps.step.requires_first_piece_inspection else 0),
+                 fpi_scope=ps.step.fpi_scope or 'PER_WORKORDER')
         for ps in ProcessStep.objects.filter(process_id=process_id)
         # The first-piece gate is a StepRequirement row: prefetched, not one query a step.
         .select_related('step').prefetch_related('step__requirements').order_by('order'))
@@ -717,6 +729,35 @@ def get_step_operator_pools(tenant) -> dict[UUID, frozenset]:
     return pools
 
 
+def get_machine_type_pools(tenant) -> tuple[dict, dict]:
+    """Who may run a step ON a machine whose type has its own training (9B, user ruling
+    2026-11-16): `({(step_id, equipment_type_id): frozenset(user_id)}, {equipment_id:
+    equipment_type_id})`, only for types that carry a training requirement — the start
+    gate checks the machine type's training (gates: authorize_start(equipment_type=…)),
+    so the plan must not hand a machine to someone it would refuse."""
+    from Tracker.models import Equipments, StepEquipmentAffinity, TrainingRequirement
+    from Tracker.services.training import get_qualified_users_for_step
+
+    typed = set(TrainingRequirement.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, archived=False, equipment_type__isnull=False)
+        .values_list('equipment_type_id', flat=True))
+    if not typed:
+        return {}, {}
+    op_ids = {o.user_id for o in get_dispatchable_operators(tenant)}
+    pools: dict = {}
+    for aff in (StepEquipmentAffinity.objects  # tenant-safe: explicit tenant filter
+                .filter(tenant=tenant, archived=False, equipment__equipment_type_id__in=typed)
+                .select_related('step', 'equipment__equipment_type')):
+        key = (aff.step_id, aff.equipment.equipment_type_id)
+        if key not in pools:
+            pools[key] = frozenset(
+                {u.id for u in get_qualified_users_for_step(
+                    aff.step, equipment_type=aff.equipment.equipment_type, tenant=tenant)} & op_ids)
+    types = dict(Equipments.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, equipment_type_id__in=typed).values_list('id', 'equipment_type_id'))
+    return pools, types
+
+
 def get_unrunnable_steps(tenant, horizon: HorizonData) -> dict:
     """Steps that can't run anywhere in the horizon, `step_id -> (kind, why)`:
 
@@ -766,14 +807,51 @@ def get_unrunnable_steps(tenant, horizon: HorizonData) -> dict:
 
     from Tracker.models import Fixture
     from Tracker.services.life_tracking.tool_life import fixture_capacity
-    for f in Fixture.objects.filter(archived=False, tenant=tenant).prefetch_related('steps'):
+    for f in Fixture.objects.filter(archived=False, tenant=tenant).prefetch_related('required_by_steps'):
         if fixture_capacity(f) > 0:
             continue
         why = (f"none of {f.name} is available — every tracked item is out of service or "
                f"at its life limit" if f.equipment_type_id is not None
                else f"{f.name} has a quantity of 0")
-        for s in f.steps.all():
+        for s in f.required_by_steps.all():
             out.setdefault(s.id, ('tooling_unavailable', why))
+    return out
+
+
+def get_first_piece_state(tenant, wos) -> dict:
+    """What already stands at each work order's first-piece steps, read the way the
+    start gate reads it (services/qms/fpi_scope): `(wo_id, step_id) -> {...}` with
+
+    - 'standing': a PASSED or WAIVED first piece covers what's to come — for the
+      work order (Per Work Order), the current shift (Per Shift);
+    - 'standing_machines': the machines one stands on (Per Equipment);
+    - 'pending': a first piece is waiting for its buy-off.
+
+    Only pairs with a record are listed (scheduling review item 7)."""
+    from Tracker.models import FPIRecord, FPIStatus
+    from Tracker.services.scheduling.calendars import shift_at
+
+    current = shift_at(tenant)
+    out: dict = {}
+    rows = (FPIRecord.objects  # tenant-safe: explicit tenant filter
+            .filter(tenant=tenant, archived=False, work_order_id__in={w.wo_id for w in wos},
+                    status__in=[FPIStatus.PASSED, FPIStatus.WAIVED, FPIStatus.PENDING])
+            .select_related('step'))
+    for r in rows:
+        st = out.setdefault((r.work_order_id, r.step_id),
+                            {'standing': False, 'standing_machines': set(), 'pending': False})
+        if r.status == FPIStatus.PENDING:
+            st['pending'] = True
+            continue
+        scope = r.step.fpi_scope or 'PER_WORKORDER'
+        if scope == 'PER_EQUIPMENT':
+            if r.equipment_id:
+                st['standing_machines'].add(r.equipment_id)
+        elif scope == 'PER_SHIFT':
+            if current is not None and r.shift_id == current[0].id and r.shift_date == current[1]:
+                st['standing'] = True
+        else:
+            st['standing'] = True
     return out
 
 

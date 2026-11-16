@@ -26000,8 +26000,7 @@ export interface components {
             readonly capacity: number;
             /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
             lead_time_days?: number | null;
-            /** @description Steps that require this resource. */
-            steps?: string[];
+            readonly steps: string[];
             readonly step_names: string[];
             archived?: boolean;
         };
@@ -26041,8 +26040,6 @@ export interface components {
             equipment_type?: string | null;
             /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
             lead_time_days?: number | null;
-            /** @description Steps that require this resource. */
-            steps?: string[];
             archived?: boolean;
         };
         FlagOverrideInputRequest: {
@@ -31991,8 +31988,6 @@ export interface components {
             equipment_type?: string | null;
             /** @description Days to acquire or produce this tooling if it's short — drives the order-by date in the sourcing report. */
             lead_time_days?: number | null;
-            /** @description Steps that require this resource. */
-            steps?: string[];
             archived?: boolean;
         };
         /** @description Harvested component serializer */
@@ -33366,6 +33361,8 @@ export interface components {
              * @description SMED external setup that can overlap the previous op's run time.
              */
             external_setup_minutes?: number;
+            /** @description At a first-piece step, the minutes from the first piece being done to QA's buy-off — the rest of the run waits that long in the plan. Blank: the wait isn't planned. */
+            first_piece_buyoff_minutes?: number | null;
             archived?: boolean;
         };
         /**
@@ -33451,6 +33448,8 @@ export interface components {
              */
             labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             timing?: components["schemas"]["StepTimingRequest"] | null;
+            /** @description Pooled tooling this step needs — controlled content: changed in a draft. */
+            required_tooling?: string[];
             /** @description Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1). */
             change_description?: string;
             archived?: boolean;
@@ -37203,6 +37202,7 @@ export interface components {
             /** @description Layer-2 operator assignment; null on an attended task means the dispatcher could not cover it (no qualified operator free). */
             readonly assigned_operator: number | null;
             readonly operator_name: string | null;
+            readonly operator_id: number | null;
             /** @description Whether this task needs an operator (false for unattended runs). */
             readonly requires_operator: boolean;
             readonly work_order: string | null;
@@ -37851,6 +37851,8 @@ export interface components {
              * @description Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
              */
             cycle_time_override?: number | null;
+            /** @description The step belongs to an approved process: this row changes only through a process change (10b). */
+            readonly step_locked: boolean;
             archived?: boolean;
         };
         /** @description A machine that can run a step, how well, and optionally its own cycle time. */
@@ -38482,6 +38484,8 @@ export interface components {
              * @description SMED external setup that can overlap the previous op's run time.
              */
             external_setup_minutes?: number;
+            /** @description At a first-piece step, the minutes from the first piece being done to QA's buy-off — the rest of the run waits that long in the plan. Blank: the wait isn't planned. */
+            first_piece_buyoff_minutes?: number | null;
         };
         /** @description One step's standard times — setup, cycle, load/unload, attention, SMED setup. */
         StepTimingRecord: {
@@ -38521,6 +38525,8 @@ export interface components {
              * @description SMED external setup that can overlap the previous op's run time.
              */
             external_setup_minutes?: number;
+            /** @description At a first-piece step, the minutes from the first piece being done to QA's buy-off — the rest of the run waits that long in the plan. Blank: the wait isn't planned. */
+            first_piece_buyoff_minutes?: number | null;
             archived?: boolean;
         };
         /** @description One step's standard times — setup, cycle, load/unload, attention, SMED setup. */
@@ -38558,6 +38564,8 @@ export interface components {
              * @description SMED external setup that can overlap the previous op's run time.
              */
             external_setup_minutes?: number;
+            /** @description At a first-piece step, the minutes from the first piece being done to QA's buy-off — the rest of the run waits that long in the plan. Blank: the wait isn't planned. */
+            first_piece_buyoff_minutes?: number | null;
             archived?: boolean;
         };
         /**
@@ -38596,6 +38604,8 @@ export interface components {
              * @description SMED external setup that can overlap the previous op's run time.
              */
             external_setup_minutes?: number;
+            /** @description At a first-piece step, the minutes from the first piece being done to QA's buy-off — the rest of the run waits that long in the plan. Blank: the wait isn't planned. */
+            first_piece_buyoff_minutes?: number | null;
         };
         /**
          * @description * `TASK` - Task
@@ -38789,6 +38799,8 @@ export interface components {
              */
             labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             timing?: components["schemas"]["StepTiming"] | null;
+            /** @description Pooled tooling this step needs — controlled content: changed in a draft. */
+            required_tooling?: string[];
             readonly processes: components["schemas"]["StepProcessRef"][];
             /** Format: date-time */
             readonly created_at: string;
@@ -38881,6 +38893,8 @@ export interface components {
              */
             labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             timing?: components["schemas"]["StepTimingRequest"] | null;
+            /** @description Pooled tooling this step needs — controlled content: changed in a draft. */
+            required_tooling?: string[];
             /** @description Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1). */
             change_description?: string;
             archived?: boolean;

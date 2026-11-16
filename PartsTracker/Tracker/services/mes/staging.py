@@ -320,8 +320,8 @@ def _fixtures_by_step(tenant) -> dict:
     from Tracker.models import Fixture
 
     by_step: dict = defaultdict(set)
-    for f in Fixture.objects.filter(archived=False, tenant=tenant).prefetch_related('steps'):
-        for s in f.steps.all():
+    for f in Fixture.objects.filter(archived=False, tenant=tenant).prefetch_related('required_by_steps'):
+        for s in f.required_by_steps.all():
             by_step[str(s.id)].add(f.name)
     return by_step
 

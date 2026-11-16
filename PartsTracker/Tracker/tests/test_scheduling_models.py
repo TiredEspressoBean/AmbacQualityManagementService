@@ -57,7 +57,6 @@ class SchedulingModelTests(TenantContextMixin, TestCase):
             attention_type=AttentionType.FULL, external_setup_minutes=3,
         )
         self.assertEqual(t.machine_wall_time(5), 10 + 2 * 5)        # 20
-        self.assertEqual(t.first_piece_done(), 10 + 2 + 1)          # 13
         # Full attention: operator tied to the whole machine run.
         self.assertEqual(t.operator_attended_time(5), 20)
 
@@ -106,9 +105,9 @@ class SchedulingModelTests(TenantContextMixin, TestCase):
 
     def test_fixture_m2m(self):
         f = Fixture.objects.create(tenant=self.tenant, name="Vise A", quantity=2)
-        f.steps.add(self.step1, self.step2)
-        self.assertEqual(f.steps.count(), 2)
-        self.assertIn(f, self.step1.fixtures.all())
+        f.required_by_steps.add(self.step1, self.step2)
+        self.assertEqual(f.required_by_steps.count(), 2)
+        self.assertIn(f, self.step1.required_tooling.all())
 
     def test_continuous_machine_one_to_one(self):
         ContinuousMachine.objects.create(

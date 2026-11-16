@@ -99,7 +99,17 @@ export function MachineEligibilityTable({ owner, readOnly = false }: { owner: Ow
                     <TableBody>
                         {rows.map((r) => (
                             <TableRow key={r.id}>
-                                <TableCell className="font-medium">{byStep ? r.equipment_name : r.step_name}</TableCell>
+                                <TableCell className="font-medium">
+                                    {byStep ? r.equipment_name : r.step_name}
+                                    {/* A released process's step changes its machines through a
+                                        process change (10b) — shown, not editable here. */}
+                                    {r.step_locked && (
+                                        <span className="ml-2 text-xs font-normal text-muted-foreground"
+                                            title="This step belongs to an approved process: change its machines through a process change.">
+                                            · approved process
+                                        </span>
+                                    )}
+                                </TableCell>
                                 <TableCell>
                                     <Select
                                         value={r.affinity ?? "eligible"}
@@ -107,7 +117,7 @@ export function MachineEligibilityTable({ owner, readOnly = false }: { owner: Ow
                                             { id: r.id, data: { affinity: v as Affinity } },
                                             { onError: (e) => toastApiError(e) },
                                         )}
-                                        {...(!canChange ? { disabled: true } : {})}
+                                        {...(!canChange || r.step_locked ? { disabled: true } : {})}
                                     >
                                         <SelectTrigger className="h-8" aria-label="How well it runs the step"><SelectValue /></SelectTrigger>
                                         <SelectContent>
@@ -124,6 +134,7 @@ export function MachineEligibilityTable({ owner, readOnly = false }: { owner: Ow
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" className="text-destructive"
                                             aria-label={`Remove ${byStep ? r.equipment_name : r.step_name}`}
+                                            disabled={!!r.step_locked}
                                             onClick={() => remove(r)}>
                                             <Trash2 className="h-4 w-4" />
                                         </Button>

@@ -172,6 +172,9 @@ MIDDLEWARE = [
     'Tracker.audit_middleware.TrustedIPAuditlogMiddleware',
     'Tracker.middleware.TenantMiddleware',  # Tenant resolution (after auth)
     'Tracker.middleware.TenantStatusMiddleware',  # Block suspended tenants (after TenantMiddleware)
+    # A refused start's record, written after the view's rolled-back transaction ends
+    # (services/mes/start_refusals.py; scheduling review item 11).
+    'Tracker.services.mes.start_refusals.StartRefusalMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "allauth.account.middleware.AccountMiddleware",

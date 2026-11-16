@@ -408,8 +408,12 @@ def _excel_row(n: int) -> int:
 def _run_viewset_sheet(sheet, rows, request):
     from Tracker.serializers.csv_import import ImportMode
     vs = _viewset(sheet, request)
-    body = vs._process_import_inline(rows, ImportMode.UPSERT, vs.get_csv_import_serializer(),
-                                     request.tenant, request.user).data
+    # The setup workbook may load machine eligibility onto approved processes' steps
+    # while the tenant has started no work (routing_lock; 10b) — only from here.
+    from Tracker.services.change_control.routing_lock import setup_load
+    with setup_load():
+        body = vs._process_import_inline(rows, ImportMode.UPSERT, vs.get_csv_import_serializer(),
+                                         request.tenant, request.user).data
     summary = body.get("summary", {})
     problems = []
     for r in body.get("results", []):

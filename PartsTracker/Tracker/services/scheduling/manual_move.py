@@ -310,10 +310,12 @@ def reassign_operator(task, operator, user=None) -> dict:
     if operator is not None:
         from Tracker.services.training import get_qualified_users_for_step
         # On this task's machine: its type may need its own training (item 9).
+        from Tracker.services.mes.parts import authored_machine
         wo = task.part.work_order if task.part_id else None
+        machine = task.machine or authored_machine(task.step_id)   # the gate's machine
         qualified = get_qualified_users_for_step(
             task.step, process=getattr(wo, 'process', None),
-            equipment_type=getattr(task.machine, 'equipment_type', None), tenant=task.tenant)
+            equipment_type=getattr(machine, 'equipment_type', None), tenant=task.tenant)
         if not qualified.filter(pk=operator.pk).exists():
             name = operator.get_full_name() or operator.username
             warning = (f"{name} isn't trained for '{task.step.name}' — assigned anyway; "

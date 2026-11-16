@@ -188,6 +188,10 @@ class _Phase:
         self.wo_starts: dict = defaultdict(list)   # wo_id -> [start vars] (for peg gating)
         self.wo_ends: dict = defaultdict(list)     # wo_id -> [end vars]   (for peg completion)
         self.wo_step_starts: dict = defaultdict(list)  # (wo_id, step_id) -> [start vars]
+        # First pieces (item 7): a running lot holding a pending first piece -> its end;
+        # the waiting lots at that step -> (their start, buy-off minutes).
+        self.fp_running: dict = {}
+        self.fp_waiters: dict = defaultdict(list)
 
     def labor_model(self, step_id) -> str:
         base = self.shop.labor_models.get(step_id, 'pool')
@@ -198,6 +202,7 @@ class _Phase:
     def build(self, machine_hints=None):
         for wo in self.shop.wos:
             self._add_work_order(wo)
+        self._add_first_piece_waits()
         self._add_pegs()
         self._add_held_order()
         self._add_machine_capacity()
@@ -247,6 +252,7 @@ class _Phase:
         node_start: dict = {}
         node_end: dict = {}
         node_task: dict = {}   # step_id -> task dict (to flag cure-window violations)
+        node_task_out: dict = {}   # step_id -> the task its successors wait for (a tail)
         lot_ends = []
         for step_id in route_ids:
             timing = shop.timings.get(step_id)
@@ -261,25 +267,30 @@ class _Phase:
                       due_minutes=due_minutes, penalty=penalty)
             # Outside processing first, so a sent-out part isn't treated as a machine op;
             # only the first route step (== lot['step']) can be in progress.
+            done = end
             if step_id in shop.osp_minutes:
-                task = self._outside_op(**op)
+                task = out_task = self._outside_op(**op)
+                created = [(task, start)]
             elif lot.get('in_progress') and step_id == lot['step']:
-                task = self._running_op(**op)
+                task = out_task = self._running_op(**op)
+                created = []
+                self._note_running_first_piece(wo, step_id, timing, end)
             else:
-                task = self._planned_op(**op)
+                task, out_task, done, created = self._planned_with_first_piece(op)
             node_start[step_id] = start
-            node_end[step_id] = end
+            node_end[step_id] = done
             node_task[step_id] = task
-            lot_ends.append(end)
+            node_task_out[step_id] = out_task
+            lot_ends.append(done)
             # A deviation ending inside the plan: no start from its end on. Soft (like a
             # cure window) so a crowded shop can't make the whole solve infeasible; work
             # still landing past it isn't written, and Not scheduled says why.
-            if (deviation_end is not None and 0 < deviation_end < shop.H_ext
-                    and not (lot.get('in_progress') and step_id == lot['step'])):
-                viol = model.NewBoolVar(f"dev_{key}")
-                model.Add(start < deviation_end).OnlyEnforceIf(viol.Not())
-                self.max_time_penalty.append(viol * _CURE_WINDOW_WEIGHT)
-                task['deadline'] = deviation_end
+            if deviation_end is not None and 0 < deviation_end < shop.H_ext:
+                for i, (t, t_start) in enumerate(created):
+                    viol = model.NewBoolVar(f"dev_{key}_{i}")
+                    model.Add(t_start < deviation_end).OnlyEnforceIf(viol.Not())
+                    self.max_time_penalty.append(viol * _CURE_WINDOW_WEIGHT)
+                    t['deadline'] = deviation_end
 
         # Merge-capable precedence: for each DEFAULT edge
         # start[to] >= end[from] + move_min (inter-op transport/queue gap);
@@ -291,7 +302,7 @@ class _Phase:
                        for e in wo.edges if e.max_minutes}
         for from_id, to_id in prec:
             if from_id in node_task and to_id in node_task:
-                node_task[to_id]['preds'].append(node_task[from_id])
+                node_task[to_id]['preds'].append(node_task_out[from_id])
             if from_id in node_end and to_id in node_start:
                 model.Add(node_start[to_id] >= node_end[from_id] + shop.move_min)
                 max_m = max_by_edge.get((from_id, to_id))
@@ -319,6 +330,106 @@ class _Phase:
             model.Add(lateness >= lot_done - due_minutes)
             self.lateness_cost.append(lateness * penalty)
             self.lateness_terms.append((lateness, penalty))  # for the isolated total
+
+    # --- first pieces (scheduling review item 7) ---------------------------------
+
+    def _first_piece(self, wo, step_id, timing):
+        """The step's first piece as the plan sees it — `(n, buy-off minutes, scope)` —
+        or None when there's none, or no buy-off time is set (the wait isn't planned)."""
+        node = next((n for n in wo.steps if n.step_id == step_id), None)
+        buyoff = getattr(timing, 'first_piece_buyoff', None) if timing is not None else None
+        if node is None or not node.first_piece_n or buyoff is None:
+            return None
+        return node.first_piece_n, int(buyoff), node.fpi_scope
+
+    def _note_running_first_piece(self, wo, step_id, timing, end) -> None:
+        """A running lot at a step whose first piece is still waiting for buy-off: the
+        parts waiting there wait for it (`_add_first_piece_waits`)."""
+        fp = self._first_piece(wo, step_id, timing)
+        if fp and self.shop.fp_state.get((wo.wo_id, step_id), {}).get('pending'):
+            self.fp_running[(wo.wo_id, step_id)] = end
+
+    def _add_first_piece_waits(self) -> None:
+        for key, waiters in self.fp_waiters.items():
+            # The first piece still running: its end plus the buy-off. Already made and
+            # waiting for QA: the buy-off counted from now (how long it has waited
+            # isn't known), never sooner.
+            running_end = self.fp_running.get(key)
+            for start, buyoff in waiters:
+                self.model.Add(start >= (running_end + buyoff if running_end is not None
+                                         else buyoff))
+
+    def _planned_with_first_piece(self, op):
+        """A planned operation, with its first piece when the step has one (user ruling
+        2026-11-16). Returns `(first_task, last_task, done, created)`: `done` is when
+        its successors may start; `created` is each task with its start var.
+
+        - No first piece standing in its context: the first N pieces run (the head),
+          the rest wait the buy-off, then run (the tail). Per Equipment, on the head's
+          machine; Per Work Order, on any eligible one. A pending first piece already
+          running is the head: the waiting parts are the tail.
+        - Per Shift: each shift change the run crosses makes a new first piece, so it
+          adds one buy-off wait before its successors (the work runs through the
+          change; the incoming shift's first piece is among its pieces)."""
+        shop, model = self.shop, self.model
+        wo, lot, step_id, key = op['wo'], op['lot'], op['step_id'], op['key']
+        fp = self._first_piece(wo, step_id, op['timing'])
+        if fp is None:
+            task = self._planned_op(**op)
+            return task, task, op['end'], [(task, op['start'])]
+        n, buyoff, scope = fp
+        state = shop.fp_state.get((wo.wo_id, step_id), {})
+        eligible_ids = {a.equipment_id for a in op['eligible']}
+        standing = (state.get('standing')
+                    or (scope == 'PER_EQUIPMENT' and bool(eligible_ids & state.get('standing_machines', set()))))
+        if state.get('pending'):
+            # Its first piece is made and waiting: these parts wait for its buy-off.
+            task = self._planned_op(**op)
+            self.fp_waiters[(wo.wo_id, step_id)].append((op['start'], buyoff))
+            first = last = task
+            last_start, last_end = op['start'], op['end']
+            created = [(task, op['start'])]
+        elif not standing and lot['count'] > n:
+            ids = lot['part_ids']
+            head_lot = {**lot, 'part_ids': ids[:n], 'count': n, 'label': f"{lot['label']}:fp"}
+            tail_lot = {**lot, 'part_ids': ids[n:], 'count': lot['count'] - n,
+                        'label': f"{lot['label']}:rest"}
+            e_h = model.NewIntVar(0, shop.H_ext, f"e_{key}_fp")
+            s_t = model.NewIntVar(0, shop.H_ext, f"s_{key}_rest")
+            e_t = model.NewIntVar(0, shop.H_ext, f"e_{key}_rest")
+            first = self._planned_op(**{**op, 'lot': head_lot, 'key': f"{key}_fp", 'end': e_h})
+            last = self._planned_op(**{**op, 'lot': tail_lot, 'key': f"{key}_rest",
+                                       'start': s_t, 'end': e_t})
+            model.Add(s_t >= e_h + buyoff)
+            last['preds'].append(first)
+            if scope == 'PER_EQUIPMENT':
+                tail_lits = {eid: lit for lit, eid in last['choices']}
+                for lit, eid in first['choices']:
+                    if eid in tail_lits:
+                        model.Add(lit == tail_lits[eid])
+            last_start, last_end = s_t, e_t
+            created = [(first, op['start']), (last, s_t)]
+        else:
+            first = last = self._planned_op(**op)
+            last_start, last_end = op['start'], op['end']
+            created = [(first, op['start'])]
+        done = last_end
+        if scope == 'PER_SHIFT':
+            crossings = []
+            for b in shop.shift_changes:
+                if b <= op['release_min'] or b >= shop.H:
+                    continue
+                c = model.NewBoolVar(f"fpx_{key}_{b}")
+                model.Add(last_start < b).OnlyEnforceIf(c)
+                model.Add(last_end > b).OnlyEnforceIf(c)
+                after = model.NewBoolVar(f"fpa_{key}_{b}")
+                model.Add(last_start >= b).OnlyEnforceIf([c.Not(), after])
+                model.Add(last_end <= b).OnlyEnforceIf([c.Not(), after.Not()])
+                crossings.append(c)
+            if crossings:
+                done = model.NewIntVar(0, shop.H_ext + buyoff * len(crossings), f"fpd_{key}")
+                model.Add(done == last_end + buyoff * sum(crossings))
+        return first, last, done, created
 
     def _outside_op(self, *, wo, lot, step_id, timing, eligible, key, start, end,
                     release_min, due_minutes, penalty) -> dict:
@@ -428,7 +539,8 @@ class _Phase:
         choices, durs, dur_free = self._machine_choice(
             wo, step_id, timing, eligible, key, start, end, lot['count'])
         self._occupancy(step_id, key, start, end)
-        lm, named_assign, front_len = self._labor(step_id, timing, key, start, end, lot['count'])
+        lm, named_assign, front_len = self._labor(step_id, timing, key, start, end, lot['count'],
+                                                  choices)
         fence = self._fence(wo, lot, step_id, timing, key, start, end, release_min, mat_lb,
                             choices, durs, dur_free, lm, named_assign, front_len)
 
@@ -495,7 +607,7 @@ class _Phase:
             for fixture_id in shop.fixture_by_step.get(step_id, ()):
                 self.fixture_intervals[fixture_id].append(occ)
 
-    def _labor(self, step_id, timing, key, start, end, count):
+    def _labor(self, step_id, timing, key, start, end, count, choices=()):
         """Labor demand: ONE operator tends the lot at this operation (not one per
         piece). Full-attention → tied to the whole run; otherwise only the front touch,
         the machine then running on its own: setup + a load/unload per piece, or setup
@@ -546,14 +658,35 @@ class _Phase:
                         self.named_op_intervals[op].append(oiv)
                         assign_lits.append(lit)
                         named_assign.append((op, lit))
+                    # 9B: a machine whose type has its own training goes only to someone
+                    # who holds it — the start gate would refuse anyone else.
+                    can_run = self._machine_type_exclusions(step_id, choices, named_assign)
                     if assign_lits and any(op not in lapses and shop.op_minutes.get(op)
-                                           for op in qualified):
+                                           and can_run(op) for op in qualified):
                         model.AddExactlyOne(assign_lits)
                     elif assign_lits:
                         uncov = model.NewBoolVar(f"nunc_{key}")
                         model.Add(sum(assign_lits) + uncov == 1)
                         self.named_uncovered.append(uncov)   # weighted coverage-first below
         return lm, named_assign, front_len
+
+    def _machine_type_exclusions(self, step_id, choices, named_assign):
+        """Forbid each (operator, machine) pair where the machine's type carries training
+        the operator lacks (9B). Returns `can_run(op)`: whether the operator may run at
+        least one of the step's machines — coverage is only made hard when someone can."""
+        shop, model = self.shop, self.model
+        if not choices or not shop.machine_type_pools:
+            return lambda op: True
+        allowed: dict = {}   # op -> may run some machine
+        for mlit, eq_id in choices:
+            pool = shop.machine_type_pool(step_id, eq_id)
+            for op, lit in named_assign:
+                if pool is None or op in pool:
+                    allowed[op] = True
+                else:
+                    model.AddBoolOr([lit.Not(), mlit.Not()])
+                    allowed.setdefault(op, False)
+        return lambda op: allowed.get(op, True)
 
     def _fence(self, wo, lot, step_id, timing, key, start, end, release_min, mat_lb,
                choices, durs, dur_free, lm, named_assign, front_len) -> dict:

@@ -70,6 +70,70 @@ class SchedulingReviewTests(TenantTestCase):
             affinity=StepEquipmentAffinity.Affinity.PREFERRED)
         return m2
 
+    # 7 ------------------------------------------------------------------------
+    def _first_piece_step(self, buyoff=45, cycle=None, scope='PER_WORKORDER'):
+        from Tracker.services.mes.step_gates import set_gates_from_flags
+        set_gates_from_flags(self.step1, requires_first_piece_inspection=True, fpi_scope=scope)
+        updates = {'first_piece_buyoff_minutes': buyoff}
+        if cycle is not None:
+            updates['cycle_time_minutes'] = cycle
+        StepTiming.objects.filter(step=self.step1).update(**updates)
+
+    def _at(self, result, step):
+        """{part ERP id: (start, end)} of the step's planned tasks."""
+        return {t.part.ERP_id: (t.start_time, t.end_time)
+                for t in result.tasks.filter(step=step).select_related('part')}
+
+    def test_the_rest_of_a_run_waits_for_the_first_pieces_buy_off(self):
+        self._first_piece_step(buyoff=45)
+        self._wo("WO-FP", n=3)
+        result = solve_schedule(self.tenant)
+        self.assertIn(result.solver_status, ("OPTIMAL", "FEASIBLE"))
+        at = self._at(result, self.step1)
+        head = min(at, key=lambda erp: at[erp][0])   # the first piece runs first
+        head_end = at[head][1]
+        rest = [erp for erp in at if erp != head]
+        self.assertEqual(len(rest), 2, at)
+        for erp in rest:
+            self.assertGreaterEqual(at[erp][0], head_end + timedelta(minutes=45), at)
+
+    def test_a_first_piece_already_passed_means_no_wait(self):
+        from Tracker.models import FPIRecord, FPIStatus
+        self._first_piece_step(buyoff=45)
+        wo = self._wo("WO-FPOK", n=3)
+        FPIRecord.objects.create(tenant=self.tenant, work_order=wo, step=self.step1,
+                                 part_type=self.pt, status=FPIStatus.PASSED)
+        at = self._at(solve_schedule(self.tenant), self.step1)
+        self.assertEqual(len({s for s, _e in at.values()}), 1, at)   # one run together
+
+    def test_a_per_shift_first_piece_waits_again_after_a_shift_change(self):
+        """A run crossing a shift change makes the incoming shift's first piece, which
+        waits its buy-off: the next step can't start until that wait too."""
+        # Back-to-back shifts (06:00–18:00, 18:00–06:00) so the machine runs straight
+        # through each change, and an unattended step so crew doesn't confine it: the
+        # 20-hour rest of the run (2 × 10 h) has to cross a change.
+        Shift.objects.filter(tenant=self.tenant).update(start_time=dtime(6, 0), end_time=dtime(18, 0))
+        Shift.objects.create(tenant=self.tenant, name="Night", code="NIGHT", start_time=dtime(18, 0),
+                             end_time=dtime(6, 0), days_of_week="0,1,2,3,4,5,6", is_active=True)
+        self._first_piece_step(buyoff=45, cycle=600, scope='PER_SHIFT')
+        StepTiming.objects.filter(step=self.step1).update(attention_type='unattended')
+        self._wo("WO-FPSH", n=3)
+        result = solve_schedule(self.tenant)
+        self.assertIn(result.solver_status, ("OPTIMAL", "FEASIBLE"))
+        turn = self._at(result, self.step1)
+        mill = self._at(result, self.step2)
+        last_turn_end = max(e for _s, e in turn.values())
+        first_mill = min(s for s, _e in mill.values())
+        self.assertGreaterEqual(first_mill, last_turn_end + timedelta(minutes=45), (turn, mill))
+
+    def test_shift_changes_are_each_shift_runs_start(self):
+        from Tracker.services.scheduling import calendars, data
+        horizon = data.get_schedule_horizon(self.tenant)
+        changes = calendars.get_shift_changes(self.tenant, horizon)
+        self.assertTrue(changes)
+        self.assertTrue(all(c > horizon.start for c in changes))
+        self.assertEqual(len(changes), len(set(changes)))
+
     # 8 ------------------------------------------------------------------------
     def test_started_and_waiting_parts_are_separate_lots(self):
         """One first piece started and the rest waiting for its buy-off: the waiting
@@ -89,7 +153,7 @@ class SchedulingReviewTests(TenantTestCase):
     def test_tooling_with_none_available_cuts_its_step_not_the_solve(self):
         from Tracker.models import Fixture
         fixture = Fixture.objects.create(tenant=self.tenant, name="Mill vise", quantity=0)
-        fixture.steps.add(self.step2)
+        fixture.required_by_steps.add(self.step2)
         self._wo("WO-TOOL")
         result = solve_schedule(self.tenant)
         self.assertIn(result.solver_status, ("OPTIMAL", "FEASIBLE"))

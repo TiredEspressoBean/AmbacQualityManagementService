@@ -137,6 +137,8 @@ type Task = {
   // An integer — `User` is a BigAutoField, unlike the UUID-keyed models around it.
   assigned_operator: number | string | null;
   operator_name: string | null;
+  /** The assigned operator, or a running op's visit holder — who's on it now. */
+  operator_id?: number | null;
   work_order: string | null;
   work_order_id: string | null;
   work_center: string | null;
@@ -1879,8 +1881,8 @@ export function SchedulingGanttPage() {
                 <TaskReassignControls
                   taskId={detailTask.id}
                   machineId={detailTask.machine}
-                  operatorId={detailTask.assigned_operator == null
-                    ? null : String(detailTask.assigned_operator)}
+                  operatorId={(detailTask.operator_id ?? detailTask.assigned_operator) == null
+                    ? null : String(detailTask.operator_id ?? detailTask.assigned_operator)}
                 />
               )}
               <DialogFooter className="flex-wrap gap-2 sm:justify-between">

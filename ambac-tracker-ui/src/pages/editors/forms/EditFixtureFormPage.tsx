@@ -1,6 +1,5 @@
 "use client";
 
-import { Combobox } from "@/components/ui/combobox";
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect, useMemo, useState } from "react";
@@ -8,7 +7,6 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { X } from "lucide-react";
 import { useParams, useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -38,8 +36,6 @@ import {
   useRetrieveFixture,
   useCreateFixture,
   useUpdateFixture,
-  useProcesses,
-  useProcessDetail,
 } from "@/hooks/useScheduling";
 import { useRetrieveEquipmentTypes } from "@/hooks/useRetrieveEquipmentTypes";
 
@@ -61,8 +57,6 @@ const required = {
   quantity: isFieldRequired(formSchema.shape.quantity),
 };
 
-type SelStep = { id: string; label: string };
-
 export default function EditFixtureFormPage() {
   const params = useParams({ strict: false });
   const navigate = useNavigate();
@@ -75,29 +69,11 @@ export default function EditFixtureFormPage() {
   const create = useCreateFixture();
   const update = useUpdateFixture();
 
-  // Cascading Process → Step picker state.
-  const [processId, setProcessId] = useState<string | undefined>();
-  const [selected, setSelected] = useState<SelStep[]>([]);
   // Tracked tooling: with an equipment type, capacity is that type's items in service
   // and within life, and the typed quantity isn't used.
   const [equipmentType, setEquipmentType] = useState<string>("none");
   const { data: typesResp } = useRetrieveEquipmentTypes({ limit: 500 });
   const equipmentTypes = typesResp?.results ?? [];
-
-  const { data: processesData } = useProcesses();
-  const processes = useMemo(
-    () => (processesData?.results ?? []).map((p) => ({ id: String(p.id), name: p.name })),
-    [processesData]
-  );
-  const selectedProcess = processes.find((p) => p.id === processId);
-  const { data: processDetail } = useProcessDetail(processId);
-  const processSteps = useMemo(
-    () =>
-      (processDetail?.process_steps ?? [])
-        .filter((ps) => ps.step)
-        .map((ps) => ({ id: String(ps.step.id), name: ps.step.name as string, order: ps.order })),
-    [processDetail]
-  );
 
   // RHF `values` reactively syncs the form (incl. controlled Radix Selects) once the
   // fixture loads — a `reset()` effect fails to propagate to the Kind Select on edit.
@@ -121,19 +97,9 @@ export default function EditFixtureFormPage() {
   useEffect(() => {
     if (mode === "edit" && fixture) {
       const f = fixture;
-      const ids: string[] = (f.steps ?? []).map(String);
-      const names: string[] = f.step_names ?? [];
-      setSelected(ids.map((id, i) => ({ id, label: names[i] ?? "Step" })));
       setEquipmentType(f.equipment_type ? String(f.equipment_type) : "none");
     }
   }, [mode, fixture, form]);
-
-  const addStep = (s: { id: string; name: string }) => {
-    if (selected.some((x) => x.id === s.id)) return;
-    const label = selectedProcess ? `${selectedProcess.name} · ${s.name}` : s.name;
-    setSelected((xs) => [...xs, { id: s.id, label }]);
-  };
-  const removeStep = (id: string) => setSelected((xs) => xs.filter((x) => x.id !== id));
 
   function onSubmit(values: FormValues) {
     const chosenType = equipmentType === "none" ? null : equipmentType;
@@ -146,7 +112,6 @@ export default function EditFixtureFormPage() {
       kind: values.kind,
       quantity: values.quantity,
       lead_time_days: values.lead_time_days ?? null,
-      steps: selected.map((s) => s.id),
       ...(typeChanged ? { equipment_type: chosenType } : {}),
     };
     const done = () => navigate({ to: "/editor/tooling" });
@@ -311,60 +276,25 @@ export default function EditFixtureFormPage() {
             )}
           />
 
-          {/* Cascading Process → Step picker: pick a process, then a step within it. */}
+          {/* The steps that need it are authored on the step ("Tooling this step needs",
+              in the process flow editor), under change control (10b): shown here only. */}
           <FormItem>
-            <FormLabel>Required at steps</FormLabel>
-            <FormDescription>
-              Pick a process, then the step within it that needs this resource. Add as many as
-              you like — step names repeat across processes, so choosing the process first keeps
-              it unambiguous.
-            </FormDescription>
-
-            <div className="space-y-3 rounded-md border p-3">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {/* Process combobox */}
-              <Combobox
-                value={processId ?? null}
-                onChange={(v) => setProcessId(v ?? undefined)}
-                options={processes.map((p) => ({ value: p.id, label: p.name }))}
-                placeholder="Select a process…"
-                searchPlaceholder="Search processes…"
-                emptyText="No processes found."
-              />
-
-              {/* Step combobox (steps of the chosen process) */}
-              <Combobox
-                value={null}
-                onChange={(v) => { const s = processSteps.find((x) => x.id === v); if (s) addStep(s); }}
-                options={processSteps.map((s) => ({
-                  value: s.id, label: `${s.order}. ${s.name}`,
-                  disabled: selected.some((x) => x.id === s.id),
-                  description: selected.some((x) => x.id === s.id) ? "Added" : undefined,
-                }))}
-                disabled={!processId}
-                placeholder={processId ? "Add a step…" : "Pick a process first"}
-                searchPlaceholder="Search steps…"
-                emptyText="No steps in this process."
-              />
-            </div>
-
-            {selected.length > 0 ? (
+            <FormLabel>Required at</FormLabel>
+            {(fixture?.step_names ?? []).length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
-                {selected.map((s) => (
-                  <Badge key={s.id} variant="secondary" className="gap-1">
-                    {s.label}
-                    <button type="button" onClick={() => removeStep(s.id)} className="ml-0.5 rounded hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
+                {(fixture?.step_names ?? []).map((name, i) => (
+                  <Badge key={`${name}-${i}`} variant="secondary">{name}</Badge>
                 ))}
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                No steps selected — this resource won't constrain the schedule until you add some.
+                No step needs it yet.
               </p>
             )}
-            </div>
+            <FormDescription>
+              A step says which tooling it needs, in the process flow editor ("Tooling this step
+              needs"), as part of the process — so a change goes through a process change.
+            </FormDescription>
           </FormItem>
 
           <div className="flex gap-3">

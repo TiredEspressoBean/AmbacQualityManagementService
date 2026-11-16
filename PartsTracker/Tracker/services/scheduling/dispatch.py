@@ -211,8 +211,10 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
             key = ('p', t.step_id, t.start_time, t.end_time, t.machine_id, wo_id)
             lot_map[key].append(t)
 
-        # Cache qualified operators per (step, process) — reused across lots.
+        # Cache qualified operators per (step, process, machine type) — reused across lots.
         qual_cache: dict = {}
+        from Tracker.services.mes.parts import authored_machine
+        authored_cache: dict = {}
 
         def _qualified(step, process, machine=None):
             # The machine's type has its own training (scheduling review item 9): an
@@ -261,7 +263,15 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
             weight = _PRIORITY_WEIGHT.get(getattr(wo, 'priority', 3), 100)
             step_wc = getattr(rep.step, 'work_center_id', None)
 
-            candidates = _qualified(rep.step, process, rep.machine if rep.machine_id else None)
+            # The machine the start would run on: the task's, else the step's authored
+            # one (parts.authored_machine) — the one the start gate judges.
+            if rep.machine_id:
+                machine = rep.machine
+            else:
+                if rep.step_id not in authored_cache:
+                    authored_cache[rep.step_id] = authored_machine(rep.step_id)
+                machine = authored_cache[rep.step_id]
+            candidates = _qualified(rep.step, process, machine)
             lits = {}
             for op_id in candidates:
                 lit = model.NewBoolVar(f"a_{rep.id}_{op_id}")

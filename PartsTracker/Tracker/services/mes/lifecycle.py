@@ -505,7 +505,7 @@ def start_execution(execution, operator, *, authorizer=None, reason=None, machin
     try:
         decision = decide_start(ctx, authorizer=authorizer, reason=reason)
     except (StartRefused, StartGateError) as exc:
-        start_refusals.record(execution, exc)   # kept for planning (item 11)
+        start_refusals.record(exc, part=execution.part, step=execution.step)  # for planning (item 11)
         raise
     reassigned = 'reassignment' in decision.snapshot
     # The machine it starts on, judged above: resolved before the row says it's running.

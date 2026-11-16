@@ -1536,8 +1536,6 @@ from Tracker.reports.tasks import generate_and_email_report  # noqa: E402, F401
 from Tracker.services.core.notifications.tasks import dispatch_outbox_row  # noqa: E402, F401
 # And the andon's call for a refused start (services/mes/andon.py).
 from Tracker.services.mes.andon import notify_start_refused  # noqa: E402, F401
-# And the record of a refused start, kept on the visit for planning (start_refusals.py).
-from Tracker.services.mes.start_refusals import record_start_refusal  # noqa: E402, F401
 
 
 # Thresholds. Not tenant-configurable yet — feature-flag when a real tenant asks.

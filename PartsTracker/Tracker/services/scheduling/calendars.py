@@ -327,6 +327,27 @@ def get_operator_unavailability(tenant, horizon,
 
 # --- Which shift is it ------------------------------------------------------------
 
+def get_shift_changes(tenant, horizon) -> list[datetime]:
+    """Every shift change inside the horizon: the start of each shift's run, regular
+    or overtime — the moment `shift_at` hands over to the incoming shift. Each shift is
+    expanded on its own: merged windows would hide the change between back-to-back
+    shifts. For per-shift first pieces (scheduling review item 7)."""
+    from Tracker.models import Shift
+    tz = plant_tz(tenant)
+    shifts = list(Shift.objects.filter(  # tenant-safe: explicit tenant filter
+        archived=False, tenant=tenant, is_active=True, is_current_version=True))
+    if not shifts:
+        return []
+    starts = set()
+    for shift in shifts:
+        for start, _end in _expand_shifts([shift], horizon.start, horizon.end, tz):
+            if start > horizon.start:   # one clipped at the horizon edge isn't a change
+                starts.add(start)
+    for runs in get_overtime_windows(tenant, horizon).values():
+        starts.update(s for s, _e in runs if s > horizon.start)
+    return sorted(starts)
+
+
 def shift_at(tenant, at: datetime | None = None):
     """The shift `at` (default now) belongs to, as ``(shift, start_date)``: the shift —
     a regular run or an overtime run of it — that STARTED most recently, and the plant

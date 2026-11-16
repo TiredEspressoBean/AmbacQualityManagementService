@@ -97,9 +97,21 @@ class StartGateMixin(SecondPersonMixin):
         StartGateError do we verify a supervisor and retry. Returns
         ``(result, error_response)`` — exactly one is non-None.
         """
+        from Tracker.services.mes.gates import StartRefused
         from Tracker.services.mes.lifecycle import StartGateError
         try:
             return apply(None), None
+        except StartRefused:
+            # A floor refusal nobody can override — but it also lists the supervisor
+            # gates waiting behind it, judged without an authorizer. When a supervisor
+            # has already signed in on this request, judge again with them so the
+            # refusal doesn't say a supervisor is still needed (P5 walk 2026-11-16).
+            # It refuses again either way; with no or invalid credentials, as it was.
+            authorizer, verr = self._verify_supervisor(request)
+            if verr is not None or authorizer is None:
+                raise
+            apply(authorizer)
+            raise
         except StartGateError as first:
             authorizer, verr = self._verify_supervisor(request)
             if verr is not None:

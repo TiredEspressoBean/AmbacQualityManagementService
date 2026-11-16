@@ -32,6 +32,7 @@ import { StepGatesField, type StepGate } from './StepGatesField';
 import { StepDocumentsEditor } from './step-documents-editor';
 import { StepTrainingRequirementsEditor } from './step-training-requirements-editor';
 import { StepMachinesEditor } from './step-machines-editor';
+import { StepToolingEditor } from './step-tooling-editor';
 import { stepAffinitiesOptions } from '@/hooks/useSchedulingSetup';
 import { StepBomSection } from './StepBomSection';
 import { useTrainingRequirements } from '@/hooks/useTrainingRequirements';
@@ -190,6 +191,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [trainingOpen, setTrainingOpen] = useState(false);
   const [machinesOpen, setMachinesOpen] = useState(false);
+  const [toolingOpen, setToolingOpen] = useState(false);
   const [claiming, setClaiming] = useState(false);
 
   // Open a dialog (or run `then`) on the draft's own copy of the step, so what it
@@ -985,6 +987,27 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                 )}
               </div>
 
+              {/* Tooling this step needs — pooled reusable tooling (10b): controlled
+                  content, edited on the draft's own copy of the step, like Machines. */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <Wrench className="h-4 w-4 text-muted-foreground" />
+                  <span>Tooling this step needs</span>
+                </div>
+                {stepIdIsUuid && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => void withOwnStep(() => setToolingOpen(true))}
+                    disabled={claiming}
+                    title={editable ? "Configure tooling" : "View tooling"}
+                  >
+                    {editable ? <Settings className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
+
               {/* Substeps — drill-down into the DWI substep editor. Disabled
                   until the step is persisted (needs a real stepId in the URL). */}
               <div className="flex items-center justify-between">
@@ -1247,6 +1270,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
               readOnly={!editable}
             />
             {stepIdIsUuid && (
+              <>
               <StepMachinesEditor
                 stepId={stepId}
                 stepName={data.label || 'Step'}
@@ -1254,6 +1278,15 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                 onOpenChange={setMachinesOpen}
                 readOnly={!editable}
               />
+              <StepToolingEditor
+                stepId={stepId}
+                stepName={data.label || 'Step'}
+                processId={processId}
+                open={toolingOpen}
+                onOpenChange={setToolingOpen}
+                readOnly={!editable}
+              />
+              </>
             )}
           </>
         )}

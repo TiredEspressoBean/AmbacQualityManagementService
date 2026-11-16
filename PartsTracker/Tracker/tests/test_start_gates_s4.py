@@ -70,15 +70,11 @@ class StartGatesS4Tests(TenantTestCase):
         self._start()
 
     def test_a_refused_start_is_kept_on_the_visit_until_it_starts(self):
-        """Scheduling review item 11: the refusal is kept for planning (written by a
-        task outside the refused request), and a start clears it."""
-        from unittest import mock
-        from Tracker.services.mes import start_refusals
+        """Scheduling review item 11: the refusal is kept for planning, and a start
+        clears it."""
         machine = self._machine(status="IN_MAINTENANCE")
-        with mock.patch.object(start_refusals.record_start_refusal, 'apply_async',
-                               side_effect=lambda args: start_refusals.record_start_refusal(*args)):
-            with self.assertRaises(StartRefused):
-                self._start()
+        with self.assertRaises(StartRefused):
+            self._start()
         v = StepExecution.objects.get(pk=self.visit.pk)
         self.assertEqual(v.last_refusal_code, 'equipment_down')
         self.assertIn("Haas VF-2", v.last_refusal_message)
@@ -88,6 +84,28 @@ class StartGatesS4Tests(TenantTestCase):
         v.refresh_from_db()
         self.assertEqual((v.last_refusal_code, v.last_refusal_message, v.last_refused_at),
                          ('', '', None))
+
+    def test_a_refused_start_with_no_visit_leaves_the_waiting_visit_holding_it(self):
+        """Session's walk 2026-11-16: a part Add Parts placed at its first step has no
+        visit; a refused start rolled back the one it made, so nothing held the
+        refusal. Now, after the request, the part gets the PENDING visit its arrival
+        would have made, with the refusal on it."""
+        placed = Parts.objects.create(tenant=self.tenant_a, ERP_id="S4-ADDED", part_type=self.pt,
+                                      work_order=self.wo, step=self.step, part_status="PENDING")
+        self._machine(status="IN_MAINTENANCE")
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, [
+            "add_stepexecution", "view_stepexecution", "change_stepexecution",
+            "full_tenant_access"])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        r = self.client.post("/api/StepExecutions/", {
+            "part": str(placed.id), "step": str(self.step.id), "status": "IN_PROGRESS",
+        }, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        visits = StepExecution.objects.filter(part=placed, step=self.step)
+        self.assertEqual(visits.count(), 1)
+        v = visits.get()
+        self.assertEqual((v.status, v.last_refusal_code), ('PENDING', 'equipment_down'))
+        self.assertIn("Haas VF-2", v.last_refusal_message)
 
     def test_late_cause_names_a_refused_start(self):
         from datetime import timedelta
@@ -178,6 +196,27 @@ class StartGatesS4Tests(TenantTestCase):
             call_for(ctx.exception.blockers, self.tenant_a.id)
         _tenant, calls, _hour = send.call_args.kwargs['args']
         self.assertEqual([c['gate'] for c in calls], ['equipment_down'])  # the floor only
+
+    def test_a_floor_refusal_with_a_supervisor_signed_in_doesnt_ask_for_one(self):
+        """P5 walk 2026-11-16: the request carried valid supervisor credentials, yet the
+        refusal said "Also needed once that's cleared: a supervisor". Judged with the
+        supervisor, the floor refusal stands alone."""
+        course = TrainingType.objects.create(tenant=self.tenant_a, name="Mill setup")
+        TrainingRequirement.objects.create(tenant=self.tenant_a, training_type=course, step=self.step)
+        self._machine(status="IN_MAINTENANCE")
+        supervisor = get_user_model().objects.create_user(
+            username="s4-sup", email="s4sup@t.test", password="sup-pass", tenant=self.tenant_a)
+        self.grant_tenant_permissions(supervisor, self.tenant_a, ["override_training_gate"])
+        self.grant_tenant_permissions(self.operator, self.tenant_a, [
+            "view_stepexecution", "change_stepexecution", "add_stepexecution", "full_tenant_access"])
+        self.authenticate_as(self.operator, self.tenant_a)
+        resp = self.client.post(f"/api/StepExecutions/{self.visit.id}/claim/", {
+            'override_email': "s4sup@t.test", 'override_password': "sup-pass",
+            'override_reason': "Covering the shift"}, format='json')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        blockers = resp.json()['blockers']
+        self.assertEqual([b['code'] for b in blockers], ['equipment_down'])
+        self.assertNotIn("Also needed", resp.json()['detail'])
 
     # --- one open visit per part and step (gate walk 2026-11-12, D1)
     def test_a_create_for_a_part_with_an_open_visit_starts_that_visit(self):

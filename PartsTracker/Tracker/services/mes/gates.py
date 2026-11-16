@@ -274,7 +274,8 @@ def floor_blockers(ctx: StartContext, *, only: set | None = None) -> list[Blocke
             and step.has_gate(str(GateCode.TOOL_LIFE)):
         from Tracker.services.life_tracking.tool_life import start_refusals
         # Each names the tool, and leads to its page (reset / extend there).
-        out += [Blocker(GateCode.TOOL_LIFE, m, link=f"/editor/equipment/{tool.id}/edit")
+        out += [Blocker(GateCode.TOOL_LIFE, m, link=(f"/editor/equipment/{tool.id}/edit"
+                                                     if tool is not None else "/editor/tooling"))
                 for tool, m in start_refusals(step, ctx.execution)]
     if step is not None and want(GateCode.EQUIPMENT_DOWN):
         machine = start_machine(step, part, ctx.execution, ctx.machine)

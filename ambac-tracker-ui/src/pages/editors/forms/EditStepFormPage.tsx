@@ -106,6 +106,9 @@ export default function StepFormPage() {
     )
     const owners = stepRow?.processes ?? []
     const lockedToProcess = mode === "edit" && owners.length > 0
+    // Machines are controlled content (10b): a step an approved process owns changes them
+    // through a process change. A draft's own copy is still edited here.
+    const machinesLocked = owners.some((p) => p.status !== "DRAFT")
 
     const createStep = useCreateStep()
     const updateStep = useUpdateStep()
@@ -279,7 +282,8 @@ export default function StepFormPage() {
                         <p className="text-sm">
                             This step is part of {owners.length === 1 ? "a process" : `${owners.length} processes`}.
                             Its content is edited there, so every other version of the process keeps the
-                            step as it was. Timing and machines can be changed below.
+                            step as it was. Timing can be changed below; machines change
+                            through a process change.
                         </p>
                         <div className="flex flex-wrap gap-2">
                             {owners.map((p) => (
@@ -484,7 +488,15 @@ export default function StepFormPage() {
                                 The machines that can run this step, and how well.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent><MachineEligibilityTable owner={{ step: stepId }} /></CardContent>
+                        <CardContent>
+                            {machinesLocked && (
+                                <p className="mb-3 text-sm text-muted-foreground">
+                                    This step belongs to an approved process: change its machines through a
+                                    process change (the process flow editor, on a draft).
+                                </p>
+                            )}
+                            <MachineEligibilityTable owner={{ step: stepId }} readOnly={machinesLocked} />
+                        </CardContent>
                     </Card>
                 </div>)}
             {mode === "edit" && stepId && (

@@ -60490,7 +60490,7 @@ components:
           items:
             type: string
             format: uuid
-          description: Steps that require this resource.
+          readOnly: true
         step_names:
           type: array
           items:
@@ -60503,6 +60503,7 @@ components:
       - id
       - name
       - step_names
+      - steps
     FixtureKindEnum:
       enum:
       - FIXTURE
@@ -60559,12 +60560,6 @@ components:
           nullable: true
           description: Days to acquire or produce this tooling if it's short — drives
             the order-by date in the sourcing report.
-        steps:
-          type: array
-          items:
-            type: string
-            format: uuid
-          description: Steps that require this resource.
         archived:
           type: boolean
       required:
@@ -72180,12 +72175,6 @@ components:
           nullable: true
           description: Days to acquire or produce this tooling if it's short — drives
             the order-by date in the sourcing report.
-        steps:
-          type: array
-          items:
-            type: string
-            format: uuid
-          description: Steps that require this resource.
         archived:
           type: boolean
     PatchedHarvestedComponentRequest:
@@ -74434,6 +74423,14 @@ components:
           minimum: 0
           description: SMED external setup that can overlap the previous op's run
             time.
+        first_piece_buyoff_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'At a first-piece step, the minutes from the first piece being
+            done to QA''s buy-off — the rest of the run waits that long in the plan.
+            Blank: the wait isn''t planned.'
         archived:
           type: boolean
     PatchedStepsRequest:
@@ -74588,6 +74585,13 @@ components:
           allOf:
           - $ref: '#/components/schemas/StepTimingRequest'
           nullable: true
+        required_tooling:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: 'Pooled tooling this step needs — controlled content: changed
+            in a draft.'
         change_description:
           type: string
           writeOnly: true
@@ -82076,6 +82080,10 @@ components:
           type: string
           nullable: true
           readOnly: true
+        operator_id:
+          type: integer
+          nullable: true
+          readOnly: true
         requires_operator:
           type: boolean
           readOnly: true
@@ -82193,6 +82201,7 @@ components:
       - machine_name
       - material_detail
       - material_shortage
+      - operator_id
       - operator_name
       - outside_supplier
       - part
@@ -83493,6 +83502,11 @@ components:
           nullable: true
           description: Per-piece cycle on THIS machine, overriding StepTiming (a faster
             or slower machine for the same step).
+        step_locked:
+          type: boolean
+          readOnly: true
+          description: 'The step belongs to an approved process: this row changes
+            only through a process change (10b).'
         archived:
           type: boolean
       required:
@@ -83500,6 +83514,7 @@ components:
       - equipment_name
       - id
       - step
+      - step_locked
       - step_name
     StepEquipmentAffinityRequest:
       type: object
@@ -84630,6 +84645,14 @@ components:
           minimum: 0
           description: SMED external setup that can overlap the previous op's run
             time.
+        first_piece_buyoff_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'At a first-piece step, the minutes from the first piece being
+            done to QA''s buy-off — the rest of the run waits that long in the plan.
+            Blank: the wait isn''t planned.'
     StepTimingRecord:
       type: object
       description: One step's standard times — setup, cycle, load/unload, attention,
@@ -84676,6 +84699,14 @@ components:
           minimum: 0
           description: SMED external setup that can overlap the previous op's run
             time.
+        first_piece_buyoff_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'At a first-piece step, the minutes from the first piece being
+            done to QA''s buy-off — the rest of the run waits that long in the plan.
+            Blank: the wait isn''t planned.'
         archived:
           type: boolean
       required:
@@ -84721,6 +84752,14 @@ components:
           minimum: 0
           description: SMED external setup that can overlap the previous op's run
             time.
+        first_piece_buyoff_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'At a first-piece step, the minutes from the first piece being
+            done to QA''s buy-off — the rest of the run waits that long in the plan.
+            Blank: the wait isn''t planned.'
         archived:
           type: boolean
       required:
@@ -84764,6 +84803,14 @@ components:
           minimum: 0
           description: SMED external setup that can overlap the previous op's run
             time.
+        first_piece_buyoff_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: 'At a first-piece step, the minutes from the first piece being
+            done to QA''s buy-off — the rest of the run waits that long in the plan.
+            Blank: the wait isn''t planned.'
     StepTypeEnum:
       enum:
       - TASK
@@ -85163,6 +85210,13 @@ components:
           allOf:
           - $ref: '#/components/schemas/StepTiming'
           nullable: true
+        required_tooling:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: 'Pooled tooling this step needs — controlled content: changed
+            in a draft.'
         processes:
           type: array
           items:
@@ -85357,6 +85411,13 @@ components:
           allOf:
           - $ref: '#/components/schemas/StepTimingRequest'
           nullable: true
+        required_tooling:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: 'Pooled tooling this step needs — controlled content: changed
+            in a draft.'
         change_description:
           type: string
           writeOnly: true

@@ -134,6 +134,12 @@ class StepTiming(SecureModel):
         default=0, validators=[MinValueValidator(0)],
         help_text="SMED external setup that can overlap the previous op's run time.",
     )
+    first_piece_buyoff_minutes = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="At a first-piece step, the minutes from the first piece being done to "
+                  "QA's buy-off — the rest of the run waits that long in the plan. "
+                  "Blank: the wait isn't planned.",
+    )
 
     class Meta:
         verbose_name = 'Step Timing'
@@ -145,11 +151,6 @@ class StepTiming(SecureModel):
     def machine_wall_time(self, quantity: int) -> float:
         """Minutes the machine is occupied for a batch: internal setup + run."""
         return self.setup_minutes + self.cycle_time_minutes * max(0, quantity)
-
-    def first_piece_done(self) -> float:
-        """Minutes until the first piece is complete (enables transfer batches —
-        the next op can start before the full batch finishes)."""
-        return self.setup_minutes + self.cycle_time_minutes + self.load_unload_per_piece
 
     def operator_attended_time(self, quantity: int) -> float:
         """Minutes of operator attention a batch needs. Full-attention ties the
@@ -197,6 +198,11 @@ class StepEquipmentAffinity(SecureModel):
 
     def __str__(self):
         return f"{self.step} @ {self.equipment} ({self.affinity})"
+
+    def get_additional_data(self):
+        """auditlog: a row the setup workbook loaded says so (10b; routing_lock)."""
+        from Tracker.services.change_control.routing_lock import audit_source
+        return audit_source()
 
 
 class WorkCenterChangeover(SecureModel):
@@ -266,10 +272,8 @@ class Fixture(SecureModel):
         help_text="Days to acquire or produce this tooling if it's short — drives the "
                   "order-by date in the sourcing report.",
     )
-    steps = models.ManyToManyField(
-        'Tracker.Steps', related_name='fixtures', blank=True,
-        help_text="Steps that require this resource.",
-    )
+    # The steps that need it are authored on the step (`Steps.required_tooling`, reverse
+    # `required_by_steps`), under change control with the process (10b, 2026-11-16).
 
     class Meta:
         verbose_name = 'Fixture'

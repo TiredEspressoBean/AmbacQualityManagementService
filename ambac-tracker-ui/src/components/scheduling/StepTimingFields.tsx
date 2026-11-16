@@ -46,6 +46,8 @@ export function StepTimingFields({ stepId }: { stepId: string }) {
     const update = useUpdateStepTiming();
 
     const [attention, setAttention] = useState<Attention>("full");
+    // First-piece buy-off: blank = the wait isn't planned (scheduling review item 7).
+    const [buyoff, setBuyoff] = useState("");
     const [values, setValues] = useState<Record<Key, string>>({
         setup_minutes: "0", cycle_time_minutes: "0", load_unload_per_piece: "0", external_setup_minutes: "0",
     });
@@ -59,6 +61,7 @@ export function StepTimingFields({ stepId }: { stepId: string }) {
             load_unload_per_piece: String(existing.load_unload_per_piece ?? 0),
             external_setup_minutes: String(existing.external_setup_minutes ?? 0),
         });
+        setBuyoff(existing.first_piece_buyoff_minutes == null ? "" : String(existing.first_piece_buyoff_minutes));
     }, [existing]);
 
     function save() {
@@ -68,7 +71,17 @@ export function StepTimingFields({ stepId }: { stepId: string }) {
             if (n === null) return;
             parsed[f.key] = n;
         }
-        const payload = { step: stepId, attention_type: attention, ...parsed };
+        let firstPieceBuyoff: number | null = null;
+        if (buyoff.trim() !== "") {
+            const n = Number(buyoff);
+            if (!Number.isInteger(n) || n < 0) {
+                toast.error("First-piece buy-off must be a whole number of minutes, or blank.");
+                return;
+            }
+            firstPieceBuyoff = n;
+        }
+        const payload = { step: stepId, attention_type: attention, ...parsed,
+                          first_piece_buyoff_minutes: firstPieceBuyoff };
         const onSuccess = () => toast.success("Timing saved");
         const onError = (e: unknown) => toastApiError(e, ["step"]);
         if (existing) update.mutate({ id: existing.id, data: payload }, { onSuccess, onError });
@@ -110,6 +123,16 @@ export function StepTimingFields({ stepId }: { stepId: string }) {
                         })()}
                     </div>
                 ))}
+                <div className="space-y-1.5">
+                    <Label htmlFor="stf-buyoff">First-piece buy-off (min)</Label>
+                    <Input id="stf-buyoff" type="number" min={0} step={1} inputMode="numeric"
+                        placeholder="Not planned" value={buyoff} disabled={!canSave}
+                        onChange={(e) => setBuyoff(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">
+                        At a first-piece step: from the first piece done to QA's buy-off. The rest of
+                        the run waits this long in the plan. Blank: the wait isn't planned.
+                    </p>
+                </div>
                 <div className="space-y-1.5">
                     <Label>Operator attention</Label>
                     <Select value={attention} onValueChange={(v) => v && setAttention(v as Attention)}

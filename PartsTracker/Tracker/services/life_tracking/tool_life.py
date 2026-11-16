@@ -149,6 +149,10 @@ def start_refusals(step, execution=None) -> list[tuple]:
     With none recorded, the step's authored tools are interchangeable — the plan counts
     them as one pool — so they refuse only when NONE of them is within life, naming
     each (user ruling 2026-11-16; scheduling review item 10)."""
+    return _tool_refusals(step, execution) + _pool_refusals(step)
+
+
+def _tool_refusals(step, execution=None) -> list[tuple]:
     recorded = visit_tools(execution)
     if recorded:
         tools = {e.id: e for e in recorded}
@@ -158,6 +162,32 @@ def start_refusals(step, execution=None) -> list[tuple]:
     if not authored or any(not hits for hits in limits.values()):
         return []
     return [(e, _limit_text(e, t)) for e in authored.values() for t in limits[e.id]]
+
+
+def pool_items(fixture) -> list:
+    """A tracked tooling pool's items, current and not archived."""
+    from Tracker.models import Equipments
+    if fixture.equipment_type_id is None:
+        return []
+    return list(Equipments.objects.filter(  # tenant-safe: .objects auto-scopes
+        equipment_type_id=fixture.equipment_type_id, archived=False, is_current_version=True)
+        .order_by('name'))
+
+
+def _pool_refusals(step) -> list[tuple]:
+    """Each tracked tooling pool the step needs (Steps.required_tooling, 10b) with no
+    item in service and within life — each needed pool must have one (user ruling
+    2026-11-16). A pool without tracked items (an NC program, a typed quantity) has no
+    life to read and never refuses here; it only limits the plan. `(item or None, why)`."""
+    out = []
+    for f in step.required_tooling.filter(archived=False, equipment_type__isnull=False):
+        items = pool_items(f)
+        if any(e.status == 'IN_SERVICE' and not at_hard_limit(e) for e in items):
+            continue
+        out.append((items[0] if items else None,
+                    f"None of {f.name} is usable — every one is out of service or at its life "
+                    f"limit. Return one to service, or reset or extend one."))
+    return out
 
 
 def plan_capacity_changed(tracking) -> None:
@@ -239,6 +269,16 @@ def on_start(execution) -> None:
         return
     if not visit_tools(execution):
         usable = [e for e in authored_tools(execution.step) if not at_hard_limit(e)]
+        if usable:
+            stamp(execution, usable[0])
+    # Each tracked pool the step needs (10b): one of its items is in use — the first
+    # usable — unless one of that type is already on the visit.
+    on_visit_types = {e.equipment_type_id for e in visit_tools(execution)}
+    for pool in execution.step.required_tooling.filter(archived=False, equipment_type__isnull=False):
+        if pool.equipment_type_id in on_visit_types:
+            continue
+        usable = [e for e in pool_items(pool)
+                  if e.status == 'IN_SERVICE' and not at_hard_limit(e)]
         if usable:
             stamp(execution, usable[0])
     for equipment in visit_tools(execution):

@@ -131,7 +131,7 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
 
     def test_fixture_availability(self):
         f = Fixture.objects.create(tenant=self.tenant, name="Vise", quantity=2)
-        f.steps.add(self.s_timing, self.s_expected)
+        f.required_by_steps.add(self.s_timing, self.s_expected)
         fixtures = data.get_fixture_availability(self.tenant)
         self.assertEqual(fixtures[f.id].quantity, 2)
         self.assertEqual(fixtures[f.id].step_ids, frozenset({self.s_timing.id, self.s_expected.id}))

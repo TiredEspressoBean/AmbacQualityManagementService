@@ -472,7 +472,7 @@ class SolverTests(TenantContextMixin, TestCase):
             affinity=StepEquipmentAffinity.Affinity.PREFERRED)
         tool = Fixture.objects.create(
             tenant=self.tenant, name="Broach", kind="TOOL", quantity=1)
-        tool.steps.add(self.step1)
+        tool.required_by_steps.add(self.step1)
         self._wo("WT-A", 1)
         self._wo("WT-B", 1)
         result = solve_schedule(self.tenant, time_limit_seconds=15)
@@ -593,7 +593,7 @@ class SolverTests(TenantContextMixin, TestCase):
             tenant=self.tenant, step=self.step1, equipment=m2,
             affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
         fx = Fixture.objects.create(tenant=self.tenant, name="Vise", quantity=1)
-        fx.steps.add(self.step1)
+        fx.required_by_steps.add(self.step1)
         self._wo("WO-FX1", 1)
         self._wo("WO-FX2", 1)
         result = solve_schedule(self.tenant)
@@ -607,7 +607,7 @@ class SolverTests(TenantContextMixin, TestCase):
             tenant=self.tenant, step=self.step1, equipment=m2,
             affinity=StepEquipmentAffinity.Affinity.ELIGIBLE)
         fx = Fixture.objects.create(tenant=self.tenant, name="Vise", quantity=2)
-        fx.steps.add(self.step1)
+        fx.required_by_steps.add(self.step1)
         self._wo("WO-FX2a", 1)
         self._wo("WO-FX2b", 1)
         result = solve_schedule(self.tenant)

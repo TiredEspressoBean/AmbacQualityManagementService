@@ -3745,10 +3745,7 @@ export type Fixture = {
      */
     (number | null)
     | undefined;
-  steps?: /**
-   * Steps that require this resource.
-   */
-  Array<string> | undefined;
+  steps: Array<string>;
   step_names: Array<string>;
   archived?: boolean | undefined;
 };
@@ -3796,10 +3793,6 @@ export type FixtureRequest = {
      */
     (number | null)
     | undefined;
-  steps?: /**
-   * Steps that require this resource.
-   */
-  Array<string> | undefined;
   archived?: boolean | undefined;
 };
 export type FpiNewSetupInputRequest = {
@@ -8708,6 +8701,13 @@ export type StepTiming = Partial<{
    * @minimum 0
    */
   external_setup_minutes: number;
+  /**
+   * At a first-piece step, the minutes from the first piece being done to QA's buy-off — the rest of the run waits that long in the plan. Blank: the wait isn't planned.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  first_piece_buyoff_minutes: number | null;
 }>;
 export type AttentionTypeEnum =
   /**
@@ -10189,6 +10189,7 @@ export type ScheduledTask = {
    */
   assigned_operator: number | null;
   operator_name: string | null;
+  operator_id: number | null;
   /**
    * Whether this task needs an operator (false for unattended runs).
    */
@@ -10413,6 +10414,10 @@ export type StepEquipmentAffinity = {
      */
     (number | null)
     | undefined;
+  /**
+   * The step belongs to an approved process: this row changes only through a process change (10b).
+   */
+  step_locked: boolean;
   archived?: boolean | undefined;
 };
 export type AffinityEnum =
@@ -10850,6 +10855,15 @@ export type StepTimingRecord = {
    * @minimum 0
    */
   number | undefined;
+  first_piece_buyoff_minutes?:
+    | /**
+     * At a first-piece step, the minutes from the first piece being done to QA's buy-off — the rest of the run waits that long in the plan. Blank: the wait isn't planned.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
   archived?: boolean | undefined;
 };
 export type PaginatedStepsList = {
@@ -11002,6 +11016,10 @@ export type Steps = {
     (LaborModelEnum | BlankEnum | NullEnum | null)
     | undefined;
   timing?: StepTiming | undefined;
+  required_tooling?: /**
+   * Pooled tooling this step needs — controlled content: changed in a draft.
+   */
+  Array<string> | undefined;
   processes: Array<StepProcessRef>;
   created_at: string;
   updated_at: string;
@@ -13914,10 +13932,6 @@ export type PatchedFixtureRequest = Partial<{
    * @maximum 2147483647
    */
   lead_time_days: number | null;
-  /**
-   * Steps that require this resource.
-   */
-  steps: Array<string>;
   archived: boolean;
 }>;
 export type PatchedHarvestedComponentRequest = Partial<{
@@ -15378,6 +15392,13 @@ export type PatchedStepTimingRecordRequest = Partial<{
    * @minimum 0
    */
   external_setup_minutes: number;
+  /**
+   * At a first-piece step, the minutes from the first piece being done to QA's buy-off — the rest of the run waits that long in the plan. Blank: the wait isn't planned.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  first_piece_buyoff_minutes: number | null;
   archived: boolean;
 }>;
 export type PatchedStepsRequest = Partial<{
@@ -15478,6 +15499,10 @@ export type PatchedStepsRequest = Partial<{
   labor_model: LaborModelEnum | BlankEnum | NullEnum | null;
   timing: StepTimingRequest;
   /**
+   * Pooled tooling this step needs — controlled content: changed in a draft.
+   */
+  required_tooling: Array<string>;
+  /**
    * Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1).
    */
   change_description: string;
@@ -15530,6 +15555,13 @@ export type StepTimingRequest = Partial<{
    * @minimum 0
    */
   external_setup_minutes: number;
+  /**
+   * At a first-piece step, the minutes from the first piece being done to QA's buy-off — the rest of the run waits that long in the plan. Blank: the wait isn't planned.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  first_piece_buyoff_minutes: number | null;
 }>;
 export type PatchedStorageLocationRequest = Partial<{
   /**
@@ -18293,6 +18325,15 @@ export type StepTimingRecordRequest = {
    * @minimum 0
    */
   number | undefined;
+  first_piece_buyoff_minutes?:
+    | /**
+     * At a first-piece step, the minutes from the first piece being done to QA's buy-off — the rest of the run waits that long in the plan. Blank: the wait isn't planned.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
   archived?: boolean | undefined;
 };
 export type StepsRequest = {
@@ -18406,6 +18447,10 @@ export type StepsRequest = {
     (LaborModelEnum | BlankEnum | NullEnum | null)
     | undefined;
   timing?: StepTimingRequest | undefined;
+  required_tooling?: /**
+   * Pooled tooling this step needs — controlled content: changed in a draft.
+   */
+  Array<string> | undefined;
   change_description?: /**
    * Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1).
    */
@@ -22314,7 +22359,7 @@ const Fixture = z.object({
   equipment_type: z.string().uuid().nullish(),
   capacity: z.number().int(),
   lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
-  steps: z.array(z.string().uuid()).optional(),
+  steps: z.array(z.string().uuid()),
   step_names: z.array(z.string()),
   archived: z.boolean().optional(),
 });
@@ -22330,7 +22375,6 @@ const FixtureRequest = z.object({
   quantity: z.number().int().gte(0).lte(2147483647).optional(),
   equipment_type: z.string().uuid().nullish(),
   lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
-  steps: z.array(z.string().uuid()).optional(),
   archived: z.boolean().optional(),
 });
 const PatchedFixtureRequest = z
@@ -22340,7 +22384,6 @@ const PatchedFixtureRequest = z
     quantity: z.number().int().gte(0).lte(2147483647),
     equipment_type: z.string().uuid().nullable(),
     lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
-    steps: z.array(z.string().uuid()),
     archived: z.boolean(),
   })
   .partial();
@@ -24877,6 +24920,12 @@ const StepTiming = z
     load_unload_per_piece: z.number().gte(0),
     attention_type: AttentionTypeEnum,
     external_setup_minutes: z.number().gte(0),
+    first_piece_buyoff_minutes: z
+      .number()
+      .int()
+      .gte(0)
+      .lte(2147483647)
+      .nullable(),
   })
   .partial();
 const LaborModelEnum = z.enum(["off", "pool", "named"]);
@@ -25913,6 +25962,7 @@ const ScheduledTask = z.object({
   machine_name: z.string().nullable(),
   assigned_operator: z.number().int().nullable(),
   operator_name: z.string().nullable(),
+  operator_id: z.number().int().nullable(),
   requires_operator: z.boolean(),
   work_order: z.string().nullable(),
   work_order_id: z.string().uuid().nullable(),
@@ -26575,6 +26625,7 @@ const StepEquipmentAffinity = z.object({
   equipment_name: z.string(),
   affinity: AffinityEnum.optional(),
   cycle_time_override: z.number().gte(0).nullish(),
+  step_locked: z.boolean(),
   archived: z.boolean().optional(),
 });
 const PaginatedStepEquipmentAffinityList = z.object({
@@ -26953,6 +27004,7 @@ const StepTimingRecord = z.object({
   load_unload_per_piece: z.number().gte(0).optional(),
   attention_type: AttentionTypeEnum.optional(),
   external_setup_minutes: z.number().gte(0).optional(),
+  first_piece_buyoff_minutes: z.number().int().gte(0).lte(2147483647).nullish(),
   archived: z.boolean().optional(),
 });
 const PaginatedStepTimingRecordList = z.object({
@@ -26968,6 +27020,7 @@ const StepTimingRecordRequest = z.object({
   load_unload_per_piece: z.number().gte(0).optional(),
   attention_type: AttentionTypeEnum.optional(),
   external_setup_minutes: z.number().gte(0).optional(),
+  first_piece_buyoff_minutes: z.number().int().gte(0).lte(2147483647).nullish(),
   archived: z.boolean().optional(),
 });
 const PatchedStepTimingRecordRequest = z
@@ -26978,6 +27031,12 @@ const PatchedStepTimingRecordRequest = z
     load_unload_per_piece: z.number().gte(0),
     attention_type: AttentionTypeEnum,
     external_setup_minutes: z.number().gte(0),
+    first_piece_buyoff_minutes: z
+      .number()
+      .int()
+      .gte(0)
+      .lte(2147483647)
+      .nullable(),
     archived: z.boolean(),
   })
   .partial();
@@ -27058,6 +27117,7 @@ const Steps = z.object({
     .nullish(),
   labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullish(),
   timing: StepTiming.nullish(),
+  required_tooling: z.array(z.string().uuid()).optional(),
   processes: z.array(StepProcessRef),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -27087,6 +27147,12 @@ const StepTimingRequest = z
     load_unload_per_piece: z.number().gte(0),
     attention_type: AttentionTypeEnum,
     external_setup_minutes: z.number().gte(0),
+    first_piece_buyoff_minutes: z
+      .number()
+      .int()
+      .gte(0)
+      .lte(2147483647)
+      .nullable(),
   })
   .partial();
 const StepsRequest = z.object({
@@ -27118,6 +27184,7 @@ const StepsRequest = z.object({
     .nullish(),
   labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullish(),
   timing: StepTimingRequest.nullish(),
+  required_tooling: z.array(z.string().uuid()).optional(),
   change_description: z.string().optional(),
   archived: z.boolean().optional(),
 });
@@ -27156,6 +27223,7 @@ const PatchedStepsRequest = z
       .nullable(),
     labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullable(),
     timing: StepTimingRequest.nullable(),
+    required_tooling: z.array(z.string().uuid()),
     change_description: z.string(),
     archived: z.boolean(),
   })

@@ -153,6 +153,9 @@ class DispatchTests(TenantContextMixin, TestCase):
         self._cert(trained, lathe_cert)
         self._wo("WO-LATHE", 1)
         result = solve_schedule(self.tenant)
+        # 9B: the solve itself already keeps the machine from the untrained operator.
+        solved = set(result.tasks.values_list('assigned_operator_id', flat=True))
+        self.assertNotIn(untrained.id, solved)
         dispatch_operators(self.tenant, schedule=result)
         assigned = set(result.tasks.values_list('assigned_operator_id', flat=True))
         self.assertNotIn(untrained.id, assigned)

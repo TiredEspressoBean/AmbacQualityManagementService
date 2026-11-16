@@ -1258,26 +1258,28 @@ class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     def reassign_options(self, request, pk=None):
         """Machines eligible for this task's step + operators qualified for it — the
         options the detail dialog's reassign dropdowns show."""
-        from Tracker.models import StepEquipmentAffinity
+        from Tracker.services.mes.parts import production_machines
         from Tracker.services.training import get_qualified_users_for_step
         task = self.get_object()
-        machines = [
-            {'id': str(a.equipment_id), 'name': a.equipment.name}
-            for a in StepEquipmentAffinity.objects.filter(step_id=task.step_id)
-            .select_related('equipment')
-        ]
+        # The step's production machines (tooling it names isn't a machine to run on),
+        # in service records only — an archived machine isn't offered.
+        machines = [{'id': str(m.id), 'name': m.name}
+                    for m in production_machines(task.step_id) if not m.archived]
         # The crew dispatch schedules from (active shop-floor operators with a shift),
         # narrowed to who is qualified. "Qualified" alone is every user in the tenant
         # when a step has no training requirement — customers and office staff included.
         from Tracker.services.scheduling.data import get_dispatchable_operators
         crew = {o.user_id for o in get_dispatchable_operators(self.tenant)}
-        # Qualified on THIS task's machine too: its type may need its own training.
+        # Qualified on the machine the start would run on too (its type may need its
+        # own training): the task's, else the step's authored one — the gate's machine.
+        from Tracker.services.mes.parts import authored_machine
         wo = task.part.work_order if task.part_id else None
+        machine = task.machine or authored_machine(task.step_id)
         operators = [
             {'id': str(u.id), 'name': (u.get_full_name() or u.username)}
             for u in get_qualified_users_for_step(
                 task.step, process=getattr(wo, 'process', None),
-                equipment_type=getattr(task.machine, 'equipment_type', None), tenant=self.tenant)
+                equipment_type=getattr(machine, 'equipment_type', None), tenant=self.tenant)
             if u.id in crew
         ]
         return Response({'machines': machines, 'operators': operators})
@@ -1374,10 +1376,10 @@ class FixtureViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataE
     """CRUD for shared, quantity-limited scheduling resources — fixtures, cutting tools,
     dies, and NC programs. Assigning a resource to steps makes the solver serialize those
     operations against the quantity available (cumulative capacity)."""
-    queryset = Fixture.unscoped.all().prefetch_related('steps')
+    queryset = Fixture.unscoped.all().prefetch_related('required_by_steps')
     serializer_class = FixtureSerializer
-    # `steps` is a many-to-many: a `; `-separated list, each step named with its process
-    # ("Pump Build > Assembly") — the importer reads it and the export writes it.
+    # The steps that need it are authored on the step (Steps.required_tooling, under
+    # change control — 10b); the import no longer carries them.
     csv_import_serializer = create_import_serializer_for_model(
         Fixture, lookup_fields=['id', 'name'])
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]

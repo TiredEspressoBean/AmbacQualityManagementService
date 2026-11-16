@@ -5,7 +5,7 @@ from rest_framework import serializers
 from Tracker.services.qms.qa_status import INSPECTED_OK
 from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 
-from Tracker.models.scheduling import StepTiming
+from Tracker.models.scheduling import Fixture, StepTiming
 from Tracker.models.mes_lite import PROGRESS_DONE_STATUSES
 from Tracker.models import (
     # MES Lite models
@@ -1472,7 +1472,7 @@ class StepTimingSerializer(serializers.ModelSerializer):
     class Meta:
         model = StepTiming
         fields = ('setup_minutes', 'cycle_time_minutes', 'load_unload_per_piece',
-                  'attention_type', 'external_setup_minutes')
+                  'attention_type', 'external_setup_minutes', 'first_piece_buyoff_minutes')
 
 
 class StepProcessRefSerializer(serializers.Serializer):
@@ -1524,6 +1524,12 @@ class StepsSerializer(_StepGateFieldsMixin, SecureModelMixin):
     part_type_info = serializers.SerializerMethodField()
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
     work_center_name = serializers.CharField(source="work_center.name", read_only=True, allow_null=True)
+    # Tenant-scoped (another company's tooling is refused); built on `.unscoped` because a
+    # module-level `.objects` queryset needs a tenant context at import.
+    required_tooling = TenantScopedPrimaryKeyRelatedField(
+        queryset=Fixture.unscoped.all(),
+        many=True, required=False,
+        help_text="Pooled tooling this step needs — controlled content: changed in a draft.")
     # A raw material's receiving plan carries the material, not a part type.
     material_name = serializers.CharField(source="material.name", read_only=True, allow_null=True)
     timing = StepTimingSerializer(required=False, allow_null=True)
@@ -1586,6 +1592,8 @@ class StepsSerializer(_StepGateFieldsMixin, SecureModelMixin):
             'labor_model',
             # Time elements the scheduler and RCCP size work from (nested one-to-one)
             'timing',
+            # Pooled tooling this step needs (10b): controlled content, like the gates.
+            'required_tooling',
             # Process versions using this step row (read-only)
             'processes',
             # Write-only; recorded on the new version, not on the step.
@@ -1656,6 +1664,12 @@ class StepsSerializer(_StepGateFieldsMixin, SecureModelMixin):
         from Tracker.services.mes.step_gates import gate_signature
         gates_changed = gates is not serializers.empty and (
             gate_signature(gates) != gate_signature(instance.gate_rows))
+        # Required tooling is a set on the row (10b): out of the scalar update like the
+        # gates, and a change to it is a content change that versions the step.
+        tooling = validated_data.pop('required_tooling', serializers.empty)
+        tooling_changed = tooling is not serializers.empty and (
+            {t.pk for t in tooling} != set(instance.required_tooling.values_list('pk', flat=True)))
+        gates_changed = gates_changed or tooling_changed
 
         # `create_new_step_version` requires a change_description (ISO 9001 4.4 /
         # IATF 16949 8.5.6.1) and this serializer never supplied one, so EVERY content
@@ -1672,6 +1686,11 @@ class StepsSerializer(_StepGateFieldsMixin, SecureModelMixin):
             'user': getattr(self.context.get('request'), 'user', None),
         }
         process = self._resolve_editing_process()
+        if tooling_changed and process is not None and process.status != 'DRAFT':
+            # The tooling a step needs changes through a process change (10b).
+            raise serializers.ValidationError({'required_tooling': [
+                f"{instance.name} belongs to an approved process ({process.name} v{process.version}) "
+                f"— change its tooling through a process change."]})
         content_edit = bool(set(validated_data) - self._NON_VERSIONING_FIELDS) or gates_changed
         if process is not None:
             version_kwargs['process'] = process
@@ -1699,15 +1718,20 @@ class StepsSerializer(_StepGateFieldsMixin, SecureModelMixin):
             )
         if timing_data is not serializers.empty:
             self._write_timing(updated, timing_data)
-        if gates_changed:
+        if gates_changed and gates is not serializers.empty:
             from Tracker.services.mes.step_gates import set_step_gates
             set_step_gates(updated, [dict(g) for g in gates])
+        if tooling_changed:
+            updated.required_tooling.set(tooling)
         return updated
 
     def create(self, validated_data):
         timing_data = validated_data.pop('timing', None)
         gates = validated_data.pop('gate_rows', None)
+        tooling = validated_data.pop('required_tooling', None)
         step = super().create(validated_data)
+        if tooling:
+            step.required_tooling.set(tooling)
         if timing_data:
             self._write_timing(step, timing_data)
         if gates is not None:

@@ -156,6 +156,27 @@ def _diff_gates(a, b) -> Dict[str, Dict[str, Any]]:
             for g in sorted(set(ra) | set(rb)) if ra.get(g) != rb.get(g)}
 
 
+def _diff_routing(a, b) -> Dict[str, Dict[str, Any]]:
+    """{'machines' / 'tooling': {from, to}} when a step version's machine list (each
+    with its grade) or its required tooling differs (10b, 2026-11-16): both are
+    controlled content, changed through the process change, so the PCR shows them."""
+    def machines(step):
+        rows = step.equipment_affinities.filter(archived=False).select_related('equipment') \
+            if hasattr(step, 'equipment_affinities') else []
+        return ", ".join(sorted(f"{r.equipment.name} ({r.get_affinity_display().lower()})"
+                                for r in rows)) or "none"
+
+    def tooling(step):
+        return ", ".join(sorted(f.name for f in step.required_tooling.filter(archived=False))) or "none"
+
+    out = {}
+    for key, read in (("machines", machines), ("tooling", tooling)):
+        va, vb = read(a), read(b)
+        if va != vb:
+            out[key] = {"from": va, "to": vb}
+    return out
+
+
 def _diff_scalars(a, b, fields: tuple[str, ...]) -> Dict[str, Dict[str, Any]]:
     """Return {field: {from, to}} for any field that differs between a and b."""
     result: Dict[str, Dict[str, Any]] = {}
@@ -194,7 +215,8 @@ def _diff_steps(from_process: "Processes", to_process: "Processes") -> Dict[str,
         if a is None:
             added.append(_step_summary(b))
             continue
-        changes = {**_diff_scalars(a, b, _STEP_DIFF_FIELDS), **_diff_gates(a, b)}
+        changes = {**_diff_scalars(a, b, _STEP_DIFF_FIELDS), **_diff_gates(a, b),
+                   **_diff_routing(a, b)}
         if changes:
             modified.append({**_step_summary(b), "changes": changes})
 

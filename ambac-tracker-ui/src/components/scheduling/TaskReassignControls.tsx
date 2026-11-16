@@ -82,6 +82,13 @@ export function TaskReassignControls({ taskId, machineId, operatorId }: Props) {
             {operators.map((o) => (
               <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
             ))}
+            {!isLoading && operators.length === 0 && (
+              // Not selectable: says why the list is empty (the step's or machine's
+              // training), rather than offering an empty pick.
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                No operator on shift is qualified for this step on this machine.
+              </div>
+            )}
           </SelectContent>
         </Select>
       </div>
