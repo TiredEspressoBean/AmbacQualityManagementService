@@ -9,10 +9,9 @@ Creates a deterministic dataset that exercises the whole competency matrix:
     * meets-role vs role gaps (below required level, and expired = level 0)
     * a trainee (L1) and experts (L4)
     * expiring-soon (Mike's NOZ in 7 days) and expired (Dave's FLOW)
-    * a single-point-of-failure skill: Flow Testing — only Mike is a qualified
-      DISPATCHABLE Flow operator (Dave's Flow cert is expired above), so the
-      solver can't cover Flow if Mike is out. Assembly is deliberately broadened
-      (Mike + Dave + Casey) so it is NOT a bottleneck; Flow is the demo SPOF.
+    * a thin skill: Flow Testing — Mike (L3) and Casey (L1, for the Flow Bench that
+      Nozzle Inspection runs on) are the DISPATCHABLE Flow operators; Dave's Flow cert
+      is expired above. Assembly is deliberately broadened (Mike + Dave + Casey).
 """
 
 from datetime import timedelta
@@ -132,6 +131,15 @@ DEMO_TRAINING_RECORDS = [
     {'user': 'sarah.qa@demo.ambac.com', 'training_type': 'GRADING-CERT', 'level': 3, 'expires_days': 290, 'completed_days_ago': 75},
     {'user': 'maria.qa@demo.ambac.com', 'training_type': 'GRADING-CERT', 'level': 4, 'expires_days': 250, 'completed_days_ago': 115},
     {'user': 'casey.dual@demo.ambac.com', 'training_type': 'GRADING-CERT', 'level': 2, 'expires_days': 300, 'completed_days_ago': 60},
+    # Casey covers Nozzle Inspection, whose only machine is a Flow Bench: the step wants
+    # NOZ L2 and the bench's type FLOW L1, and no other dispatchable operator holds both
+    # (Dave's Flow lapsed, Mike's NOZ and Ken's are L1). Without it the plan leaves every
+    # Nozzle Inspection uncovered (machine-type training in the plan, 9B; 2026-11-16).
+    # FLOW L1 also meets the Flow Testing step's requirement (L1), so Flow is no longer a
+    # one-person skill for dispatch (Mike and Casey). The matrix counts L3 and up as
+    # qualified, so its Flow column is unchanged (Mike, Sarah, Maria).
+    {'user': 'casey.dual@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 2, 'expires_days': 300, 'completed_days_ago': 60},
+    {'user': 'casey.dual@demo.ambac.com', 'training_type': 'FLOW-CERT', 'level': 1, 'expires_days': 300, 'completed_days_ago': 60},
     # Maria Santos (Quality Engineer) — NOZ below required L4 (gap)
     {'user': 'maria.qa@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 3, 'expires_days': 260, 'completed_days_ago': 105},
     {'user': 'maria.qa@demo.ambac.com', 'training_type': 'DIM-CERT', 'level': 3, 'expires_days': 260, 'completed_days_ago': 105},
