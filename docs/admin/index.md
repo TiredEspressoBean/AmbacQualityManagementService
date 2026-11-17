@@ -60,11 +60,15 @@ hosted depends on your deployment, and is documented by whoever runs it.
 
 ## Accessing Administration
 
-Navigate to **Admin** section in sidebar (visible to administrators only):
+The **Admin** section of the sidebar shows whichever of its pages you can use, so
+it isn't for administrators only:
 
-- **Settings**: Organization configuration
-- **Data Management**: Access to all editors
-- **Audit Log**: System activity trail
+- **Settings** and **User Management**: for user administrators (Tenant Admin)
+- **Data Management**: for anyone who can view at least one of its tables, e.g.
+  a Production Manager maintaining work centres or step timings
+- **Audit Log**: for anyone holding `view_auditlog`
+
+Someone who can use none of them doesn't see the section.
 
 ## Data Management
 

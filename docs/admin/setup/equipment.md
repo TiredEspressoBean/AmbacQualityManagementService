@@ -355,4 +355,5 @@ is manager-tier; other staff roles can add and edit the equipment itself.
 ## Next Steps
 
 - [Measurement Definitions](../processes/measurements.md) - Link to measurements
-- [Calibration Dashboard](../../workflows/tracking/measurements.md) - View status
+- [Calibration overview](#calibration-overview) - Calibration status at a glance
+- [Recording Measurements](../../workflows/tracking/measurements.md) - Which gauges can record a reading

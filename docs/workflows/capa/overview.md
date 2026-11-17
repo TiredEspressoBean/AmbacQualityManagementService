@@ -161,11 +161,16 @@ Note: Status transitions automatically based on task completion and RCA progress
 
 CAPAs connect to:
 
-- **Quality Reports**: The triggering NCR(s)
-- **Parts**: Affected parts
-- **Orders**: Affected orders
-- **Documents**: Related procedures, evidence
-- **Tasks**: Action items
+- **Quality Reports** and **Dispositions**: the triggering NCRs and the
+  dispositions behind them, any number of each
+- **One part, step and work order** for context: a representative part, the
+  step where the issue occurred, and its work order. The affected parts are
+  reached through the linked quality reports and dispositions: each belongs to
+  a part, or to a failed load and its parts. There's no link to an order
+- **Supplier**: the supplier it is raised against, for a supplier corrective
+  action (SCAR)
+- **Documents**: related procedures, evidence
+- **Tasks**: action items
 
 ## CAPA Dashboard
 

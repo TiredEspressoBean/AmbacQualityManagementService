@@ -186,8 +186,9 @@ check its tier first.
 
 `DWG-CRI-8800-N Nozzle seat geometry` is held at **Secret**. As Lisa it's in the
 library. Log in as Jordan (Engineering) or Maria (QA manager) and it isn't: no row,
-no greyed-out name. The QA manager can set a document's tier, including Secret,
-and then not be able to open it.
+no greyed-out name. Only someone who can view Secret documents can mark one
+Secret: a QA manager who tries is refused, *"You can't classify a document
+above what you can view."* Marking a document Secret is yours.
 
 ---
 

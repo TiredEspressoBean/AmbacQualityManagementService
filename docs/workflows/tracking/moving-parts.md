@@ -147,11 +147,14 @@ If a part visits the same step too many times (rework cycles):
 
 ## Batch Processing
 
-When a step is configured for batch processing:
+A batch step (a wash basket, an oven) works a whole **load** at once, in three
+phases: the operator **loads** the parts and does the loading checks, **seals**
+the load (the machine runs), then **completes** it with the completion checks.
+The parts move on together when the load is completed, not when it's sealed.
+See [Batch steps](../dwi/running.md#batch-steps-running-a-load).
 
-1. Parts are marked as "Ready for Next Step"
-2. System waits for other parts in the batch
-3. When batch conditions are met, all parts advance together
+Apart from batch steps, parts on a work order that haven't been split also move
+on together: a step's finished parts wait for the rest of their lot.
 
 ## Sending a part back a step
 

@@ -145,7 +145,9 @@ Tables showing multiple records with:
 View a single record with:
 
 - **Header** - Key information and status
-- **Tabs** - Organized sections (Details, Documents, History)
+- **Sections** - Cards or tabs, depending on the page. A CAPA, for example, has
+  tabs for its overview, root cause, tasks, verification, approval, documents
+  and history
 - **Related Items** - Links to associated records
 - **Actions** - Buttons for available operations
 

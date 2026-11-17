@@ -163,9 +163,10 @@ Export](../data/import-export.md).
     floor.
 
     **Secret is the only tier that withholds a document from most of the shop.**
-    If you need something kept from the floor, that is the one to use — and note
-    a QA Manager can *classify* a document Secret and then not be able to read
-    it back.
+    If you need something kept from the floor, that is the one to use. Nobody
+    can set a level they couldn't then view (*"You can't classify a document
+    above what you can view."*), so by default only Tenant Admin and Document
+    Controller can mark a document Secret.
 
 ### Export Permissions
 

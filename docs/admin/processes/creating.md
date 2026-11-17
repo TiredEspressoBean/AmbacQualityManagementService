@@ -94,9 +94,10 @@ For each step, configure:
 
 ### Controls
 
-- **First Piece Inspection** - Require FPI
-- **Approval Required** - Need sign-off
-- **Sampling Rule** - Inspection sampling
+- **Gates**: the checks the step runs before start and to move on, such as
+  **First piece**, **QA sign-off** and **Readings in spec**. A new step starts
+  with the default set
+- **Sampling**: which parts are inspected
 
 See [Step Configuration](steps.md) for details.
 
@@ -104,8 +105,8 @@ See [Step Configuration](steps.md) for details.
 
 Add measurements to inspection steps:
 
-1. Open the step
-2. Click **Add Measurement**
+1. In **Edit Mode**, select the step
+2. **Configure measurements**, then **Add Measurement**
 3. Define measurement:
 
 | Field | Description |

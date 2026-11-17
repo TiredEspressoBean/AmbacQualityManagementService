@@ -317,7 +317,8 @@ Life tracking transfers when a harvested component is accepted to inventory:
 
 - Verify accumulated value is correct
 - Check soft/hard limits on definition
-- Look for per-instance overrides
+- Check whether this item has an approved extension: its Life row reads
+  *Extended to N, approved by …*, and the raised limit applies to it alone
 
 ### Cannot Increment
 

@@ -133,7 +133,9 @@ scroll. It has no search or filter.
 **Solutions**:
 1. Check approval status
 2. Contact approvers
-3. Recall and resubmit if needed
+3. If it was submitted with a mistake, the person who submitted it can
+   **Withdraw request** on the document's **Approval** tab, correct it and
+   submit again. See [Withdrawing a request](../workflows/documents/approval.md#withdrawing-a-request)
 
 ### Can't view document
 **Cause**: Visibility restriction

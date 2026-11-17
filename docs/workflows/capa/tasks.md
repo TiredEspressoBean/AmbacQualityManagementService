@@ -86,7 +86,6 @@ Signatures](../../compliance/signatures.md).
 1. Open the task
 2. Click **Start** or change status to In Progress
 3. Add notes as you work
-4. Attach evidence
 
 ### Completing a Task
 
@@ -112,17 +111,10 @@ well. See [Signed completion](#signed-completion).
 
 ## Task Evidence
 
-Attach evidence of completion:
-
-- **Photos**: Before/after images
-- **Documents**: Updated procedures
-- **Data**: Measurement results
-- **Reports**: Investigation reports
-
-1. Open the task
-2. Go to **Attachments**
-3. Upload files
-4. Files are linked to CAPA record
+A task has no attachments of its own. Evidence (photos, updated procedures,
+data, investigation reports) goes on the CAPA's **Documents** tab, where it's
+kept with the CAPA. Say in your completion notes which documents show the task
+was done.
 
 ## Task Notifications
 
@@ -134,23 +126,15 @@ Rules](../../admin/setup/notification-rules.md).
 
 Two CAPA rules ship by default: the **assignee** is notified when a CAPA is
 assigned or reassigned, and **QA Manager** when a CAPA becomes ready for
-effectiveness verification. Per-task routing is not seeded — if you need
-task-level alerts, write the rule.
+effectiveness verification. A task's assignee is also emailed when the task is
+created or reassigned to them. Other task-level alerts (an overdue task, say)
+aren't seeded: if you need them, write the rule.
 
 ## Task Due Dates
 
-Due dates drive urgency:
-
-| Indicator | Status |
-|-----------|--------|
-| **Green** | On track |
-| **Yellow** | Due within 3 days |
-| **Red** | Overdue |
-
-Overdue tasks:
-
-- Appear on dashboard
-- Trigger escalation (if configured)
+A task past its due date shows a red **Overdue** badge on the CAPA's **Tasks**
+tab, with its date in red. There is no earlier warning colour and no automatic
+escalation; an overdue task notifies nobody unless you write a rule for it.
 
 !!! important "Open tasks block closure"
     A CAPA closes when its effectiveness is confirmed, and that is refused while
