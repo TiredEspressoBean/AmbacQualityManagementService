@@ -91,9 +91,24 @@ class InFlightTests(TenantContextMixin, VectorTestCase):
                                              step_execution=self.mine, completed_by=self.me)
         r = in_flight(self.tenant, user=self.me)
         self.assertNotIn(self.mine.id, [i.id for i in r.items])
-        self.assertEqual((r.waiting, r.waiting_on_qa), (1, 1))
+        # Nothing holds it but its lot-mates, who aren't done: it waits on its lot — not
+        # "on QA", which it was counted as (walk 2026-11-17).
+        self.assertEqual((r.waiting, r.waiting_on_lot, r.waiting_on_qa), (1, 1, 0))
         Parts.objects.filter(pk=self.parts[0].pk).update(part_status=PartsStatus.QUARANTINED)
         self.assertEqual(in_flight(self.tenant, user=self.me).waiting_on_disposition, 1)
+
+    def test_done_and_clear_with_a_clear_lot_is_mine_to_complete(self):
+        """Nothing holds it and nothing holds its lot (QA cleared it, say): it's the
+        holder's to complete, listed — not counted as waiting on someone."""
+        from Tracker.models import PartsStatus
+        for sub in (self.s2, self.s3):
+            SubstepCompletion.objects.create(tenant=self.tenant, substep=sub,
+                                             step_execution=self.mine, completed_by=self.me)
+        Parts.objects.filter(pk__in=[p.pk for p in self.parts[1:]]).update(
+            part_status=PartsStatus.SCRAPPED)
+        r = in_flight(self.tenant, user=self.me)
+        self.assertIn(self.mine.id, [i.id for i in r.items])
+        self.assertEqual(r.waiting, 0)
 
     def test_the_ship_step_and_a_part_worked_as_its_load_stay_out(self):
         ship = Steps.objects.create(tenant=self.tenant, part_type=self.parts[0].part_type,

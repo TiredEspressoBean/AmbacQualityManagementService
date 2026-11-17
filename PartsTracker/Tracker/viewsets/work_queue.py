@@ -101,9 +101,10 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         dispositions deciding them), and which QA has cleared since I started them —
         use as is, or not a nonconformance — so I come back and complete them (user
         ruling 2026-11-17). Read from the parts and their dispositions; nothing is sent."""
-        from Tracker.models import PartsStatus, QuarantineDisposition
+        from Tracker.models import QuarantineDisposition
         for row in rows:
             row["mine_held_dispositions"] = []
+            row["qty_mine_held"] = 0
             row["qty_mine_cleared"] = 0
         mine = [row for row in rows if row["qty_mine"]]
         if not mine:
@@ -113,28 +114,31 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             tenant=self.tenant, status="IN_PROGRESS", assigned_to_id=me, exited_at__isnull=True,
             part__isnull=False, part__work_order_id__in={r["work_order"] for r in mine},
             step_id__in={r["step"] for r in mine},
-        ).values("part_id", "part__part_status", "part__work_order_id", "step_id", "started_at"))
+        ).select_related("part"))
         if not visits:
             return
-        disps = {}
+        from Tracker.services.qms.nonconformance import nonconformance_hold, undecided_disposition
+        decided_since = {}
         for d in (QuarantineDisposition.unscoped  # tenant-safe: explicit tenant filter
                   .filter(tenant=self.tenant, archived=False,
-                          part_id__in={v["part_id"] for v in visits})
-                  .values("part_id", "disposition_number", "current_state", "disposition_type",
-                          "decision_authorized_at", "created_at").order_by("created_at")):
-            disps.setdefault(d["part_id"], []).append(d)
+                          part_id__in={v.part_id for v in visits},
+                          disposition_type__in=["USE_AS_IS", "NOT_NONCONFORMANCE"],
+                          decision_authorized_at__isnull=False)
+                  .values("part_id", "decision_authorized_at")):
+            decided_since.setdefault(d["part_id"], []).append(d["decision_authorized_at"])
         by_key = {(r["work_order"], r["step"]): r for r in mine}
         for v in visits:
-            row = by_key.get((v["part__work_order_id"], v["step_id"]))
+            row = by_key.get((v.part.work_order_id, v.step_id))
             if row is None:
                 continue
-            own = disps.get(v["part_id"], [])
-            if v["part__part_status"] == PartsStatus.QUARANTINED:
-                row["mine_held_dispositions"] += [d["disposition_number"] for d in own
-                                                  if d["current_state"] != "CLOSED"][-1:]
-            elif any(d["disposition_type"] in ("USE_AS_IS", "NOT_NONCONFORMANCE")
-                     and d["decision_authorized_at"] and v["started_at"]
-                     and d["decision_authorized_at"] >= v["started_at"] for d in own):
+            # Held: the one question the release gates ask.
+            if nonconformance_hold(v.part):
+                row["qty_mine_held"] += 1
+                open_one = undecided_disposition(v.part)
+                if open_one is not None:
+                    row["mine_held_dispositions"].append(open_one.disposition_number)
+            elif v.started_at and any(at >= v.started_at
+                                      for at in decided_since.get(v.part_id, [])):
                 row["qty_mine_cleared"] += 1
 
     def _apply_first_piece(self, rows) -> None:

@@ -321,34 +321,30 @@ async function completePart(ctx: CompletionContext): Promise<void> {
         if (result.status === "advanced") {
             toast.success(`Step complete — lot advanced (${advancedCount} part${advancedCount === 1 ? "" : "s"} moved).`);
         } else if (result.status === "blocked") {
-            // Classify the blocker set: a hard per-part failure (quarantine,
-            // out-of-spec, sampling fail, unauthorized operator) is not the
-            // same UX as "the other cohort parts haven't finished yet." Use
-            // the primary event to pick the toast heading.
+            // A nonconformance holds the part until its disposition is decided — the
+            // server gives one reason for it (services/qms/nonconformance.py), so one
+            // heading: who decides it, or that it still needs a disposition.
             const reasonList = mine;
-            const hasHardFail = reasonList.some((r) =>
-                /quarantined|out of specification|Sampling inspection failed|not qualified|Manual decision required/i.test(r),
-            );
+            const held = reasonList.find((r) => /is quarantined|needs a disposition/i.test(r));
+            const disp = held?.match(/(DISP-[\w-]+)/)?.[1];
+            const hasHardFail = reasonList.some((r) => /not qualified|Manual decision required/i.test(r));
             const hasSignoffPending = reasonList.some((r) =>
                 /First Piece Inspection required|QA signoff required|Sampling inspection required/i.test(r),
             );
+            // Each reason is a sentence; joined as sentences, not with ";".
             const description = reasonList.length > 0
-                ? reasonList.slice(0, 3).join("; ")
+                ? reasonList.slice(0, 3).map((r) => r.trim()).join(" ")
                 : `Waiting on ${othersWaiting} other unit${othersWaiting === 1 ? "" : "s"} in the lot.`;
             // A hold on THIS unit is named for what it waits on and stays up long enough
             // to read; the operator stays on the step (below) so they can act on it.
             const hold = { description, duration: 12000 };
             const heading = holdHeading(reasonList);
-            // Quarantine is the hold an open disposition puts on the part — not proof a
-            // FAIL was just recorded (a re-captured PASS still waits on the old NCR).
-            const onlyQuarantine = hasHardFail && reasonList.every((r) =>
-                /quarantined/i.test(r) || !/out of specification|Sampling inspection failed|not qualified|Manual decision required/i.test(r));
             if (heading) {
                 toast.warning(heading, hold);
-            } else if (onlyQuarantine) {
-                toast.warning("Part held — its disposition is still open", hold);
+            } else if (held) {
+                toast.warning(disp ? `Part held — ${disp} decides it` : "Part held — needs a disposition", hold);
             } else if (hasHardFail) {
-                toast.error("FAIL recorded — part held for disposition", hold);
+                toast.error("Part held", hold);
             } else if (hasSignoffPending) {
                 toast.warning("Step submitted — awaiting QA sign-off", hold);
             } else if (reasonList.length > 0) {

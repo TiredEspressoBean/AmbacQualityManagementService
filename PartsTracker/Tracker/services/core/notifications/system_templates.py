@@ -388,8 +388,8 @@ SHIFT_NOTE_PUBLISHED = {
 START_REFUSED = {
     "event_code": "start.refused",
     "email": {
-        "subject": "Work can't start: {% firstof payload.part_number payload.step_name %} — waiting on {{ payload.waiting_on }}",
-        "body_text": """Work was refused at its start, and it's waiting on {{ payload.waiting_on }}.
+        "subject": "{% if payload.cause == 'held' %}Held at {{ payload.step_name }}: {% firstof payload.part_number payload.step_name %}{% else %}Work can't start: {% firstof payload.part_number payload.step_name %}{% endif %} — waiting on {{ payload.waiting_on }}",
+        "body_text": """{% if payload.cause == 'held' %}A part is held at its step{% else %}Work was refused at its start{% endif %}, and it's waiting on {{ payload.waiting_on }}.
 
 Part:        {{ payload.part_number|default:'—' }}
 Step:        {{ payload.step_name|default:'—' }}
@@ -416,7 +416,7 @@ Open the work order: {{ action_url }}
         "severity": "warning",
     },
     "in_app": {
-        "subject": "Can't start {% firstof payload.part_number payload.step_name %}: waiting on {{ payload.waiting_on }}",
+        "subject": "{% if payload.cause == 'held' %}Held at {{ payload.step_name }}: {% firstof payload.part_number payload.step_name %}{% else %}Can't start {% firstof payload.part_number payload.step_name %}{% endif %}: waiting on {{ payload.waiting_on }}",
         "body_text": "{{ payload.message }}{% if payload.step_name %} ({{ payload.step_name }}{% if payload.work_order_number %}, {{ payload.work_order_number }}{% endif %}){% endif %}",
         "action_url_template": "{% if payload.work_order_id %}/workorder/{{ payload.work_order_id }}/control{% endif %}",
         "severity": "warning",

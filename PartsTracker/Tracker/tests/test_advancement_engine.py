@@ -321,11 +321,13 @@ class TryAdvanceLotTests(AdvancementEngineBase):
             reason=PartSplitReason.QUARANTINE.value,
             user=self.user,
         )
-        # `split_part_from_lot` already calls `try_advance_lot` synchronously;
-        # the split part should have advanced. Cohort (parts 1, 2) should
-        # remain at step A (no completions).
+        # `split_part_from_lot` already calls `try_advance_lot` synchronously. A part
+        # split off for QUARANTINE is held where it is until a disposition decides it
+        # (the quarantine hold is on every step; splits.py: it must never drift down
+        # the route solo — user ruling 2026-11-17). Cohort (parts 1, 2) remain at
+        # step A (no completions).
         split_target.refresh_from_db()
-        self.assertEqual(split_target.step_id, step_b.id)
+        self.assertEqual(split_target.step_id, step_a.id)
         for p in lot['parts'][1:]:
             p.refresh_from_db()
             self.assertEqual(p.step_id, step_a.id)

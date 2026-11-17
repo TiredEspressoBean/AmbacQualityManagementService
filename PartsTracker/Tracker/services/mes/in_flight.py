@@ -75,10 +75,38 @@ class InFlight:
     waiting_on_qa: int  # QA buy-off / FPI, or an approval
     waiting_on_disposition: int  # the part is quarantined for its disposition
     waiting_on_hold: int  # the work order is on hold
+    waiting_on_lot: int = 0  # recorded, nothing holds it: it moves on with its lot
 
     @property
     def waiting(self) -> int:
-        return self.waiting_on_qa + self.waiting_on_disposition + self.waiting_on_hold
+        return (self.waiting_on_qa + self.waiting_on_disposition + self.waiting_on_hold
+                + self.waiting_on_lot)
+
+
+def _lot_holds(execution, work_order) -> bool:
+    """A lot moves together (advancement: cohort path) — a part clear of its own holds
+    still waits while a lot-mate at the step is held. Not on a per-part or load step,
+    nor for a part split off its lot: those move alone."""
+    from Tracker.models import Parts, StepExecution, Substep, SubstepScope
+    from Tracker.services.mes.gates import release_blockers
+    from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
+    from Tracker.services.mes.step_override import clear_bypassed
+    step, part = execution.step, execution.part
+    if (part.split_from_lot or work_order is None
+            or getattr(step, 'part_advancement_mode', 'COHORT') == 'PER_PART'
+            or Substep.objects.filter(step=step, scope=SubstepScope.BATCH,  # tenant-safe: keyed to a scoped step
+                                      archived=False).exists()):
+        return False
+    mates = (Parts.objects  # tenant-safe: .objects auto-scopes
+             .filter(archived=False, work_order=work_order, step=step, split_from_lot=False)
+             .exclude(pk=part.pk).exclude(part_status__in=TERMINAL_PART_STATUSES))
+    for mate in mates:
+        visit = (StepExecution.objects  # tenant-safe: FK-correlated to a scoped part
+                 .filter(part=mate, step=step, exited_at__isnull=True)
+                 .order_by('-visit_number').first())
+        if visit is None or clear_bypassed(visit, release_blockers(step, visit, work_order)):
+            return True
+    return False
 
 
 def _name(user) -> str:
@@ -90,7 +118,7 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
     """Resumable part visits and loads, most recently started first, plus the count
     of started visits that are done on the holder's side and waiting on someone else."""
     from Tracker.models import (
-        BatchExecution, PartsStatus, StepExecution, Substep, SubstepCompletion, WorkOrderHold,
+        BatchExecution, StepExecution, Substep, SubstepCompletion, WorkOrderHold,
     )
 
     # Started and still at the step; never a terminal (Ship) step.
@@ -188,18 +216,30 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
                    .filter(tenant=tenant, is_voided=False, cleared_at__isnull=True,
                            work_order_id__in={e.part.work_order_id for e in execs if e.part_id})
                    .values_list('work_order_id', flat=True))
-    waiting = {'qa': 0, 'disposition': 0, 'hold': 0}
+    # What it waits on is what the release decision says — the same reasons the
+    # operator's Complete gets (user ruling 2026-11-17). Nothing holding it and still in
+    # progress is the holder's own to complete (QA cleared it, say): it stays resumable.
+    from Tracker.services.mes.gates import release_blockers
+    from Tracker.services.mes.step_override import clear_bypassed
+    from Tracker.services.qms.nonconformance import nonconformance_hold
+    waiting = {'qa': 0, 'disposition': 0, 'hold': 0, 'lot': 0}
     resumable = []
     for e in execs:
         required = required_part[e.step_id]
         if required and required <= done_by_exec[e.id]:
-            if e.part_id and e.part.part_status == PartsStatus.QUARANTINED:
+            if e.part_id and nonconformance_hold(e.part):
                 waiting['disposition'] += 1
-            elif e.part_id and e.part.work_order_id in held_wos:
+                continue
+            if e.part_id and e.part.work_order_id in held_wos:
                 waiting['hold'] += 1
-            else:
+                continue
+            wo = e.part.work_order if e.part_id else None
+            if clear_bypassed(e, release_blockers(e.step, e, wo)):
                 waiting['qa'] += 1
-            continue
+                continue
+            if e.part_id and _lot_holds(e, wo):
+                waiting['lot'] += 1
+                continue
         resumable.append(e)
 
     out: list[InFlightItem] = []
@@ -241,7 +281,8 @@ def in_flight(tenant, *, user, everyone=False, work_order_id=None,
     # Most recently started first.
     out.sort(key=lambda i: (i.started_at or i.entered_at or _EPOCH), reverse=True)
     return InFlight(items=out, waiting_on_qa=waiting['qa'],
-                    waiting_on_disposition=waiting['disposition'], waiting_on_hold=waiting['hold'])
+                    waiting_on_disposition=waiting['disposition'], waiting_on_hold=waiting['hold'],
+                    waiting_on_lot=waiting['lot'])
 
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=dt_timezone.utc)

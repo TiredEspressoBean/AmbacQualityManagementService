@@ -1998,6 +1998,7 @@ class InFlightSerializer(serializers.Serializer):
     waiting_on_qa = serializers.IntegerField(help_text="…on QA buy-off / FPI, or an approval.")
     waiting_on_disposition = serializers.IntegerField(help_text="…on a disposition (quarantined).")
     waiting_on_hold = serializers.IntegerField(help_text="…on a work order hold.")
+    waiting_on_lot = serializers.IntegerField(help_text="…recorded; it moves on with its lot.")
 
 
 class StepExecutionListSerializer(SecureModelMixin):

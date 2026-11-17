@@ -929,17 +929,15 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         """A quarantined part held at its step when the operator tried to complete it:
         call QA as a quarantined start does (the andon's part_quarantined route, once an
         hour per part). Never raises — the operator's answer doesn't depend on it."""
-        from Tracker.models import PartsStatus
-        if part.part_status != PartsStatus.QUARANTINED:
-            return
         try:
             from Tracker.services.mes.andon import call_for
-            from Tracker.services.mes.gates import Blocker, GateCode, quarantined_text
-            call_for([Blocker(GateCode.PART_QUARANTINED,
-                              quarantined_text(part, "it moves on once that's decided.",
-                                               "it needs a disposition before it moves on."),
-                              part=part, step=part.step, work_order=part.work_order)],
-                     part.tenant_id)
+            from Tracker.services.mes.gates import Blocker, GateCode
+            from Tracker.services.qms.nonconformance import nonconformance_hold
+            why = nonconformance_hold(part)
+            if why:
+                # cause "held": it's a Complete held at the step, not a refused start.
+                call_for([Blocker(GateCode.PART_QUARANTINED, why, cause='held', part=part,
+                                  step=part.step, work_order=part.work_order)], part.tenant_id)
         except Exception:  # noqa: BLE001
             import logging
             logging.getLogger(__name__).exception("held part: could not call QA for %s", part.pk)

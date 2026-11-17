@@ -485,13 +485,27 @@ class BatchInspectionRecordTests(TenantContextMixin, VectorTestCase):
                 step=self.step, assigned_to=self.user,
             )
 
+    def _capture(self, ph):
+        return submit_substep(
+            substep=self.batch_insp, batch_execution=self.batch, user=self.user,
+            captures=[{"node_id": str(uuid4()), "kind": "measurement",
+                       "measurement_definition_id": str(self.md.id), "value_numeric": ph}],
+        )
+
     def test_repeat_capture_converges_on_one_batch_report(self):
-        for ph in (7.0, 7.2):
-            submit_substep(
-                substep=self.batch_insp, batch_execution=self.batch, user=self.user,
-                captures=[{"node_id": str(uuid4()), "kind": "measurement",
-                           "measurement_definition_id": str(self.md.id), "value_numeric": ph}],
-            )
+        """One record per capture (user ruling 2026-11-17): the same reading sent again
+        is not recorded again; a different one is refused — changing it is a void and
+        re-capture."""
+        from django.core.exceptions import ValidationError
+        from Tracker.models import StepExecutionMeasurement
+        self._capture(7.0)
+        self._capture(7.0)   # the runtime re-sends its prefilled captures on Complete
+        self.assertEqual(StepExecutionMeasurement.objects.filter(
+            batch_execution=self.batch, measurement_definition=self.md).count(), 1)
+        with self.assertRaisesMessage(ValidationError,
+                                      "Bath verification was already recorded as 7; void it "
+                                      "and re-capture to change it."):
+            self._capture(7.2)
         self.assertEqual(
             QualityReports.objects.filter(batch_execution=self.batch, substep=self.batch_insp).count(),
             1,

@@ -26484,6 +26484,8 @@ export interface components {
             waiting_on_disposition: number;
             /** @description …on a work order hold. */
             waiting_on_hold: number;
+            /** @description …recorded; it moves on with its lot. */
+            waiting_on_lot: number;
         };
         /**
          * @description One open part visit or load, for the Resume / Continue work picker
@@ -42086,6 +42088,7 @@ export interface components {
             qty_ready: number;
             qty_mine: number;
             mine_held_dispositions: string[];
+            qty_mine_held: number;
             qty_mine_cleared: number;
             /** Format: date-time */
             earliest_entered_at: string | null;

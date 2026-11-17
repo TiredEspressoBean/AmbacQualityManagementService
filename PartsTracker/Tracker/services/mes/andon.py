@@ -64,6 +64,18 @@ def call_for(blockers, tenant_id) -> None:
         logger.exception("andon: could not dispatch start.refused for tenant %s", tenant_id)
 
 
+def _no_longer_held(call: dict) -> bool:
+    """A quarantine call whose part isn't held any more (its disposition was decided
+    while the call waited in the queue) — calling QA about it would be stale (re-walk
+    2026-11-17). Other gates are called as refused."""
+    if call.get('gate') != 'part_quarantined' or not call.get('part_id'):
+        return False
+    from Tracker.models import Parts
+    from Tracker.services.qms.nonconformance import nonconformance_hold
+    part = Parts.objects.filter(pk=call['part_id']).first()  # tenant-safe: runs under tenant_context
+    return part is None or nonconformance_hold(part) is None
+
+
 @shared_task
 def notify_start_refused(tenant_id: str, calls: list[dict], hour: str | None = None) -> None:
     """Emit `start.refused` for each call, in its own transaction. `hour`: when the
@@ -79,6 +91,8 @@ def notify_start_refused(tenant_id: str, calls: list[dict], hour: str | None = N
     hour = hour or timezone.now().strftime('%Y%m%d%H')
     with tenant_context(tenant_id):
         for call in calls:
+            if _no_longer_held(call):
+                continue   # queued while no worker ran; the hold was decided since
             emit('start.refused', tenant=tenant, payload=StartRefusedPayload(**call),
                  correlation_id=f"start:{call['id']}",
                  idempotency_key=f"start.refused:{call['id']}:{hour}")

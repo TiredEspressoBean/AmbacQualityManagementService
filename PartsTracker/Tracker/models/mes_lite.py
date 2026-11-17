@@ -3649,6 +3649,13 @@ class Parts(SecureModel):
                             f"QualityReport required for qa_result decision at step '{current.name}'"
                         )
                     decision_result = latest_qr.status
+                    # A failure QA has since decided routes by the decision, not the
+                    # report: use as is / not a nonconformance go on the pass path
+                    # (services/qms/nonconformance.py; user ruling 2026-11-17).
+                    if decision_result == 'FAIL':
+                        from Tracker.services.qms.nonconformance import decided_outcome
+                        decision_result = (decided_outcome(self, current, since=latest_qr.created_at)
+                                           or decision_result)
 
                 if decision_result == 'PASS':
                     return self._check_cycle_limit(self._get_edge(current, EdgeType.DEFAULT))

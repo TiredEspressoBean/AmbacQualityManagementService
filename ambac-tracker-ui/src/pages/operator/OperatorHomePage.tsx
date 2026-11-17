@@ -978,14 +978,22 @@ export default OperatorHomePage;
  *  cleared by QA since I started — come back and complete it (user ruling 2026-11-17).
  *  Read from the queue row; nothing is sent. */
 function MyQuarantineBadges({ row, className = "" }: { row: WorkQueueRow; className?: string }) {
-    const held = row.mine_held_dispositions ?? [];
+    const disps = row.mine_held_dispositions ?? [];
+    const held = row.qty_mine_held ?? 0;
     const cleared = row.qty_mine_cleared ?? 0;
-    if (!held.length && !cleared) return null;
+    if (!held && !cleared) return null;
+    // Held pieces with no disposition raised yet (a quarantine nothing has decided on).
+    const undecidedNone = held - disps.length;
+    const parts = [
+        disps.length ? `${disps.join(", ")} open` : "",
+        undecidedNone > 0 ? (disps.length ? `${undecidedNone} need${undecidedNone === 1 ? "s" : ""} a disposition`
+            : "needs a disposition") : "",
+    ].filter(Boolean);
     return (
         <div className={`flex flex-wrap gap-1.5 ${className}`}>
-            {held.length > 0 && (
+            {held > 0 && (
                 <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
-                    {held.length === 1 ? "Held" : `${held.length} held`} — {held.join(", ")} open
+                    {held === 1 ? "Held" : `${held} held`} — {parts.join(", ")}
                 </span>
             )}
             {cleared > 0 && (

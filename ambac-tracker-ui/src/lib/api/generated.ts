@@ -4021,6 +4021,10 @@ export type InFlight = {
    * …on a work order hold.
    */
   waiting_on_hold: number;
+  /**
+   * …recorded; it moves on with its lot.
+   */
+  waiting_on_lot: number;
 };
 export type InFlightItem = {
   kind: InFlightItemKindEnum;
@@ -12900,6 +12904,7 @@ export type WorkQueueRow = {
   qty_ready: number;
   qty_mine: number;
   mine_held_dispositions: Array<string>;
+  qty_mine_held: number;
   qty_mine_cleared: number;
   earliest_entered_at: string | null;
   scheduled_start: string | null;
@@ -26893,6 +26898,7 @@ const InFlight = z.object({
   waiting_on_qa: z.number().int(),
   waiting_on_disposition: z.number().int(),
   waiting_on_hold: z.number().int(),
+  waiting_on_lot: z.number().int(),
 });
 const MyLastFinished = z.object({
   execution_id: z.string().uuid(),
@@ -29427,6 +29433,7 @@ const WorkQueueRow = z.object({
   qty_ready: z.number().int(),
   qty_mine: z.number().int(),
   mine_held_dispositions: z.array(z.string()),
+  qty_mine_held: z.number().int(),
   qty_mine_cleared: z.number().int(),
   earliest_entered_at: z.string().datetime({ offset: true }).nullable(),
   scheduled_start: z.string().datetime({ offset: true }).nullable(),

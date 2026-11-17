@@ -5,7 +5,7 @@
  * input and a live in-spec / out-of-spec badge.
  */
 import { Combobox } from "@/components/ui/combobox";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { queryOptions, useQueries } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { Node, mergeAttributes } from "@tiptap/core";
@@ -246,9 +246,26 @@ function View(props: NodeViewProps) {
     const equipmentOptions = rawEquipmentOptions.filter((o) => !unusable(o));
     // If the configured default is unusable, don't fall through to it —
     // start with no selection so the operator has to pick a live gauge.
-    const defaultIsLive = !rawEquipmentOptions.some((o) => o.tag === "default" && unusable(o))
+    // …and only once its live state is known: before it loads, the authored snapshot
+    // can call an overdue gauge fine, and the picker showed it for a moment (re-walk
+    // 2026-11-17) — a quick submit could have sent it.
+    const defaultKnown = !isOperator || !a.default_equipment_id || live.get(a.default_equipment_id) !== undefined;
+    const defaultIsLive = defaultKnown
+        && !rawEquipmentOptions.some((o) => o.tag === "default" && unusable(o))
         && a.default_equipment_status !== "OUT_OF_SERVICE";
-    const selectedEquipmentId = resp.equipment_id ?? (defaultIsLive ? a.default_equipment_id : null) ?? null;
+    // One rule, the picker's: a gauge the server would refuse is never the reading's. A
+    // stored choice that has since turned unusable (the live calibration state loads
+    // after the authored snapshot) counts as none — and is cleared from the response
+    // below, so what's sent is what's shown (walk 2026-11-17: the picker read "None"
+    // while the overdue default still rode along).
+    const storedUnusable = resp.equipment_id != null
+        && rawEquipmentOptions.some((o) => o.id === resp.equipment_id && unusable(o));
+    const selectedEquipmentId = (storedUnusable ? null : resp.equipment_id)
+        ?? (defaultIsLive ? a.default_equipment_id : null) ?? null;
+    useEffect(() => {
+        if (storedUnusable) setValue({ value: rawValue, equipment_id: null });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [storedUnusable]);
 
     // Always write the structured {value, equipment_id} shape so the chosen
     // gauge rides along with the reading into StepExecutionMeasurement.
@@ -279,8 +296,10 @@ function View(props: NodeViewProps) {
         if (!isOperator) return;
         if (inSpec === false && rawValue !== lastOOSValueRef.current) {
             lastOOSValueRef.current = rawValue;
-            toast.warning(`${label || "Measurement"} out of spec — flagged for QA review.`, {
-                description: "You can continue. A QA inspector will disposition.",
+            // Not "you can continue": an out-of-spec reading holds the part at the step
+            // until QA decides it (services/qms/nonconformance.py).
+            toast.warning(`${label || "Measurement"} out of spec — QA will decide it.`, {
+                description: "Record the rest; the part stays at this step until QA decides.",
             });
         } else if (inSpec !== false) {
             lastOOSValueRef.current = null;

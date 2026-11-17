@@ -550,7 +550,22 @@ class QuarantinedInProgressTests(TenantTestCase):
             r = self.client.post(f"/api/Parts/{self.part.id}/complete_step/", {}, format="json")
         self.assertEqual(r.json()["status"], "blocked", r.content)
         _tenant, calls, _hour = send.call_args.kwargs['args']
-        self.assertEqual([c['gate'] for c in calls], ['part_quarantined'])
+        self.assertEqual([(c['gate'], c['cause']) for c in calls], [('part_quarantined', 'held')])
+
+    def test_a_call_queued_for_a_part_since_decided_is_not_sent(self):
+        """Re-walk 2026-11-17: a call queued while no worker ran was delivered after the
+        disposition had been decided."""
+        from unittest import mock
+        from Tracker.models import QuarantineDisposition
+        from Tracker.services.mes.andon import notify_start_refused
+        call = {'id': f"{self.part.id}:part_quarantined", 'gate': 'part_quarantined',
+                'part_id': str(self.part.id)}
+        QuarantineDisposition.objects.filter(pk=self.disp.pk).update(
+            disposition_type="USE_AS_IS", current_state="CLOSED")
+        Parts.objects.filter(pk=self.part.pk).update(part_status="IN_PROGRESS")
+        with mock.patch('Tracker.services.core.notifications.emit') as emit:
+            notify_start_refused(str(self.tenant_a.id), [call])
+        emit.assert_not_called()
 
     def test_up_next_shows_it_held_then_cleared(self):
         from Tracker.models import QuarantineDisposition

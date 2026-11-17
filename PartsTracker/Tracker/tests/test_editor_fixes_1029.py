@@ -198,9 +198,25 @@ class BlockOnOutOfSpecTests(TenantTestCase):
                                                 step_execution=self.se, value=value, recorded_by=self.user_a)
 
     def test_an_out_of_spec_reading_blocks(self):
+        # Held until a disposition is raised for it and decided (user ruling 2026-11-17).
         self._record(10.5)
         _, blockers = self.step.can_advance_from_step(self.se, self.wo)
-        self.assertIn("One or more measurements are out of specification", blockers)
+        self.assertIn("B-1 failed here — it needs a disposition before it moves on.", blockers)
+
+    def test_a_decided_use_as_is_releases_the_out_of_spec_reading(self):
+        """Walk 2026-11-17 step 7: after Use As Is the part still couldn't complete —
+        the reading held it forever. The disposition decides it."""
+        from Tracker.models import QuarantineDisposition
+        self._record(10.5)
+        d = QuarantineDisposition.objects.create(tenant=self.tenant_a, part=self.se.part,
+                                                 description="OD 10.5 over")
+        _, blockers = self.step.can_advance_from_step(self.se, self.wo)
+        self.assertIn(f"B-1 is quarantined — {d.disposition_number} decides what happens to "
+                      f"it; it moves on once that's decided.", blockers)
+        QuarantineDisposition.objects.filter(pk=d.pk).update(
+            disposition_type="USE_AS_IS", current_state="CLOSED")
+        ok, blockers = self.step.can_advance_from_step(self.se, self.wo)
+        self.assertEqual([b for b in blockers if "B-1" in b], [])
 
     def test_in_spec_and_unrecorded_requirements_do_not(self):
         from Tracker.models import MeasurementDefinition, StepMeasurementRequirement

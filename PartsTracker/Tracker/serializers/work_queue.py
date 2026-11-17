@@ -30,6 +30,9 @@ class WorkQueueRowSerializer(serializers.Serializer):
     # ones, and how many QA has cleared since they were started (use as is / not a
     # nonconformance) — come back and complete those.
     mine_held_dispositions = serializers.ListField(child=serializers.CharField())
+    # How many of the asker's in-progress pieces are held (some may have no disposition
+    # raised yet — "needs a disposition").
+    qty_mine_held = serializers.IntegerField()
     qty_mine_cleared = serializers.IntegerField()
     earliest_entered_at = serializers.DateTimeField(allow_null=True)
 

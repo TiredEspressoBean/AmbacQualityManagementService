@@ -113,7 +113,7 @@ def _hold(part, from_step, description, *, supersede_rework=False):
 def route_after_decision(disposition, user) -> None:
     """Move an escalated part out of MRB per the decision. No-op for a disposition
     that isn't an escalation, or a part no longer at the MRB step."""
-    from Tracker.models import EdgeType, ProcessStep, StepEdge, StepExecution
+    from Tracker.models import EdgeType, StepEdge, StepExecution
 
     if not disposition.escalated_from_step_id or disposition.part_id is None:
         return
@@ -128,11 +128,12 @@ def route_after_decision(disposition, user) -> None:
     capped = disposition.escalated_from_step
 
     if kind in ('REWORK', 'REPAIR'):
-        rework = [ps.step for ps in ProcessStep.objects.filter(  # tenant-safe: scoped by process
-            process=process, step__step_type='REWORK').select_related('step')]
-        if len(rework) != 1:
-            return  # zero or ambiguous: routed by hand from the control page
-        target = rework[0]
+        # The one routing rule (nonconformance.fail_destination): MRB has no Fail
+        # branch, so the process's Rework step; none → routed by hand.
+        from Tracker.services.qms.nonconformance import fail_destination
+        target = fail_destination(part, process)
+        if target is None:
+            return
     else:
         check = capped
         if capped.step_type == 'REWORK':

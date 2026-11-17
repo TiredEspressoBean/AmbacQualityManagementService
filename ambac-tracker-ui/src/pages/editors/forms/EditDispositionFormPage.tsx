@@ -1,6 +1,7 @@
 "use client"
 
 import { ReasonActionButton } from "@/components/common/ReasonActionButton";
+import { parseDateOnly } from "@/lib/date-only";
 import { MultiPicker } from "@/components/ui/multi-picker";
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useMemo, useState } from "react"
@@ -932,7 +933,7 @@ export default function EditDispositionFormPage() {
                                                                 <PopoverTrigger asChild>
                                                                     <FormControl>
                                                                         <Button variant="outline" disabled={concessionLocked} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                            {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+                                                                            {field.value ? format(parseDateOnly(field.value), "PPP") : <span>Pick a date</span>}
                                                                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                                         </Button>
                                                                     </FormControl>
@@ -940,8 +941,10 @@ export default function EditDispositionFormPage() {
                                                                 <PopoverContent className="w-auto p-0" align="start">
                                                                     <Calendar
                                                                         mode="single"
-                                                                        selected={field.value ? new Date(field.value) : undefined}
-                                                                        onSelect={(date) => field.onChange(date?.toISOString())}
+                                                                        selected={field.value ? parseDateOnly(field.value) : undefined}
+                                                                        // A DateField: the local YYYY-MM-DD, not a UTC timestamp
+                                                                        // (the server refused "2026-11-17T05:00:00.000Z").
+                                                                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : undefined)}
                                                                         initialFocus
                                                                     />
                                                                 </PopoverContent>

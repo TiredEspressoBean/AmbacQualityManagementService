@@ -845,6 +845,9 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
             from django.core.exceptions import ValidationError
             raise ValidationError(refusal)
 
+    if sample_number is None and _already_recorded(cap, substep, md, step_execution,
+                                                   batch_execution, value, value_string, equipment):
+        return None
     record_dwi_measurement(
         step_execution=step_execution,
         substep=substep,
@@ -857,6 +860,42 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
         batch_execution=batch_execution,
     )
     return None
+
+
+def _already_recorded(cap, substep, md, step_execution, batch_execution, value, value_string,
+                      equipment) -> bool:
+    """One record per capture (user ruling 2026-11-17): a reading this substep already
+    holds on this visit (or load) isn't recorded again when the same capture is sent
+    again — the runtime re-sends its prefilled captures on each Complete. True when it
+    is the same reading (nothing to do). A DIFFERENT value is refused rather than kept
+    quietly beside the old one; changing a reading is a void and re-capture, which
+    reopens the substep (and then nothing is held here).
+
+    Raises:
+        ValidationError: the substep already holds a different reading.
+    """
+    from decimal import Decimal, InvalidOperation
+    from django.core.exceptions import ValidationError
+    from Tracker.models import StepExecutionMeasurement, SubstepCompletion
+    keyed = dict(step_execution=step_execution, batch_execution=batch_execution, substep=substep)
+    live = SubstepCompletion.objects.filter(is_voided=False, **keyed)  # tenant-safe: keyed to a scoped visit
+    if not live.exists():
+        return False    # first capture, or a re-capture after a void
+    prior = (StepExecutionMeasurement.objects  # tenant-safe: keyed to a scoped visit
+             .filter(measurement_definition=md, is_current_version=True, **keyed)
+             .order_by('-recorded_at').first())
+    if prior is None:
+        return False
+    try:
+        same_value = (Decimal(str(value)) == prior.value) if value is not None else prior.value is None
+    except (InvalidOperation, TypeError, ValueError):
+        same_value = False
+    if same_value and (value_string or '') == (prior.string_value or '') \
+            and getattr(equipment, 'pk', None) == prior.equipment_id:
+        return True
+    shown = prior.string_value or (f"{prior.value.normalize():f}" if prior.value is not None else "—")
+    raise ValidationError(
+        f"{substep.title} was already recorded as {shown}; void it and re-capture to change it.")
 
 
 def _write_substep_response(*, substep, step_execution=None, batch_execution=None, user, cap) -> Optional[SubstepResponse]:

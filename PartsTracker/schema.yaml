@@ -61567,11 +61567,15 @@ components:
         waiting_on_hold:
           type: integer
           description: …on a work order hold.
+        waiting_on_lot:
+          type: integer
+          description: …recorded; it moves on with its lot.
       required:
       - items
       - waiting
       - waiting_on_disposition
       - waiting_on_hold
+      - waiting_on_lot
       - waiting_on_qa
     InFlightItem:
       type: object
@@ -92310,6 +92314,8 @@ components:
           type: array
           items:
             type: string
+        qty_mine_held:
+          type: integer
         qty_mine_cleared:
           type: integer
         earliest_entered_at:
@@ -92355,6 +92361,7 @@ components:
       - priority
       - qty_mine
       - qty_mine_cleared
+      - qty_mine_held
       - qty_ready
       - qty_startable
       - readiness

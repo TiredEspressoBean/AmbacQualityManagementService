@@ -294,8 +294,12 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         # held awaiting a decision. If the part has already moved on
         # (AWAITING_QA, IN_PROGRESS, REWORK_IN_PROGRESS, READY, etc.), the
         # disposition is a paper record — someone has already routed the part.
+        # Still waiting on this decision: held (quarantined / pending), or still at the
+        # step that raised it — a nonconformance holds the part there until it is
+        # decided (services/qms/nonconformance.py), whatever its status reads.
+        still_there = disposition.step_id is not None and part.step_id == disposition.step_id
         if (disposition.disposition_type in LOOPBACK_TYPES
-                and part.part_status not in ROUTABLE_STATUSES):
+                and part.part_status not in ROUTABLE_STATUSES and not still_there):
             return
 
         # A core's part takes its status from the core's reman stage
@@ -604,10 +608,10 @@ def route_part_to_rework_if_needed(disposition: QuarantineDisposition, user) -> 
     2026-10-22). The move honours the rework step's own visit cap: past it, the part
     escalates instead.
 
-    No-op unless: the type is REWORK/REPAIR, the part exists, and the process has
-    exactly ONE rework step (zero or ambiguous → leave it REWORK_NEEDED for manual
-    routing via the control page, 2c). Idempotent: a part already at the rework step
-    stays put."""
+    The destination is nonconformance.fail_destination: the step's one Fail branch,
+    else the process's one Rework step. No-op unless the type is REWORK/REPAIR, the
+    part exists, and there is a destination (none → left REWORK_NEEDED for manual
+    routing via the control page, 2c). Idempotent: a part already there stays put."""
     if disposition.disposition_type not in ('REWORK', 'REPAIR'):
         return
     part = disposition.part
@@ -626,19 +630,16 @@ def route_part_to_rework_if_needed(disposition: QuarantineDisposition, user) -> 
     if process is None:
         return
 
-    from Tracker.models import ProcessStep, PartSplitReason
+    from Tracker.models import PartSplitReason
+    from Tracker.services.qms.nonconformance import fail_destination
 
-    rework_steps = {
-        ps.step_id: ps.step
-        for ps in ProcessStep.objects.filter(
-            process=process, step__step_type='REWORK',
-        ).select_related('step')
-    }
-    if len(rework_steps) != 1:
-        return  # zero or ambiguous — manual routing (2c)
+    # The step's Fail branch, else the process's Rework step (user ruling 2026-11-17:
+    # "follow the step's Fail branch"); neither → routed by hand (2c).
+    target = fail_destination(part, process)
+    if target is None:
+        return
 
     from Tracker.services.mes.splits import split_part_from_lot
-    target = next(iter(rework_steps.values()))
     if part.step_id == target.id:
         return  # already there
     if part.split_from_lot:

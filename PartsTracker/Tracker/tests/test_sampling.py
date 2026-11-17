@@ -2053,19 +2053,46 @@ class DecisionPointTestCase(TenantTestCase):
         self.assertEqual(self.part.step, self.pass_step)
 
     def test_qa_decision_routes_to_fail_step(self):
-        """Test that qa_result=FAIL routes to alternate edge"""
-        # Create failing QualityReport
+        """A FAIL holds the part until QA decides; a rework decision then sends it down
+        the step's Fail branch (user ruling 2026-11-17: the disposition decides WHETHER
+        it moves, the routing WHERE)."""
+        from Tracker.models import EdgeType, QuarantineDisposition, StepEdge
+        from Tracker.services.qms.disposition import decide_disposition, route_part_to_rework_if_needed
+        # A rework step loops back for re-inspection; a dead end would be a holding step
+        # (MRB-style), where a decided part is never sent.
+        StepEdge.objects.create(process=self.process, from_step=self.fail_step,
+                                to_step=self.decision_step, edge_type=EdgeType.DEFAULT)
+        # …and re-inspects what it reworked (split refuses a rework step without one).
+        from Tracker.models import Substep
+        Substep.objects.create(step=self.fail_step, order=0, title="Re-inspect",
+                               is_inspection_point=True)
         QualityReports.objects.create(
             part=self.part,
             step=self.decision_step,
             detected_by=self.user,
             status='FAIL'
         )
+        disposition = QuarantineDisposition.objects.get(part=self.part)
+        with self.assertRaisesMessage(ValueError, disposition.disposition_number):
+            self.part.increment_step(operator=self.user)   # held, naming its DISP
 
-        self.part.increment_step(operator=self.user)
-
+        decide_disposition(disposition, disposition_type='REWORK', authorized_by=self.user)
+        route_part_to_rework_if_needed(disposition, self.user)
         self.part.refresh_from_db()
         self.assertEqual(self.part.step, self.fail_step)
+
+    def test_a_use_as_is_failure_takes_the_pass_path(self):
+        """Use as is at a QA decision step: the decision routes, not the FAIL report."""
+        from Tracker.models import QuarantineDisposition
+        from Tracker.services.qms.disposition import decide_disposition
+        QualityReports.objects.create(part=self.part, step=self.decision_step,
+                                      detected_by=self.user, status='FAIL')
+        disposition = QuarantineDisposition.objects.get(part=self.part)
+        decide_disposition(disposition, disposition_type='USE_AS_IS', authorized_by=self.user,
+                           customer_approval={'reference': 'DC-TEST-1', 'received': True})
+        self.part.increment_step(operator=self.user)
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.step, self.pass_step)
 
     def test_qa_decision_missing_report_raises_error(self):
         """Test that qa_result decision without QualityReport raises error"""

@@ -45,6 +45,7 @@ export function waitingLine(r: InFlightResult, whose: "my" | "everyone" = "my") 
         r.waiting_on_qa ? `${r.waiting_on_qa} on QA or an approval` : "",
         r.waiting_on_disposition ? `${r.waiting_on_disposition} on a disposition` : "",
         r.waiting_on_hold ? `${r.waiting_on_hold} on a hold` : "",
+        r.waiting_on_lot ? `${r.waiting_on_lot} on ${r.waiting_on_lot === 1 ? "its" : "their"} lot` : "",
     ].filter(Boolean);
     return `${r.waiting} ${whose === "my" ? "of yours" : "more"} done and waiting: ${parts.join(" · ")}.`;
 }
