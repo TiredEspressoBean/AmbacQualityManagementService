@@ -19,9 +19,11 @@ from Tracker.services.mes.step_gates import (
 from Tracker.tests.base import TenantTestCase
 
 migration = importlib.import_module('Tracker.migrations.0302_step_gates_from_flags')
-# The floor as 0302 knew it: 0305 added a part on hold and a machine down later.
+# The floor as 0302 knew it: 0305 added a part on hold and a machine down later, and
+# 0317 the quarantine hold (0302 gave that only to steps flagged block_on_quarantine).
 FLOOR_AT_0302 = set(FLOOR_GATES) - set(
-    importlib.import_module('Tracker.migrations.0305_start_gates_s4').NEW_FLOOR)
+    importlib.import_module('Tracker.migrations.0305_start_gates_s4').NEW_FLOOR) - {
+    'quarantine_hold'}
 
 OFF = dict(requires_first_piece_inspection=False, fpi_scope='PER_WORKORDER',
            requires_qa_signoff=False, qa_signoff_assurance='NONE', block_on_quarantine=False,
@@ -129,3 +131,21 @@ class StepGateRowTests(TenantTestCase):
         changes = _diff_gates(self.step, new)
         self.assertEqual(changes['gate:first_piece'], {'from': 'off', 'to': 'on (Per shift)'})
         self.assertEqual(set(changes), {'gate:first_piece'})
+
+
+class QuarantineHoldOnTheFloorTests(TenantTestCase):
+    """0317 (user ruling 2026-11-17): every step is given the quarantine hold; a step
+    that has it keeps its one row."""
+
+    def test_existing_steps_are_given_it_once(self):
+        from django.apps import apps
+        from Tracker.models import StepRequirement
+        m0317 = importlib.import_module('Tracker.migrations.0317_quarantine_hold_on_the_floor')
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name="Body")
+        without = Steps.objects.create(tenant=self.tenant_a, name="Wash", part_type=pt)
+        StepRequirement.objects.filter(step=without, gate='quarantine_hold').delete()
+        already = Steps.objects.create(tenant=self.tenant_a, name="Inspect", part_type=pt)
+        m0317.forwards(apps, None)
+        for step in (without, already):
+            self.assertEqual(StepRequirement.objects.filter(
+                step=step, gate='quarantine_hold', archived=False).count(), 1, step.name)

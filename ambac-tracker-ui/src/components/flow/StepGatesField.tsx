@@ -81,6 +81,7 @@ export const FLOOR_GATES = [
     "training_not_authorized",
     "substeps_incomplete",
     "qualified_operator",
+    "quarantine_hold",
 ];
 
 export const FPI_SCOPE_OPTIONS = [

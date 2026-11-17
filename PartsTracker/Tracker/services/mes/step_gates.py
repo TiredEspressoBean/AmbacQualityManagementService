@@ -40,7 +40,9 @@ COMPOSABLE_GATES = START_GATES + RELEASE_GATES
 
 # On by default on a new step, and given to every step that existed before rows did:
 # these applied to every step whatever its flags said. A machine down and a part on
-# hold joined the floor later (migrations/0305), given to every step that kept it.
+# hold joined the floor later (migrations/0305), given to every step that kept it; so
+# did the quarantine hold (migrations/0317, user ruling 2026-11-17) — a part quarantined
+# after its visit started no longer moves on until its disposition is decided.
 FLOOR_GATES = (
     'work_order_not_workable',
     'deviation_expired',
@@ -52,6 +54,7 @@ FLOOR_GATES = (
     'training_not_authorized',
     'substeps_incomplete',
     'qualified_operator',
+    'quarantine_hold',
 )
 
 FPI_SCOPES = ('PER_WORKORDER', 'PER_SHIFT', 'PER_EQUIPMENT')
@@ -207,7 +210,9 @@ def set_gates_from_flags(step, *, requires_qa_signoff=False, qa_signoff_assuranc
     if rule in REVISIT_RULES:
         rows.append({'gate': 'revisit_rule', 'revisit_assignment': rule,
                      'revisit_role_id': getattr(revisit_role, 'pk', revisit_role)})
-    if block_on_quarantine:
+    # The quarantine hold is on the floor now (0317): the old flag adds nothing, and a
+    # False no longer takes it off — an engineer removes it in the gates editor.
+    if block_on_quarantine and not any(r['gate'] == 'quarantine_hold' for r in rows):
         rows.append({'gate': 'quarantine_hold'})
     if requires_qa_signoff:
         rows.append({'gate': 'qa_signoff', 'qa_assurance': qa_signoff_assurance or 'NONE'})
