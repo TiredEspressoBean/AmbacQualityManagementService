@@ -79,7 +79,9 @@ class DocumentControlTests(TenantTestCase):
         self.assertEqual(r.status_code, 200, r.content)
 
     def test_an_upload_picks_its_level_without_classify(self):
-        self._as(['view_documents', 'add_documents'])
+        # …within what the uploader can view (user ruling 2026-11-17: a level above it
+        # is refused, so nobody locks themselves out of their own document).
+        self._as(['view_documents', 'add_documents', 'view_confidential_documents'])
         r = self.client.post("/api/Documents/", {
             "file": SimpleUploadedFile("a.pdf", b"%PDF-1.4"), "file_name": "a.pdf",
             "classification": "CONFIDENTIAL",
