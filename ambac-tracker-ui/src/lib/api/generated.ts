@@ -2797,7 +2797,7 @@ export type CycleCount = {
    */
   apply_note: string;
   /**
-   * When its differences were keyed into the ERP (Glovia) — a person carries them over; this closes the count's loop.
+   * When its differences were keyed into the ERP — a person carries them over; this closes the count's loop.
    */
   erp_keyed_at: string | null;
   erp_keyed_by_name: string | null;

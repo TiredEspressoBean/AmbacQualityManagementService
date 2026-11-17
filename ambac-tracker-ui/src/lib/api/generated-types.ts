@@ -24385,7 +24385,7 @@ export interface components {
             readonly apply_note: string;
             /**
              * Format: date-time
-             * @description When its differences were keyed into the ERP (Glovia) — a person carries them over; this closes the count's loop.
+             * @description When its differences were keyed into the ERP — a person carries them over; this closes the count's loop.
              */
             readonly erp_keyed_at: string | null;
             readonly erp_keyed_by_name: string | null;

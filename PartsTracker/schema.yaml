@@ -57175,8 +57175,8 @@ components:
           format: date-time
           readOnly: true
           nullable: true
-          description: When its differences were keyed into the ERP (Glovia) — a person
-            carries them over; this closes the count's loop.
+          description: When its differences were keyed into the ERP — a person carries
+            them over; this closes the count's loop.
         erp_keyed_by_name:
           type: string
           nullable: true

@@ -34,7 +34,7 @@ import { blobErrorMessage, downloadBlob } from "@/lib/download";
  *    sends back; **In progress**: counts still being counted;
  *  - **Missing units**: units a count didn't find, until they turn up or someone says
  *    what became of them;
- *  - **To key into Glovia**: applied differences not yet carried into the ERP — one
+ *  - **To key into your ERP**: applied differences not yet carried into the ERP — one
  *    sheet across counts, then marked keyed;
  *  - **All counts**.
  *
@@ -77,7 +77,7 @@ export function CycleCountsPage() {
                     <TabsTrigger value="waiting">Waiting for a lead{waiting.length ? ` (${waiting.length})` : ""}</TabsTrigger>
                     <TabsTrigger value="progress">In progress{inProgress.length ? ` (${inProgress.length})` : ""}</TabsTrigger>
                     <TabsTrigger value="missing">Missing units{missing?.length ? ` (${missing.length})` : ""}</TabsTrigger>
-                    <TabsTrigger value="key">To key into Glovia{toKey?.length ? ` (${toKey.length})` : ""}</TabsTrigger>
+                    <TabsTrigger value="key">To key into your ERP{toKey?.length ? ` (${toKey.length})` : ""}</TabsTrigger>
                     <TabsTrigger value="all">All counts</TabsTrigger>
                 </TabsList>
                 <TabsContent value="due"><DueForCount rows={due ?? []} /></TabsContent>
@@ -426,7 +426,7 @@ function ToKey({ rows, canMark }: { rows: CycleCount[]; canMark: boolean }) {
     return (
         <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm">{lines} difference{lines === 1 ? "" : "s"} from {rows.length} count{rows.length === 1 ? "" : "s"} to key into Glovia.</span>
+                <span className="text-sm">{lines} difference{lines === 1 ? "" : "s"} from {rows.length} count{rows.length === 1 ? "" : "s"} to key into your ERP.</span>
                 <Button size="sm" variant="outline" onClick={async () => {
                     try {
                         const resp = await api.axios.get("/api/CycleCounts/to-key-xlsx/", { responseType: "blob" });

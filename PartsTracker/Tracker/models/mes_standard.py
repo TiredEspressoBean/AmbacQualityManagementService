@@ -1621,8 +1621,8 @@ class CycleCount(SecureModel):
     applied_at = models.DateTimeField(null=True, blank=True)
     erp_keyed_at = models.DateTimeField(
         null=True, blank=True,
-        help_text="When its differences were keyed into the ERP (Glovia) — a person "
-                  "carries them over; this closes the count's loop.")
+        help_text="When its differences were keyed into the ERP — a person carries them "
+                  "over; this closes the count's loop.")
     erp_keyed_by = models.ForeignKey(
         'Tracker.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     apply_note = models.TextField(
