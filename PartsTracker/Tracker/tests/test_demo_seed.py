@@ -171,19 +171,15 @@ class DemoSeedFlowsTests(TestCase):
                 object_id=str(capa.id), approval_type="CAPA_MAJOR", status="APPROVED").exists())
 
 
-class DemoSeedDarkExhibitTests(TestCase):
-    """Phase 9 lights the surfaces the role audit found built-but-empty.
-
-    Each of these was verified working in code and then found with nothing to show
-    in the browser, which is a worse failure than a bug: the feature looks absent.
-    They are asserted here because a seed regression would put them back in the dark
-    silently, and only a walk would notice.
-    """
-
-    @classmethod
-    def setUpTestData(cls):
-        call_command("seed_demo", stdout=StringIO())
-        cls.tenant = Tenant.objects.get(slug="demo")
+    # --- Dark exhibits ------------------------------------------------------------
+    # (Was DemoSeedDarkExhibitTests, merged so seed_demo runs once for the module —
+    # it ran twice, ~4 min each, the sweep's critical path; 2026-11-17.)
+    # Phase 9 lights the surfaces the role audit found built-but-empty.
+    #
+    # Each of these was verified working in code and then found with nothing to show
+    # in the browser, which is a worse failure than a bug: the feature looks absent.
+    # They are asserted here because a seed regression would put them back in the dark
+    # silently, and only a walk would notice.
 
     def test_customer_orders_carry_dated_demand_lines(self):
         """Shipping row 9 — `delivery_performance` keys on

@@ -104,6 +104,11 @@ import sys as _sys
 if 'test' in _sys.argv:
     PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
     SEED_TENANT_REFERENCE_DATA = False
+    # CP-SAT stops at this many seconds in tests, whatever the planner's limit says:
+    # the tests assert feasibility, overflow and constraints, not the best plan, and
+    # the planner's 180 s made a handful of them the sweep's slowest (2026-11-17).
+    # Product code reads the planner's setting untouched (services/scheduling/limits.py).
+    SOLVER_TIME_CAP_SECONDS = 3
 
 # Parse ALLOWED_HOSTS from environment variable (comma-separated)
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.azurewebsites.net,.railway.app,.up.railway.app,169.254.131.*').split(',')

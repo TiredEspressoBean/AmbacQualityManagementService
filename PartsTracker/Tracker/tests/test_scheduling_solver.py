@@ -4,7 +4,7 @@ per machine), makespan objective, and the active-schedule supersede.
 from datetime import date, datetime, time as dtime, timedelta as _td
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import override_settings, TestCase
 from django.utils import timezone
 
 from django.contrib.auth import get_user_model
@@ -352,6 +352,8 @@ class SolverTests(TenantContextMixin, TestCase):
         reasons = {r['reason'] for r in diagnose_unscheduled(self.tenant, horizon_days=1)['work_orders']}
         self.assertIn('past_horizon', reasons)
 
+    # Without the suite's solver cap: this proves the planner's limit reaches CP-SAT.
+    @override_settings(SOLVER_TIME_CAP_SECONDS=None)
     def test_a_solve_runs_to_the_planners_settings(self):
         # How long a run takes is the planner's choice (user decision 2026-10-27): the
         # Solve time limit and the Relative gap limit are the only stopping rules.

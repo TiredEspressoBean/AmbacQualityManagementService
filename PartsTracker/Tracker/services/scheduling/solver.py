@@ -1039,7 +1039,8 @@ class _Phase:
         # The planner's stopping rules, both from Scheduling settings: the time limit
         # (split across phases by the caller) and the relative gap at which a plan
         # is proven good enough. Nothing else stops the search.
-        solver.parameters.max_time_in_seconds = tlimit
+        from Tracker.services.scheduling.limits import solver_seconds
+        solver.parameters.max_time_in_seconds = solver_seconds(tlimit)
         gap = getattr(self.shop.config, 'relative_gap_limit', None)
         if gap is not None:
             solver.parameters.relative_gap_limit = float(gap)

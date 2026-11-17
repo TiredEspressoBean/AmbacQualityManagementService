@@ -316,7 +316,8 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
             )
 
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = time_limit_seconds
+        from Tracker.services.scheduling.limits import solver_seconds
+        solver.parameters.max_time_in_seconds = solver_seconds(time_limit_seconds)
         if covered_terms:
             solver.Solve(model)
 
