@@ -129,7 +129,7 @@ The page's tabs:
 | **Waiting for a lead** | Submitted counts, to apply or send back |
 | **In progress** | Counts still being counted |
 | **Missing units** | Units a count didn't find, until they're accounted for |
-| **To key into Glovia** | Applied counts whose differences haven't been keyed into your ERP |
+| **To key into your ERP** | Applied counts whose differences haven't been keyed into your ERP |
 | **All counts** | Every count; one of an item reads *&lt;name&gt; item, every location* |
 
 Each tab shows how many it holds. A lead with submitted counts waiting opens on
@@ -301,8 +301,8 @@ count. Anyone else sees *Still missing*.
 
 ### Keying the differences into your ERP
 
-**To key into Glovia** lists applied counts whose differences haven't been keyed yet,
-with *N differences from M counts to key into Glovia*. **Download the sheet** gives
+**To key into your ERP** lists applied counts whose differences haven't been keyed yet,
+with *N differences from M counts to key into your ERP*. **Download the sheet** gives
 them all in one spreadsheet — Count, Location, Lot / serial, Item, Unit, Expected,
 Counted, Difference, What, Reason, UQMES had it at, Note. Once they're in the ERP, a
 lead marks them **Mark all keyed** and they leave the tab.

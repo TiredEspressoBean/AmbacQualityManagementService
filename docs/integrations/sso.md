@@ -73,7 +73,7 @@ SSO allows users to:
 ## On-Premises / Firewalled Deployment
 
 For a self-hosted instance behind a corporate firewall on an internal hostname
-(e.g. `govtracker.ambac.local`) over TLS. Microsoft Entra SSO still works — the
+(e.g. `uqmes.yourcompany.local`) over TLS. Microsoft Entra SSO still works — the
 sign-in is browser-mediated cloud auth — but a locked-down network needs a few
 specific allowances.
 
@@ -93,8 +93,8 @@ provider only loads when `SSO_ENABLED=true`):
 | `AZURE_CLIENT_ID` | Application (client) ID from the app registration |
 | `AZURE_CLIENT_SECRET` | Client secret value |
 | `AZURE_TENANT_ID` | Your Directory (tenant) **GUID** — not `common`, for a single organization |
-| `ALLOWED_HOSTS` | must include `govtracker.ambac.local` |
-| `CSRF_TRUSTED_ORIGINS` | must include `https://govtracker.ambac.local` |
+| `ALLOWED_HOSTS` | must include `uqmes.yourcompany.local` |
+| `CSRF_TRUSTED_ORIGINS` | must include `https://uqmes.yourcompany.local` |
 
 !!! note "Why the variables still say `AZURE_`"
     Microsoft renamed Azure AD to Microsoft Entra ID, but the environment
@@ -110,7 +110,7 @@ allauth builds the absolute callback URL from it.
 Register it exactly (scheme, host, path, and trailing slash must all match):
 
 ```
-https://govtracker.ambac.local/accounts/microsoft/login/callback/
+https://uqmes.yourcompany.local/accounts/microsoft/login/callback/
 ```
 
 Entra accepts internal, non-public hostnames for *web* redirect URIs and requires
@@ -140,7 +140,7 @@ for the interactive login (usually already permitted on a corporate network).
 
 When TLS terminates upstream and plain traffic is forwarded to the app, the
 terminator **must send `X-Forwarded-Proto: https`** (and the real
-`Host: govtracker.ambac.local`). The backend trusts that header in production
+`Host: uqmes.yourcompany.local`). The backend trusts that header in production
 (`SECURE_PROXY_SSL_HEADER`). Without it, Django treats the request as HTTP, allauth
 builds an `http://…/callback`, and Entra rejects it as a redirect-URI mismatch —
 the single most common on-prem SSO failure.
@@ -170,7 +170,7 @@ Client machines must also trust the internal CA certificate for the `.local` hos
 
 !!! tip "Prevent stray tenant creation"
     For a single-organization deployment, set the tenant's `allowed_domains` to your
-    domain (e.g. `ambac.net`). That makes step (3) above a safety net — anyone who
+    domain (e.g. `yourcompany.com`). That makes step (3) above a safety net — anyone who
     isn't matched by exact email still lands in the correct tenant instead of
     spawning a new one.
 

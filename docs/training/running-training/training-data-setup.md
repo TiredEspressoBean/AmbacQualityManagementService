@@ -372,7 +372,7 @@ If using a training database backup:
 
 ```bash
 # Restore from backup (PostgreSQL example)
-pg_restore -d ambac_training training_backup.dump
+pg_restore -d uqmes_training training_backup.dump
 ```
 
 ---

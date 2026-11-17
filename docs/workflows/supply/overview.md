@@ -212,8 +212,8 @@ delivery goes back on the next receipts sheet. The mark it had and your reason a
 kept on the lot.
 
 !!! important "No prices — this is a goods receipt, not an invoice"
-    The export exists so goods receipts can be posted in the ERP (Glovia here)
-    without re-keying them off paperwork. It says **what arrived and what you
+    The export exists so goods receipts can be posted in your ERP without
+    re-keying them off paperwork. It says **what arrived and what you
     decided about it**; what that is worth is the ERP's business.
 
     It is the mirror of [Import expected
