@@ -199,8 +199,8 @@ Missing material, a broken fixture, a part you think is bad, or anything else th
 stops the job: **go to your lead** and tell them. Don't work around it, and don't
 leave a part half-done without saying so.
 
-**Can't run this?** on your home page isn't in use yet, and neither is **Call my
-lead**. Don't rely on them.
+**Can't run this?** and **Call my lead** on your home page are dimmed previews,
+not in use yet.
 
 A machine that stops is different: report it yourself, so the schedule knows.
 **Report a problem** → **Machine problem**, then what's wrong — *Machine down /

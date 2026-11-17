@@ -169,8 +169,10 @@ Client machines must also trust the internal CA certificate for the `.local` hos
   created with the user as its admin.**
 
 !!! tip "Prevent stray tenant creation"
-    For a single-organization deployment, set the tenant's `allowed_domains` to your
-    domain (e.g. `yourcompany.com`). That makes step (3) above a safety net — anyone who
+    For a single-organization deployment, set the tenant's allowed domains to
+    your domain (e.g. `yourcompany.com`), on the **SSO Allowed Domains** card in
+    **Settings** > **Organization**. The identity provider's credentials
+    themselves are deployment settings, with no screen. That makes step (3) above a safety net — anyone who
     isn't matched by exact email still lands in the correct tenant instead of
     spawning a new one.
 
@@ -193,14 +195,20 @@ MFA is handled by the identity provider:
 ## Session Management
 
 ### Session Duration
-- Controlled by Microsoft Entra policy
-- uqmes session matches
-- Configurable timeout
 
-### Single Logout
-- Logout from uqmes
-- Optionally logout from Microsoft Entra ID
-- Clear all sessions
+Once you're signed in, the session is uqmes's own, whether you signed in with
+Microsoft or a password. Entra's session policies govern signing in to
+Microsoft, not how long the uqmes session lasts. Its length is the
+`SESSION_COOKIE_AGE` setting: **14 days** by default, which a deployment can
+shorten, optionally ending sessions when the browser closes
+(`SESSION_EXPIRE_AT_BROWSER_CLOSE`). See
+[CMMC](../compliance/cmmc.md#identification-authentication-ia) for recommended
+values.
+
+### Logging out
+
+Logging out of uqmes ends the uqmes session. It doesn't sign you out of
+Microsoft.
 
 ## Troubleshooting SSO
 

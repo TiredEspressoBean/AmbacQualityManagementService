@@ -180,9 +180,9 @@ Based on lot size and AQL level:
 
 ### Creating the Report
 
-1. Select affected part(s)
-2. Click **Create Quality Report**
-3. Fill in required fields:
+1. **Quality** > **Quality Reports**, then **New Quality Reports**. It opens
+   *Create Quality Report (NCR)*. There is no button for it on a part
+2. Pick the part on the form, and fill in the fields:
 
 | Field | What to Enter | Required |
 |-------|---------------|----------|
@@ -191,10 +191,10 @@ Based on lot size and AQL level:
 | **Process Step** | Where it was found | No |
 | **Description** | Detailed explanation | No |
 
-4. **Add each defect separately** — error type, count, location and severity
+3. **Add each defect separately** — error type, count, location and severity
    belong to the defect, not to the report
-5. Attach evidence (photos, data)
-6. Submit
+4. Attach evidence (photos, data)
+5. Submit
 
 !!! note "There is no Immediate Action field"
     Containment and root cause belong to the CAPA raised from the report, not
@@ -417,7 +417,7 @@ Either finish it or say so.
 | Task | Steps |
 |------|-------|
 | Record measurement | On a part: step player → inspection substep → enter value → **Confirm & next** · On an incoming lot: receiving inspection → **Record Measurements** |
-| Create NCR | Select part → Create Quality Report → Fill form → Submit |
+| Create NCR | Quality → Quality Reports → New Quality Reports → pick the part → Submit |
 | Add annotation | Work order page → select part → QA panel, or **Annotator** → choose the report → click the defect → Save |
 | Buy off a first piece | Home red banner → **Start check** → review captures → **Sign off & pass** (or Fail / Waive) |
 | Accept lot | Complete sampling → Record results → System calculates |

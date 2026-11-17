@@ -295,11 +295,16 @@ consume a part the customer is owed.
     only to repair-and-return units, since an exchange core's components belong
     to the shop.
 
-    The refusal ends *"Release the reservation first if the arrangement has
-    changed."* **There is no control for that yet** — the operation exists in
-    the system but has no button. If an arrangement genuinely changed, that is
-    currently a job for an administrator rather than something you can do from
-    this screen.
+    The part's page says so: *"Reserved for core &lt;CORE-…&gt; — harvested from a
+    unit being repaired and returned, so it's that customer's property and
+    can't be built into other work."* The refusal ends *"If the arrangement has
+    changed, release it first: Release reservation on the part's page."*
+
+    **Release reservation** on the part's page (for whoever may accept
+    components) asks *Release this part from core &lt;CORE-…&gt;?*: *"It becomes
+    general stock and can be used on any job. Do this only if the customer's
+    arrangement changed."* **Keep reserved** backs out. Releasing confirms
+    *Reservation released — the part is general stock now.*
 
 ## Ready to Rebuild
 

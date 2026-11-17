@@ -64,7 +64,8 @@ Order status reflects in HubSpot:
         leak it.
 
 3. **Test the connection**
-   - Create a test deal in HubSpot
+   - Create a test deal in HubSpot, then run a sync from the integration's page
+     (or wait for the hourly one)
    - Confirm an order appears in uqmes
    - Watch **Sync Activity** on the integration's page for failures
 
@@ -98,31 +99,29 @@ Order status reflects in HubSpot:
     customer are held separately as external contacts. See
     [Companies](../admin/setup/companies.md).
 
-## Workflow
+## How orders arrive
 
-### Automatic Order Creation
-
-1. Deal moves to "Closed Won" in HubSpot
-2. Webhook triggers uqmes
-3. Order created with mapped data
-4. Company linked or created
-5. Confirmation in both systems
-
-### Manual Order Creation
-
-1. View deal in HubSpot
-2. Click "Create Order in uqmes"
-3. Review/modify order details
-4. Create order
-5. Link established
+Orders are created by the **sync**, not by anything in HubSpot's own screens.
+Each sync creates an order for every deal that doesn't have one yet, links the
+company (creating it if no company of that name exists), and keeps the link, so
+later syncs update the same order. There is no "Create Order" button inside
+HubSpot.
 
 ## How the sync runs
 
 | | |
 |---|---|
 | **Frequency** | Every hour automatically, or triggered by hand |
-| **Method** | Scheduled bulk sync, plus real-time webhooks for stage changes |
+| **Method** | Scheduled bulk sync. Optionally, a HubSpot webhook updates a linked order's stage as soon as the deal's stage changes |
 | **First sync** | Creates orders from your existing HubSpot deals — expect a lot of them |
+
+!!! note "The one webhook: deal stage changes, inbound"
+    uqmes can receive one kind of HubSpot webhook: a **deal stage change**
+    (`deal.propertyChange` on `dealstage`), which updates the stage of an order
+    already linked to that deal. It doesn't create orders; the sync does. Point
+    the private app's webhook subscription at the integration's webhook address,
+    and set its webhook secret on the integration so each call is verified.
+    uqmes sends no webhooks of its own (see [API](api.md#webhooks)).
 
 **Direction.** Almost everything is inbound: deals, contacts, companies and
 pipeline stages all flow HubSpot to uqmes. The one outbound flow is milestone

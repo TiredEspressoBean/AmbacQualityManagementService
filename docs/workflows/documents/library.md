@@ -92,9 +92,10 @@ The search box on the document list is scoped, as its placeholder says —
 - **Uploader email**
 
 !!! note "Not full-text search"
-    Document *contents* are not searched. Neither are associated records. To
-    find a document by what it is attached to, open that record and look at its
-    Documents section instead.
+    The library's search doesn't look inside documents, or at associated
+    records. To find a document by what it is attached to, open that record and
+    look at its Documents section instead. The AI assistant can search the text
+    of documents it has been given to read; the library itself can't.
 
 ## Document Types
 
@@ -180,14 +181,14 @@ tiers. Operators, inspectors, the dock and auditors cannot.
     If you need a document kept from most of the shop, **Secret** is the only
     tier that does it.
 
-!!! important "QA Manager can classify, but cannot read Secret"
-    The level chosen at upload is the uploader's choice. Changing an existing
-    document's level needs `classify_documents`, by default held by **Tenant
-    Admin, QA Manager and Document Controller**. `view_secret_documents` is by
-    default held by **Tenant Admin and Document Controller** only.
-
-    So a QA Manager can mark a document Secret and then not be able to open it.
-    Worth knowing before you use that tier.
+!!! important "You can't classify a document above what you can view"
+    The level chosen at upload is the uploader's choice, and changing an
+    existing document's level needs `classify_documents` (by default **Tenant
+    Admin, QA Manager and Document Controller**). Either way, choosing a level
+    you couldn't then open is refused: *"You can't classify a document above
+    what you can view."* `view_secret_documents` is by default held by **Tenant
+    Admin and Document Controller** only, so only they can mark a document
+    **Secret**. Anyone else asks one of them.
 
 !!! note "An auditor holds none of the classified tiers"
     The Auditor role is not given the classified tiers. A document invisible to

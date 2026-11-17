@@ -149,7 +149,9 @@ Each row reads *&lt;limit&gt; — N used · soft S · hard H &lt;unit&gt;*, with
 &lt;reason&gt;*). Limits from a revised definition's earlier versions are folded
 under *Earlier versions of these limits (n)*.
 
-There is no list of everything approaching or past its limit.
+There is no screen listing everything approaching or past its limit. (The API
+has one, `LifeTracking/warnings/` and `LifeTracking/expired/`, for a report of
+your own.) A tool reaching its soft limit notifies its owners.
 
 ## Life limits stop work starting
 

@@ -206,14 +206,10 @@ After closure:
 
 ## CAPA Metrics
 
-Closure-related metrics:
-
-| Metric | Description |
-|--------|-------------|
-| **On-time closure** | % closed by due date |
-| **Average days to close** | Cycle time |
-| **First-time effectiveness** | % confirmed on the first verification |
-| **Verification compliance** | % with proper verification |
+The software keeps the dates and verification results these come from, but
+doesn't calculate closure metrics such as on-time closure, average days to
+close or first-time effectiveness. Export the CAPA list and work them out from
+it. See [CAPA Dashboard](overview.md#capa-dashboard).
 
 ## Regulatory Considerations
 

@@ -99,8 +99,9 @@ so name the file the way you want it to read in the library.
 Classification is a tier, not a per-document access list — you cannot name
 individual users or groups on a document. Confidential and Restricted separate
 staff from customers and auditors; every internal role holds both. **Secret** is
-the only tier that keeps a document from most of the shop. See [Document
-Library](library.md) for the detail.
+the only tier that keeps a document from most of the shop, and only someone who
+can view Secret documents can choose it (*"You can't classify a document above
+what you can view."*). See [Document Library](library.md) for the detail.
 
 ## Uploading Revisions
 

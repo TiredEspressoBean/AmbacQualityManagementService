@@ -19,13 +19,13 @@ admitted, and where it runs** — the planning and scheduling side of uqmes.
         including removing a slot and deleting a shift. The manager holds all of
         these too.
 
-        A Planner does **not** hold two of the solver's own inputs: **step
-        timings** (cycle times) and **machine eligibility**. Those sit with
+        A Planner holds **step timings** (cycle times) but not **machine
+        eligibility**, one of the solver's own inputs. Eligibility sits with
         Production Manager and Tenant Admin, and on an approved process a
-        step's machines change only through a process change. So when the plan is wrong *because
-        the model is wrong*, a standalone Planner can diagnose it and cannot fix
-        it — they have to hand it over. Worth knowing before you staff the role
-        on its own.
+        step's machines change only through a process change. So when work
+        lands on the wrong machines *because the model is wrong*, a standalone
+        Planner can diagnose it and cannot fix it — they have to hand it over.
+        Worth knowing before you staff the role on its own.
 
     Working the board — moving, pinning, reassigning, dispatching — is wider than
     the group: **QA Manager** and **Shift Lead** hold it as well, so a shift lead
@@ -206,7 +206,7 @@ separately. **Unpin** is what a pinned-successor refusal is asking for.
 
 | Symptom | Look at | Yours to fix? |
 |---------|---------|---------------|
-| Dates look too comfortable | [Step Timings](../workflows/scheduling/setup.md#step-timings) — an operation with no timing of any kind contributes no load | **No** — Production Manager or Tenant Admin; a step's own expected duration is [Engineering](engineering.md)'s |
+| Dates look too comfortable | [Step Timings](../workflows/scheduling/setup.md#step-timings) — an operation with no timing of any kind contributes no load | **Yes** — step timings are yours (Production Manager and Tenant Admin hold them too); a step's own expected duration is [Engineering](engineering.md)'s |
 | Work lands on the wrong machine | [Machine Eligibility](../workflows/scheduling/setup.md#machine-eligibility) | **No** — on an approved process, a process change. For one job, move the task to another listed machine on the Gantt |
 | The solver interleaves similar jobs | [Changeovers](../workflows/scheduling/setup.md#changeovers) | Yes |
 | Nobody can run a gated step | The training matrix — a binding resource can be a certification | Rostering yes; the certification itself no |

@@ -42,13 +42,17 @@ same working time the scheduler plans against:
 - **Yearly closures** count in every year of the view, so a 24- or 36-month
   horizon loses each year's shutdown, not just the first.
 - The current month offers only what is **left** of it.
-- It is **today's** roster carried forward. A hire, a new shift or a newly
-  qualified operator counts only once they are on the roster or trained. There
-  is no way to plan one ahead.
+- It is **today's** roster carried forward, less each person's booked time off
+  and personal blocks in the period. A hire, a new shift or a newly qualified
+  operator counts only once they are on the roster or trained. There is no way
+  to plan one ahead.
 - A plant closure stops **every** machine, lights-out ones included, as it does
   on the schedule: a two-day shutdown takes 48 h off each lights-out machine
   that month.
-- Machine downtime is not taken off here, for either kind of machine.
+- A machine that can't run work **now** (out of service, in maintenance or
+  calibration, past its calibration, or with open downtime) is left out of
+  **every** month, which errs on the pessimistic side. Downtime planned for
+  later is not taken off.
 - **Could we take this order?** counts the same hours.
 
 ## What's in the load

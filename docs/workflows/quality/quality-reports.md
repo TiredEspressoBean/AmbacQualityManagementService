@@ -210,15 +210,14 @@ To find failed reports by error type, period, process or part type, use the
 
 ## Quality Report Metrics
 
-Track quality performance:
+- **NCR Analysis** (`/quality/ncrs`): the NCR trend, **Avg Age**, **Closure
+  Rate**, the ageing buckets and the disposition breakdown
+- **Defect Analysis** (`/quality/defects`): defects by error type, process and
+  part, with CSV export
+- **Analytics**: first-pass yield, top defects, what needs attention
 
-- **NCRs per period**: Trend over time
-- **By error type**: Pareto analysis
-- **By severity**: Distribution
-- **By process step**: Where defects occur
-- **Time to close**: Disposition cycle time
-
-View on **Quality Dashboard** or **Analytics**.
+See [Dashboards](../../analysis/dashboard.md). The **Quality** > **Dashboard**
+page is about CAPAs, not NCRs.
 
 ## Notifications
 
@@ -231,6 +230,12 @@ Rules](../../admin/setup/notification-rules.md).
 Two relevant rules ship by default: **every NCR opened** goes to the QA
 Manager group, and **step failures** go to QA Manager and QA Inspector.
 Severity-based routing, assignment alerts and closure notices are not seeded.
+
+The NCR notification carries the report's **severity**: the worst defect on it
+(Critical, then Major, then Minor), or Major when none is recorded, as for an
+out-of-spec reading. It reads e.g. *[MAJOR] NCR on &lt;part&gt;*. To route Critical
+NCRs differently, give a rule a condition on `payload.severity == "CRITICAL"`.
+The report's PASS/FAIL is `payload.status`.
 
 ## Permissions
 

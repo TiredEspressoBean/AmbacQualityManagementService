@@ -55,7 +55,7 @@ Open the part detail. The **Activity History** section on that page shows the au
 ## Quality
 
 ### How do I create a quality report (NCR)?
-Select affected part(s), click **Create Quality Report**, fill in details, and submit.
+**Quality** > **Quality Reports** > **New Quality Reports**, pick the part on the form, fill in the details and submit. There is no button for it on a part. An inspection step that records a FAIL also produces one. See [Quality Reports](../workflows/quality/quality-reports.md).
 
 ### What's the difference between Minor, Major, and Critical?
 - **Minor**: Cosmetic, no functional impact

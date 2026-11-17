@@ -115,8 +115,8 @@ The following depend on deployment configuration and are **not application featu
 | [CMMC Level 2](cmmc.md) | DoD Contractors | The same application controls, by domain | Organisational, personnel, physical and hosting practices |
 | [ISO 9001:2026](iso9001.md) | General | All 28 subclauses are mapped. Clauses 7–10 are where the software is the mechanism: documented information, production control, traceability, nonconformity, CAPA | Clauses 4–6 are mostly management activities — context, leadership, policy, objectives, risk. The page lists them and marks them yours |
 | [AS9100D](as9100.md) | Aerospace | ISO 9001 plus configuration management, FAI, part traceability | AS9102 FAI form output; authentication of independent-distributor material |
-| [IATF 16949](iatf-16949.md) | Automotive | ISO 9001 plus SPC, control plans, layered audits | **MSA / Gage R&R — not modelled at all.** PPAP and FMEA are partial: the data exists, the submission artifacts do not. See the page for which elements |
-| [ITAR](export-controls.md) | Defense/Export | Classification, access gating on `us_person` / `itar_authorized` | License tracking; the export decision itself |
+| [IATF 16949](iatf-16949.md) | Automotive | ISO 9001 plus SPC and control-plan characteristics | **MSA / Gage R&R — not modelled at all**, and no layered process audits. PPAP and FMEA are partial: the data exists, the submission artifacts do not. See the page for which elements |
+| [ITAR](export-controls.md) | Defense/Export | Classification, access gating on the user's `us_person` flag | License tracking; the export decision itself |
 
 > **Note**: This is application-level coverage only. Full compliance requires
 > infrastructure configuration and organizational processes that no application
@@ -248,9 +248,10 @@ The following depend on deployment configuration and are **not application featu
 | Gap | Frameworks Affected | Notes |
 |-----|---------------------|-------|
 | MSA/Gage R&R Records | IATF 16949 | Need measurement system analysis model |
-| Supplier Management | ISO 9001, AS9100D, IATF 16949 | AVL, qualification workflow, scorecards |
-| Customer Property Tracking | ISO 9001 8.5.3 | Customer-owned tooling/materials |
 | PPAP Module | IATF 16949 | PSW generation, submission tracker |
+
+Supplier management (qualification, scorecards) and customer property are built:
+see [ISO 9001](iso9001.md) §8.4 and §8.5.3, and [Supply](../workflows/supply/overview.md#customer-property).
 
 ### Priority 2 (Enhancement)
 

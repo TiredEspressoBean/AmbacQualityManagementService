@@ -169,25 +169,15 @@ CAPAs connect to:
 
 ## CAPA Dashboard
 
-The Quality Dashboard shows:
+**Quality** > **Dashboard** is the CAPA dashboard: counts of **Open CAPAs**,
+**Overdue**, **Pending Verification** and **Closed**, quick actions, the CAPAs
+waiting on your approval, and your CAPA tasks. **Analytics** adds **Active
+CAPAs** and **Overdue** cards. See [Dashboards](../../analysis/dashboard.md).
 
-- Open CAPAs by status
-- CAPAs by priority
-- Overdue actions
-- Aging analysis
-- Effectiveness metrics
-
-## CAPA Metrics
-
-Track CAPA performance:
-
-| Metric | Description |
-|--------|-------------|
-| **Open CAPAs** | Current workload |
-| **Average age** | Time to closure |
-| **On-time closure** | % closed by due date |
-| **Effectiveness** | % verified effective |
-| **Recurrence rate** | Issues that return |
+!!! note "No CAPA performance metrics"
+    There is no CAPA ageing chart, on-time closure rate, effectiveness rate or
+    recurrence figure. To report them, export the CAPA list and compute them
+    from its dates and verification results.
 
 ## Permissions
 

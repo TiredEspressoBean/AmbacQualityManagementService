@@ -207,7 +207,8 @@ procedure and when to use each.
 
 ### If you can't run the job at all
 
-**Can't run this?** and **Call my lead** on Home aren't in use yet. Missing
+**Can't run this?** and **Call my lead** on Home are shown dimmed as previews,
+and aren't in use yet. Missing
 material, a broken fixture or anything else that stops the job: go to your lead
 and tell them.
 

@@ -64,8 +64,9 @@ Parts immediately show quarantine status.
 
 Quarantined parts display:
 
-- **Yellow status badge** on Tracker
-- **Quarantine indicator** in part detail
+- **Quarantined** status on the part's page and in the work order's parts
+  (the Tracker shows orders, not parts, so it doesn't show this)
+- **Held — DISP-… open** on the operator's Home, for a part they started
 - **Appear in quarantine queue**
 - **Cannot ship** — always, from anywhere
 

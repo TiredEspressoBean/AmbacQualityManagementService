@@ -161,7 +161,7 @@ Default page size: 25
 ```json
 {
   "count": 100,
-  "next": "https://api.example.com/orders/?page=2",
+  "next": "https://api.example.com/api/Orders/?page=2",
   "previous": null,
   "results": [...]
 }
@@ -189,8 +189,12 @@ PUT or PATCH:
 curl -X PATCH https://api.example.com/api/Orders/{id}/ \
   -H "Authorization: Token your-token" \
   -H "Content-Type: application/json" \
-  -d '{"status": "complete"}'
+  -d '{"name": "PO-001 (revised)"}'
 ```
+
+A status is never PATCHed directly: the API refuses it and names the action to
+use instead (hold, cancel, and so on). See [Work Order
+Progress](../workflows/work-orders/progress.md#status-updates).
 
 ## Error Responses
 
@@ -198,7 +202,7 @@ curl -X PATCH https://api.example.com/api/Orders/{id}/ \
 Invalid data:
 ```json
 {
-  "order_number": ["This field is required."]
+  "name": ["This field is required."]
 }
 ```
 
@@ -223,9 +227,11 @@ deployment, so the exact numbers are your administrator's to confirm.
 
 ## Webhooks
 
-!!! warning "Webhooks are not implemented"
-    There is no webhook model, no outbound delivery and no retry — not in the
-    UI and not in backend settings either. The event names an earlier version of
+!!! warning "uqmes sends no webhooks"
+    There is no outbound webhook delivery and no retry — not in the UI and not
+    in backend settings either. (An integration such as
+    [HubSpot](hubspot.md) can *receive* its provider's webhooks; that is
+    inbound only.) The event names an earlier version of
     this page listed (`order.created`, `part.status_changed` and the rest) do
     not exist.
 
@@ -248,7 +254,10 @@ Returns OpenAPI 3.0 specification.
     There is no `/api/docs/` browser. Fetch `/api/schema/` and read it with your
     own OpenAPI viewer.
 
-## Example: Create Order with Parts
+## Example: Order, work order and parts
+
+Parts belong to a **work order**, so the order comes first, then its work order,
+then the parts on it. Ids are UUIDs.
 
 ```python
 import requests
@@ -261,29 +270,31 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# Create order
-order_data = {
+# 1. The order (order_number is read-only: the server generates ORD-YYYY-NNNN)
+order = requests.post(f"{BASE_URL}/Orders/", headers=headers, json={
     "name": "PO-2026-001",
-    # order_number is read-only — the server generates ORD-YYYY-NNNN
     "customer": "<customer-uuid>",
-    "estimated_completion": "2026-04-01"
-}
-response = requests.post(f"{BASE_URL}/orders/",
-                         json=order_data,
-                         headers=headers)
-order = response.json()
+    "estimated_completion": "2026-04-01",
+}).json()
 
-# Add parts
-parts_data = {
-    "order": order["id"],
-    "part_type": 1,
-    "quantity": 10,
-    "serial_prefix": "WA-"
-}
-response = requests.post(f"{BASE_URL}/parts/bulk-create/",
-                         json=parts_data,
-                         headers=headers)
+# 2. Its work order, on an approved process
+work_order = requests.post(f"{BASE_URL}/WorkOrders/", headers=headers, json={
+    "ERP_id": "WO-2026-001",
+    "related_order": order["id"],
+    "process": "<process-uuid>",
+    "expected_completion": "2026-04-01",
+}).json()
+
+# 3. Ten parts on the work order, at its first step
+requests.post(f"{BASE_URL}/WorkOrders/{work_order['id']}/bulk_add_parts/",
+              headers=headers, json={
+                  "part_type": "<part-type-uuid>",
+                  "step": "<first-step-uuid>",
+                  "quantity": 10,
+              })
 ```
+
+The exact fields of each request are in the schema (`/api/schema/`).
 
 ## Permissions
 

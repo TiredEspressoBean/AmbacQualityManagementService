@@ -172,9 +172,9 @@ There is no Reassign action. Reassignment is a plain edit of the task:
 2. Change **Assigned To**
 3. Save
 
-Nothing else happens — there is no reassignment reason to record, and neither
-the old nor the new assignee is notified, since no per-task notification rule
-ships. The change is in the audit trail.
+The new assignee is emailed, as when a task is first assigned; the old one
+isn't told. Saving the task with the same assignee sends nothing. There is no
+reassignment reason to record. The change is in the audit trail.
 
 ## Task Metrics
 

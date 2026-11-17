@@ -118,15 +118,12 @@ If an issue is found:
    severity. Error type is **not** a field on the report itself
 3. The part enters quarantine
 
-!!! warning "Quarantine always stops a part shipping — it does not always stop it advancing"
-    A quarantined part can never leave the building, and work can't start on it
-    at a step carrying **Part not quarantined**, which every step has unless
-    removed. But a part quarantined while its step was under way can still
-    finish and move on from that step, unless the step carries **Quarantine
-    hold**, which is **off by default**.
-
-    If your procedure expects a hold to stop work immediately, add **Quarantine
-    hold** on the steps that matter. See [Quarantine](../quality/quarantine.md).
+!!! important "A quarantined part stops where it is"
+    A quarantined part can never leave the building. Work can't start on it
+    (**Part not quarantined**), and a part quarantined while its step was under
+    way can't move on from that step until its disposition is decided
+    (**Quarantine hold**). Every step has both unless an engineer removed them.
+    See [Quarantine](../quality/quarantine.md).
 
 ## Handling Quarantined Parts
 

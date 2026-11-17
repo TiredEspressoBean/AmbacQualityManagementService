@@ -156,17 +156,19 @@ Navigate to **Data Management > Part Types**:
 
 A part type carries no process; each process names the part type it is for.
 
-#### 4. Order with Parts
+#### 4. Order
 
-Navigate to **Data Management > Orders**:
-1. Create order (e.g., TRAIN-ORD-001)
-2. Add 10 parts with serial prefix TRAIN-
+Navigate to **Data Management > Orders** and create the order (e.g.,
+TRAIN-ORD-001).
 
-#### 5. Work Order
+#### 5. Work Order with Parts
 
-Navigate to **Production > Work Orders**:
-- Link to order
-- Assign to process
+1. **Data Management > Work Orders** > **New Work Orders**: link it to the order
+   and pick an approved process. (**Production > Work Orders** is a read-only
+   list.)
+2. **Production > WO Control Center**: select the work order and **Add Parts**
+   from the bulk bar, e.g. 10 parts. Parts belong to a work order, not directly
+   to the order. See [Work Orders](../../workflows/work-orders/basics.md#creating-a-work-order).
 
 ### Creating Specific Scenarios
 
@@ -178,9 +180,9 @@ Navigate to **Production > Work Orders**:
 
 #### Scenario: FPI Pending
 
-1. Start a new batch
-2. First part reaches FPI-required step
-3. Remaining parts are held automatically
+1. Bring a work order's parts to a step with the **First piece** gate
+2. Start the first part: it becomes the first piece and calls QA
+3. Starting the next part is refused until QA buys the first piece off
 
 #### Scenario: Quarantined Parts
 
