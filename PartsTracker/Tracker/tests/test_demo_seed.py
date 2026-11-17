@@ -454,3 +454,12 @@ class DemoSeedFlowsTests(TestCase):
             self.assertEqual(mrb.escalated_from_step.name, "Nozzle Inspection")
             self.assertFalse(QuarantineDisposition.objects.filter(
                 part=part, current_state="IN_PROGRESS").exists())
+
+    def test_a_harvested_part_is_reserved_to_its_customers_core(self):
+        """Doc audit 2026-11-17: no part was reserved, so Release reservation had nothing
+        to show. One accepted from a repair-and-return core is reserved to it."""
+        with tenant_context(self.tenant.id):
+            reserved = Parts.objects.filter(reserved_for_core__isnull=False).select_related(
+                'reserved_for_core')
+            self.assertTrue(reserved.exists())
+            self.assertEqual(reserved.first().reserved_for_core.fulfilment_mode, 'REPAIR_RETURN')

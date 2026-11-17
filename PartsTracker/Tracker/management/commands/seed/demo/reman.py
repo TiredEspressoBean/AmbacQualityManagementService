@@ -607,11 +607,31 @@ class DemoRemanSeeder(BaseSeeder):
         # A core on a work order — without one, every reman workflow is unreachable
         result['teardown_wo'] = self._start_a_teardown_batch(result['cores'], users)
 
+        # One harvested part accepted from a repair-and-return core: reserved to it, the
+        # customer's — the Release reservation exhibit (doc audit 2026-11-17).
+        result['reserved_part'] = self._accept_a_reserved_component(result['components'], users)
+
         self.log(f"  Created {len(result['bom_lines'])} disassembly BOM lines")
         self.log(f"  Created {len(result['cores'])} cores")
         self.log(f"  Created {len(result['components'])} harvested components")
 
         return result
+
+    def _accept_a_reserved_component(self, components, users):
+        """Accept one good component of a repair-and-return core into inventory through
+        the service, which reserves it to its core (reservation.py)."""
+        from Tracker.services.reman.harvested_component import accept_component_to_inventory
+        pick = next((c for c in components
+                     if c.core.fulfilment_mode == 'REPAIR_RETURN' and not c.is_scrapped
+                     and c.component_part_id is None and c.condition_grade in ('A', 'B')), None)
+        if pick is None:
+            self.log("  Warning: no repair-and-return component to reserve.", warning=True)
+            return None
+        employees = users.get('employees', []) if isinstance(users, dict) else []
+        acceptor = self._actor('maria.qa@demo.ambac.com', employees[0] if employees else None)
+        part = accept_component_to_inventory(pick, acceptor, transfer_life=False)
+        self.log(f"  {part.ERP_id}: accepted from {pick.core.core_number}, reserved to it")
+        return part
 
     def _walk_teardown(self, cores, users):
         """Take the cores whose story is past RECEIVED there through the services.
