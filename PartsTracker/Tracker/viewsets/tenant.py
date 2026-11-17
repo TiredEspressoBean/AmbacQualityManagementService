@@ -1071,6 +1071,17 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only administrators can update groups.")
         return super().update(request, *args, **kwargs)
 
+    def perform_update(self, serializer):
+        # A rename moves the approval templates that auto-assign the group by name with
+        # it, in one transaction (services/core/group_rename.py).
+        from django.db import transaction
+        from Tracker.services.core.group_rename import rename_group
+        new_name = serializer.validated_data.pop('name', None)
+        with transaction.atomic():
+            group = serializer.save()
+            if new_name is not None:
+                rename_group(group, new_name)
+
     def destroy(self, request, *args, **kwargs):
         if not self.check_admin_permission(request):
             raise PermissionDenied("Only administrators can delete groups.")
