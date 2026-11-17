@@ -66,7 +66,7 @@ Select affected part(s), click **Create Quality Report**, fill in details, and s
 For recurring issues, major/critical NCRs, customer complaints, or audit findings.
 
 ### How do I close a CAPA?
-Complete all tasks, document verification, then click **Request Closure**. Approver must approve.
+Complete all its tasks, then record an **Effective - Confirmed** verification: that closes the CAPA there and then. There is no separate closure request or closure approval. Recording the verification needs `verify_capa`. See [Verification](../workflows/capa/verification.md).
 
 ## Documents
 

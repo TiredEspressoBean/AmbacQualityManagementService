@@ -8,14 +8,17 @@ Solutions for frequently encountered problems.
 
 ## Login Issues
 
-### "Invalid credentials"
+### "Invalid email or password"
 **Cause**: Wrong email or password
 
 **Solutions**:
 1. Check email spelling
 2. Reset password via "Forgot Password"
 3. Check Caps Lock
-4. Contact admin if account locked
+
+There is no account lockout. Too many attempts in a short time are throttled
+instead (*"Request was throttled"*): wait for the time it names. See [First
+Login](../getting-started/first-login.md).
 
 ### "Account deactivated"
 **Cause**: Account has been disabled
@@ -70,9 +73,11 @@ cause is by far the most common and the least obvious:
    every part at that step.
 3. **A required capture is missing.** Open the step's review screen; it shows
    which.
-4. **The part is quarantined** *and* the step it is at is set to **block on
-   quarantine**. That setting is off by default, so a quarantined part often
-   keeps moving — check the step before assuming the hold is what stopped it.
+4. **The part failed or is quarantined, and its disposition isn't decided.**
+   Completing it is refused with *Part held — DISP-… decides it* (or *needs a
+   disposition*), and at a step where a lot moves together it holds the whole
+   lot. It moves on once QA decides: rework splits it off and routes it, use as
+   is lets it carry on. See [Steps](../admin/processes/steps.md#gates).
 5. **The operator isn't trained for the step**, so the work can't be completed
    or assigned.
 6. **A completion at that step was voided.** The gate ignores voided rows, so
@@ -100,13 +105,17 @@ cause is by far the most common and the least obvious:
 4. Resolve pending approvals and release hold points
 
 ### Order not showing on Tracker
-**Cause**: Filter or status issue
+**Cause**: It's further down the list, or you can't see it
+
+The Tracker lists every order you can see, newest first, loading more as you
+scroll. It has no search or filter.
 
 **Solutions**:
-1. Check filters are cleared
-2. Verify order status (not Draft)
-3. Search by order number
-4. Check correct tenant selected
+1. Find it in the orders list in **Data Management**, which searches by order
+   number, order name, company or customer name, or open it straight from its
+   number (`/orders/ORD-…`). See [Order Status](../workflows/orders/order-status.md#finding-orders)
+2. A customer sees only their own orders, and those shared with them
+3. Check correct tenant selected
 
 ## Document Issues
 

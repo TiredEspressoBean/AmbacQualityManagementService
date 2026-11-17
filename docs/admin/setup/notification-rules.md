@@ -92,7 +92,10 @@ past its calibration gets a second rule as well:
 
 The notification reads *Can't start &lt;part&gt;: waiting on &lt;who&gt;* and links to
 the work order. The same part refused by the same gate is notified once an hour
-at most, whatever the rule's gap. A first-piece refusal has no rule: QA is
+at most, whatever the rule's gap. The **Part not quarantined** rule also fires
+when a part is held at **Complete** waiting on its disposition, so QA is called
+either way. That call reads *Held at &lt;step&gt;: &lt;part&gt; — waiting on the part's
+disposition*, and it isn't sent if the part was decided before it went out. A first-piece refusal has no rule: QA is
 already called by *First Piece Waiting*. Refusals a supervisor clears on the
 spot (training, repeat visits, someone else's work) notify nobody.
 

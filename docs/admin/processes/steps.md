@@ -155,13 +155,13 @@ removes one.
 | **Quarantine hold** | To move on | *A quarantined part can't move on from this step until its quarantine is decided.* | — |
 | **QA sign-off** | To move on | *QA signs the step off before parts move on.* | **How the inspector signs**: *Check off — recorded under their login*, or *Signature + password — they re-enter their own password* |
 | **First piece** | Before start and to move on | *Only the first piece starts until QA buys it off; then the rest start.* | **First piece covers**: *Per work order*, *Per shift* or *Per machine*. **Pieces in the first piece**: *The first parts started make up the first piece — one per fixture nest. Until QA buys it off, only these may start.* **How the inspector signs the buy-off**: *Check off* or *Signature + password*. If the step's **QA sign-off** asks for a password, the buy-off does too. See [First Piece Inspection](#first-piece-inspection) |
-| **Readings in spec** | To move on | *A part with an out-of-spec reading at this step can't move on until it's dealt with.* The part is held with *"One or more measurements are out of specification"* | — |
+| **Readings in spec** | To move on | *A part with an out-of-spec reading at this step can't move on until it's dealt with.* The reading raises a failure and a disposition; the part waits at the step until QA decides it (see below) | — |
 
 A new step starts with **Work order workable**, **Deviation in date**, **Part
 not quarantined**, **Customer authorisation**, **Part not on hold**, **Machine in
-service**, **Life limit**, **Operator trained**, **Work instruction done** and
-**Qualified operator on record**. **Tool life**, **Repeat visits**, **Quarantine
-hold**, **QA sign-off**, **First piece** and **Readings in spec** are added where
+service**, **Life limit**, **Operator trained**, **Work instruction done**,
+**Qualified operator on record** and **Quarantine hold**. **Tool life**, **Repeat
+visits**, **QA sign-off**, **First piece** and **Readings in spec** are added where
 a step needs them. Any gate can be removed, so a step without **Operator trained** doesn't check
 training at all. Removing one is a deliberate decision, and it shows in the
 change history.
@@ -171,15 +171,33 @@ approved process it goes through a draft revision or a process change request.
 The PCR's changes list each one, e.g. *gate:first_piece on (Per work order, 2
 pieces) → on (Per work order, 2 pieces, buy-off signature + password)*.
 
-!!! warning "A quarantined part keeps moving unless the step has Quarantine hold"
-    A quarantined part can **never ship**; that is unconditional. **Part not
-    quarantined** (on every new step) stops work from *starting* on it. A part
-    that was quarantined after its work started can still move on to the next
-    step, unless the step it is at carries **Quarantine hold**.
+!!! important "A failed or quarantined part waits for its disposition"
+    A quarantined part can **never ship**; that is unconditional. Beyond that,
+    one rule decides whether a nonconformance holds a part: **it waits while its
+    disposition is undecided.** **Part not quarantined** stops work from
+    *starting* on it. **Quarantine hold**, **Readings in spec** and a failed
+    sample stop it *moving on*, all on that same rule. Every step has the first
+    two unless someone removed them.
 
-    So if your procedure is "a held part stops at the next operation", add
-    **Quarantine hold** on the operations where that matters, and be ready to
-    say which ones have it.
+    Completing a held part is refused with *Part held — DISP-… decides it*
+    (*"&lt;part&gt; is quarantined — DISP-… decides what happens to it; it moves
+    on once that's decided."*), or *Part held — needs a disposition* where none
+    has been raised yet. QA is called, and the operator stays on the step. At a
+    step where a lot moves together, the held part holds the **whole lot**
+    there.
+
+    **QA's decision routes it.** *Rework* or *Repair* sends it down the step's
+    **Fail** branch if the step has exactly one, else to the process's Rework step,
+    and splits it off so the rest of the lot moves on. A Fail branch into a
+    holding step such as MRB Review is skipped, since undecided parts wait
+    there. *Use As Is* or *Not a nonconformance* lets it carry on along the
+    pass path: the operator's Home reads *Cleared by QA — complete it*. So a
+    step's Fail branch is followed **after** the decision, never by a failure
+    on its own.
+
+    Removing **Quarantine hold** from a step lets a quarantined part travel on
+    with its lot and be stopped at the next start instead. Do that only where
+    you mean it.
 
 If the role a **Someone in a role** rule names is later deleted, a repeat visit
 is refused (*"This is visit … to …, and its repeat-visit rule names a role that
@@ -205,6 +223,8 @@ Link measurements to collect at this step:
 Whether a reading must be taken is set in the step's [work
 instructions](../../workflows/dwi/authoring.md), not here. A reading outside its
 limits holds the part only when the step carries the **Readings in spec** gate.
+The operator is told as they record it: *"&lt;label&gt; out of spec — QA will decide
+it. Record the rest; the part stays at this step until QA decides."*
 
 ### Training Requirements
 
@@ -444,15 +464,16 @@ standalone step form.
 ## Troubleshooting
 
 ### Parts Stuck at Step
-- Check requirements are met
-- Verify user has permission
-- Check if approval pending
-- Check hold point status
+See [Parts stuck at step](../../troubleshooting/common-issues.md#parts-stuck-at-step):
+an unfinished lot-mate is the most common cause, then the step's **Gates**.
 
-### Requirements Not Enforcing
-- Verify requirement is marked "required"
-- Check process version is active
-- Confirm work order uses this process
+### A check isn't being enforced
+- Check the step carries the gate for it under **Gates** (e.g. **Quarantine
+  hold**, **Readings in spec**)
+- For a reading that must be taken, check the capture is marked required in the
+  step's work instructions
+- Check the work order runs the process version you edited: an approved change
+  applies to work orders on that version, not to ones kept on the old one
 
 ## Next Steps
 

@@ -180,8 +180,8 @@ Issue Flagged → Quarantine → Investigation → Disposition → Resolution
 ```
 
 1. **Quarantine**: the part is held. It can never ship, and work can't start
-   on it at its next step. If its current step was already under way, it can
-   still move on from it **unless that step carries Quarantine hold**
+   on it at its next step. If its current step was already under way, it stays
+   at that step until its disposition is decided
 2. **Investigation**: Quality reviews
 3. **Disposition**: the decision — Use As Is, Rework, Repair, Scrap or Return to
    Supplier

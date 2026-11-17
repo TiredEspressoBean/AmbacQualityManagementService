@@ -245,24 +245,25 @@ For users in multiple tenants:
 
 ## Existing tenants and new permissions
 
-Role presets are applied **when a tenant is created**. When an upgrade adds a
-permission to a preset role, tenants that already exist do not pick it up on
-their own — their groups keep the grants they were created with.
+Role presets are applied when a tenant is created, and **reconciled on every
+upgrade**: each time the application migrates, every tenant's built-in role groups
+are brought up to date with their presets. Nobody has to run anything.
 
-After an upgrade that changes role presets, reconcile them:
+- A permission an upgrade **adds** to a role is granted to that role in every
+  tenant.
+- A permission an upgrade **moves out** of a role is revoked from it.
+- A permission **your administrator added** to a built-in role is kept.
+
+Built-in groups are matched by **name**. A built-in group that's renamed no
+longer matches its preset, so it keeps its permissions but stops receiving preset
+updates. To customise a role and still get updates, add permissions to it rather
+than renaming it, or put the extra permissions in a group of your own.
+
+The same reconciliation can be run by hand, with `--dry-run` to preview it:
 
 ```
 python manage.py sync_tenant_permissions
 ```
-
-It reports what it changed, for example *1 group reconciled, 1 grant added,
-0 revoked*. Until it is run, a role can be missing a permission the release
-notes say it has — which presents as a user not seeing a control they should.
-
-!!! tip "Check this first when a new feature's control is missing"
-    If a release adds an action for a role and that role can't see it, confirm
-    the sync has been run before investigating the feature itself. It is a far
-    more common cause than a broken permission check.
 
 ## Next Steps
 

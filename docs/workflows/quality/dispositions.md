@@ -237,11 +237,21 @@ disposition.** Editing the part's status, or setting it with the bulk status
 action, is refused: *"&lt;part&gt; has an open disposition (&lt;DISP-…&gt;); its
 status changes through that disposition."* The disposition's decision moves it.
 
-**Rework and Repair only route a part that is still held** — quarantined, or
-not yet started. If the operator has already routed the part onward (in
-progress at a step, awaiting QA, already in rework), the disposition is recorded
-as a **paper record** of what was authorized and the part's status is left
-alone. It would otherwise drag a part that has moved on backwards.
+**The decision is what releases a held part, and it routes it.** A part with an
+undecided disposition waits at its step. When you decide:
+
+| Decision | Where the part goes |
+|----------|---------------------|
+| **Rework** or **Repair** | Down the step's **Fail** branch if the step has exactly one, else to the process's Rework step. A Fail branch into a holding step such as MRB Review is skipped. It splits off from its lot, and the rest move on |
+| **Use As Is** or **Not a nonconformance** | On along the pass path. The operator completes the step (their Home reads *Cleared by QA — complete it*) |
+| **Scrap** or **Return to supplier** | Nowhere: the part's journey ends |
+
+**Rework and Repair only route a part that is still held** — quarantined, not yet
+started, or still at the step that raised the disposition. If the part has
+already moved on (in progress at a later step, already in rework), the
+disposition is recorded as a **paper record** of what was authorized and the
+part's status is left alone. It would otherwise drag a part that has moved on
+backwards.
 
 **A less severe decision cannot undo a terminal one.** Scrap dominates
 everything; a Rework, Repair, or Use As Is decision on *another* disposition

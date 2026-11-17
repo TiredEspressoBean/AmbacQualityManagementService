@@ -215,9 +215,11 @@ What you can check before submitting:
    terminating somewhere
 2. Open each step's properties and confirm its measurements, training, sampling
    and documents
-3. Confirm the steps that should block a quarantined part have **Block on
-   quarantine** switched on in the step panel's **Advanced** settings — it is
-   off by default
+3. Check each step's **Gates** (the step's **Advanced** settings): every new step
+   starts with the default set, including **Part not quarantined** and
+   **Quarantine hold**. Add **QA sign-off**, **First piece** or **Readings in
+   spec** where the step needs them, and make sure any gate removed was removed
+   on purpose (see [Steps](steps.md))
 4. Check **BOM allocation** on any step that consumes material, especially after
    a step copy, which does not carry it
 

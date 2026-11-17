@@ -219,7 +219,7 @@ different numbers for the same part type.
 | `view_parttypes` | View part types |
 | `add_parttypes` | Create part types |
 | `change_parttypes` | Edit part types |
-| `change_parttype_sourcing` | Edit **only** preferred supplier, lead time and safety stock |
+| `change_parttype_sourcing` | Edit **only** preferred supplier, lead time, safety stock and cycle-count class |
 | `delete_parttypes` | Archive a part type |
 
 ## Next Steps

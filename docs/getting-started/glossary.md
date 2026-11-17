@@ -210,9 +210,9 @@ A record documenting a non-conformance or quality issue with a part. Requires di
 ### Quarantine
 A part status indicating the part is held for quality review. A quarantined part
 **can never ship**, and work can't start on it at a step carrying the **Part not
-quarantined** gate, which every step has unless removed. A part quarantined
-while its step was under way can still move on from that step unless the step
-carries **Quarantine hold**.
+quarantined** gate. A part quarantined while its step was under way can't move
+on from that step either, under the **Quarantine hold** gate. Every step has
+both unless an engineer removed them.
 
 ## R
 

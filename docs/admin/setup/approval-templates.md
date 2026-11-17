@@ -169,13 +169,13 @@ Two more types have starter templates that nothing uses:
   template is never looked up.
 - `TRAINING_CERT` — nothing raises a training certification approval.
 
-!!! danger "Auto-assign to Group stores the group's name"
+!!! note "Auto-assign to Group stores the group's name"
     **Auto-assign to Group** keeps the group's **name**, and each new request
-    matches it against group names character for character. If that group is
-    later renamed, the template matches nobody and assigns **nobody** —
-    silently, because a search that finds no one is not an error. Pick the group
-    again after renaming one. (Roles added with **Add Role** are held by
-    reference and follow a rename.)
+    matches it against group names character for character. Renaming a group
+    updates the templates that name it, so they keep assigning the same people.
+    (Roles added with **Add Role** are held by reference and follow a rename
+    too.) The form offers only existing groups; a name set through the API or
+    an import that matches no group assigns **nobody**, with no error.
 
     The real names have spaces and no underscores: **QA Manager**, **Production
     Manager**, **Document Controller**, **Tenant Admin**, **Shift Lead**,

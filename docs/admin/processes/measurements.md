@@ -122,15 +122,17 @@ Custom units can be added.
 
 ## Required vs Optional
 
-A measurement definition has no required flag. Two settings elsewhere decide
+A measurement definition's form has no required setting. (The import and the API
+carry a `required` value, but no step or part is held on it.) Two settings elsewhere decide
 what a reading means for the part:
 
 - **Whether a reading must be taken** is set where it is captured — the step's
   [work instructions](../../workflows/dwi/authoring.md). A substep can't be
   completed with a required capture left blank.
-- **Whether an out-of-spec reading holds the part** is the step's **Block on
-  out-of-spec measurement** setting, in the flow editor's **Advanced** settings.
-  Off, an out-of-spec reading is recorded, but it doesn't hold the part.
+- **Whether an out-of-spec reading holds the part** is the step's **Readings in
+  spec** gate, under **Gates** in the step's **Advanced** settings (see
+  [Steps](steps.md)). Without it, an out-of-spec reading is recorded, but it
+  doesn't hold the part.
 
 ## Control plan and drawing reference
 
@@ -166,14 +168,15 @@ these are defaults rather than a restriction.
 
 ## Bulk Import
 
-Import measurements from spreadsheet:
+Import measurements from a spreadsheet through **Data Management** >
+**Measurement Definitions**. Download the import template first: it lists the
+columns, with the required ones marked `*`. A measurement is matched by its
+**label** at its **step** (*Process > Step*), so re-importing a row updates that
+measurement rather than adding a second one.
 
-```csv
-name,nominal,upper_tol,lower_tol,unit,required
-Outer Diameter,25.000,0.010,0.010,mm,true
-Length,100.000,0.050,0.050,mm,true
-Surface Finish,32,,, Ra µin,false
-```
+The template also has a `required` column. It is stored with the definition, but
+it doesn't make a reading mandatory: that is set on the capture in the step's
+work instructions (see [Required vs Optional](#required-vs-optional)).
 
 !!! danger "Both tolerance columns are positive — check before you upload"
     `lower_tol` is a **distance below nominal**, exactly as in the form. A negative

@@ -75,11 +75,16 @@ Quarantined parts display:
     part through the disposition, not through a fresh start. The one exception
     is re-capturing a result that was voided.
 
-    A part quarantined **while its step was already under way** is the one
-    case a step's **Quarantine hold** gate governs: without it (the default),
-    completing that step can still move it on. If your procedure expects such a
-    part to stop dead, add the gate on the steps that matter. A step's gates are
-    authored on the step, so it is Engineering's to set. See
+    A part quarantined **while its step was already under way** can't move on
+    from that step either: completing it is refused with *Part held — DISP-…
+    decides it*, QA Manager and QA Inspector are called (*Held at &lt;step&gt;:
+    &lt;part&gt; — waiting on the part's disposition*), and where the lot moves
+    together, it holds the lot there. Deciding the disposition releases it:
+    rework or repair splits it off down the step's Fail branch (or to the
+    Rework step), and use-as-is lets it carry on along the pass path (the
+    operator's Home reads *Cleared by QA — complete it*, and they complete the
+    step). That's the step's **Quarantine hold** gate, on
+    every step unless Engineering removed it. See
     [Gates](../../admin/processes/steps.md#gates).
 
 ## Quarantine Queue

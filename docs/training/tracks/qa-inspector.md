@@ -328,7 +328,7 @@ disposition is open and the part is quarantined.
    startable for its re-capture) and **Start**. Ken recorded the inspection, so it's
    his: a supervisor signs in to give it to you, with the reason.
 3. Inspect it again: **Pass**, the equipment you used, your sign-off. **Complete
-   step**: *Part held — its disposition is still open.* The part waits for QA.
+   step**: *Part held — DISP-… decides it.* The part waits for QA.
 4. Once the QA manager has closed the disposition ([QA Manager](qa-manager.md),
    module 2), open the step again and **Complete step**: the part moves on.
 

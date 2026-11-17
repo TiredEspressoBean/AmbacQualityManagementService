@@ -255,7 +255,8 @@ The application provides evidence for these assessment objectives:
 # permissions (read-only unless --fix)
 python manage.py check_permissions
 
-# Reconcile preset-backed groups to their preset, adding and revoking
+# Reconcile preset-backed groups to their preset, as every migrate does: adds
+# new preset grants, revokes ones the presets retired, keeps admin additions
 # (--dry-run to preview)
 python manage.py sync_tenant_permissions
 ```

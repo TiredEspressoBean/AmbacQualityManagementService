@@ -394,9 +394,16 @@ Check for:
 - A QA sign-off the step needs, not given yet
 - FPI required but not passed
 - Another part in the lot still has outstanding work — the lot moves together
-- Part in quarantine, **where the step carries Quarantine hold**. Most steps
-  don't, so a part quarantined during your work can still move on. It can't be
-  started at the next step
+- A part that failed or is quarantined: *Part held — DISP-… decides it* (or
+  *needs a disposition*), with why. QA is called. The part stays at the step,
+  holding its lot there. On Home your job reads *Held — DISP-… open*, then
+  *Cleared by QA — complete it* once QA lets it carry on: come back and
+  **Complete** it. A rework decision needs nothing from you: QA's decision
+  routes the part
+- *"&lt;substep&gt; was already recorded as &lt;value&gt;; void it and re-capture to
+  change it."*: a reading already recorded on this visit can't be changed by
+  recording it again. Ask for it to be voided (see [Getting a record
+  corrected](../training/tracks/operator.md#10-getting-a-record-corrected))
 
 ### "Permission denied"
 

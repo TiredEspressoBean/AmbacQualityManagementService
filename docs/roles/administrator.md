@@ -286,8 +286,9 @@ Check:
 2. Verify the group has the permission
 3. For approvals, check the **approval template** assigns them — permission
    alone does not make someone an approver
-4. A permission newly added to the product reaches an existing organisation only
-   after `sync_tenant_permissions` — see [Permissions](../admin/users/permissions.md)
+4. Permissions an upgrade adds to a role reach existing organisations on their
+   own, but not a built-in role that was renamed — see
+   [Permissions](../admin/users/permissions.md#existing-tenants-and-new-permissions)
 
 ### Integration Issues
 

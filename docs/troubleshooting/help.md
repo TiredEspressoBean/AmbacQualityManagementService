@@ -48,9 +48,9 @@ Roughly, problems sort into:
 
 !!! tip "Check permissions before reporting a bug"
     "The button isn't there" is far more often a permission or assignment than
-    a fault. A newly granted permission also needs
-    `sync_tenant_permissions` on an existing tenant — see [Existing tenants and
-    new permissions](../admin/users/permissions.md#existing-tenants-and-new-permissions).
+    a fault. A built-in role that was renamed stops receiving permissions added
+    by upgrades — see [Existing tenants and new
+    permissions](../admin/users/permissions.md#existing-tenants-and-new-permissions).
 
 ## Writing a report worth reading
 
