@@ -96,8 +96,9 @@ def setup_defaults(sender, **kwargs):
         logger.warning(f"Notification template setup skipped: {e}")
 
     # 2. Reconcile preset-backed tenant groups so perms newly added to
-    # presets.py auto-attach to existing tenants (or newly removed perms
-    # revoke). Without this, adding a perm to a preset silently fails to
+    # presets.py auto-attach to existing tenants (and perms retired from a
+    # preset, listed in presets.RETIRED_PRESET_PERMISSIONS, revoke; an admin's
+    # own additions stay). Without this, adding a perm to a preset silently fails to
     # propagate — admin actions 403 with no signal, until a manual
     # sync_permissions() runs. Defensive: if TenantGroup / Permission tables
     # don't exist yet (very first migrate), skip cleanly.

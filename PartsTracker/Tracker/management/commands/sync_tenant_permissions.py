@@ -1,12 +1,11 @@
 """
-Reconcile preset-backed TenantGroups to exactly match their preset.
+Bring preset-backed TenantGroups up to their preset, keeping admins' additions.
 
-Run after releases that add, remove, or relocate permission codenames so
-existing tenant groups converge on the current presets. Adds missing preset
-perms AND revokes perms no longer in the preset — required to enforce changes
-that move a permission out of a role (e.g. scoping ITAR/export-control or
-notification-rule editing). Preset-backed groups are authoritative; custom
-groups (no matching preset) are left untouched. Idempotent.
+Adds missing preset perms, and revokes a perm only when its preset granted it once
+and no longer does (presets.RETIRED_PRESET_PERMISSIONS) — so moving a permission out
+of a role still takes effect. Anything else a tenant admin added stays; custom groups
+(no matching preset name) are left untouched. Runs on every migrate anyway; this is
+the manual run. Idempotent.
 
     python manage.py sync_tenant_permissions
     python manage.py sync_tenant_permissions --dry-run
@@ -18,7 +17,7 @@ from Tracker.groups import GroupSeeder
 
 
 class Command(BaseCommand):
-    help = 'Reconcile preset-backed tenant groups to exactly match their preset (adds + revokes).'
+    help = "Bring preset-backed tenant groups up to their preset (adds; revokes only retired preset perms)."
 
     def add_arguments(self, parser):
         parser.add_argument(

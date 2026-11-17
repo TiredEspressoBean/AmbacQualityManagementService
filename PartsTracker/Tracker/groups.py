@@ -210,34 +210,32 @@ class GroupSeeder:
     @classmethod
     def sync_permissions(cls, dry_run=False):
         """
-        Reconcile preset-backed TenantGroups to *exactly* match their preset.
+        Bring preset-backed TenantGroups up to their preset, keeping admins' additions
+        (user ruling 2026-11-17).
 
-        Walks every preset-backed group and makes its permission set equal to
-        the preset: missing preset perms are added, AND perms not in the preset
-        are removed. This is required for changes that *move* a permission out
-        of a role — e.g. scoping ITAR / export-control or notification-rule
-        editing to a narrower set of roles. An additive-only sync structurally
-        cannot enforce such a split on existing tenants (the perm stays granted
-        where it was removed), so the preset would not be authoritative.
+        For each group whose NAME matches a preset: the preset's permissions it lacks
+        are added; a permission is removed only when the preset granted it once and
+        no longer does (`presets.RETIRED_PRESET_PERMISSIONS`), so moving a permission
+        out of a role still takes effect on existing tenants. Anything else a tenant
+        admin added stays. Permissions no tenant group may hold (Django's admin ones)
+        are always removed — the repair path for groups that got one from an old filter.
 
-        The preset IS the source of truth for preset-backed (`is_custom=False`)
-        groups; manual edits to those groups are intentionally overwritten.
-        **Custom groups (no matching preset) are skipped entirely** — admin-
-        created groups keep their bespoke grants.
+        Custom groups — and a preset group renamed, which no longer matches its
+        preset by name — are skipped: they keep their grants and get no preset updates.
 
-        Run after any release that adds, removes, or relocates permission
-        codenames so existing tenant groups converge on the current presets.
-
+        Runs on every migrate (apps.setup_defaults) and from `sync_tenant_permissions`.
         Returns a dict with grant/revoke counters.
         """
-        from django.contrib.auth.models import Permission
         from Tracker.models import TenantGroup
-        from Tracker.presets import GROUP_PRESETS, grantable_permissions
+        from Tracker.presets import (
+            GROUP_PRESETS, RETIRED_PRESET_PERMISSIONS, grantable_permissions,
+        )
 
         preset_by_name = {preset['name']: preset for preset in GROUP_PRESETS.values()}
-        # Grantable only — the reconciler is what REVOKES, so this is also the repair
-        # path for groups that already hold an admin.* perm from the old bare filter.
         all_perm_ids = set(grantable_permissions().values_list('id', flat=True))
+        retired_ids = {
+            name: set(grantable_permissions(codenames).values_list('id', flat=True))
+            for name, codenames in RETIRED_PRESET_PERMISSIONS.items()}
 
         results = {
             'groups_inspected': 0,
@@ -264,7 +262,10 @@ class GroupSeeder:
 
             existing_ids = set(group.permissions.values_list('id', flat=True))
             missing_ids = desired_ids - existing_ids
-            extra_ids = existing_ids - desired_ids
+            # Revoked: what this preset retired (and doesn't grant again), and anything
+            # no tenant group may hold. An admin's own additions stay.
+            retired = retired_ids.get(group.name, set()) - desired_ids
+            extra_ids = (existing_ids & retired) | (existing_ids - all_perm_ids)
             if not missing_ids and not extra_ids:
                 continue
 

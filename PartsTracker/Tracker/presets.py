@@ -712,6 +712,13 @@ WORK_ORDER_HOLD_CLEAR = ['clear_workorder_hold']
 # production, leads and engineering — everyone who could release before, but operators.
 WORK_ORDER_RELEASE = ['release_workorder']
 
+# Permissions a preset GRANTED ONCE and no longer does, by preset group name. The sync at
+# migrate (groups.GroupSeeder.sync_permissions) revokes a preset group's permission only
+# when it is here — a permission moved out of a role still leaves it on existing
+# tenants — and keeps anything else a tenant admin added (user ruling 2026-11-17). When
+# a permission leaves a preset, add it here in the same change.
+RETIRED_PRESET_PERMISSIONS: dict[str, list[str]] = {}
+
 GROUP_PRESETS = {
     # -------------------------------------------------------------------------
     # SYSTEM ADMIN - Platform admin (your business - SaaS provider)
