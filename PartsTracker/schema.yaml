@@ -92306,6 +92306,12 @@ components:
           type: integer
         qty_mine:
           type: integer
+        mine_held_dispositions:
+          type: array
+          items:
+            type: string
+        qty_mine_cleared:
+          type: integer
         earliest_entered_at:
           type: string
           format: date-time
@@ -92344,9 +92350,11 @@ components:
       - is_held
       - machine
       - machine_name
+      - mine_held_dispositions
       - part_type_name
       - priority
       - qty_mine
+      - qty_mine_cleared
       - qty_ready
       - qty_startable
       - readiness

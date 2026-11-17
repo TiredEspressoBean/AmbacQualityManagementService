@@ -924,6 +924,26 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             "split_parts_blocked": result.split_parts_blocked,
         })
 
+    @staticmethod
+    def _call_qa_for_a_held_part(part):
+        """A quarantined part held at its step when the operator tried to complete it:
+        call QA as a quarantined start does (the andon's part_quarantined route, once an
+        hour per part). Never raises — the operator's answer doesn't depend on it."""
+        from Tracker.models import PartsStatus
+        if part.part_status != PartsStatus.QUARANTINED:
+            return
+        try:
+            from Tracker.services.mes.andon import call_for
+            from Tracker.services.mes.gates import Blocker, GateCode, quarantined_text
+            call_for([Blocker(GateCode.PART_QUARANTINED,
+                              quarantined_text(part, "it moves on once that's decided.",
+                                               "it needs a disposition before it moves on."),
+                              part=part, step=part.step, work_order=part.work_order)],
+                     part.tenant_id)
+        except Exception:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).exception("held part: could not call QA for %s", part.pk)
+
     @extend_schema(
         request=None,
         responses={200: inline_serializer(
@@ -973,6 +993,8 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             operator=request.user,
         )
         reason = result.reason
+        if result.status == "blocked" and str(part.pk) in (result.blockers_by_part or {}):
+            self._call_qa_for_a_held_part(part)
         waiting_on = [pid for pid in (result.blockers_by_part or {}) if pid != str(part.pk)]
         if (result.status == "blocked" and not reason and waiting_on
                 and str(part.pk) not in (result.blockers_by_part or {})):

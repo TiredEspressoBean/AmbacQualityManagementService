@@ -253,14 +253,8 @@ def floor_blockers(ctx: StartContext, *, only: set | None = None) -> list[Blocke
         from Tracker.models import PartsStatus
         from Tracker.services.qms.report_supersede import awaiting_recapture
         if part.part_status == PartsStatus.QUARANTINED and not awaiting_recapture(part):
-            from Tracker.models import QuarantineDisposition
-            disp = (QuarantineDisposition.objects  # tenant-safe: FK-correlated to a scoped part
-                    .filter(part=part, archived=False).exclude(current_state='CLOSED')
-                    .order_by('-created_at').first())
-            out.append(Blocker(GateCode.PART_QUARANTINED, (
-                f"{part.ERP_id} is quarantined — "
-                + (f"{disp.disposition_number} decides what happens to it; work it from there."
-                   if disp else "it needs a disposition before any work starts."))))
+            out.append(Blocker(GateCode.PART_QUARANTINED, quarantined_text(
+                part, "work it from there.", "it needs a disposition before any work starts.")))
     if part is not None and want(GateCode.PART_ON_HOLD):
         from Tracker.models import PartsStatus
         # REWORK_NEEDED is work to do, not a hold: it stays startable.
@@ -296,6 +290,17 @@ def floor_blockers(ctx: StartContext, *, only: set | None = None) -> list[Blocke
     # What each holds back, for the andon's call.
     from dataclasses import replace
     return [replace(b, part=part, step=step, work_order=wo) for b in out]
+
+
+def quarantined_text(part, then: str, none: str) -> str:
+    """"<part> is quarantined — <DISP> decides what happens to it; <then>" — naming the
+    disposition that decides it, as the start refusal and the release hold both say."""
+    from Tracker.models import QuarantineDisposition
+    disp = (QuarantineDisposition.objects  # tenant-safe: FK-correlated to a scoped part
+            .filter(part=part, archived=False).exclude(current_state='CLOSED')
+            .order_by('-created_at').first())
+    return (f"{part.ERP_id} is quarantined — "
+            + (f"{disp.disposition_number} decides what happens to it; {then}" if disp else none))
 
 
 def machine_refusal(machine) -> str | None:
@@ -580,7 +585,9 @@ def release_blockers(step: 'Steps', step_execution, work_order) -> list[Blocker]
 
     # Quarantine (Parts only — cores carry no quarantine state).
     if part is not None and part.part_status == PartsStatus.QUARANTINED and step.block_on_quarantine:
-        out.append(Blocker(GateCode.QUARANTINE_HOLD, "Part is quarantined and step blocks on quarantine"))
+        out.append(Blocker(GateCode.QUARANTINE_HOLD, quarantined_text(
+            part, "it moves on once that's decided.",
+            "it needs a disposition before it moves on.")))
 
     # QA sign-off. A first-piece release covers its own context only.
     if step.requires_qa_signoff:

@@ -42085,6 +42085,8 @@ export interface components {
             expected_completion: string | null;
             qty_ready: number;
             qty_mine: number;
+            mine_held_dispositions: string[];
+            qty_mine_cleared: number;
             /** Format: date-time */
             earliest_entered_at: string | null;
             /** Format: date-time */

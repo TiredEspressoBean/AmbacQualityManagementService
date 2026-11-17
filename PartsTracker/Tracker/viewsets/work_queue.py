@@ -96,6 +96,47 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 m["machine_name"] = fallback.name if fallback is not None else None
         return meta
 
+    def _apply_my_quarantine(self, rows) -> None:
+        """On my own in-progress pieces: which are held by quarantine (and the
+        dispositions deciding them), and which QA has cleared since I started them —
+        use as is, or not a nonconformance — so I come back and complete them (user
+        ruling 2026-11-17). Read from the parts and their dispositions; nothing is sent."""
+        from Tracker.models import PartsStatus, QuarantineDisposition
+        for row in rows:
+            row["mine_held_dispositions"] = []
+            row["qty_mine_cleared"] = 0
+        mine = [row for row in rows if row["qty_mine"]]
+        if not mine:
+            return
+        me = getattr(self.request.user, "pk", None)
+        visits = list(StepExecution.unscoped.filter(  # tenant-safe: explicit tenant filter
+            tenant=self.tenant, status="IN_PROGRESS", assigned_to_id=me, exited_at__isnull=True,
+            part__isnull=False, part__work_order_id__in={r["work_order"] for r in mine},
+            step_id__in={r["step"] for r in mine},
+        ).values("part_id", "part__part_status", "part__work_order_id", "step_id", "started_at"))
+        if not visits:
+            return
+        disps = {}
+        for d in (QuarantineDisposition.unscoped  # tenant-safe: explicit tenant filter
+                  .filter(tenant=self.tenant, archived=False,
+                          part_id__in={v["part_id"] for v in visits})
+                  .values("part_id", "disposition_number", "current_state", "disposition_type",
+                          "decision_authorized_at", "created_at").order_by("created_at")):
+            disps.setdefault(d["part_id"], []).append(d)
+        by_key = {(r["work_order"], r["step"]): r for r in mine}
+        for v in visits:
+            row = by_key.get((v["part__work_order_id"], v["step_id"]))
+            if row is None:
+                continue
+            own = disps.get(v["part_id"], [])
+            if v["part__part_status"] == PartsStatus.QUARANTINED:
+                row["mine_held_dispositions"] += [d["disposition_number"] for d in own
+                                                  if d["current_state"] != "CLOSED"][-1:]
+            elif any(d["disposition_type"] in ("USE_AS_IS", "NOT_NONCONFORMANCE")
+                     and d["decision_authorized_at"] and v["started_at"]
+                     and d["decision_authorized_at"] >= v["started_at"] for d in own):
+                row["qty_mine_cleared"] += 1
+
     def _apply_first_piece(self, rows) -> None:
         """At a first-piece step whose first piece isn't bought off, only its N pieces
         may start: the row reports what can start (`qty_startable`) instead of promising
@@ -378,6 +419,7 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             }
             for r in ranked
         ]
+        self._apply_my_quarantine(rows)
         self._apply_first_piece(rows)
         self._apply_blockers(rows)
 

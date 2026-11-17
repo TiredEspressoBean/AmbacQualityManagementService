@@ -570,6 +570,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                         <> · <b className="text-foreground">{heroRow.qty_startable}</b> can start until QA buys off the first piece</>
                                     )}
                                 </div>
+                                <MyQuarantineBadges row={heroRow} className="mt-2" />
                             </div>
                             <div className="mt-4 flex gap-2">
                                 <Button size="lg" className="h-16 flex-1 text-lg"
@@ -761,6 +762,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                     {row.scheduled_start ? ` · planned ${new Date(row.scheduled_start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
                                     {row.earliest_entered_at ? ` · waiting ${formatDistanceToNow(new Date(row.earliest_entered_at))}` : ""}
                                 </div>
+                                <MyQuarantineBadges row={row} className="mt-1" />
                             </button>
                         ))}
                     </div>
@@ -970,3 +972,27 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 }
 
 export default OperatorHomePage;
+
+
+/** On my own pieces in progress: held by quarantine (the disposition deciding it), or
+ *  cleared by QA since I started — come back and complete it (user ruling 2026-11-17).
+ *  Read from the queue row; nothing is sent. */
+function MyQuarantineBadges({ row, className = "" }: { row: WorkQueueRow; className?: string }) {
+    const held = row.mine_held_dispositions ?? [];
+    const cleared = row.qty_mine_cleared ?? 0;
+    if (!held.length && !cleared) return null;
+    return (
+        <div className={`flex flex-wrap gap-1.5 ${className}`}>
+            {held.length > 0 && (
+                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
+                    {held.length === 1 ? "Held" : `${held.length} held`} — {held.join(", ")} open
+                </span>
+            )}
+            {cleared > 0 && (
+                <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-medium text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200">
+                    {cleared === 1 ? "Cleared by QA" : `${cleared} cleared by QA`} — complete {cleared === 1 ? "it" : "them"}
+                </span>
+            )}
+        </div>
+    );
+}

@@ -12899,6 +12899,8 @@ export type WorkQueueRow = {
   expected_completion: string | null;
   qty_ready: number;
   qty_mine: number;
+  mine_held_dispositions: Array<string>;
+  qty_mine_cleared: number;
   earliest_entered_at: string | null;
   scheduled_start: string | null;
   work_center: string | null;
@@ -29424,6 +29426,8 @@ const WorkQueueRow = z.object({
   expected_completion: z.string().nullable(),
   qty_ready: z.number().int(),
   qty_mine: z.number().int(),
+  mine_held_dispositions: z.array(z.string()),
+  qty_mine_cleared: z.number().int(),
   earliest_entered_at: z.string().datetime({ offset: true }).nullable(),
   scheduled_start: z.string().datetime({ offset: true }).nullable(),
   work_center: z.string().uuid().nullable(),

@@ -508,3 +508,63 @@ class StartGatesS4Tests(TenantTestCase):
             record_pick(self.tenant_a, self.wo.id, self.step.id, self.pt.id, 1,
                         [{'lot_id': str(lot.id), 'lot_number': lot.lot_number, 'qty': 1}],
                         self.user_a, kind='PART_TYPE')
+
+
+class QuarantinedInProgressTests(TenantTestCase):
+    """User rulings 2026-11-17: a part quarantined while in progress is held at its step
+    (the floor's quarantine hold). The hold names the disposition and calls QA; the
+    operator's Up next shows it held, then cleared once QA decides use as is."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import QuarantineDisposition
+        t = self.tenant_a
+        self.pt = PartTypes.objects.create(tenant=t, name="Housing")
+        self.step = Steps.objects.create(tenant=t, name="Mill", part_type=self.pt)
+        self.wo = WorkOrder.objects.create(tenant=t, ERP_id="WO-QH", quantity=1,
+                                           workorder_status="IN_PROGRESS")
+        self.part = Parts.objects.create(tenant=t, ERP_id="QH-1", part_type=self.pt,
+                                         work_order=self.wo, step=self.step,
+                                         part_status="QUARANTINED")
+        self.visit = StepExecution.objects.create(
+            tenant=t, part=self.part, step=self.step, visit_number=1, status="IN_PROGRESS",
+            assigned_to=self.user_a, started_at=timezone.now() - timedelta(minutes=30))
+        self.disp = QuarantineDisposition.objects.create(tenant=t, part=self.part,
+                                                         description="Torque out of spec")
+        self.authenticate_superuser(self.tenant_a)
+
+    def _queue_row(self):
+        rows = self.client.get("/api/WorkQueue/").json()
+        rows = rows["results"] if isinstance(rows, dict) else rows
+        return next(r for r in rows if r["work_order_erp_id"] == "WO-QH")
+
+    def test_the_hold_names_the_disposition_and_calls_qa(self):
+        from unittest import mock
+        from Tracker.services.mes.gates import release_blockers
+        self.assertIn('quarantine_hold', set(self.step.requirements.values_list('gate', flat=True)))
+        [hold] = [b for b in release_blockers(self.step, self.visit, self.wo)
+                  if b.code == 'quarantine_hold']
+        self.assertEqual(hold.message, f"QH-1 is quarantined — {self.disp.disposition_number} "
+                                       "decides what happens to it; it moves on once that's decided.")
+        with mock.patch('Tracker.services.mes.andon.notify_start_refused.apply_async') as send:
+            r = self.client.post(f"/api/Parts/{self.part.id}/complete_step/", {}, format="json")
+        self.assertEqual(r.json()["status"], "blocked", r.content)
+        _tenant, calls, _hour = send.call_args.kwargs['args']
+        self.assertEqual([c['gate'] for c in calls], ['part_quarantined'])
+
+    def test_up_next_shows_it_held_then_cleared(self):
+        from Tracker.models import QuarantineDisposition
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, [
+            'view_workorder', 'view_steps', 'full_tenant_access'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        row = self._queue_row()
+        self.assertEqual(row["mine_held_dispositions"], [self.disp.disposition_number])
+        self.assertEqual(row["qty_mine_cleared"], 0)
+        # QA decides use as is: the part is back in progress, the operator's to complete.
+        QuarantineDisposition.objects.filter(pk=self.disp.pk).update(
+            disposition_type="USE_AS_IS", current_state="CLOSED",
+            decision_authorized_at=timezone.now())
+        Parts.objects.filter(pk=self.part.pk).update(part_status="IN_PROGRESS")
+        row = self._queue_row()
+        self.assertEqual(row["mine_held_dispositions"], [])
+        self.assertEqual(row["qty_mine_cleared"], 1)
