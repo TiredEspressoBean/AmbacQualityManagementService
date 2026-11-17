@@ -377,7 +377,6 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
     // PREVIEW state — drives the dimmed tiles so the layout is legible.
     const [flags] = useState<MyFlag[]>(MOCK.myFlags);
-    const [blockOpen, setBlockOpen] = useState(false);
     const [problemOpen, setProblemOpen] = useState(false);
     const [problemBranch, setProblemBranch] = useState<"machine" | "job" | null>(null);
     // Combobox label — either "All my stations", a specific station, or a
@@ -391,15 +390,6 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
     const hour = new Date().getHours();
     const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-
-    /** The deviation flow — Preview. The dialog + toast are wired; actually
-     *  writing a blocker needs the blocker aggregate that doesn't exist yet. */
-    const blockUpNext = (reason: (typeof BLOCK_REASONS)[number]) => {
-        setBlockOpen(false);
-        toast.info(`Would flag ${heroRow?.step_name ?? "this step"} — ${reason.owner} notified.`, {
-            description: "Preview — the blocker aggregate isn't wired yet.",
-        });
-    };
 
     return (
         <div className="mx-auto max-w-5xl space-y-3 p-4">
@@ -584,12 +574,11 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                     <BookOpen className="mr-2 h-5 w-5" /> Instructions
                                 </Button>
                             </div>
-                            <button
-                                className="mt-2 self-start text-sm text-muted-foreground underline-offset-4 hover:underline"
-                                onClick={() => setBlockOpen(true)}
-                            >
-                                Can't run this?
-                            </button>
+                            {/* Preview by decision (10/21): dimmed and unclickable like
+                                "Call my lead" — it opened a reason picker that only toasted. */}
+                            <PreviewLock className="mt-2 self-start pr-20">
+                                <span className="text-sm text-muted-foreground">Can't run this?</span>
+                            </PreviewLock>
                         </>
                     ) : (
                         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
@@ -893,27 +882,6 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 text-sm">{mustAckNotes.map(noteRow)}</div>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={blockOpen} onOpenChange={setBlockOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Can't run {heroRow?.step_name ?? "this step"}?</DialogTitle>
-                        <DialogDescription>
-                            Pick why. It routes straight to the owner, leaves your queue, and your next job appears immediately.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid grid-cols-1 gap-2">
-                        {BLOCK_REASONS.map((r) => (
-                            <Button key={r.key} size="lg" variant="outline" className="h-14 text-base"
-                                onClick={() => blockUpNext(r)}>
-                                <XCircle className="mr-3 h-5 w-5 shrink-0 text-muted-foreground" />
-                                <span className="flex-1 text-left">{r.label}</span>
-                                <span className="text-xs font-normal text-muted-foreground">→ {r.owner}</span>
-                            </Button>
-                        ))}
-                    </div>
                 </DialogContent>
             </Dialog>
 

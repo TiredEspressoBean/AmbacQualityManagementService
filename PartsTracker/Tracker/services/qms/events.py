@@ -22,11 +22,12 @@ class NCROpenedPayload:
     work_order_number: str
     step_id: str | None
     step_name: str
-    severity: str
+    severity: str             # MINOR / MAJOR / CRITICAL — the worst defect recorded
     description: str
     opened_by_id: int | None  # User PK is an int (AbstractUser default)
     opened_by_name: str
     opened_at: datetime
+    status: str = 'FAIL'      # the report's PASS / FAIL (what `severity` used to carry)
 
     @classmethod
     def sample(cls) -> 'NCROpenedPayload':
@@ -39,7 +40,7 @@ class NCROpenedPayload:
             work_order_number='WO-2026-0007',
             step_id='00000000-0000-0000-0000-000000000003',
             step_name='Final Inspection',
-            severity='major',
+            severity='MAJOR',
             description='Dimensional out of tolerance on critical feature.',
             opened_by_id=1,
             opened_by_name='Jane Inspector',

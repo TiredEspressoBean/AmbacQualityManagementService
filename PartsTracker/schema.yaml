@@ -23452,6 +23452,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/PartsRejoinToLotResponse'
           description: ''
+  /api/Parts/{id}/release_reservation/:
+    post:
+      operationId: api_Parts_release_reservation_create
+      description: Free a harvested part reserved to its core into general stock —
+        the customer's arrangement changed after receipt.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/Parts/{id}/resolve_decision/:
     post:
       operationId: api_Parts_resolve_decision_create

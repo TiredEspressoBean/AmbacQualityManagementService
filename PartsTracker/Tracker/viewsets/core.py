@@ -1347,6 +1347,9 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
         return queryset
 
     def perform_create(self, serializer):
+        from Tracker.services.export_control import ExportControlService
+        ExportControlService.assert_can_classify(
+            self.request.user, serializer.validated_data.get('classification'))
         doc = serializer.save(
             uploaded_by=self.request.user
         )  # Note: Embedding is automatically triggered by the post_save signal in signals.py
@@ -1387,9 +1390,11 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
 
         # Choosing the level at upload is anyone's; changing it afterwards is classify_documents.
         new_classification = serializer.validated_data.get('classification', instance.classification)
-        if (new_classification != instance.classification
-                and not self.request.user.has_tenant_perm('classify_documents')):
-            raise PermissionDenied("Changing a document's classification needs the classify documents permission.")
+        if new_classification != instance.classification:
+            if not self.request.user.has_tenant_perm('classify_documents'):
+                raise PermissionDenied("Changing a document's classification needs the classify documents permission.")
+            from Tracker.services.export_control import ExportControlService
+            ExportControlService.assert_can_classify(self.request.user, new_classification)
 
         doc = serializer.save()
 

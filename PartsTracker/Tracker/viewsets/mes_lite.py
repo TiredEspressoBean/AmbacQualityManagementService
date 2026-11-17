@@ -283,14 +283,32 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
     # split_from_lot / rejoin_to_lot likewise MODIFY a part's cohort membership, so they
     # are gated by change_parts (below) rather than the POST→add_parts default — splitting
     # or rejoining a part is not "creating" one. CRUD-exempt so add_parts doesn't also apply.
-    crud_exempt_actions = {'resolve_decision', 'split_from_lot', 'rejoin_to_lot', 'move'}
+    crud_exempt_actions = {'resolve_decision', 'split_from_lot', 'rejoin_to_lot', 'move',
+                           'release_reservation'}
     action_permissions = {
         'split_from_lot': ['change_parts'],
         'rejoin_to_lot': ['change_parts'],
         'move': ['change_parts'],
         # The part's history spans the audit log of every record about it.
         'history': ['view_logentry'],
+        # Whoever may reserve a harvested part (accepting it to inventory) may release
+        # it (doc audit 2026-11-17: the refusal said "release the reservation first"
+        # and nothing could).
+        'release_reservation': ['accept_component'],
     }
+
+    @extend_schema(request=None, responses={200: dict},
+                   description="Free a harvested part reserved to its core into general stock "
+                               "— the customer's arrangement changed after receipt.")
+    @action(detail=True, methods=['post'], url_path='release_reservation')
+    def release_reservation(self, request, pk=None):
+        from Tracker.services.reman.reservation import is_reserved, release_reservation
+        part = self.get_object()
+        if not is_reserved(part):
+            return Response({'detail': f"{part.ERP_id} isn't reserved."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        release_reservation(part, request.user)
+        return Response({'id': str(part.id), 'reserved_for_core': None})
 
     @extend_schema(request=MovePartsRequestSerializer, responses=MovePartsResultSerializer,
                    description="Move serialised units to a location, recorded. All or nothing.")

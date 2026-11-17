@@ -4,6 +4,7 @@ import { useRetrieveQuarantineDispositions } from "@/hooks/useRetrieveQuarantine
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PartBlockersCard } from "@/components/parts/PartBlockersCard";
+import { PartReservationNotice } from "@/components/parts/PartReservationNotice";
 import { LifeTrackingSection } from "@/components/life-limits/LifeTrackingSection";
 
 // Compact list of QRs + Dispositions filtered by part id, rendered under the
@@ -12,9 +13,16 @@ import { LifeTrackingSection } from "@/components/life-limits/LifeTrackingSectio
 // straight to the failing report or the pending disposition without hunting.
 // The whole section stays hidden when the part has neither — clean parts stay
 // clean.
-export function PartLinkedRecordsSection({ modelData }: { modelData: { id?: string | number } }) {
+export function PartLinkedRecordsSection({ modelData }: {
+    modelData: { id?: string | number; reserved_for_core_number?: string | null };
+}) {
     return (
         <>
+            {/* Reserved to its core (the customer's), and releasing it when that changed. */}
+            {modelData?.id != null && (
+                <PartReservationNotice partId={String(modelData.id)}
+                    coreNumber={modelData.reserved_for_core_number} />
+            )}
             {/* What holds the part at its step, and a way past the blocks that allow one. */}
             {modelData?.id != null && <PartBlockersCard partId={String(modelData.id)} />}
             {/* Its life limits: reset or extend one that stops its work starting. */}

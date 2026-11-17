@@ -195,6 +195,18 @@ def _notify_step_failure(report) -> None:
     emit('quality.step_failure', tenant=report.tenant, payload=payload)
 
 
+_SEVERITY_RANK = {'MINOR': 1, 'MAJOR': 2, 'CRITICAL': 3}
+
+
+def report_severity(report) -> str:
+    """An NCR's severity: the worst defect recorded on the report, CRITICAL > MAJOR >
+    MINOR. A failure with no defect recorded (an out-of-spec reading) is MAJOR — the
+    disposition's own default. Not the report's PASS/FAIL status, which the ncr.opened
+    payload used to carry as its severity (doc audit 2026-11-17)."""
+    found = list(report.defects.values_list('severity', flat=True)) if report.pk else []
+    return max(found, key=lambda s: _SEVERITY_RANK.get(s, 0)) if found else 'MAJOR'
+
+
 def _emit_ncr_opened(report) -> None:
     """Fire `ncr.opened` on the new unified notification path.
 
@@ -219,7 +231,8 @@ def _emit_ncr_opened(report) -> None:
         work_order_number=work_order.ERP_id if work_order else '',
         step_id=str(step.id) if step else None,
         step_name=step.name if step else '',
-        severity=report.status,
+        severity=report_severity(report),
+        status=report.status,
         description=report.description or '',
         opened_by_id=opener.pk if opener else None,
         opened_by_name=(opener.get_full_name() or opener.username) if opener else '',

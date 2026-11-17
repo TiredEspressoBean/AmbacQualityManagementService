@@ -9371,6 +9371,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Parts/{id}/release_reservation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Free a harvested part reserved to its core into general stock — the customer's arrangement changed after receipt. */
+        post: operations["api_Parts_release_reservation_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Parts/{id}/resolve_decision/": {
         parameters: {
             query?: never;
@@ -59739,6 +59756,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartsRejoinToLotResponse"];
+                };
+            };
+        };
+    };
+    api_Parts_release_reservation_create: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

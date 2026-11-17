@@ -49,8 +49,8 @@ def assert_work_order_allowed(part, work_order) -> None:
         'work_order': (
             f"Part {part.ERP_id} was harvested from core {core.core_number}, which is "
             f"being repaired and returned to its customer. Its components are that "
-            f"customer's property and cannot be built into other work. Release the "
-            f"reservation first if the arrangement has changed."
+            f"customer's property and cannot be built into other work. If the arrangement "
+            f"has changed, release it first: Release reservation on the part's page."
         )
     })
 

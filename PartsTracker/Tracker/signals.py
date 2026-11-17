@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from django.db import transaction
-from django.db.models.signals import m2m_changed, post_delete, post_save
+from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 
@@ -284,10 +284,23 @@ def trigger_approval_for_critical_capa(sender, instance, created, **kwargs):
     auto_request_capa_approval(instance)
 
 
+@receiver(pre_save, sender=CapaTasks)
+def remember_task_assignee(sender, instance, **kwargs):
+    """The assignee as stored before this save, for the post_save below — reassignment
+    is told by comparing, the way CAPA.save does for the CAPA's own assignee. It read
+    `_changed_fields`, which nothing sets, so only creation ever notified (doc audit
+    2026-11-17)."""
+    instance._old_assigned_to_id = (
+        sender._base_manager.filter(pk=instance.pk).values_list('assigned_to_id', flat=True).first()
+        if instance.pk and not instance._state.adding else None)
+
+
 @receiver(post_save, sender=CapaTasks)
 def notify_task_assignment(sender, instance, created, **kwargs):
     """Notify assignee when task is created or reassigned"""
-    if created or (instance.assigned_to and 'assigned_to' in getattr(instance, '_changed_fields', [])):
+    reassigned = (not created and instance.assigned_to_id
+                  and instance.assigned_to_id != getattr(instance, '_old_assigned_to_id', None))
+    if created or reassigned:
         from .tasks import send_capa_task_assignment_notification
         task_id = instance.id
         transaction.on_commit(lambda: send_capa_task_assignment_notification.delay(task_id))

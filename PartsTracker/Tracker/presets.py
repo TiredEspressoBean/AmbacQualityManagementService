@@ -1219,8 +1219,8 @@ GROUP_PRESETS = {
     # CAUTION, corrected 2026-10-13: the parenthetical used to imply this group
     # also controls export-controlled access. It does NOT. ITAR/EAR is not a
     # permission and cannot be granted or withheld here — `can_access_itar_data`
-    # (services/export_control.py:70-97) reads the USER's own `us_person` /
-    # `itar_authorized` flags. An auditor flagged `us_person=True` sees
+    # (services/export_control.py) reads the USER's own `us_person` flag. An auditor
+    # flagged `us_person=True` sees
     # ITAR-controlled data regardless of being in this group. If an external
     # auditor must not see it, that is set on their user record, not by their
     # role. (`docs/roles/auditor.md` repeated this conflation from here.)

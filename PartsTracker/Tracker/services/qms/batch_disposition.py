@@ -93,6 +93,7 @@ def _emit_batch_ncr_opened(report, batch, *, held_count: int, load_size: int) ->
     work_order = batch.work_order
     step = batch.step
     opener = report.primary_detector
+    from Tracker.services.qms.quality_report import report_severity
     payload = NCROpenedPayload(
         id=str(report.id),
         tenant_id=str(report.tenant_id) if report.tenant_id else "",
@@ -102,7 +103,8 @@ def _emit_batch_ncr_opened(report, batch, *, held_count: int, load_size: int) ->
         work_order_number=work_order.ERP_id if work_order else "",
         step_id=str(step.id) if step else None,
         step_name=step.name if step else "",
-        severity=report.status,
+        severity=report_severity(report),
+        status=report.status,
         description=(
             report.description
             or f"Batch cycle failure - {held_count} of {load_size} parts held"

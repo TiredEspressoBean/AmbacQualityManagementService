@@ -49192,6 +49192,26 @@ Body: { &quot;notes&quot;: &quot;&lt;optional&gt;&quot; }`,
   },
   {
     method: "post",
+    path: "/api/Parts/:id/release_reservation/",
+    alias: "api_Parts_release_reservation_create",
+    description: `Free a harvested part reserved to its core into general stock — the customer&#x27;s arrangement changed after receipt.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
     path: "/api/Parts/:id/resolve_decision/",
     alias: "api_Parts_resolve_decision_create",
     description: `4a — manager/lead resolves a MANUAL decision-point step by choosing
@@ -51964,7 +51984,10 @@ Usage:
       },
     ],
     response: ProcessWithSteps,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/Processes_with_steps/:id/submit_for_approval/",
@@ -51984,10 +52007,7 @@ Usage:
       },
     ],
     response: SubmitProcessForApprovalResponse,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Processes_with_steps/available/",
@@ -57195,7 +57215,10 @@ Response:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutionMeasurements/",
@@ -57245,10 +57268,7 @@ Response:
       },
     ],
     response: PaginatedStepExecutionMeasurementList,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepExecutionMeasurements/",
@@ -62956,7 +62976,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: ImportStatusResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingRecords/import-template/:template_format/",
@@ -62971,10 +62994,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/TrainingRecords/import/",

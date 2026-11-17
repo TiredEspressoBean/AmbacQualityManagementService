@@ -88,13 +88,11 @@ class ExportControlService:
             logger.warning(f"User {user.id} missing us_person field - denying ITAR access")
             return False, ExportControlDenialReason.ITAR_NOT_US_PERSON
 
+        # The user's us_person flag is the rule (ITAR is vestigial; keyed to user flags).
+        # An `itar_authorized` check stood here for a field that doesn't exist — removed
+        # (doc audit 2026-11-17), no new field.
         if user.us_person:
             return True, None
-
-        # Check for explicit ITAR authorization (e.g., TAA or license)
-        if getattr(user, 'itar_authorized', False):
-            return True, None
-
         return False, ExportControlDenialReason.ITAR_NOT_US_PERSON
 
     @classmethod
@@ -131,6 +129,19 @@ class ExportControlService:
         # For controlled ECCNs without explicit authorization, deny
         # In practice, you'd check against specific license conditions
         return False, ExportControlDenialReason.EAR_NO_LICENSE
+
+    @classmethod
+    def assert_can_classify(cls, user, level) -> None:
+        """Refuse a classification `user` couldn't then view — at upload and on change,
+        one rule (doc audit 2026-11-17: an uploader picked Secret and locked themselves,
+        and anyone without view_secret_documents, out of their own document).
+
+        Raises:
+            PermissionDenied: `level` is above what the user can view.
+        """
+        from rest_framework.exceptions import PermissionDenied
+        if level and level not in cls.get_accessible_classification_levels(user):
+            raise PermissionDenied("You can't classify a document above what you can view.")
 
     @classmethod
     def get_accessible_classification_levels(cls, user: 'User') -> list[str]:
