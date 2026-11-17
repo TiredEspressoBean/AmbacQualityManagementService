@@ -270,7 +270,6 @@ function ReassignDialog({ item, mode, meId, onClose, onTaken }: {
             {
                 params: { id: executionId },
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
-                suppressErrorToast: true,
             },
         ),
         // The dialog's own toast says why; no second, generic one.

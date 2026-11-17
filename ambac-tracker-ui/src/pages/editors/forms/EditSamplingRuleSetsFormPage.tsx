@@ -170,8 +170,8 @@ export default function SamplingRuleSetsFormPage() {
                 else form.reset()
             }
         } catch (error) {
+            // The mutation layer's toast says why; no generic second one.
             console.error("Form submission error", error)
-            toast.error("Failed to submit the form. Please try again.")
         }
     }
 

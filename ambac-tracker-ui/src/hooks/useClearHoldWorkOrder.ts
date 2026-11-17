@@ -24,10 +24,8 @@ export const useClearHoldWorkOrder = () => {
             }, {
                 params: { id: vars.id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
-                // Every caller says why in its own toast ("Couldn't clear the hold");
-                // the 403 interceptor's and the global handler's doubled it (walk 2026-11-16).
-                suppressErrorToast: true,
             }),
+        // Every caller says why in its own toast ("Couldn't clear the hold").
         meta: { suppressGlobalError: true },
         onSuccess: (_data, vars) => {
             queryClient.invalidateQueries({

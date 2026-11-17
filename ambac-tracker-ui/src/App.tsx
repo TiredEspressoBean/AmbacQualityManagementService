@@ -74,9 +74,13 @@ export default function App() {
                                 router.navigate({ to: '/forbidden' });
                             }
                         } else if (errorDetail && isLoggedIn && !isPublicPath403
+                            && (error.config?.method ?? "get").toLowerCase() === "get"
                             && !error.config?.suppressErrorToast) {
                             // For other 403s with a message, show toast but don't redirect
-                            // Only show if logged in and not on public pages
+                            // Only show if logged in and not on public pages. A refused WRITE
+                            // is the mutation layer's to report (queryClient's handler, or the
+                            // caller's own UI) — toasting it here too made two or three
+                            // toasts per refusal (walks 2026-11-16/17). Reads only here.
                             toast.error("Permission Denied", {
                                 description: errorDetail,
                             });

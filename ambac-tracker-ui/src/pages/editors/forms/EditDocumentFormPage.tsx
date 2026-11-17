@@ -307,8 +307,9 @@ export default function DocumentFormPage() {
                 }
             }
         } catch (error) {
+            // The mutation layer's toast says why (the server's reason); a generic
+            // "failed to submit" on top made it two (walk 2026-11-17).
             console.error("Form submission error", error);
-            toast.error("Failed to submit the form. Please try again.");
         }
     }
 
