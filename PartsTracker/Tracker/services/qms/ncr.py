@@ -474,7 +474,7 @@ def _common(values):
     return found.pop() if len(found) == 1 else None
 
 
-def _file_failure(ncr, part, user, description: str):
+def _file_failure(ncr, part, user, description: str, defects=None):
     # A part no longer here (shipped, completed, scrapped) is an escape: recorded on the
     # NCR with a decision for the record, not held (ruling R6, 2026-11-18). The save
     # signal opens its decision; `held` comes from the part's status there.
@@ -487,6 +487,10 @@ def _file_failure(ncr, part, user, description: str):
         description=description, detected_by=user if getattr(user, 'is_authenticated', False) else None)
     sync_personnel(report)
     record_quality_report_side_effects(report)
+    if defects:
+        # The same finding on each part's record; the NCR is refreshed once, after all.
+        from Tracker.services.qms.quality_report import upsert_defect_rows
+        upsert_defect_rows(report, defects)
     return report
 
 
@@ -498,7 +502,7 @@ def _parts(parts):
 
 
 @transaction.atomic
-def raise_ncr_for_parts(parts, *, description: str, user, severity: str = 'MAJOR') -> NCR:
+def raise_ncr_for_parts(parts, *, description: str, user, severity: str = 'MAJOR', defects=None) -> NCR:
     """A person raises one NCR over parts they pick: one failed record and one decision
     per part, under the one NCR.
 
@@ -516,7 +520,9 @@ def raise_ncr_for_parts(parts, *, description: str, user, severity: str = 'MAJOR
         step=_common(p.step for p in parts), work_order=_common(p.work_order for p in parts),
         raised_by=user, by_hand=True)
     for part in parts:
-        _file_failure(ncr, part, user, description)
+        _file_failure(ncr, part, user, description, defects)
+    if defects:
+        refresh_description(ncr)
     _owned_by_raiser(ncr, user)
     return ncr
 
@@ -534,7 +540,7 @@ def _owned_by_raiser(ncr, user) -> None:
 
 
 @transaction.atomic
-def add_parts(ncr, parts, *, user, reason: str = '') -> list:
+def add_parts(ncr, parts, *, user, reason: str = '', defects=None) -> list:
     """Put more parts on an open NCR: each gets its failed record and its decision under
     it, as the ones raised with it did. Returns the reports filed.
 
@@ -556,9 +562,27 @@ def add_parts(ncr, parts, *, user, reason: str = '') -> list:
         raise ValueError(" ".join(f"{p.ERP_id} is on {n.ncr_number}: combine instead." for p, n in elsewhere))
     reason = (reason or '').strip()
     description = f"Added to {ncr.ncr_number}" + (f": {reason}" if reason else f": {ncr.description}")
-    filed = [_file_failure(ncr, p, user, description) for p in parts]
+    filed = [_file_failure(ncr, p, user, description, defects) for p in parts]
+    if defects:
+        refresh_description(ncr)
     _owned_by_raiser(ncr, user)
     return filed
+
+
+@transaction.atomic
+def add_defects(ncr, report, rows) -> int:
+    """A finding made later (at MRB, say) on one of the NCR's records: while the NCR is
+    open and the record stands. Its severity follows as any defect's does."""
+    from Tracker.services.qms.quality_report import record_defects
+    if ncr.state != 'OPEN':
+        raise ValueError(f"{ncr.ncr_number} is closed; its records are as they were decided.")
+    if report.ncr_id != ncr.pk:
+        raise ValueError(f"{report.report_number} isn't on {ncr.ncr_number}.")
+    if report.superseded_at is not None:
+        raise ValueError(f"{report.report_number} was withdrawn; record on the inspection that replaced it.")
+    if not rows:
+        raise ValueError("Say what was found: at least one defect.")
+    return record_defects(report, rows)
 
 
 # --- containment, CAPA -----------------------------------------------------------------

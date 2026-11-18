@@ -18,9 +18,8 @@ import {
     ReactNodeViewRenderer,
     type NodeViewProps,
 } from "@tiptap/react";
-import { Bug, Plus, X } from "lucide-react";
+import { Bug } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -36,7 +35,7 @@ import { AuthoringPopover } from "../shared/AuthoringPopover";
 import { useDebouncedAttrs } from "../shared/useDebouncedAttrs";
 import { TextAttrRow } from "../shared/AttrInputs";
 import { useOperatorResponse } from "../shared/OperatorResponseContext";
-import { useRetrieveErrorTypes } from "@/hooks/useRetrieveErrorTypes";
+import { DefectRowsEditor } from "@/components/quality/DefectRowsEditor";
 
 type Severity = "MINOR" | "MAJOR" | "CRITICAL";
 
@@ -46,11 +45,6 @@ const SEVERITY_LABELS: Record<Severity, string> = {
     CRITICAL: "Critical",
 };
 const SEVERITIES: Severity[] = ["MINOR", "MAJOR", "CRITICAL"];
-const SEVERITY_CLS: Record<Severity, string> = {
-    MINOR: "text-blue-600",
-    MAJOR: "text-amber-600",
-    CRITICAL: "text-destructive",
-};
 
 type Attrs = {
     node_id: string;
@@ -60,6 +54,7 @@ type Attrs = {
     default_severity: Severity;
 };
 
+// The shape DefectRowsEditor edits (DefectRow).
 type ResponseRow = {
     // QualityErrorsList UUID (string) — was `number`, and the select's onChange
     // ran Number() on the UUID (NaN whenever the operator changed defect type).
@@ -69,8 +64,6 @@ type ResponseRow = {
     notes?: string;
     count: number;
 };
-
-type ErrorTypeShape = { id: string; error_name: string };
 
 export function ErrorTypesFieldEditForm({ node, updateAttributes }: NodeViewProps) {
     const a = node.attrs as Attrs;
@@ -122,31 +115,10 @@ function View(props: NodeViewProps) {
     const { value, setValue } = useOperatorResponse(a.node_id);
     const rows: ResponseRow[] = Array.isArray(value) ? (value as ResponseRow[]) : [];
 
-    const { data: errorTypesResp } = useRetrieveErrorTypes();
-    const errorTypes = (errorTypesResp?.results ?? []) as ErrorTypeShape[];
-
     const update = (next: ResponseRow[]) => {
         if (!isOperator) return;
         setValue(next);
     };
-    const addRow = () => {
-        const first = errorTypes[0];
-        if (!first) return;
-        update([
-            ...rows,
-            {
-                error_type_id: first.id,
-                severity: (a.default_severity || "MAJOR") as Severity,
-                count: 1,
-            },
-        ]);
-    };
-    const setRow = (i: number, patch: Partial<ResponseRow>) => {
-        const next = rows.slice();
-        next[i] = { ...next[i], ...patch };
-        update(next);
-    };
-    const removeRow = (i: number) => update(rows.filter((_, j) => j !== i));
 
     const card = (
         <NodeCard
@@ -163,79 +135,15 @@ function View(props: NodeViewProps) {
                 </>
             }
         >
-            <div className="space-y-1.5" contentEditable={false}>
-                {rows.map((row, i) => (
-                    <div key={i} className="space-y-1 rounded border bg-background p-1.5">
-                        <div className="flex items-center gap-1">
-                            <select
-                                disabled={!isOperator}
-                                value={row.error_type_id}
-                                onChange={(e) => setRow(i, { error_type_id: e.target.value })}
-                                className="h-7 flex-1 rounded border bg-background px-2 text-xs"
-                            >
-                                {errorTypes.map((et) => (
-                                    <option key={et.id} value={et.id}>{et.error_name}</option>
-                                ))}
-                            </select>
-                            <select
-                                disabled={!isOperator}
-                                value={row.severity}
-                                onChange={(e) => setRow(i, { severity: e.target.value as Severity })}
-                                className={`h-7 w-24 rounded border bg-background px-1 text-xs font-medium ${SEVERITY_CLS[row.severity]}`}
-                            >
-                                {SEVERITIES.map((s) => (
-                                    <option key={s} value={s}>{SEVERITY_LABELS[s]}</option>
-                                ))}
-                            </select>
-                            {isOperator && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeRow(i)}
-                                    className="h-7 w-7 p-0"
-                                >
-                                    <X className="h-3 w-3" />
-                                </Button>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <Input
-                                type="text"
-                                disabled={!isOperator}
-                                value={row.location ?? ""}
-                                placeholder="Location (e.g. near bore #3)"
-                                onChange={(e) => setRow(i, { location: e.target.value })}
-                                className="h-7 flex-1 text-xs"
-                            />
-                            <Input
-                                type="number"
-                                min={1}
-                                disabled={!isOperator}
-                                value={String(row.count ?? 1)}
-                                onChange={(e) => setRow(i, { count: Math.max(1, Number(e.target.value) || 1) })}
-                                className="h-7 w-14 text-xs"
-                                title="Count"
-                            />
-                        </div>
-                    </div>
-                ))}
-                {rows.length === 0 && (
-                    <div className="text-xs italic text-muted-foreground">
-                        {isOperator ? "No defects found." : "Operator logs defects here."}
-                    </div>
-                )}
-                {isOperator && (
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={addRow}
-                        className="h-7 w-full justify-start text-xs text-muted-foreground"
-                    >
-                        <Plus className="mr-1 h-3 w-3" /> Add defect
-                    </Button>
-                )}
+            <div contentEditable={false}>
+                {/* The shared defect editor (components/quality/DefectRowsEditor). */}
+                <DefectRowsEditor
+                    rows={rows}
+                    onChange={update}
+                    disabled={!isOperator}
+                    defaultSeverity={(a.default_severity || "MAJOR") as Severity}
+                    emptyText={isOperator ? "No defects found." : "Operator logs defects here."}
+                />
             </div>
         </NodeCard>
     );

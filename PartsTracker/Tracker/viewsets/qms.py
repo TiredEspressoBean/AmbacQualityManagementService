@@ -36,7 +36,7 @@ from Tracker.serializers.qms import (
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
     FiveWhysSerializer, FishboneSerializer,
     FPIRecordSerializer, CapaDecisionRequestSerializer,
-    NCRSerializer, RaiseNCRSerializer, AddPartsToNCRSerializer, CombineNCRsSerializer, AssignNCRSerializer,
+    NCRSerializer, RaiseNCRSerializer, AddPartsToNCRSerializer, CombineNCRsSerializer, AssignNCRSerializer, AddDefectsToNCRSerializer,
 )
 from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSerializer
 # Module-level so `request_approval` can name it in @extend_schema; the
@@ -196,10 +196,12 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         'capa_decision': ['initiate_capa'],
         # Taking an NCR is taking its decisions — today's take (user go 2026-11-18).
         'assign': ['change_quarantinedisposition'],
+        # A later finding on its records is the NCR's header work: QA and leads.
+        'add_defects': ['change_ncr'],
         'close_decided': ['close_disposition'],
     }
     crud_exempt_actions = {'decide', 'capa_decision', 'add_parts', 'containment_complete', 'combine',
-                           'assign', 'close_decided'}
+                           'assign', 'close_decided', 'add_defects'}
     cosign_actions = {'decide': 'approve_disposition'}
 
     def get_queryset(self):
@@ -211,7 +213,8 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
                 .select_related('step', 'work_order', 'raised_by', 'assigned_to', 'containment_completed_by',
                                 'capa_decided_by', 'batch_execution', 'combined_into')
                 .prefetch_related('dispositions__part', 'dispositions__material_lot',
-                                  'batch_execution__parts', 'reports__part', 'capas', 'combined_from')
+                                  'batch_execution__parts', 'reports__part', 'reports__defects__error_type',
+                                  'capas', 'combined_from')
                 .distinct())
 
     def get_serializer_class(self):
@@ -227,7 +230,8 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         try:
             ncr = raise_ncr_for_parts(req.validated_data['parts'], user=request.user,
                                       description=req.validated_data['description'],
-                                      severity=req.validated_data.get('severity') or 'MAJOR')
+                                      severity=req.validated_data.get('severity') or 'MAJOR',
+                                      defects=req.validated_data.get('defect_rows') or None)
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(NCRSerializer(ncr, context=self.get_serializer_context()).data,
@@ -302,6 +306,21 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(NCRSerializer(self.get_queryset().get(pk=ncr.pk), context=self.get_serializer_context()).data)
 
+    @extend_schema(request=AddDefectsToNCRSerializer, responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
+                   description="Record defects found later on one of the NCR's records (open NCR, "
+                               "record not withdrawn). Its severity follows them until decided.")
+    @action(detail=True, methods=['post'], url_path='add-defects')
+    def add_defects(self, request, pk=None):
+        from Tracker.services.qms.ncr import add_defects
+        ncr = self.get_object()
+        req = AddDefectsToNCRSerializer(data=request.data, context=self.get_serializer_context())
+        req.is_valid(raise_exception=True)
+        try:
+            add_defects(ncr, req.validated_data['report'], req.validated_data['defect_rows'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(NCRSerializer(self.get_queryset().get(pk=ncr.pk), context=self.get_serializer_context()).data)
+
     @extend_schema(request=None, responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
                    description="Close every decided decision under the NCR through the completion "
                                "check. All or nothing: a refusal names each one's blockers.")
@@ -340,7 +359,8 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         req.is_valid(raise_exception=True)
         try:
             add_parts(ncr, req.validated_data['parts'], user=request.user,
-                      reason=req.validated_data.get('reason', ''))
+                      reason=req.validated_data.get('reason', ''),
+                      defects=req.validated_data.get('defect_rows') or None)
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         ncr.refresh_from_db()

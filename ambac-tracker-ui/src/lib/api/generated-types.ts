@@ -7690,6 +7690,23 @@ export interface paths {
         patch: operations["api_NCRs_partial_update"];
         trace?: never;
     };
+    "/api/NCRs/{id}/add-defects/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record defects found later on one of the NCR's records (open NCR, record not withdrawn). Its severity follows them until decided. */
+        post: operations["api_NCRs_add_defects_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/NCRs/{id}/add-parts/": {
         parameters: {
             query?: never;
@@ -22022,6 +22039,12 @@ export interface components {
             batch_id: string;
             added: string[];
         };
+        /** @description A finding made later, on one of the NCR's records. */
+        AddDefectsToNCRRequest: {
+            /** Format: uuid */
+            report: string;
+            defect_rows: components["schemas"]["DefectRowRequest"][];
+        };
         AddNoteInputRequest: {
             message: string;
             /** @default VISIBLE */
@@ -22032,6 +22055,8 @@ export interface components {
             parts: string[];
             /** @description Why these parts — written on each part's failed record. */
             reason?: string;
+            /** @description What was found — the same on every added part's record. */
+            defect_rows?: components["schemas"]["DefectRowRequest"][];
         };
         AdherenceOp: {
             /** Format: uuid */
@@ -24814,6 +24839,39 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** @description One defect found on an inspection record (QualityReportDefect). */
+        DefectRow: {
+            /** Format: uuid */
+            error_type: string;
+            /** @default 1 */
+            count: number;
+            /** @default  */
+            location: string;
+            /** @default MAJOR */
+            severity: components["schemas"]["DefectRowSeverityEnum"];
+            /** @default  */
+            notes: string;
+        };
+        /** @description One defect found on an inspection record (QualityReportDefect). */
+        DefectRowRequest: {
+            /** Format: uuid */
+            error_type: string;
+            /** @default 1 */
+            count: number;
+            /** @default  */
+            location: string;
+            /** @default MAJOR */
+            severity: components["schemas"]["DefectRowSeverityEnum"];
+            /** @default  */
+            notes: string;
+        };
+        /**
+         * @description * `MINOR` - MINOR
+         *     * `MAJOR` - MAJOR
+         *     * `CRITICAL` - CRITICAL
+         * @enum {string}
+         */
+        DefectRowSeverityEnum: "MINOR" | "MAJOR" | "CRITICAL";
         DefectTrendResponse: {
             data: {
                 [key: string]: unknown;
@@ -28706,6 +28764,9 @@ export interface components {
             part_erp_id: string | null;
             /** Format: date-time */
             created_at: string;
+            superseded: boolean;
+            /** @description What was found, e.g. "Bore oversize ×2 (Major)". */
+            defects: string[];
         };
         /**
          * @description An NCR: what is wrong, its containment and CAPA decision, and what it covers.
@@ -33357,6 +33418,7 @@ export interface components {
             /** @description If True, this inspection is a First Piece Inspection (FPI) for setup verification */
             is_first_piece?: boolean;
             archived?: boolean;
+            defect_rows?: components["schemas"]["DefectRowRequest"][];
         };
         /**
          * @description Base serializer for SecureModel instances.
@@ -35739,6 +35801,7 @@ export interface components {
             /** @description If True, this inspection is a First Piece Inspection (FPI) for setup verification */
             is_first_piece?: boolean;
             archived?: boolean;
+            defect_rows?: components["schemas"]["DefectRowRequest"][];
         };
         /**
          * @description Base serializer for SecureModel instances.
@@ -35944,6 +36007,8 @@ export interface components {
             description: string;
             /** @default MAJOR */
             severity: components["schemas"]["SeverityEnum"];
+            /** @description What was found — the same on every part's failed record. */
+            defect_rows?: components["schemas"]["DefectRowRequest"][];
         };
         RaiseScarResponse: {
             /** Format: uuid */
@@ -57230,6 +57295,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NCR"];
+                };
+            };
+        };
+    };
+    api_NCRs_add_defects_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this NCR. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDefectsToNCRRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AddDefectsToNCRRequest"];
+                "multipart/form-data": components["schemas"]["AddDefectsToNCRRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NCR"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

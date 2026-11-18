@@ -207,9 +207,21 @@ def _user_info(u) -> dict:
     return {'id': u.id, 'username': u.username, 'full_name': u.get_full_name().strip() or u.username}
 
 
+class DefectRowSerializer(serializers.Serializer):
+    """One defect found on an inspection record (QualityReportDefect)."""
+    error_type = TenantScopedPrimaryKeyRelatedField(queryset=QualityErrorsList.unscoped.all())
+    count = serializers.IntegerField(min_value=1, default=1)
+    location = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
+    severity = serializers.ChoiceField(choices=['MINOR', 'MAJOR', 'CRITICAL'], default='MAJOR')
+    notes = serializers.CharField(required=False, allow_blank=True, default='')
+
+
 class QualityReportsSerializer(SecureModelMixin):
     """Quality reports serializer"""
     measurements = MeasurementResultSerializer(many=True, required=False)
+    # The defects found, written with the record (services/qms/quality_report.record_defects):
+    # on create, or on edit while it's still pending — a recorded result stays final.
+    defect_rows = DefectRowSerializer(many=True, required=False, write_only=True)
     # Role-tagged equipment (read). The operator-runtime path populates these
     # via dedicated capture endpoints; the manual QR form writes the single
     # production machine through `production_equipment` below.
@@ -255,7 +267,7 @@ class QualityReportsSerializer(SecureModelMixin):
                   "step_execution", "substep", "batch_execution",  # Inspection-event provenance (which visit/batch, which substep)
                   "equipment_links", "personnel_links",  # New role-tagged shape
                   "part_info", "part_display", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived",
-                  "ncr", "ncr_number",
+                  "ncr", "ncr_number", "defect_rows",
                   "capa_decision", "capa_decision_note", "capa_decided_by", "capa_decided_by_name", "capa_decided_at",
                   # Withdrawn by a voided capture: kept as recorded, replaced by a new report.
                   "superseded_at", "superseded_by", "superseded_reason", "replaced_by"]
@@ -382,6 +394,7 @@ class QualityReportsSerializer(SecureModelMixin):
 
         measurements_data = validated_data.pop("measurements", [])
         production_equipment = validated_data.pop("production_equipment", None)
+        defect_rows = validated_data.pop("defect_rows", [])
         report = super().create(validated_data)
 
         self._set_production_equipment(report, production_equipment)
@@ -396,6 +409,9 @@ class QualityReportsSerializer(SecureModelMixin):
                                              created_by=self.context["request"].user)
 
         record_quality_report_side_effects(report)
+        if defect_rows:
+            from Tracker.services.qms.quality_report import record_defects
+            record_defects(report, defect_rows)
         return report
 
     def update(self, instance, validated_data):
@@ -408,7 +424,12 @@ class QualityReportsSerializer(SecureModelMixin):
         # Silently discard the field on update so the form can't clobber the
         # linked MeasurementResult rows by sending an empty array.
         validated_data.pop("measurements", None)
+        defect_rows = validated_data.pop("defect_rows", None)
         prior_status = instance.status
+        if defect_rows and prior_status != 'PENDING':
+            raise serializers.ValidationError({'defect_rows': (
+                "A recorded result is final: its defects were recorded with it. A finding "
+                "made later goes on its NCR (Add a defect).")})
         people_changed = bool({"detected_by", "verified_by"} & set(validated_data))
         instance = super().update(instance, validated_data)
         if has_equipment:
@@ -420,6 +441,9 @@ class QualityReportsSerializer(SecureModelMixin):
         # the rest follow on the same transition, as they do for a report created FAIL.
         from Tracker.services.qms.quality_report import on_report_failed
         on_report_failed(instance, prior_status)
+        if defect_rows:
+            from Tracker.services.qms.quality_report import record_defects
+            record_defects(instance, defect_rows)
         return instance
 
     def _set_production_equipment(self, report, equipment):
@@ -896,6 +920,10 @@ class NCRReportRefSerializer(serializers.Serializer):
     status = serializers.CharField()
     part_erp_id = serializers.CharField(allow_null=True)
     created_at = serializers.DateTimeField()
+    # Withdrawn (a voided capture): it takes no later findings.
+    superseded = serializers.BooleanField()
+    defects = serializers.ListField(child=serializers.CharField(),
+                                    help_text="What was found, e.g. \"Bore oversize ×2 (Major)\".")
 
 
 class NCRTodoSerializer(serializers.Serializer):
@@ -1014,8 +1042,12 @@ class NCRSerializer(SecureModelMixin):
 
     @extend_schema_field(NCRReportRefSerializer(many=True))
     def get_reports(self, obj):
+        def found(r):
+            return [f"{d.error_type.error_name}{f' ×{d.count}' if d.count > 1 else ''} ({d.get_severity_display()})"
+                    for d in r.defects.all()]
         return [{'id': r.id, 'report_number': r.report_number or '', 'status': r.status,
-                 'part_erp_id': r.part.ERP_id if r.part_id else None, 'created_at': r.created_at}
+                 'part_erp_id': r.part.ERP_id if r.part_id else None, 'created_at': r.created_at,
+                 'superseded': r.superseded_at is not None, 'defects': found(r)}
                 for r in sorted((r for r in obj.reports.all() if not r.archived), key=lambda r: r.created_at)]
 
 
@@ -1035,6 +1067,8 @@ class RaiseNCRSerializer(serializers.Serializer):
     parts = TenantScopedPrimaryKeyRelatedField(queryset=Parts.unscoped.all(), many=True)
     description = serializers.CharField(help_text="What is wrong — the NCR's description.")
     severity = serializers.ChoiceField(choices=NCR.SEVERITY_CHOICES, required=False, default='MAJOR')
+    defect_rows = DefectRowSerializer(many=True, required=False,
+                                      help_text="What was found — the same on every part's failed record.")
 
 
 class AddPartsToNCRSerializer(serializers.Serializer):
@@ -1042,6 +1076,14 @@ class AddPartsToNCRSerializer(serializers.Serializer):
     parts = TenantScopedPrimaryKeyRelatedField(queryset=Parts.unscoped.all(), many=True)
     reason = serializers.CharField(required=False, allow_blank=True,
                                    help_text="Why these parts — written on each part's failed record.")
+    defect_rows = DefectRowSerializer(many=True, required=False,
+                                      help_text="What was found — the same on every added part's record.")
+
+
+class AddDefectsToNCRSerializer(serializers.Serializer):
+    """A finding made later, on one of the NCR's records."""
+    report = TenantScopedPrimaryKeyRelatedField(queryset=QualityReports.unscoped.all())
+    defect_rows = DefectRowSerializer(many=True)
 
 
 class DispositionAffectedPartSerializer(serializers.Serializer):

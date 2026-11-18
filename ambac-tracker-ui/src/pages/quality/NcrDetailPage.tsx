@@ -29,6 +29,7 @@ import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dial
 import { ReasonPromptDialog } from "@/components/change-control/ReasonPromptDialog";
 import { ScrapConfirmDialog } from "@/components/quality/ScrapConfirmDialog";
 import { ConcessionFields } from "@/components/quality/ConcessionFields";
+import { DefectRowsEditor, toDefectRowsPayload, type DefectRow } from "@/components/quality/DefectRowsEditor";
 import { RequiredMark } from "@/components/ui/required-mark";
 import type { Schema } from "@/lib/api/types";
 import {
@@ -105,7 +106,7 @@ function NcrDetail({ ncr }: { ncr: Ncr }) {
                     <OwnerCard ncr={ncr} onChanged={refresh} />
                     <FoundCard ncr={ncr} />
                     <CapaCard ncr={ncr} onChanged={refresh} />
-                    <ReportsCard ncr={ncr} />
+                    <ReportsCard ncr={ncr} onChanged={refresh} />
                     <DocumentsCard ncr={ncr} />
                 </div>
             </div>
@@ -405,15 +406,19 @@ function AddPartsDialog({ ncr, open, onOpenChange, onDone }: {
 }) {
     const [parts, setParts] = useState<string[]>([]);
     const [reason, setReason] = useState("");
+    const [defects, setDefects] = useState<DefectRow[]>([]);
     const [search, setSearch] = useState("");
     const { data } = useRetrieveParts({ limit: 100, search });
     const on = new Set(ncr.members.map((m) => String(m.part_id)));
     const elsewhere = useOpenNcrByPart(open);
 
-    useEffect(() => { if (open) { setParts([]); setReason(""); } }, [open]);
+    useEffect(() => { if (open) { setParts([]); setReason(""); setDefects([]); } }, [open]);
 
     const add = useMutation({
-        mutationFn: () => api.api_NCRs_add_parts_create({ parts, ...(reason.trim() ? { reason: reason.trim() } : {}) },
+        mutationFn: () => api.api_NCRs_add_parts_create({
+            parts, ...(reason.trim() ? { reason: reason.trim() } : {}),
+            ...(defects.length ? { defect_rows: toDefectRowsPayload(defects) } : {}),
+        },
             { params: { id: String(ncr.id) } }),
         meta: { errorMessage: "Couldn't add the parts", successMessage: "Parts added" },
         onSuccess: () => { onOpenChange(false); onDone(); },
@@ -448,6 +453,11 @@ function AddPartsDialog({ ncr, open, onOpenChange, onDone }: {
                         <Label htmlFor="ncr-add-reason">Why these parts</Label>
                         <Textarea id="ncr-add-reason" value={reason} onChange={(e) => setReason(e.target.value)}
                                   className="resize-none" placeholder="e.g. Same grinder setup" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Defects found</Label>
+                        <DefectRowsEditor rows={defects} onChange={setDefects}
+                                          emptyText="None recorded. The same defects go on every added part's record." />
                     </div>
                 </div>
                 <DialogFooter>
@@ -823,7 +833,11 @@ function DocumentsCard({ ncr }: { ncr: Ncr }) {
     );
 }
 
-function ReportsCard({ ncr }: { ncr: Ncr }) {
+function ReportsCard({ ncr, onChanged }: { ncr: Ncr; onChanged: () => void }) {
+    // A finding made later (at MRB, say) goes on the record it belongs to, while the NCR
+    // is open and the record stands (change_ncr: QA and leads).
+    const canAdd = usePermissionSet().has("change_ncr") && ncr.state === "OPEN";
+    const [adding, setAdding] = useState<Ncr["reports"][number] | null>(null);
     if (!ncr.reports.length) return null;
     return (
         <Card>
@@ -832,17 +846,64 @@ function ReportsCard({ ncr }: { ncr: Ncr }) {
             </CardHeader>
             <CardContent className="space-y-1.5">
                 {ncr.reports.map((r) => (
-                    <Link key={String(r.id)} to="/details/$model/$id" params={{ model: "QualityReports", id: String(r.id) }}
-                          className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm hover:bg-muted/50">
-                        <span className="flex items-center gap-1.5 font-mono text-primary">
-                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                            {r.report_number || "Inspection record"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">{r.part_erp_id ?? ""}</span>
-                        <StatusBadge status={r.status} />
-                    </Link>
+                    <div key={String(r.id)} className="space-y-1 rounded-md border p-2 text-sm">
+                        <Link to="/details/$model/$id" params={{ model: "QualityReports", id: String(r.id) }}
+                              className="flex items-center justify-between gap-2 hover:underline">
+                            <span className="flex items-center gap-1.5 font-mono text-primary">
+                                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                {r.report_number || "Inspection record"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{r.part_erp_id ?? ""}</span>
+                            <StatusBadge status={r.status} />
+                        </Link>
+                        <p className="text-xs text-muted-foreground">
+                            {r.defects.length ? r.defects.join(" · ") : "No defects recorded."}
+                        </p>
+                        {canAdd && !r.superseded && (
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setAdding(r)}>
+                                <Plus className="mr-1 h-3 w-3" /> Add a defect
+                            </Button>
+                        )}
+                    </div>
                 ))}
             </CardContent>
+            {adding && (
+                <AddDefectDialog ncr={ncr} report={adding} onClose={() => setAdding(null)} onDone={onChanged} />
+            )}
         </Card>
+    );
+}
+
+function AddDefectDialog({ ncr, report, onClose, onDone }: {
+    ncr: Ncr; report: Ncr["reports"][number]; onClose: () => void; onDone: () => void;
+}) {
+    const [rows, setRows] = useState<DefectRow[]>([]);
+    const add = useMutation({
+        mutationFn: () => api.api_NCRs_add_defects_create(
+            { report: String(report.id), defect_rows: toDefectRowsPayload(rows) },
+            { params: { id: String(ncr.id) } }),
+        meta: { errorMessage: "Couldn't record the defect", successMessage: "Defect recorded" },
+        onSuccess: () => { onClose(); onDone(); },
+    });
+    return (
+        <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add a defect to {report.report_number}{report.part_erp_id ? ` (${report.part_erp_id})` : ""}</DialogTitle>
+                    <DialogDescription>
+                        A finding made after the inspection. Until something on {ncr.ncr_number} is decided, its
+                        severity follows the worst defect.
+                    </DialogDescription>
+                </DialogHeader>
+                <DefectRowsEditor rows={rows} onChange={setRows} emptyText="Add what was found." />
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button disabled={!rows.length || add.isPending} onClick={() => add.mutate()}>
+                        {add.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Record defect{rows.length === 1 ? "" : "s"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

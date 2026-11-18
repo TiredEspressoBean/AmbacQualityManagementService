@@ -761,3 +761,74 @@ class NcrOwnerTests(_Shop):
 
     def test_a_failure_raises_an_unowned_ncr(self):
         self.assertIsNone(self._ncr_of(self._fail(self.parts[0])).assigned_to_id)
+
+
+class DefectEntryTests(_Shop):
+    """Defects on every failed record, one writer (user go 2026-11-18)."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import QualityErrorsList
+        self.marks = QualityErrorsList.objects.create(tenant=self.tenant_a, error_name="Tool marks",
+                                                      part_type=self.pt)
+        self.crack = QualityErrorsList.objects.create(tenant=self.tenant_a, error_name="Crack",
+                                                      part_type=self.pt)
+
+    def _row(self, et, severity="MINOR", **kw):
+        return {"error_type": str(et.id), "severity": severity, "count": 1, **kw}
+
+    def test_a_failed_record_with_a_minor_defect_brings_its_ncr_down(self):
+        r = self.client.post("/api/QualityReports/", {
+            "part": str(self.parts[0].id), "step": str(self.step.id), "status": "FAIL",
+            "description": "Marks", "defect_rows": [self._row(self.marks, location="OD")]}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        report = QualityReports.objects.get(pk=r.json()["id"])
+        self.assertEqual([(d.error_type_id, d.severity, d.location) for d in report.defects.all()],
+                         [(self.marks.id, "MINOR", "OD")])
+        report.ncr.refresh_from_db()
+        self.assertEqual(report.ncr.severity, "MINOR")
+
+    def test_a_recorded_result_takes_no_new_defects_on_edit(self):
+        report = self._fail(self.parts[0])
+        r = self.client.patch(f"/api/QualityReports/{report.id}/", {"defect_rows": [self._row(self.marks)]},
+                              format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("A recorded result is final", r.content.decode())
+        pending = QualityReports.objects.create(tenant=self.tenant_a, part=self.parts[1], step=self.step,
+                                                status="PENDING", detected_by=self.user_a)
+        r = self.client.patch(f"/api/QualityReports/{pending.id}/", {"defect_rows": [self._row(self.marks)]},
+                              format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(pending.defects.count(), 1)
+
+    def test_raise_ncr_puts_the_defect_on_every_parts_record(self):
+        r = self.client.post("/api/NCRs/", {
+            "parts": [str(self.parts[0].id), str(self.parts[1].id)], "description": "Marks",
+            "severity": "MINOR", "defect_rows": [self._row(self.marks)]}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        reports = QualityReports.objects.filter(ncr_id=r.json()["id"])
+        self.assertEqual(sorted(rep.defects.count() for rep in reports), [1, 1])
+        self.assertEqual([x["defects"] for x in r.json()["reports"]], [["Tool marks (Minor)"]] * 2)
+
+    def test_a_later_finding_on_an_open_ncr_raises_its_severity(self):
+        report = self._fail(self.parts[0])
+        ncr = self._ncr_of(report)
+        r = self.client.post(f"/api/NCRs/{ncr.id}/add-defects/", {
+            "report": str(report.id), "defect_rows": [self._row(self.crack, severity="CRITICAL")]}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["severity"], "CRITICAL")
+
+    def test_a_later_finding_needs_change_ncr_an_open_ncr_and_a_standing_record(self):
+        from django.utils import timezone
+        report = self._fail(self.parts[0])
+        ncr = self._ncr_of(report)
+        QualityReports.objects.filter(pk=report.pk).update(superseded_at=timezone.now())
+        r = self.client.post(f"/api/NCRs/{ncr.id}/add-defects/", {
+            "report": str(report.id), "defect_rows": [self._row(self.marks)]}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("was withdrawn", r.json()["detail"])
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, ['full_tenant_access', 'view_ncr', 'add_ncr'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        r = self.client.post(f"/api/NCRs/{ncr.id}/add-defects/", {
+            "report": str(report.id), "defect_rows": [self._row(self.marks)]}, format="json")
+        self.assertEqual(r.status_code, 403, r.content)

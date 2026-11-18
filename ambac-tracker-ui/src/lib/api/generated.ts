@@ -92,6 +92,40 @@ export type ClassAccuracy = {
   hits: number;
   pct: number | null;
 };
+export type AddDefectsToNCRRequest = {
+  report: string;
+  defect_rows: Array<DefectRowRequest>;
+};
+export type DefectRowRequest = {
+  error_type: string;
+  count?: /**
+   * @default 1
+   * @minimum 1
+   */
+  number | undefined;
+  location?: /**
+   * @default ""
+   * @maxLength 100
+   */
+  string | undefined;
+  severity?: /**
+   * @default "MAJOR"
+   */
+  DefectRowSeverityEnum | undefined;
+  notes?: /**
+   * @default ""
+   */
+  string | undefined;
+};
+export type DefectRowSeverityEnum =
+  /**
+   * * `MINOR` - MINOR
+   * `MAJOR` - MAJOR
+   * `CRITICAL` - CRITICAL
+   *
+   * @enum MINOR, MAJOR, CRITICAL
+   */
+  "MINOR" | "MAJOR" | "CRITICAL";
 export type AddNoteInputRequest = {
   /**
    * @minLength 1
@@ -110,6 +144,17 @@ export type VisibilityEnum =
    * @enum VISIBLE, INTERNAL
    */
   "VISIBLE" | "INTERNAL";
+export type AddPartsToNCRRequest = {
+  parts: Array<string>;
+  reason?: /**
+   * Why these parts — written on each part's failed record.
+   */
+  string | undefined;
+  defect_rows?: /**
+   * What was found — the same on every added part's record.
+   */
+  Array<DefectRowRequest> | undefined;
+};
 export type AdherenceOp = {
   id: string;
   state: AdherenceOpStateEnum;
@@ -2969,6 +3014,27 @@ export type RepairBranch = {
   needed: boolean;
   approved: boolean;
 };
+export type DefectRow = {
+  error_type: string;
+  count?: /**
+   * @default 1
+   * @minimum 1
+   */
+  number | undefined;
+  location?: /**
+   * @default ""
+   * @maxLength 100
+   */
+  string | undefined;
+  severity?: /**
+   * @default "MAJOR"
+   */
+  DefectRowSeverityEnum | undefined;
+  notes?: /**
+   * @default ""
+   */
+  string | undefined;
+};
 export type DemoResetRequestRequest = Partial<{
   /**
    * @default "small"
@@ -5767,6 +5833,11 @@ export type NCRReportRef = {
   status: string;
   part_erp_id: string | null;
   created_at: string;
+  superseded: boolean;
+  /**
+   * What was found, e.g. "Bore oversize ×2 (Major)".
+   */
+  defects: Array<string>;
 };
 export type NCRRef = {
   id: string;
@@ -15126,6 +15197,7 @@ export type PatchedQualityReportsRequest = Partial<{
    */
   is_first_piece: boolean;
   archived: boolean;
+  defect_rows: Array<DefectRowRequest>;
 }>;
 export type PatchedQuarantineDispositionRequest = Partial<{
   current_state: CurrentStateEnum;
@@ -16785,6 +16857,7 @@ export type QualityReportsRequest = {
    */
   boolean | undefined;
   archived?: boolean | undefined;
+  defect_rows?: Array<DefectRowRequest> | undefined;
 };
 export type QuarantineDispositionRequest = {
   current_state?: CurrentStateEnum | undefined;
@@ -16860,6 +16933,10 @@ export type RaiseNCRRequest = {
    * @default "MAJOR"
    */
   SeverityEnum | undefined;
+  defect_rows?: /**
+   * What was found — the same on every part's failed record.
+   */
+  Array<DefectRowRequest> | undefined;
 };
 export type RcaRecordRequest = {
   capa: string;
@@ -23994,6 +24071,8 @@ const NCRReportRef = z.object({
   status: z.string(),
   part_erp_id: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
+  superseded: z.boolean(),
+  defects: z.array(z.string()),
 });
 const NCRRef = z.object({ id: z.string().uuid(), ncr_number: z.string() });
 const NCR = z.object({
@@ -24045,10 +24124,19 @@ const PaginatedNCRList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(NCR),
 });
+const DefectRowSeverityEnum = z.enum(["MINOR", "MAJOR", "CRITICAL"]);
+const DefectRowRequest = z.object({
+  error_type: z.string().uuid(),
+  count: z.number().int().gte(1).optional().default(1),
+  location: z.string().max(100).optional().default(""),
+  severity: DefectRowSeverityEnum.optional().default("MAJOR"),
+  notes: z.string().optional().default(""),
+});
 const RaiseNCRRequest = z.object({
   parts: z.array(z.string().uuid()),
   description: z.string().min(1),
   severity: SeverityEnum.optional().default("MAJOR"),
+  defect_rows: z.array(DefectRowRequest).optional(),
 });
 const NCRRequest = z
   .object({
@@ -24066,9 +24154,14 @@ const PatchedNCRRequest = z
     containment_performed_by: z.number().int().nullable(),
   })
   .partial();
+const AddDefectsToNCRRequest = z.object({
+  report: z.string().uuid(),
+  defect_rows: z.array(DefectRowRequest),
+});
 const AddPartsToNCRRequest = z.object({
   parts: z.array(z.string().uuid()),
   reason: z.string().optional(),
+  defect_rows: z.array(DefectRowRequest).optional(),
 });
 const AssignNCRRequest = z.object({ assigned_to: z.number().int().nullable() });
 const CapaDecisionRequestDecisionEnum = z.enum(["NOT_REQUIRED", "DEFERRED"]);
@@ -25504,6 +25597,7 @@ const QualityReportsRequest = z.object({
   verified_by: z.number().int().nullish(),
   is_first_piece: z.boolean().optional(),
   archived: z.boolean().optional(),
+  defect_rows: z.array(DefectRowRequest).optional(),
 });
 const PatchedQualityReportsRequest = z
   .object({
@@ -25521,6 +25615,7 @@ const PatchedQualityReportsRequest = z
     verified_by: z.number().int().nullable(),
     is_first_piece: z.boolean(),
     archived: z.boolean(),
+    defect_rows: z.array(DefectRowRequest),
   })
   .partial();
 const CurrentStateEnum = z.enum(["OPEN", "IN_PROGRESS", "CLOSED"]);
@@ -31228,6 +31323,13 @@ const CapaTaskAssigneeRequest = z.object({
   completion_notes: z.string().nullish(),
   archived: z.boolean().optional(),
 });
+const DefectRow = z.object({
+  error_type: z.string().uuid(),
+  count: z.number().int().gte(1).optional().default(1),
+  location: z.string().max(100).optional().default(""),
+  severity: DefectRowSeverityEnum.optional().default("MAJOR"),
+  notes: z.string().optional().default(""),
+});
 const FishboneNested = z
   .object({
     problem_statement: z.string().nullable(),
@@ -31792,9 +31894,12 @@ export const schemas = {
   NCRRef,
   NCR,
   PaginatedNCRList,
+  DefectRowSeverityEnum,
+  DefectRowRequest,
   RaiseNCRRequest,
   NCRRequest,
   PatchedNCRRequest,
+  AddDefectsToNCRRequest,
   AddPartsToNCRRequest,
   AssignNCRRequest,
   CapaDecisionRequestDecisionEnum,
@@ -32592,6 +32697,7 @@ export const schemas = {
   PasswordResetConfirmResponse,
   ApprovalResponseRequest,
   CapaTaskAssigneeRequest,
+  DefectRow,
   FishboneNested,
   FiveWhysNested,
   FrozenFreedRequest,
@@ -46473,6 +46579,32 @@ Not deleted: an NCR is closed by its decisions.`,
   },
   {
     method: "post",
+    path: "/api/NCRs/:id/add-defects/",
+    alias: "api_NCRs_add_defects_create",
+    description: `Record defects found later on one of the NCR&#x27;s records (open NCR, record not withdrawn). Its severity follows them until decided.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: AddDefectsToNCRRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/NCRs/:id/add-parts/",
     alias: "api_NCRs_add_parts_create",
     description: `Put more parts on an open NCR: each gets a failed record and a decision under it.`,
@@ -47205,7 +47337,10 @@ personal rules.`,
       },
     ],
     response: PersonalRule,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/notifications/rules/personal/:id/",
@@ -47222,10 +47357,7 @@ personal rules.`,
       },
     ],
     response: PersonalRule,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "put",
     path: "/api/notifications/rules/personal/:id/",
@@ -52229,7 +52361,10 @@ Lifecycle endpoints:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/process-change-requests/:id/extend/",
@@ -52255,10 +52390,7 @@ Lifecycle endpoints:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/process-change-requests/:id/reject/",
@@ -57571,7 +57703,10 @@ Response:
       },
     ],
     response: SPCDataResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/spc/dimensional-results/",
@@ -57628,10 +57763,7 @@ Response:
       },
     ],
     response: DimensionalResultsResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/spc/hierarchy/",
@@ -63275,7 +63407,10 @@ labour logic Operator Hours uses, so the operator sees what the lead sees; plus
 how many of their finished attendance entries this week await approval. Read-only.`,
     requestFormat: "json",
     response: MyHours,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrackerOrders/",
@@ -63312,10 +63447,7 @@ Use /api/Orders/ for full CRUD operations (staff only).`,
       },
     ],
     response: PaginatedCustomerOrderList,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrackerOrders/:id/",

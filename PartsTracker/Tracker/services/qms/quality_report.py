@@ -198,6 +198,43 @@ def _notify_step_failure(report) -> None:
 _SEVERITY_RANK = {'MINOR': 1, 'MAJOR': 2, 'CRITICAL': 3}
 
 
+def upsert_defect_rows(report, rows) -> int:
+    """Write defect rows on an inspection record — one per error type (a second row for
+    the same type updates it). `rows`: dicts of error_type (or error_type_id), severity,
+    location, notes, count. The one writer of QualityReportDefect: the DWI capture, the
+    Record Inspection form, Raise NCR / Add parts and an NCR's later finding all come
+    here. An error type of another tenant is skipped."""
+    from Tracker.models import QualityErrorsList, QualityReportDefect
+    written = 0
+    for row in rows or []:
+        et = row.get('error_type')
+        et_id = getattr(et, 'pk', et) or row.get('error_type_id')
+        if not et_id or not QualityErrorsList.unscoped.filter(  # tenant-safe: the report's tenant
+                pk=et_id, tenant_id=report.tenant_id).exists():
+            continue
+        QualityReportDefect.objects.update_or_create(
+            report=report, error_type_id=et_id,
+            defaults={'severity': row.get('severity') or 'MAJOR',
+                      'location': row.get('location') or '',
+                      'notes': row.get('notes') or '',
+                      'count': row.get('count') or 1})
+        written += 1
+    return written
+
+
+def record_defects(report, rows) -> int:
+    """Defects found on a record, and what follows: its NCR says what's wrong and, until
+    something is decided (or a person wrote its header), takes its worst defect's
+    severity (ncr.refresh_description → follow_severity)."""
+    written = upsert_defect_rows(report, rows)
+    if written:
+        report.refresh_from_db(fields=['ncr'])
+        if report.ncr_id:
+            from Tracker.services.qms.ncr import refresh_description
+            refresh_description(report.ncr)
+    return written
+
+
 def report_severity(report) -> str:
     """A failure's severity: the worst defect recorded on the report, CRITICAL > MAJOR >
     MINOR. A failure with no defect recorded (an out-of-spec reading) is MAJOR — the

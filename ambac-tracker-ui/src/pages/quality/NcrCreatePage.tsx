@@ -15,6 +15,7 @@ import { MultiPicker } from "@/components/ui/multi-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { CreateNcrSearchParams } from "@/lib/routes/search-params";
 import { SEVERITIES, type Severity } from "@/lib/quality-labels";
+import { DefectRowsEditor, toDefectRowsPayload, worstSeverity, type DefectRow } from "@/components/quality/DefectRowsEditor";
 
 
 /** Raise one NCR over parts a person picks: each part gets a failed inspection record
@@ -28,6 +29,15 @@ export function NcrCreatePage() {
     const [parts, setParts] = useState<string[]>(preset);
     const [description, setDescription] = useState("");
     const [severity, setSeverity] = useState<Severity>("MAJOR");
+    // What was found — the same on every part's failed record. Severity follows the
+    // worst defect until it's chosen by hand.
+    const [defects, setDefects] = useState<DefectRow[]>([]);
+    const [severityChosen, setSeverityChosen] = useState(false);
+    const onDefects = (rows: DefectRow[]) => {
+        setDefects(rows);
+        const worst = worstSeverity(rows);
+        if (!severityChosen && worst) setSeverity(worst);
+    };
     const [partSearch, setPartSearch] = useState("");
 
     const { data: partsData } = useRetrieveParts({ limit: 100, search: partSearch });
@@ -43,7 +53,10 @@ export function NcrCreatePage() {
     const back = () => navigate({ to: search.from ?? "/quality/ncrs" });
 
     const raise = useMutation({
-        mutationFn: () => api.api_NCRs_create({ parts, description: description.trim(), severity }),
+        mutationFn: () => api.api_NCRs_create({
+            parts, description: description.trim(), severity,
+            ...(defects.length ? { defect_rows: toDefectRowsPayload(defects) } : {}),
+        }),
         onSuccess: (ncr) => {
             void invalidateAfterNcrChange(queryClient);  // its parts are held now
             navigate({ to: "/quality/ncrs/$ncrId", params: { ncrId: String(ncr.id) } });
@@ -103,8 +116,18 @@ export function NcrCreatePage() {
                                   className="resize-none" rows={4} />
                     </div>
                     <div className="space-y-2">
+                        <Label>Defects found</Label>
+                        <DefectRowsEditor rows={defects} onChange={onDefects}
+                                          emptyText="None recorded yet. A defect here goes on each part's failed record, for defect analysis." />
+                        {parts.length > 1 && defects.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                                The same defects go on every part's record. A finding on one part alone can be added on the NCR afterwards.
+                            </p>
+                        )}
+                    </div>
+                    <div className="space-y-2">
                         <Label>Severity<RequiredMark /></Label>
-                        <Select value={severity} onValueChange={(v) => v && setSeverity(v as Severity)}>
+                        <Select value={severity} onValueChange={(v) => { if (v) { setSeverity(v as Severity); setSeverityChosen(true); } }}>
                             <SelectTrigger className="w-[320px]"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {SEVERITIES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}

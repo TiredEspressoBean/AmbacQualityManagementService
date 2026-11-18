@@ -19528,6 +19528,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/NCR'
           description: ''
+  /api/NCRs/{id}/add-defects/:
+    post:
+      operationId: api_NCRs_add_defects_create
+      description: Record defects found later on one of the NCR's records (open NCR,
+        record not withdrawn). Its severity follows them until decided.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddDefectsToNCRRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AddDefectsToNCRRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AddDefectsToNCRRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/NCRs/{id}/add-parts/:
     post:
       operationId: api_NCRs_add_parts_create
@@ -52211,6 +52255,20 @@ components:
       required:
       - added
       - batch_id
+    AddDefectsToNCRRequest:
+      type: object
+      description: A finding made later, on one of the NCR's records.
+      properties:
+        report:
+          type: string
+          format: uuid
+        defect_rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/DefectRowRequest'
+      required:
+      - defect_rows
+      - report
     AddNoteInputRequest:
       type: object
       properties:
@@ -52235,6 +52293,11 @@ components:
         reason:
           type: string
           description: Why these parts — written on each part's failed record.
+        defect_rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/DefectRowRequest'
+          description: What was found — the same on every added part's record.
       required:
       - parts
     AdherenceOp:
@@ -58290,6 +58353,64 @@ components:
       - data
       - filters_applied
       - total
+    DefectRow:
+      type: object
+      description: One defect found on an inspection record (QualityReportDefect).
+      properties:
+        error_type:
+          type: string
+          format: uuid
+        count:
+          type: integer
+          minimum: 1
+          default: 1
+        location:
+          type: string
+          default: ''
+          maxLength: 100
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/DefectRowSeverityEnum'
+          default: MAJOR
+        notes:
+          type: string
+          default: ''
+      required:
+      - error_type
+    DefectRowRequest:
+      type: object
+      description: One defect found on an inspection record (QualityReportDefect).
+      properties:
+        error_type:
+          type: string
+          format: uuid
+        count:
+          type: integer
+          minimum: 1
+          default: 1
+        location:
+          type: string
+          default: ''
+          maxLength: 100
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/DefectRowSeverityEnum'
+          default: MAJOR
+        notes:
+          type: string
+          default: ''
+      required:
+      - error_type
+    DefectRowSeverityEnum:
+      enum:
+      - MINOR
+      - MAJOR
+      - CRITICAL
+      type: string
+      description: |-
+        * `MINOR` - MINOR
+        * `MAJOR` - MAJOR
+        * `CRITICAL` - CRITICAL
     DefectTrendResponse:
       type: object
       properties:
@@ -66665,12 +66786,21 @@ components:
         created_at:
           type: string
           format: date-time
+        superseded:
+          type: boolean
+        defects:
+          type: array
+          items:
+            type: string
+          description: What was found, e.g. "Bore oversize ×2 (Major)".
       required:
       - created_at
+      - defects
       - id
       - part_erp_id
       - report_number
       - status
+      - superseded
     NCRRequest:
       type: object
       description: |-
@@ -74924,6 +75054,11 @@ components:
             for setup verification
         archived:
           type: boolean
+        defect_rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/DefectRowRequest'
+          writeOnly: true
     PatchedQuarantineDispositionRequest:
       type: object
       description: |-
@@ -79308,6 +79443,11 @@ components:
             for setup verification
         archived:
           type: boolean
+        defect_rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/DefectRowRequest'
+          writeOnly: true
       required:
       - status
     QuarantineDisposition:
@@ -79750,6 +79890,11 @@ components:
           allOf:
           - $ref: '#/components/schemas/SeverityEnum'
           default: MAJOR
+        defect_rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/DefectRowRequest'
+          description: What was found — the same on every part's failed record.
       required:
       - description
       - parts

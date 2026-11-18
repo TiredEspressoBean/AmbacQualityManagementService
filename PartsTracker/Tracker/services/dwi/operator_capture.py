@@ -84,7 +84,6 @@ from Tracker.models import (
     QualityReportEquipment,
     QualityReportPersonnel,
     QualityReports,
-    QualityErrorsList,
     StepExecution,
     Substep,
     SubstepCompletion,
@@ -1277,23 +1276,10 @@ def _apply_attestation_signature(report: QualityReports, cap) -> None:
 
 
 def _apply_defects(report: QualityReports, cap) -> None:
-    rows = cap.get("rows") or []
-    for row in rows:
-        error_type_id = row.get("error_type_id")
-        if not error_type_id:
-            continue
-        if not QualityErrorsList.objects.filter(pk=error_type_id).exists():
-            continue
-        QualityReportDefect.objects.update_or_create(
-            report=report,
-            error_type_id=error_type_id,
-            defaults={
-                "severity": row.get("severity") or "MAJOR",
-                "location": row.get("location") or "",
-                "notes": row.get("notes") or "",
-                "count": row.get("count") or 1,
-            },
-        )
+    # The one defect writer (services/qms/quality_report); the NCR refresh follows
+    # once the whole capture is in (submit_substep).
+    from Tracker.services.qms.quality_report import upsert_defect_rows
+    upsert_defect_rows(report, cap.get("rows") or [])
 
 
 # -------------------------------------------------------------------------

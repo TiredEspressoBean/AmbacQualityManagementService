@@ -1,4 +1,6 @@
 "use client"
+import { Label } from "@/components/ui/label";
+import { DefectRowsEditor, toDefectRowsPayload, type DefectRow } from "@/components/quality/DefectRowsEditor";
 import { apiErrorMessage } from "@/lib/api/describeApiError"
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { Combobox } from "@/components/ui/combobox";
@@ -198,16 +200,22 @@ export default function EditQualityReportFormPage() {
     const createQualityReport = useCreateQualityReport();
     const updateQualityReport = useUpdateQualityReport();
 
+    // What was found: written with the record (create), or while it's still pending —
+    // a recorded result is final; a later finding goes on its NCR.
+    const [defects, setDefects] = useState<DefectRow[]>([]);
+    const defectsEditable = mode === "create" || qualityReport?.status === "PENDING";
+
     function onSubmit(values: FormValues) {
         // In edit mode `measurements` is never touched by this form (the DWI
         // inline-capture path owns those writes). Sending an empty array here
         // used to clobber the linked MeasurementResults; the backend now
         // discards the field on update, but keep it out of the payload too so
         // the intent is legible.
+        const withDefects = defectsEditable && defects.length > 0 ? { defect_rows: toDefectRowsPayload(defects) } : {};
         const submitData =
             mode === "edit"
-                ? { ...values, measurements: undefined }
-                : { ...values, measurements: values.measurements || [] };
+                ? { ...values, measurements: undefined, ...withDefects }
+                : { ...values, measurements: values.measurements || [], ...withDefects };
 
         if (mode === "edit" && qualityReportId) {
             updateQualityReport.mutate(
@@ -228,6 +236,7 @@ export default function EditQualityReportFormPage() {
             createQualityReport.mutate(submitData, {
                 onSuccess: async (created) => {
                     form.reset();
+                    setDefects([]);
                     setChosenPartId(undefined);
                     if (values.status !== "FAIL") { toast.success("Inspection recorded"); return; }
                     void invalidateAfterNcrChange(queryClient);
@@ -379,6 +388,20 @@ export default function EditQualityReportFormPage() {
                             );
                         }}
                     />
+
+                    {/* Defects found — the shared editor every failed record uses. */}
+                    <div className="space-y-2">
+                        <Label>Defects found</Label>
+                        {defectsEditable ? (
+                            <DefectRowsEditor rows={defects} onChange={setDefects}
+                                              emptyText="None recorded. A Fail with a defect says what's wrong, for the NCR and defect analysis." />
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                {(qualityReport?.errors_info as { name: string }[] | undefined)?.map((e) => e.name).join(", ") || "None recorded."}
+                                {" "}Recorded with the result; a later finding goes on its NCR.
+                            </p>
+                        )}
+                    </div>
 
                     {/* Description */}
                     <FormField
