@@ -133,7 +133,7 @@ export const DATA_MANAGEMENT: DMGroup[] = [
             { key: "parts", name: "Parts", list: "/editor/parts", add: "/editor/parts/new", endpoint: "Parts", model: "parts" },
             { key: "cores", name: "Cores", list: "/reman/cores", add: "/reman/cores/receive", endpoint: "Cores", model: "core" },
             { key: "milestones", name: "Order Milestones", list: "/editor/milestones", endpoint: "MilestoneTemplates", model: "milestonetemplate", versioned: true },
-            { key: "quality-reports", name: "Quality Reports", list: "/editor/quality-reports", add: "/editor/quality-reports/new", endpoint: "QualityReports", model: "qualityreports" },
+            { key: "quality-reports", name: "Inspection Records", list: "/editor/quality-reports", add: "/editor/quality-reports/new", endpoint: "QualityReports", model: "qualityreports" },
         ],
     },
     {

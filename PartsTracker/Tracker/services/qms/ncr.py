@@ -188,7 +188,7 @@ def failure_description(report) -> str:
     """What failed, in words. A report captured at a step usually has no description of
     its own, which left every auto-opened record reading "No description"."""
     if (report.description or "").strip():
-        return f"Failed quality report: {report.description.strip()}"
+        return f"Failed inspection: {report.description.strip()}"
     where = report.step.name if report.step_id else "inspection"
     findings = _findings(report) if report.pk else []
     return f"Failed {where}" + (f": {', '.join(findings)}" if findings else "")

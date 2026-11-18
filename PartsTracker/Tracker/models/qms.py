@@ -1111,7 +1111,7 @@ class QuarantineDisposition(SecureModel):
             has_pending, pending_reports = self.has_pending_annotations()
             if has_pending:
                 raise ValueError(
-                    f"Cannot close disposition: 3D annotations required for {len(pending_reports)} quality report(s). "
+                    f"Cannot close disposition: 3D annotations required for {len(pending_reports)} inspection record(s). "
                     "Complete annotations before closing."
                 )
 
@@ -1207,7 +1207,7 @@ class QuarantineDisposition(SecureModel):
 
         has_pending, pending_reports = self.has_pending_annotations()
         if has_pending:
-            blockers.append(f"3D annotations required for {len(pending_reports)} quality report(s)")
+            blockers.append(f"3D annotations required for {len(pending_reports)} inspection record(s)")
 
         if self._needs_containment():
             blockers.append(f"Containment action required on {self.ncr.ncr_number} before closing "

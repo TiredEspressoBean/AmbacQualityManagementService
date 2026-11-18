@@ -1089,6 +1089,7 @@ export type CAPA = {
   quality_reports?: Array<string> | undefined;
   dispositions?: Array<string> | undefined;
   ncrs?: Array<string> | undefined;
+  ncr_refs: Array<CapaNcrRef>;
   affected_part_ids: Array<string>;
   tasks: Array<CapaTasks>;
   rca_records: Array<RcaRecord>;
@@ -1125,6 +1126,12 @@ export type SeverityEnum =
    * @enum CRITICAL, MAJOR, MINOR
    */
   "CRITICAL" | "MAJOR" | "MINOR";
+export type CapaNcrRef = {
+  id: string;
+  ncr_number: string;
+  state: string;
+  description: string;
+};
 export type CapaTasks = {
   id: string;
   task_number: string;
@@ -20375,6 +20382,12 @@ const CapaTypeEnum = z.enum([
   "SUPPLIER",
 ]);
 const SeverityEnum = z.enum(["CRITICAL", "MAJOR", "MINOR"]);
+const CapaNcrRef = z.object({
+  id: z.string().uuid(),
+  ncr_number: z.string(),
+  state: z.string(),
+  description: z.string(),
+});
 const TaskTypeEnum = z.enum(["CONTAINMENT", "CORRECTIVE", "PREVENTIVE"]);
 const CapaTaskStatusEnum = z.enum([
   "NOT_STARTED",
@@ -20600,6 +20613,7 @@ const CAPA = z.object({
   quality_reports: z.array(z.string().uuid()).optional(),
   dispositions: z.array(z.string().uuid()).optional(),
   ncrs: z.array(z.string().uuid()).optional(),
+  ncr_refs: z.array(CapaNcrRef),
   affected_part_ids: z.array(z.string().uuid()),
   tasks: z.array(CapaTasks),
   rca_records: z.array(RcaRecord),
@@ -31325,6 +31339,7 @@ export const schemas = {
   BatchSealResponse,
   CapaTypeEnum,
   SeverityEnum,
+  CapaNcrRef,
   TaskTypeEnum,
   CapaTaskStatusEnum,
   CapaTaskAssignee,

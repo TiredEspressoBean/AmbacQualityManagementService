@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Link } from "@tanstack/react-router"
+import type { Schema } from "@/lib/api/types"
 import { useRetrieveQualityReportsBatch } from "@/hooks/useRetrieveQualityReportsBatch"
 import { useRetrieveDispositionsBatch } from "@/hooks/useRetrieveDispositionsBatch"
 import { AlertTriangle } from "lucide-react"
@@ -183,17 +184,39 @@ export function CapaOverviewTab({ capa }: CapaOverviewTabProps) {
                 </Card>
             )}
 
+            {/* The nonconformances it acts on; its affected parts are theirs. */}
+            {(capa?.ncr_refs?.length ?? 0) > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Linked NCRs</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="space-y-1">
+                            {((capa?.ncr_refs ?? []) as Schema<"CapaNcrRef">[]).map((n) => (
+                                <li key={String(n.id)} className="flex items-baseline gap-2">
+                                    <Link to="/quality/ncrs/$ncrId" params={{ ncrId: String(n.id) }}
+                                          className="font-mono text-primary hover:underline">
+                                        {n.ncr_number}
+                                    </Link>
+                                    <span className="truncate text-sm text-muted-foreground">{n.description}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
+
             {qualityReportIds.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>Linked Quality Reports</CardTitle>
+                        <CardTitle>Linked Inspection Records</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <ul className="space-y-1">
                             {(qualityReportsData || qualityReportIds).map((report: { id?: string; report_number?: string } | string) => {
                                 const isObj = typeof report === "object" && report !== null;
                                 const id = isObj ? report.id : report;
-                                const name = (isObj ? report.report_number : undefined) || `NCR-${id}`;
+                                const name = (isObj ? report.report_number : undefined) || "Inspection record";
                                 return (
                                     <li key={id}>
                                         <Link

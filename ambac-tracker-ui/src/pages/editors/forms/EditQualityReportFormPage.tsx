@@ -190,7 +190,7 @@ export default function EditQualityReportFormPage() {
                 { id: qualityReportId, data: submitData },
                 {
                     onSuccess: () => {
-                        toast.success("Quality Report updated successfully!");
+                        toast.success("Inspection record updated");
                     },
                     onError: (error) => {
                         console.error("Failed to update quality report:", error);
@@ -201,7 +201,7 @@ export default function EditQualityReportFormPage() {
         } else {
             createQualityReport.mutate(submitData, {
                 onSuccess: () => {
-                    toast.success("Quality Report created successfully!");
+                    toast.success("Inspection recorded");
                     form.reset();
                 },
                 onError: (error) => {

@@ -211,7 +211,7 @@ export function PartAnnotator({
         // from the WO's failed reports. Pre-bound (operator runtime)
         // skips this check because the QR is already known.
         if (workOrderId && !isPreBound && selectedReportIds.length === 0) {
-            toast.error("Please select at least one quality report first");
+            toast.error("Please select at least one inspection record first");
             return;
         }
 
@@ -354,7 +354,7 @@ export function PartAnnotator({
         // Every annotation carries the quality report it belongs to (provenance) —
         // whatever opened the annotator, not only a work-order context.
         if (activeQrIds.length === 0) {
-            toast.error("Please select at least one quality report to link annotations to");
+            toast.error("Please select at least one inspection record to link annotations to");
             return;
         }
 
@@ -509,15 +509,15 @@ export function PartAnnotator({
                     {isLoadingReports ? (
                         <div className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            <span className="text-sm text-muted-foreground">Loading quality reports...</span>
+                            <span className="text-sm text-muted-foreground">Loading inspection records...</span>
                         </div>
                     ) : reportsRequiringAnnotation.length === 0 ? (
                         <div className="text-sm text-muted-foreground">
-                            No quality reports requiring 3D annotation found for this work order
+                            No inspection records requiring 3D annotation found for this work order
                         </div>
                     ) : (
                         <div className="flex items-center gap-3">
-                            <Label className="text-sm font-medium shrink-0">Quality Report:</Label>
+                            <Label className="text-sm font-medium shrink-0">Inspection Record:</Label>
                             <Select
                                 value={selectedReportIds[0]?.toString() || ""}
                                 onValueChange={(value) => setSelectedReportIds(value ? [value] : [])}

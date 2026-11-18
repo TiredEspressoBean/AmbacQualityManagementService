@@ -1889,6 +1889,14 @@ class CapaVerificationSerializer(SecureModelMixin):
         return None
 
 
+class CapaNcrRefSerializer(serializers.Serializer):
+    """An NCR a CAPA acts on."""
+    id = serializers.UUIDField()
+    ncr_number = serializers.CharField()
+    state = serializers.CharField()
+    description = serializers.CharField()
+
+
 class CAPASerializer(SecureModelMixin):
     """CAPA main serializer"""
     capa_number = serializers.CharField(read_only=True)
@@ -1909,6 +1917,7 @@ class CAPASerializer(SecureModelMixin):
     blocking_items = serializers.SerializerMethodField()
     work_order_ids = serializers.SerializerMethodField()
     affected_part_ids = serializers.SerializerMethodField()
+    ncr_refs = serializers.SerializerMethodField()
     # Names for the related items, so the page doesn't show their ids.
     part_erp_id = serializers.CharField(source='part.ERP_id', read_only=True, allow_null=True)
     step_name = serializers.CharField(source='step.name', read_only=True, allow_null=True)
@@ -1929,7 +1938,7 @@ class CAPASerializer(SecureModelMixin):
             'allow_self_verification',
             'part', 'step', 'work_order',
             'part_erp_id', 'step_name', 'work_order_erp_id',
-            'quality_reports', 'dispositions', 'ncrs', 'affected_part_ids',
+            'quality_reports', 'dispositions', 'ncrs', 'ncr_refs', 'affected_part_ids',
             'tasks', 'rca_records', 'verifications',
             'completion_percentage', 'is_overdue', 'blocking_items',
             'work_order_ids',
@@ -1939,7 +1948,7 @@ class CAPASerializer(SecureModelMixin):
             'capa_number', 'status', 'status_display', 'completed_date',
             'approval_required', 'approved_by', 'approved_at', 'approval_status_display',
             'completion_percentage', 'is_overdue', 'blocking_items', 'work_order_ids',
-            'affected_part_ids',
+            'affected_part_ids', 'ncr_refs',
             'created_at', 'updated_at', 'archived'
         )
 
@@ -1957,6 +1966,12 @@ class CAPASerializer(SecureModelMixin):
         ids |= {d.part_id for d in obj.dispositions.all() if d.part_id}
         ids |= {qr.part_id for qr in obj.quality_reports.all() if qr.part_id}
         return Parts.objects.filter(pk__in=ids)  # tenant-safe: .objects auto-scopes
+
+    @extend_schema_field(CapaNcrRefSerializer(many=True))
+    def get_ncr_refs(self, obj):
+        """The NCRs it acts on, by number, for the CAPA page."""
+        return [{'id': n.id, 'ncr_number': n.ncr_number, 'state': n.state, 'description': n.description}
+                for n in obj.ncrs.order_by('created_at')]
 
     @extend_schema_field(serializers.ListField(child=serializers.UUIDField()))
     def get_affected_part_ids(self, obj):

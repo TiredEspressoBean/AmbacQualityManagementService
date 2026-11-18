@@ -1800,7 +1800,7 @@ class HeatMapAnnotationsViewSet(TenantScopedMixin, ListMetadataMixin, DataExport
         from Tracker.services.qms.annotations import can_delete
         if not can_delete(instance, self.request.user):
             raise PermissionDenied(
-                "This annotation is on a finished quality report, so it is inspection "
+                "This annotation is on a finished inspection record, so it is inspection "
                 "evidence. Only the quality team can delete it.")
         super().perform_destroy(instance)
 

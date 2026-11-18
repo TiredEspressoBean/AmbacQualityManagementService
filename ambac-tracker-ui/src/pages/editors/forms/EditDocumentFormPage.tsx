@@ -328,7 +328,7 @@ export default function DocumentFormPage() {
             'companies': 'Company',
             // QMS
             'qualityerrorslist': 'Error Type',
-            'qualityreports': 'Quality Report',
+            'qualityreports': 'Inspection Record',
             'quarantinedisposition': 'Disposition',
             'capa': 'CAPA',
             'threedmodel': '3D Model',

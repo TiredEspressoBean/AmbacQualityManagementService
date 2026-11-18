@@ -57,7 +57,7 @@ class EveryFailureIsOnAnNcrTests(_Shop):
         ncr = self._ncr_of(self._fail(self.parts[0], description="bore oversize"))
         self.assertIsNotNone(ncr)
         self.assertTrue(ncr.ncr_number.startswith("NCR-"))
-        self.assertEqual(ncr.description, "Failed quality report: bore oversize")
+        self.assertEqual(ncr.description, "Failed inspection: bore oversize")
         d = QuarantineDisposition.objects.get(part=self.parts[0])
         self.assertEqual(d.ncr_id, ncr.id)
 

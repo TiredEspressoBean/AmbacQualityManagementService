@@ -54410,6 +54410,11 @@ components:
           items:
             type: string
             format: uuid
+        ncr_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapaNcrRef'
+          readOnly: true
         affected_part_ids:
           type: array
           items:
@@ -54479,6 +54484,7 @@ components:
       - initiated_by_info
       - initiated_date
       - is_overdue
+      - ncr_refs
       - part_erp_id
       - problem_statement
       - rca_records
@@ -54897,6 +54903,24 @@ components:
       required:
       - decision
       - note
+    CapaNcrRef:
+      type: object
+      description: An NCR a CAPA acts on.
+      properties:
+        id:
+          type: string
+          format: uuid
+        ncr_number:
+          type: string
+        state:
+          type: string
+        description:
+          type: string
+      required:
+      - description
+      - id
+      - ncr_number
+      - state
     CapaTaskAssignee:
       type: object
       description: CAPA task assignee serializer

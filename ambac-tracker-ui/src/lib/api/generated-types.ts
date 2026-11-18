@@ -23063,6 +23063,7 @@ export interface components {
             quality_reports?: string[];
             dispositions?: string[];
             ncrs?: string[];
+            readonly ncr_refs: components["schemas"]["CapaNcrRef"][];
             readonly affected_part_ids: string[];
             readonly tasks: components["schemas"]["CapaTasks"][];
             readonly rca_records: components["schemas"]["RcaRecord"][];
@@ -23287,6 +23288,14 @@ export interface components {
             decision: components["schemas"]["CapaDecisionRequestDecisionEnum"];
             /** @description Why — required; it's what an auditor reads. */
             note: string;
+        };
+        /** @description An NCR a CAPA acts on. */
+        CapaNcrRef: {
+            /** Format: uuid */
+            id: string;
+            ncr_number: string;
+            state: string;
+            description: string;
         };
         /** @description CAPA task assignee serializer */
         CapaTaskAssignee: {

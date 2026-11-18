@@ -63,7 +63,7 @@
 #grid(
   columns: (1fr, 1fr), column-gutter: 16pt, row-gutter: 6pt,
   field("NCR / VDMR", text(font: mono-font)[#opt(data.at("record_number", default: none))]),
-  field("Quality reports", if data.report_numbers.len() == 0 { text(fill: muted)[—] }
+  field("Inspection records", if data.report_numbers.len() == 0 { text(fill: muted)[—] }
                            else { text(font: mono-font)[#data.report_numbers.join(", ")] }),
 )
 #if data.record_note != "" [

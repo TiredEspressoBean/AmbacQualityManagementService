@@ -71,7 +71,7 @@ function LinkedRecords({ modelData }: { modelData: { id?: string | number } }) {
                 <section className="space-y-3">
                     <div className="flex items-center gap-2">
                         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                            Quality Reports
+                            Inspection Records
                         </h3>
                         <Badge variant="secondary">{qrs.length}</Badge>
                     </div>

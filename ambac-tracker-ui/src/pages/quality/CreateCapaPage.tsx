@@ -697,7 +697,7 @@ function CreateCapaForm() {
 
                             <Separator />
 
-                            {/* Quality Reports Section */}
+                            {/* Inspection records section */}
                             <FormField
                                 control={form.control}
                                 name="quality_reports"
@@ -705,7 +705,7 @@ function CreateCapaForm() {
                                     return (
                                         <FormItem className="space-y-4">
                                             <div>
-                                                <FormLabel className="text-lg font-medium">Linked Quality Reports</FormLabel>
+                                                <FormLabel className="text-lg font-medium">Linked Inspection Records</FormLabel>
                                                 <FormDescription>
                                                     Link NCRs and quality reports to this CAPA
                                                 </FormDescription>

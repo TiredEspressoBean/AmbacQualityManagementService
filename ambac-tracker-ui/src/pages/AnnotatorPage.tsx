@@ -182,7 +182,7 @@ export function AnnotatorPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Select Quality Reports</CardTitle>
+                    <CardTitle>Select Inspection Records</CardTitle>
                     <CardDescription>
                         Choose quality reports that require 3D defect annotations
                     </CardDescription>
