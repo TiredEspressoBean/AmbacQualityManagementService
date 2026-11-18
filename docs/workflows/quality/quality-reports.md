@@ -69,16 +69,17 @@ An operator's Home offers the same form: beside the step they last finished,
     finding was wrong](dispositions.md#when-the-finding-was-wrong-not-a-nonconformance)
     and [Putting a Mistake Right](../fixing-mistakes.md).
 
-!!! note "Defects are captured in the work instructions"
+!!! note "Defects belong to the record"
     **Error types are not fields on the record.** Each defect is its own entry
-    with an error type, a **count**, a **location**, a **severity**, and notes,
-    captured by a work instruction's defect field as the inspection is done. One
-    record can carry several defects at different severities, and the worst of
-    them sets the severity of a new NCR.
+    on it, with an error type, a **count**, a **location**, a **severity**, and
+    notes. One record can carry several defects at different severities, and the
+    worst of them sets the severity of a new NCR.
 
-    The **Record Inspection** form has no defect field, at creation or on edit.
-    A failure recorded there opens its NCR at **Major**; a lead or QA sets the
-    right severity on the NCR.
+    Today defects can only be entered through a work instruction's defect field,
+    as the inspection is done. The **Record Inspection** form, **Raise NCR** and
+    **Add parts** don't record defects yet. A failure recorded that way has none:
+    it doesn't appear in defect analysis, and its NCR opens at **Major** until a
+    lead or QA sets the right severity on the NCR.
 
 !!! note "Not on the form"
     There is no quantity-affected, customer-reference, immediate-action, or
