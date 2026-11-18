@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { useRetrieveDisposition } from "@/hooks/useRetrieveDisposition"
+import { invalidateAfterNcrChange } from "@/hooks/ncrs"
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor"
 import { useRetrievePart } from "@/hooks/parts"
 import { useRetrieveParts } from "@/hooks/parts"
@@ -54,7 +55,6 @@ import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader"
 import { schemas } from "@/lib/api/generated"
 import type { Schema } from "@/lib/api/types"
 import { isFieldRequired } from "@/lib/zod-config"
-import { matchKey } from "@/lib/query-filters";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 // Use generated schema - error messages handled by global error map
@@ -280,9 +280,8 @@ export default function EditDispositionFormPage() {
     const watchDispositionType = watch("disposition_type")
     const showCustomerApproval = watchDispositionType === "USE_AS_IS" || watchDispositionType === "REPAIR"
     // What a decision rests on doesn't change after it (the server refuses it): the
-    // severity, and the concession unless a new decision is being made with its own.
+    // concession, unless a new decision is being made with its own.
     const isDecided = mode === "edit" && !!disposition?.disposition_type
-    const SEVERITY_RANK = ["MINOR", "MAJOR", "CRITICAL"]
     const concessionLocked = isDecided && watchDispositionType === disposition?.disposition_type
 
     // Display label for an employee. Prefer the server-computed full_name
@@ -410,7 +409,7 @@ export default function EditDispositionFormPage() {
                 // successful close as an error (walk 2026-10-22).
                 if (decided?.current_state !== "CLOSED") await savePatch(values)
                 toast.success(decided?.current_state === "CLOSED" ? "Disposition closed" : "Disposition updated")
-                queryClient.invalidateQueries(matchKey(["disposition", dispositionId]))
+                void invalidateAfterNcrChange(queryClient)  // the decision is its NCR's too
             } else {
                 const result = await api.api_QuarantineDispositions_create(values, {
                     headers: csrf(),
@@ -437,7 +436,7 @@ export default function EditDispositionFormPage() {
             setCosignOpen(false)
             setPendingDecision(null)
             toast.success("Disposition updated")
-            queryClient.invalidateQueries(matchKey(["disposition", dispositionId]))
+            void invalidateAfterNcrChange(queryClient)  // the decision is its NCR's too
         } catch (err: any) {
             // Surface the server's own co-sign error (throttled / wrong person /
             // not permitted / missing concession) verbatim.
@@ -656,11 +655,7 @@ export default function EditDispositionFormPage() {
                                                             </SelectTrigger>
                                                         </FormControl>
                                                         <SelectContent>
-                                                            {/* Once decided, only the severities it may rise to are listed —
-                                                                not greyed-out ones, which a screen reader skips, leaving
-                                                                its user a list that disagrees with what's on screen. */}
                                                             {schemas.SeverityEnum.options
-                                                                .filter((sev) => !isDecided || SEVERITY_RANK.indexOf(sev) >= SEVERITY_RANK.indexOf(disposition?.severity ?? "MINOR"))
                                                                 .map((sev) => (
                                                                     <SelectItem key={sev} value={sev}>
                                                                         {severityLabels[sev] ?? sev}

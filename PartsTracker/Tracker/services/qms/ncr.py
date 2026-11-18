@@ -29,7 +29,7 @@ def raise_ncr(*, tenant, description: str = '', severity: str = 'MAJOR', step=No
               work_order=None, batch_execution=None, raised_by=None, reports=()) -> NCR:
     """Open an NCR. `reports` are attached as its evidence (a report already on another
     NCR stays there: a record belongs to one)."""
-    ncr = NCR.objects.create(
+    ncr = NCR.unscoped.create(  # tenant-safe: the tenant is given
         tenant=tenant, description=description or '', severity=severity or 'MAJOR',
         step=step, work_order=work_order, batch_execution=batch_execution,
         raised_by=raised_by if getattr(raised_by, 'is_authenticated', False) else None)
@@ -48,10 +48,17 @@ def announce(ncr_id) -> None:
     from Tracker.services.core.notifications import emit
     from Tracker.services.qms.events import NCROpenedPayload
 
-    ncr = (NCR.objects.select_related('step', 'work_order', 'raised_by')  # tenant-safe: by pk, in its tenant's commit
+    # Unscoped by pk: on_commit can run after the caller's tenant context has exited.
+    ncr = (NCR.unscoped.select_related('step', 'work_order', 'raised_by', 'tenant')  # tenant-safe: by the NCR's own pk
            .filter(pk=ncr_id).first())
     if ncr is None:
         return
+    from Tracker.utils.tenant_context import tenant_context
+    with tenant_context(ncr.tenant_id):
+        _announce(ncr, emit, NCROpenedPayload)
+
+
+def _announce(ncr, emit, NCROpenedPayload) -> None:
     rows = members(ncr)
     parts = [m for m in rows if m['part_id'] and m['held']]
     if not parts:
@@ -84,28 +91,39 @@ def announce(ncr_id) -> None:
 
 def _attach(report, ncr) -> None:
     # A queryset write: the report's own save would run the FAIL signal again.
-    QualityReports.objects.filter(pk=report.pk).update(ncr=ncr)  # tenant-safe: by a scoped report's pk
+    QualityReports.unscoped.filter(pk=report.pk).update(ncr=ncr)  # tenant-safe: by the report's own pk
     report.ncr = ncr
 
 
 def open_ncr_for_part(part):
-    """The part's open NCR — the one a repeat failure joins — or None. The latest, when a
-    person put the part on a second one."""
-    return (NCR.objects  # tenant-safe: scoped by the part FK
-            .filter(archived=False, state='OPEN')
-            .filter(Q(dispositions__part=part, dispositions__archived=False) | Q(reports__part=part))
-            .distinct().order_by('-created_at').first())
+    """The part's open NCR — the one a repeat failure joins — or None: an open NCR where
+    the part's own decision is still open, or that holds its failed record with no
+    decision on it yet. An NCR the part is done with (its decision closed, its load
+    siblings still open) isn't its. The latest, when a person put it on a second one."""
+    from django.db.models import Exists, OuterRef
+    its = QuarantineDisposition.unscoped.filter(  # tenant-safe: correlated to a tenant-filtered NCR
+        ncr=OuterRef('pk'), part=part, archived=False)
+    open_decision = Exists(its.exclude(current_state='CLOSED'))
+    record_only = (Exists(QualityReports.unscoped.filter(ncr=OuterRef('pk'), part=part))  # tenant-safe: correlated
+                   & ~Exists(its))
+    return (NCR.unscoped  # tenant-safe: the part's own tenant
+            .filter(tenant_id=part.tenant_id, archived=False, state='OPEN')
+            .filter(open_decision | record_only)
+            .order_by('-created_at').first())
 
 
 def ncr_for_failed_report(report):
     """The NCR a failed record belongs to: the one it is already on, the open one of its
     load or its part (a repeat failure joins), else a new one. Returns (ncr, raised)."""
-    if report.ncr_id:
+    if report.ncr_id and report.ncr.state == 'OPEN':
         return report.ncr, False
+    # On a closed NCR (a declined whole-lot request), a failure now is a new one.
+    reclaim = bool(report.ncr_id)
     ncr = None
     if report.batch_execution_id:
-        ncr = (NCR.objects  # tenant-safe: scoped by the batch FK
-               .filter(archived=False, state='OPEN', batch_execution_id=report.batch_execution_id)
+        ncr = (NCR.unscoped  # tenant-safe: the report's own tenant
+               .filter(tenant_id=report.tenant_id, archived=False, state='OPEN',
+                       batch_execution_id=report.batch_execution_id)
                .order_by('created_at').first())
     elif report.part_id:
         ncr = open_ncr_for_part(report.part)
@@ -123,6 +141,8 @@ def ncr_for_failed_report(report):
         severity=report_severity(report),
         step=report.step or (batch.step if batch else None), work_order=work_order,
         batch_execution=batch, raised_by=report.primary_detector, reports=[report])
+    if reclaim:
+        _attach(report, ncr)
     return ncr, True
 
 
@@ -132,8 +152,14 @@ _HEADER = ('description', 'severity', 'containment_action', 'containment_perform
 def ncr_for_new_disposition(*, part=None, reports=(), step=None, user=None, header=None) -> NCR:
     """The NCR a disposition opened by hand goes under: the open one its reports are on,
     else its part's open one, else a new one carrying `header` (description, severity,
-    containment). An existing NCR keeps its header; a blank in it is filled."""
+    containment). An existing NCR keeps its header; a blank in it is filled.
+
+    Saying what's wrong is part of raising one (add_ncr); containment, and filling in an
+    existing NCR's header, are change_ncr's (user ruling 2026-11-17) — dropped without it."""
     header = {k: v for k, v in (header or {}).items() if k in _HEADER}
+    may_edit = bool(user and getattr(user, 'has_tenant_perm', None) and user.has_tenant_perm('change_ncr'))
+    if not may_edit:
+        header = {k: v for k, v in header.items() if not k.startswith('containment')}
     ncr = next((r.ncr for r in reports if r.ncr_id and r.ncr.state == 'OPEN'), None)
     if ncr is None and part is not None:
         ncr = open_ncr_for_part(part)
@@ -144,8 +170,11 @@ def ncr_for_new_disposition(*, part=None, reports=(), step=None, user=None, head
                         work_order=part.work_order if part is not None else None,
                         raised_by=user, reports=reports)
         rest = {k: v for k, v in header.items() if k in ('containment_action', 'containment_performed_by')}
+    elif not ncr.dispositions.filter(archived=False).exists():
+        # The first decision says what's wrong, as raising it would have.
+        rest = {k: v for k, v in header.items() if v not in (None, '')}
     else:
-        rest = {k: v for k, v in header.items() if v and not getattr(ncr, k)}
+        rest = {k: v for k, v in header.items() if v and not getattr(ncr, k)} if may_edit else {}
     if rest:
         for k, v in rest.items():
             setattr(ncr, k, v)
@@ -210,13 +239,32 @@ def refresh_description(ncr) -> None:
     if text != ncr.description:
         ncr.description = text
         ncr.save(update_fields=["description", "updated_at"])
+    raise_severity(ncr)
+
+
+_RANK = {'MINOR': 1, 'MAJOR': 2, 'CRITICAL': 3}
+
+
+def raise_severity(ncr) -> None:
+    """An NCR's severity follows the worst defect on its records as they land (a
+    capture's defects arrive after its FAIL save) — rising only, and only until
+    something under it is decided: after that, a person raises it."""
+    from Tracker.services.qms.quality_report import report_severity
+    if ncr.dispositions.filter(archived=False).exclude(disposition_type='').exists():
+        return
+    worst = max((report_severity(r) for r in ncr.reports.all()), key=lambda s: _RANK.get(s, 0),
+                default=ncr.severity)
+    if _RANK.get(worst, 0) > _RANK.get(ncr.severity, 0):
+        ncr.severity = worst
+        ncr.save(update_fields=["severity", "updated_at"])
 
 
 # --- state -----------------------------------------------------------------------------
 
 def sync_state(ncr_id) -> None:
     """Open while it has no decision yet or any is open; closed, with when, once every
-    disposition under it is closed. Reopening a disposition reopens it."""
+    disposition under it is closed — or, with none, once none of its records still fails.
+    Reopening a disposition reopens it."""
     if not ncr_id:
         return
     # Unscoped: the id is the disposition's own FK, so it's that disposition's tenant —
@@ -225,7 +273,12 @@ def sync_state(ncr_id) -> None:
     if ncr is None:
         return
     decisions = ncr.dispositions.filter(archived=False)
-    closed = decisions.exists() and not decisions.exclude(current_state='CLOSED').exists()
+    if decisions.exists():
+        closed = not decisions.exclude(current_state='CLOSED').exists()
+    else:
+        # Nothing decided yet: open while any of its records still fails. A receiving
+        # sample re-recorded within its accept number leaves nothing to decide.
+        closed = ncr.reports.exists() and not ncr.reports.filter(status='FAIL').exists()
     state = 'CLOSED' if closed else 'OPEN'
     if state == ncr.state:
         return
@@ -407,6 +460,8 @@ def record_containment_complete(ncr, user) -> None:
     to set. Idempotent: an already-recorded containment keeps its stamp."""
     if ncr.containment_completed_at:
         return
+    if ncr.state == 'CLOSED':
+        raise ValueError(f"{ncr.ncr_number} is closed, so it can't be edited.")
     if not (ncr.containment_action or "").strip():
         raise ValueError("Describe the containment action before marking it complete.")
     ncr.containment_completed_by = user if getattr(user, "is_authenticated", False) else None

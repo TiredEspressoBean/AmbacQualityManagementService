@@ -46,7 +46,7 @@ def _authority(user):
 
 
 def _open_disposition(lot, *, user, disposition_type, quantity, description, report=None,
-                      severity="MAJOR", decided: bool = True):
+                      severity="MAJOR", decided: bool = True, new_ncr: bool = False):
     """``decided``: the reject *is* the disposition decision (an inspector's partial
     reject, a whole-lot reject by someone allowed to make it), so the record carries
     who authorized it, as `decide_disposition` does (ISO 9001 8.7.2). A whole-lot
@@ -58,7 +58,8 @@ def _open_disposition(lot, *, user, disposition_type, quantity, description, rep
     # The inspection's NCR (raised when its report failed), or a new one — a later reject
     # of what's left is a new nonconformance. The reject says what's wrong and how bad;
     # the first decision under the NCR sets its header.
-    ncr = report.ncr if report is not None and report.ncr_id and report.ncr.state == "OPEN" else None
+    ncr = (report.ncr if not new_ncr and report is not None and report.ncr_id
+           and report.ncr.state == "OPEN" else None)
     if ncr is None:
         ncr = raise_ncr(tenant=lot.tenant, step=report.step if report is not None else None,
                         description=description or f"Lot {lot.lot_number} rejected at receiving inspection",
@@ -230,9 +231,11 @@ def reject_remainder(lot, user, *, disposition_type: str = "RETURN_TO_SUPPLIER",
         inventory.reject_from_stock(lot)
         lot.refresh_from_db()
         report = lot.quality_reports.order_by("-created_at").first()
+        # Escalated after the fact: a new nonconformance, whatever the lot's earlier
+        # reject still has open.
         disposition = _open_disposition(
             lot, user=user, disposition_type=disposition_type, quantity=remaining,
-            description=description, report=report)
+            description=description, report=report, new_ncr=True)
         apply_disposition_to_lot(disposition)
     lot.refresh_from_db()
     return lot, disposition

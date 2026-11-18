@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Loader2, Plus } from "lucide-react";
 import { api } from "@/lib/api/generated";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
-import { ncrKeys, useNcr } from "@/hooks/ncrs";
+import { invalidateAfterNcrChange, useNcr } from "@/hooks/ncrs";
 import { useRetrieveParts } from "@/hooks/parts";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiPicker } from "@/components/ui/multi-picker";
+import { Combobox } from "@/components/ui/combobox";
+import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -51,8 +53,15 @@ const CAPA_LABEL: Record<string, string> = {
 
 export function NcrDetailPage() {
     const { ncrId } = useParams({ strict: false }) as { ncrId: string };
-    const { data: ncr, isLoading } = useNcr(ncrId);
+    const { data: ncr, isLoading, isError } = useNcr(ncrId);
 
+    if (isError) {
+        return (
+            <div className="flex h-full items-center justify-center p-6">
+                <p className="text-sm text-destructive">Couldn't load this NCR. It may not exist, or you may not have access to it.</p>
+            </div>
+        );
+    }
     if (isLoading || !ncr) {
         return (
             <div className="flex h-full items-center justify-center p-6">
@@ -73,10 +82,7 @@ function NcrDetail({ ncr }: { ncr: Ncr }) {
     // containment are the leads' and QA's (user ruling 2026-11-17).
     const canEdit = perms.has("change_ncr") && open;
     const canAdd = perms.has("add_ncr") && open;
-    const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ncrKeys.all });
-        queryClient.invalidateQueries({ queryKey: ["disposition"] });
-    };
+    const refresh = () => { void invalidateAfterNcrChange(queryClient); };
 
     return (
         <div className="container space-y-6 py-8 px-4 md:px-6">
@@ -224,7 +230,8 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
                 count={chosenWaiting.length || waiting.length}
                 onDone={() => { setChosen([]); onChanged(); }}
             />
-            <AddPartsDialog ncr={ncr} open={addOpen} onOpenChange={setAddOpen} onDone={onChanged} />
+            {/* Mounted only while open: its picker loads parts. */}
+            {addOpen && <AddPartsDialog ncr={ncr} open={addOpen} onOpenChange={setAddOpen} onDone={onChanged} />}
         </Card>
     );
 }
@@ -463,12 +470,21 @@ function HeaderCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boolean; o
 function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boolean; onChanged: () => void }) {
     const [action, setAction] = useState(ncr.containment_action ?? "");
     useEffect(() => setAction(ncr.containment_action ?? ""), [ncr.containment_action]);
+    // Who physically did it, when that wasn't the person recording it (user decision
+    // 2026-10-07: the record says who vouched for it as well as who did it).
+    const [performedBy, setPerformedBy] = useState<number | null>(ncr.containment_performed_by ?? null);
     const done = !!ncr.containment_completed_at;
+    const { data: employees } = useQuery({
+        queryKey: ["employee-options", 0],
+        queryFn: () => api.api_Employees_Options_list({ queries: { offset: 0 } }),
+        enabled: canEdit && !done,
+    });
 
     const record = useMutation({
         mutationFn: async () => {
-            if (action !== (ncr.containment_action ?? "")) {
-                await api.api_NCRs_partial_update({ containment_action: action }, { params: { id: String(ncr.id) } });
+            if (action !== (ncr.containment_action ?? "") || performedBy !== (ncr.containment_performed_by ?? null)) {
+                await api.api_NCRs_partial_update({ containment_action: action, containment_performed_by: performedBy },
+                    { params: { id: String(ncr.id) } });
             }
             return api.api_NCRs_containment_complete_create(undefined, { params: { id: String(ncr.id) } });
         },
@@ -492,6 +508,21 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
                         <Textarea value={action} onChange={(e) => setAction(e.target.value)} className="resize-none"
                                   aria-label="Containment action"
                                   placeholder="e.g. Segregated the run; re-checked the other bores from this setup" />
+                        <div className="space-y-2">
+                            <Label>Performed by <span className="text-muted-foreground">(if not you)</span></Label>
+                            <Combobox
+                                value={performedBy == null ? null : String(performedBy)}
+                                onChange={(v) => setPerformedBy(v ? Number(v) : null)}
+                                options={(employees?.results ?? []).map((e) => ({
+                                    value: String(e.id),
+                                    label: e.full_name?.trim() || e.email || e.username || "Unknown",
+                                }))}
+                                placeholder="Select employee"
+                                searchPlaceholder="Search..."
+                                emptyText="No employees found."
+                                clearLabel="Nobody else"
+                            />
+                        </div>
                         <div className="flex justify-end">
                             <Button disabled={!action.trim() || record.isPending} onClick={() => record.mutate()}>
                                 {record.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -511,6 +542,13 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
                             </p>
                         )}
                     </>
+                )}
+                {/* Evidence of the containment: photos, segregation tags. */}
+                {canEdit && (
+                    <div className="border-t pt-3">
+                        <DocumentUploader objectId={String(ncr.id)} contentType="ncr" documentTypeCode="CONT_EVD"
+                                          title="Attach Containment Evidence" compact />
+                    </div>
                 )}
             </CardContent>
         </Card>

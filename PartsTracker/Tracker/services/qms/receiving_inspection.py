@@ -743,8 +743,14 @@ def evaluate_lot_acceptance(report):
 
     decided_now = status in ("PASS", "FAIL") and report.status not in ("PASS", "FAIL")
     if status != report.status:
+        was_fail = report.status == "FAIL"
         report.status = status
         report.save(update_fields=["status"])
+        if was_fail and report.ncr_id:
+            # Re-recorded within its accept number: if nothing was decided on its NCR,
+            # nothing is left to decide (services/qms/ncr.sync_state).
+            from Tracker.services.qms.ncr import sync_state
+            sync_state(report.ncr_id)
     _fire_lot_gate(report)
     # Z1.4 switching counts LOTS: once, when this lot's verdict is decided. Every
     # evaluation used to count — the evaluate endpoint, the Evaluate button, the bulk

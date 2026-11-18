@@ -70,8 +70,10 @@ class DispositionTypeOnEditTests(_Fixture):
         super().setUp()
         self.disp = make_disposition(
             tenant=self.tenant_a, part=self.part, step=self.step, assigned_to=self.user_a)
+        # change_ncr: the description edited here is the NCR's (a lead's or QA's).
         self.grant_tenant_permissions(self.user_a, self.tenant_a, [
-            'view_quarantinedisposition', 'change_quarantinedisposition', 'full_tenant_access'])
+            'view_quarantinedisposition', 'change_quarantinedisposition', 'change_ncr',
+            'full_tenant_access'])
         self.authenticate_as(self.user_a, self.tenant_a)
 
     def test_changing_the_type_by_edit_is_refused_not_ignored(self):

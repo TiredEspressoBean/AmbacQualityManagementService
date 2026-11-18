@@ -16,6 +16,8 @@ export const useCreateCapa = () => {
             }) as Promise<CreateCapaResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "capas" });
+            // A CAPA from an NCR's reports marks that NCR CAPA raised.
+            queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith("ncr") });
         },
     });
 };

@@ -202,6 +202,10 @@ class QualitySeeder(BaseSeeder):
         from Tracker.services.qms.ncr import ncr_for_failed_report, sync_state
         quality_report.refresh_from_db(fields=['ncr'])
         ncr = quality_report.ncr if quality_report.ncr_id else ncr_for_failed_report(quality_report)[0]
+        # The report's FAIL save opened an undecided decision; this one replaces it, or
+        # the NCR would wait on the auto one forever and never close.
+        for auto in QuarantineDisposition.objects.filter(quality_reports=quality_report, disposition_type=''):
+            auto.delete()
         disposition = QuarantineDisposition.objects.create(
             tenant=self.tenant,
             ncr=ncr,

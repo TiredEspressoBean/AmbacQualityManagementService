@@ -15,11 +15,12 @@ type View = "open" | "capa" | "all";
 // A filtered list hook per view: open NCRs (the default), NCRs still waiting for the
 // CAPA call (ISO 9001 10.2.1(b) — evaluated, not only acted on), or every NCR.
 function useNcrList(view: View) {
-    return function useList({ offset, limit, ordering, search }: {
+    return function useList({ offset, limit, ordering, search, filters }: {
         offset: number; limit: number; ordering?: string; search?: string;
         filters?: Record<string, string>;
     }) {
-        const queries: Parameters<typeof useListNcrs>[0] = { offset, limit };
+        // The sidebar's filters (state, severity, CAPA decision, archived) as well.
+        const queries: Parameters<typeof useListNcrs>[0] = { offset, limit, ...filters };
         if (ordering !== undefined) queries.ordering = ordering;
         if (search !== undefined) queries.search = search;
         if (view === "open") queries.state = "OPEN";
@@ -49,6 +50,8 @@ export function NcrListPage() {
 
     return (
         <ModelEditorPage
+            // A view is a different list: start it from its first page.
+            key={view}
             title="NCRs"
             modelName="NCRs"
             listQueryKey={["ncrs"]}

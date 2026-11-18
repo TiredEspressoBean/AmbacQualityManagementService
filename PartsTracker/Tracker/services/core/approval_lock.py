@@ -77,7 +77,7 @@ DECIDED_FIELDS = {
         {},
         "decided"),
     'NCR': (
-        lambda o: o.dispositions.exclude(disposition_type='').exists(),
+        lambda o: o.dispositions.filter(archived=False).exclude(disposition_type='').exists(),
         {'severity'},
         {'severity': ('MINOR', 'MAJOR', 'CRITICAL')},
         "decided"),

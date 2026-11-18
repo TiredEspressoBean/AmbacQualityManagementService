@@ -4,7 +4,7 @@ import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { api } from "@/lib/api/generated";
 import { useRetrieveParts } from "@/hooks/parts";
-import { ncrKeys } from "@/hooks/ncrs";
+import { invalidateAfterNcrChange } from "@/hooks/ncrs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -46,9 +46,9 @@ export function NcrCreatePage() {
     const labels = Object.fromEntries(presetParts.map((p) => [p.id, p.ERP_id]));
 
     const raise = useMutation({
-        mutationFn: () => api.api_NCRs_create({ parts, description, severity }),
+        mutationFn: () => api.api_NCRs_create({ parts, description: description.trim(), severity }),
         onSuccess: (ncr) => {
-            queryClient.invalidateQueries({ queryKey: ncrKeys.all });
+            void invalidateAfterNcrChange(queryClient);  // its parts are held now
             navigate({ to: "/quality/ncrs/$ncrId", params: { ncrId: String(ncr.id) } });
         },
         meta: { errorMessage: "Couldn't raise the NCR", successMessage: "NCR raised" },

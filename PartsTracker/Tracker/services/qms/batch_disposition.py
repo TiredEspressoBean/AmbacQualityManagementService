@@ -104,3 +104,23 @@ def join_failed_load(batch, parts) -> None:
             assigned_to=None, ncr=ncr, part=p, step=batch.step)
         if report is not None:
             disposition.quality_reports.add(report)
+
+
+def contain_failed_osp_return(report) -> None:
+    """A rejected outside-process return is one event over the parts it carried, as a
+    failed load is: one NCR, a decision for each part (the reject holds them). It used to
+    open one decision with no part, which reached none of them. Idempotent: a report that
+    already has its decisions isn't contained again."""
+    from Tracker.models import QuarantineDisposition
+    from Tracker.services.qms.ncr import ncr_for_failed_report
+
+    shipment = report.osp_shipment
+    if shipment is None or report.dispositions.exists():
+        return
+    ncr, _ = ncr_for_failed_report(report)
+    for ex in shipment.step_executions.select_related("part", "step"):
+        if not ex.part_id:
+            continue
+        disposition = QuarantineDisposition.objects.create(
+            assigned_to=None, ncr=ncr, part=ex.part, step=ex.step)
+        disposition.quality_reports.add(report)

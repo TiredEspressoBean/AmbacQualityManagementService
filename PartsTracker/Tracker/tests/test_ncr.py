@@ -295,3 +295,77 @@ class NcrPermissionSplitTests(_Shop):
         self.assertFalse(has('operator', 'change_ncr'))
         for key in ('qa_inspector', 'qa_manager', 'shift_lead', 'production_manager', 'tenant_admin'):
             self.assertTrue(has(key, 'change_ncr'), key)
+
+
+class NcrCreateDispositionHeaderTests(_Shop):
+    """A disposition opened by someone without change_ncr can't write an NCR's
+    containment — its text alone would clear the Major/Critical close gate."""
+
+    def test_containment_on_a_new_disposition_needs_change_ncr(self):
+        from django.contrib.auth import get_user_model
+        operator = get_user_model().objects.create_user(
+            username="ncr-op", email="ncr-op@t.test", password="x", tenant=self.tenant_a)
+        self.grant_tenant_permissions(operator, self.tenant_a, [
+            'full_tenant_access', 'view_quarantinedisposition', 'add_quarantinedisposition', 'add_ncr'])
+        self.authenticate_as(operator, self.tenant_a)
+        report = self._fail(self.parts[0])
+        ncr = self._ncr_of(report)
+        r = self.client.post("/api/QuarantineDispositions/", {
+            "part": str(self.parts[0].id), "quality_reports": [str(report.id)],
+            "containment_action": "segregated"}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.containment_action, "")
+
+    def test_containment_complete_on_a_closed_ncr_is_refused(self):
+        from Tracker.services.qms.ncr import record_containment_complete
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        NCR.objects.filter(pk=ncr.pk).update(state="CLOSED", containment_action="held")
+        ncr.refresh_from_db()
+        with self.assertRaisesMessage(ValueError, "is closed"):
+            record_containment_complete(ncr, self.user_a)
+
+
+class ReviewFixesTests(_Shop):
+    """Edge cases the 2026-11-17 review found."""
+
+    def test_a_part_done_with_a_load_ncr_doesnt_rejoin_it(self):
+        from Tracker.services.qms.ncr import open_ncr_for_part, record_containment
+        from Tracker.services.qms.disposition import complete_disposition_resolution, decide_disposition
+        r = self.client.post("/api/NCRs/", {"parts": [str(p.id) for p in self.parts[:2]],
+                                            "description": "Wrong bar"}, format="json")
+        ncr = NCR.objects.get(pk=r.json()["id"])
+        record_containment(ncr, action="Held.", user=self.superuser)
+        mine = ncr.dispositions.get(part=self.parts[0])
+        decide_disposition(mine, disposition_type="SCRAP", authorized_by=self.superuser)
+        complete_disposition_resolution(mine, self.superuser)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.state, "OPEN")              # its sibling still waits
+        self.assertIsNone(open_ncr_for_part(self.parts[0]))  # but it's done with this one
+        self.assertEqual(open_ncr_for_part(self.parts[1]), ncr)
+
+    def test_severity_rises_with_the_findings_until_a_decision(self):
+        from Tracker.models import QualityErrorsList, QualityReportDefect
+        from Tracker.services.qms.ncr import refresh_description
+        report = self._fail(self.parts[0])
+        ncr = self._ncr_of(report)
+        self.assertEqual(ncr.severity, "MAJOR")
+        err = QualityErrorsList.objects.create(tenant=self.tenant_a, error_name="Crack")
+        QualityReportDefect.objects.create(report=report, error_type=err, severity="CRITICAL")
+        refresh_description(ncr)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.severity, "CRITICAL")
+
+    def test_an_ncr_with_nothing_decided_closes_when_its_failure_is_withdrawn(self):
+        from Tracker.services.qms.ncr import raise_ncr, sync_state
+        report = QualityReports.objects.create(tenant=self.tenant_a, status="PENDING",
+                                               detected_by=self.user_a)
+        ncr = raise_ncr(tenant=self.tenant_a, description="Lot sample", reports=[report])
+        QualityReports.objects.filter(pk=report.pk).update(status="FAIL")
+        sync_state(ncr.id)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.state, "OPEN")
+        QualityReports.objects.filter(pk=report.pk).update(status="PASS")
+        sync_state(ncr.id)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.state, "CLOSED")

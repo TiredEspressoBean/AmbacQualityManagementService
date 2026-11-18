@@ -996,7 +996,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
                                                          allow_null=True)
     containment_completed_by = serializers.PrimaryKeyRelatedField(source='ncr.containment_completed_by',
                                                                   read_only=True, allow_null=True)
-    containment_performed_by = serializers.PrimaryKeyRelatedField(
+    containment_performed_by = TenantScopedPrimaryKeyRelatedField(
         source='ncr.containment_performed_by', queryset=User.objects.all(), required=False, allow_null=True)
     # A failed load's NCR covers the load.
     batch_execution = serializers.PrimaryKeyRelatedField(source='ncr.batch_execution', read_only=True,

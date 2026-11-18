@@ -188,7 +188,7 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         'containment_complete': ['change_ncr'],
         'capa_decision': ['initiate_capa'],
     }
-    crud_exempt_actions = {'decide', 'capa_decision', 'add_parts'}
+    crud_exempt_actions = {'decide', 'capa_decision', 'add_parts', 'containment_complete'}
     cosign_actions = {'decide': 'approve_disposition'}
 
     def get_queryset(self):

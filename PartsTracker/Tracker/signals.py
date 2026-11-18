@@ -71,6 +71,11 @@ def auto_create_disposition(sender, instance, created, **kwargs):
             from Tracker.services.qms.batch_disposition import contain_failed_batch
             contain_failed_batch(instance)
             return
+        # A rejected outside-process return: a decision per part it carried.
+        if instance.osp_shipment_id:
+            from Tracker.services.qms.batch_disposition import contain_failed_osp_return
+            contain_failed_osp_return(instance)
+            return
         # Auto-create at most ONE disposition per report. The guard used to
         # scope to current_state IN (OPEN, IN_PROGRESS), which re-fired on any
         # later save of a still-FAIL QR whose disposition had since been CLOSED
