@@ -227,6 +227,9 @@ class DemoScenario(BaseSeeder):
         # An NCR the product raised is as old as the failure that raised it. The seed
         # backdates records after the fact, so the NCRs follow them (aging has data).
         result['ncr_dates'] = self._date_ncrs_by_their_records()
+        # Finished units waiting to ship go on the Finished Goods shelves, by recorded
+        # moves (storage_layout).
+        result['finished_shelved'] = self._shelve_finished_units(result['users'])
         # The seed assigns decisions in bulk (no save signal): their NCRs follow, as a
         # decision taken in the product takes its unowned NCR.
         result['ncr_owners'] = self._adopt_ncr_owners()
@@ -362,6 +365,15 @@ class DemoScenario(BaseSeeder):
                             note="Cosmetic, within the functional envelope; no systemic cause.")
         self.log(f"  {ncr.ncr_number} over INJ-0042-020 reads Minor")
         return ncr.ncr_number
+
+    def _shelve_finished_units(self, users):
+        from Tracker.models import User
+        from .storage_layout import shelve_finished_units
+        clerk = (User.objects.filter(tenant=self.tenant, email='rosa.ship@demo.ambac.com').first()
+                 or (users.get('managers') or [None])[0])
+        moved = shelve_finished_units(self.tenant, clerk)
+        self.log(f"  {moved} finished unit(s) on the Finished Goods shelves")
+        return moved
 
     def _adopt_ncr_owners(self):
         from Tracker.models import NCR

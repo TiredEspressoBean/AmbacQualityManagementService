@@ -288,7 +288,11 @@ class DemoDarkExhibitSeeder(BaseSeeder):
         # The ABC history is applied counts; only an unfinished one means this already ran.
         if CycleCount.objects.filter(status__in=['OPEN', 'SUBMITTED']).exists():
             return None
-        loc = (StorageLocation.objects.filter(name__icontains='Main Stores').first()
+        # A shelf, counted as itself: a count covers one location exactly, and the stock
+        # sits on Main Stores' shelves (storage_layout), not in the building.
+        from .storage_layout import WAITING_COUNT_SHELF
+        loc = (StorageLocation.objects.filter(name=WAITING_COUNT_SHELF).first()
+               or StorageLocation.objects.filter(name__icontains='Main Stores').first()
                or StorageLocation.objects.first())
         counter = self._pick_user(users, 'mike.ops@demo.ambac.com')
         if loc is None or counter is None:

@@ -544,3 +544,18 @@ class DemoSeedFlowsTests(TestCase):
             self.assertTrue(capa.ncrs.filter(step__name="Wash", batch_execution__isnull=False).exists())
             self.assertTrue(capa.quality_reports.filter(batch_execution__isnull=False).exists())
 
+
+    def test_one_facility_two_sets_of_racks(self):
+        # The director's demo (2026-11-18): Main Stores' racks hold the stock, Finished
+        # Goods' the units waiting to ship — put there by recorded moves.
+        from Tracker.models import MaterialLot, Parts, RecordEdit, StorageLocation
+        with tenant_context(self.tenant.id):
+            shelf = StorageLocation.objects.select_related("parent__parent").get(name="B-2")
+            self.assertEqual((shelf.kind, shelf.code, shelf.parent.name, shelf.parent.parent.name),
+                             ("SHELF", "B-2", "Rack B", "Main Stores"))
+            self.assertEqual(StorageLocation.objects.get(name="F2-3").parent.parent.name, "Finished Goods")
+            self.assertEqual(MaterialLot.objects.get(lot_number="STOCK-CRI-SEAL").location.name, "A-1")
+            self.assertEqual(MaterialLot.objects.get(lot_number="RCV-MAT-0005").location.name, "Receiving Dock")
+            unit = Parts.objects.get(ERP_id="INJ-0042-011")
+            self.assertEqual(unit.location.name, "F1-1")
+            self.assertTrue(RecordEdit.objects.filter(object_id=unit.id, field_name="storage_location").exists())

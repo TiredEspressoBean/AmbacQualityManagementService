@@ -23,11 +23,11 @@ Everything is idempotent (update_or_create / existence guards) so re-running
 `seed_demo` is safe.
 """
 
+from .storage_layout import seed_extra_stock, shelf_for_lot
 from datetime import timedelta
 
 from django.utils import timezone
 
-from Tracker.services.mes.locations import seed_location
 from Tracker.models import (
     Orders, Parts, WorkOrder, Steps, Processes,
     OrdersStatus, WorkOrderStatus, WorkOrderPriority, PartsStatus,
@@ -519,16 +519,17 @@ class DemoShowcaseSeeder(BaseSeeder):
         # false "material short" flags. Realistic quantity (not fake-huge); the
         # time-phased gate handles far-off demand on its own. Idempotent.
         for name, mat in buy_materials.items():
+            lot_no = f"STOCK-{(mat.part_number or name[:8]).upper()}"
             MaterialLot.objects.get_or_create(
                 tenant=self.tenant,
-                lot_number=f"STOCK-{(mat.part_number or name[:8]).upper()}",
+                lot_number=lot_no,
                 defaults=dict(
                     material=mat, material_description=f"On-hand stock: {name}",
                     supplier_lot_number="STOCK", erp_po_number="PO-STOCK",
                     received_date=(self.today - timedelta(days=30)).date(),
                     received_by=admin_user, quantity=Decimal("400"),
                     quantity_remaining=Decimal("400"), unit_of_measure="EA",
-                    hold_reason="", location=seed_location(self.tenant, "Main Stores", kind="WAREHOUSE"),
+                    hold_reason="", location=shelf_for_lot(self.tenant, lot_no),
                     status="ACCEPTED"))
 
         # Control valves run short, so Requirements has a buy line for Purchasing and
@@ -546,7 +547,7 @@ class DemoShowcaseSeeder(BaseSeeder):
                     received_date=(self.today - timedelta(days=30)).date(),
                     received_by=admin_user, quantity=qty,
                     quantity_remaining=qty, unit_of_measure="EA",
-                    hold_reason="", location=seed_location(self.tenant, "Main Stores", kind="WAREHOUSE"),
+                    hold_reason="", location=shelf_for_lot(self.tenant, f"STOCK-{pt.ERP_id}"),
                     status="ACCEPTED"))
 
         # A second, newer nozzle lot on the same shelf (Corrections #4, 2026-10-26): draws
@@ -562,8 +563,11 @@ class DemoShowcaseSeeder(BaseSeeder):
                     received_date=(self.today - timedelta(days=5)).date(),
                     received_by=admin_user, quantity=Decimal("60"),
                     quantity_remaining=Decimal("60"), unit_of_measure="EA",
-                    hold_reason="", location=seed_location(self.tenant, "Main Stores", kind="WAREHOUSE"),
+                    hold_reason="", location=shelf_for_lot(self.tenant, f"STOCK-{nozzle.ERP_id}-B"),
                     status="ACCEPTED"))
+
+        # Newer lots of the bought materials on their own shelves (storage_layout).
+        seed_extra_stock(self.tenant, admin_user, self.today)
 
         bom = BOM.objects.filter(
             tenant=self.tenant, part_type=part_type, revision="A", bom_type="ASSEMBLY",
