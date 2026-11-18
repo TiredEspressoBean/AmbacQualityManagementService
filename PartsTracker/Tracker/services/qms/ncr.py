@@ -290,15 +290,19 @@ def sync_state(ncr_id) -> None:
 # --- members ---------------------------------------------------------------------------
 
 def member_dispositions(ncr):
-    """The decisions under the NCR, oldest first."""
-    return (ncr.dispositions.filter(archived=False)
-            .select_related('part', 'material_lot').order_by('created_at'))
+    """The decisions under the NCR, oldest first — from the prefetch when the caller made
+    one (the NCR list and detail do), else one query."""
+    if 'dispositions' in getattr(ncr, '_prefetched_objects_cache', {}):
+        return sorted((d for d in ncr.dispositions.all() if not d.archived), key=lambda d: d.created_at)
+    return list(ncr.dispositions.filter(archived=False)
+                .select_related('part', 'material_lot').order_by('created_at'))
 
 
 def members(ncr) -> list[dict]:
     """What the NCR covers, one row per part (or lot): its latest decision, and whether
     that one still waits for a decision. A failed load's parts that had already moved
     past the step are listed too (held: False), so nothing in the load is hidden."""
+    from Tracker.services.qms.batch_disposition import PAST_STEP_NOTE
     rows, seen = [], {}
     for d in member_dispositions(ncr):
         key = d.part_id or d.material_lot_id or d.pk
@@ -310,7 +314,8 @@ def members(ncr) -> list[dict]:
             'disposition_id': d.pk, 'disposition_number': d.disposition_number,
             'disposition_type': d.disposition_type or None, 'current_state': d.current_state,
             'awaiting_decision': not d.disposition_type and d.current_state != 'CLOSED',
-            'held': True,
+            # A load's part that had left the step: decided for the record, not held.
+            'held': not (d.resolution_notes or '').startswith(PAST_STEP_NOTE),
         }
         if key in seen:
             rows[seen[key]] = row  # the latest decision on it
@@ -318,7 +323,7 @@ def members(ncr) -> list[dict]:
             seen[key] = len(rows)
             rows.append(row)
     if ncr.batch_execution_id:
-        for p in ncr.batch_execution.parts.order_by('ERP_id'):
+        for p in sorted(ncr.batch_execution.parts.all(), key=lambda p: p.ERP_id):
             if p.pk not in seen:
                 rows.append({'part_id': p.pk, 'erp_id': p.ERP_id, 'part_status': p.part_status,
                              'material_lot_id': None, 'lot_number': None,

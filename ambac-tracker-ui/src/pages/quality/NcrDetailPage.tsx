@@ -183,8 +183,13 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
                                                 />
                                             )}
                                         </td>
-                                        <td className="py-2 font-mono">
-                                            {m.erp_id ?? (m.lot_number ? `Lot ${m.lot_number}` : "—")}
+                                        <td className="py-2">
+                                            <span className="font-mono">{m.erp_id ?? (m.lot_number ? `Lot ${m.lot_number}` : "—")}</span>
+                                            {/* A failed load's part that had left the step: not held,
+                                                and any decision on it is for the record. */}
+                                            {!m.held && (
+                                                <span className="block text-xs text-muted-foreground">Already past the step</span>
+                                            )}
                                         </td>
                                         <td className="py-2">
                                             {m.part_status
@@ -201,7 +206,7 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
                                                     {m.disposition_number}
                                                 </Link>
                                             ) : <span className="text-muted-foreground">
-                                                {m.held ? "—" : "Already past the step"}
+                                                —
                                             </span>}
                                         </td>
                                         <td className="py-2">

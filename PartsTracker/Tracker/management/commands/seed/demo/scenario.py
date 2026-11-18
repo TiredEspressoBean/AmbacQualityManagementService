@@ -217,6 +217,12 @@ class DemoScenario(BaseSeeder):
         result['spc_capa'] = DemoCapaSeeder(
             self.stdout, self.style, self.tenant, scale=self.scale).seed_spc_capa(result['users'])
 
+        # Each NCR's CAPA call, as QA makes it: the seeded CAPAs link the NCRs they answer
+        # (CAPA raised), and a closed one-off is recorded as needing none — leaving the
+        # open ones for the "Awaiting CAPA decision" list.
+        self.log("\n--- Phase 6d3: CAPA calls on NCRs ---")
+        result['capa_calls'] = self._decide_capa_calls(result['users'])
+
         # The demand outlook exhibit for the Planner, Production Manager, Purchasing
         # and Shipping tracks: a two-year forecast from this month, a tentative (RFI)
         # deal and an overdue order line. See seed/demo/forecast.py.
@@ -282,6 +288,31 @@ class DemoScenario(BaseSeeder):
         self.log("=" * 60)
 
         return result
+
+    def _decide_capa_calls(self, users):
+        """Link each seeded CAPA to the NCRs it answers — its reports' NCRs, and for the
+        bath-temperature CAPA the hot Wash load's — which marks them CAPA raised; then
+        record No CAPA needed, with the reason, on every closed NCR still undecided."""
+        from Tracker.models import CAPA, NCR
+        from Tracker.services.qms.capa_decision import record_decision, stamp_promoted
+        qa = users.get('qa_manager') or (users.get('qa_staff') or [None])[0]
+        promoted = 0
+        bath = CAPA.objects.filter(tenant=self.tenant, capa_number='CAPA-2024-006').first()
+        hot = (NCR.objects.filter(tenant=self.tenant, batch_execution__isnull=False,
+                                  step__name='Wash', state='CLOSED').order_by('created_at').first())
+        if bath is not None and hot is not None:
+            bath.ncrs.add(hot)
+        for capa in CAPA.objects.filter(tenant=self.tenant):
+            promoted += stamp_promoted(capa, qa)
+        declined = 0
+        for ncr in NCR.objects.filter(tenant=self.tenant, state='CLOSED', capa_decision__isnull=True):
+            record_decision(ncr, decision='NOT_REQUIRED', user=qa,
+                            note="One-off: the disposition covered it; no systemic cause found.")
+            declined += 1
+        waiting = NCR.objects.filter(tenant=self.tenant, capa_decision__isnull=True).count()
+        self.log(f"  {promoted} NCR(s) CAPA raised, {declined} closed one-off(s) need none, "
+                 f"{waiting} awaiting a decision")
+        return {'promoted': promoted, 'declined': declined, 'waiting': waiting}
 
     def _name_portal_customers(self, users):
         from Tracker.models import Orders

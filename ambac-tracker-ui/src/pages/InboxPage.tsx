@@ -145,7 +145,8 @@ function transformDisposition(disp: MyDisposition): InboxItem {
         numericId: disp.id,
         type: "disposition",
         title: disp.description || "Quarantine disposition",
-        subtitle: disp.severity_display || disp.severity || undefined,
+        // Its NCR first: several rows can be one NCR's parts.
+        subtitle: [disp.ncr_number, disp.severity_display || disp.severity].filter(Boolean).join(" · ") || undefined,
         reference: disp.disposition_number ?? "",
         referenceUrl: `/production/dispositions/${disp.id}/edit`,
         dueDate,

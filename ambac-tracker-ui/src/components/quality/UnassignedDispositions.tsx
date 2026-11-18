@@ -60,7 +60,7 @@ export function UnassignedDispositions({ userPk }: { userPk: number }) {
                             {d.escalated_from_step && (
                                 <span className="mr-1.5 rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">MRB</span>
                             )}
-                            {d.disposition_number}{d.part_erp_id ? ` · ${d.part_erp_id}` : ""}{d.work_order_erp_id ? ` · ${d.work_order_erp_id}` : ""}{d.description ? ` · ${d.description}` : ""}
+                            {d.ncr_number ? `${d.ncr_number} · ` : ""}{d.disposition_number}{d.part_erp_id ? ` · ${d.part_erp_id}` : ""}{d.work_order_erp_id ? ` · ${d.work_order_erp_id}` : ""}{d.description ? ` · ${d.description}` : ""}
                         </span>
                     </Link>
                     {canTake && (

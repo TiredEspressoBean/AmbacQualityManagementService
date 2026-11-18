@@ -125,6 +125,7 @@ export function QualityReportsEditorPage() {
             ]}
             renderActions={(qualityReport) => <EditQualityReportActionsCell qualityReportId={qualityReport.id} />}
             onCreate={() => navigate({ to: "/editor/quality-reports/new" })}
+            createLabel="Record Inspection"
         />
     );
 }

@@ -953,7 +953,7 @@ class NCRSerializer(SecureModelMixin):
     def get_reports(self, obj):
         return [{'id': r.id, 'report_number': r.report_number or '', 'status': r.status,
                  'part_erp_id': r.part.ERP_id if r.part_id else None, 'created_at': r.created_at}
-                for r in obj.reports.filter(archived=False).select_related('part').order_by('created_at')]
+                for r in sorted((r for r in obj.reports.all() if not r.archived), key=lambda r: r.created_at)]
 
 
 class RaiseNCRSerializer(serializers.Serializer):

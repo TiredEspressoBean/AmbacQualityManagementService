@@ -12,7 +12,7 @@ export type MyDisposition = Pick<
     Disposition,
     "id" | "disposition_number" | "current_state" | "disposition_type"
     | "severity" | "severity_display" | "description" | "due_date"
-    | "work_order_erp_id"
+    | "work_order_erp_id" | "ncr_number"
 >;
 
 export const myDispositionsOptions = (userPk: number | null | undefined) =>

@@ -26,6 +26,10 @@ from __future__ import annotations
 # deliberately excluded — see module docstring.
 _QUARANTINABLE = {"IN_PROGRESS", "AWAITING_QA", "READY_FOR_NEXT_STEP", "AT_OUTSIDE_PROCESS"}
 
+# On the record decision of a load's part that had already left the step when the cycle
+# failed — not held, decided for the record. ncr.members reads it as held: False.
+PAST_STEP_NOTE = "Already past the step when its load failed — decided for the record."
+
 
 def contain_failed_batch(report) -> None:
     """Contain the load behind a failed batch cycle and open its parts' decisions.
@@ -82,6 +86,8 @@ def contain_failed_batch(report) -> None:
         disposition = QuarantineDisposition.objects.create(
             assigned_to=None,  # the QA queue, like every auto-opened disposition
             ncr=ncr, part=p, step=batch.step,
+            # Not held: it had left the step. The note is what says so (ncr.members).
+            resolution_notes="" if held else PAST_STEP_NOTE,
         )
         disposition.quality_reports.add(report)
 

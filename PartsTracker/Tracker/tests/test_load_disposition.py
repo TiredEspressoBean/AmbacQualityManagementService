@@ -148,3 +148,22 @@ class LoadDispositionTests(TenantTestCase):
         self.assertEqual(second.ncr_id, self.ncr.id)
         self.assertEqual(NCR.objects.filter(batch_execution=self.batch).count(), 1)
         self.assertEqual(QuarantineDisposition.objects.filter(ncr=self.ncr).count(), 3)
+
+    def test_a_load_already_past_the_step_is_decided_for_the_record(self):
+        """Every part had left the step: none is held, each gets a decision for the
+        record, and the NCR says they were past the step (walk 2026-11-18)."""
+        from Tracker.services.qms.ncr import members
+        t = self.tenant_a
+        gone = [Parts.objects.create(tenant=t, ERP_id=f"G-{i}", part_type=self.pt, work_order=self.wo,
+                                     step=self.wash, part_status=PartsStatus.COMPLETED) for i in range(2)]
+        batch = BatchExecution.objects.create(tenant=t, work_order=self.wo, step=self.wash,
+                                              started_by=self.user_a)
+        batch.parts.set(gone)
+        QualityReports.objects.create(tenant=t, batch_execution=batch, step=self.wash, status="FAIL",
+                                      description="late find", detected_by=self.user_a)
+        ncr = NCR.objects.get(batch_execution=batch)
+        rows = members(ncr)
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(all(r["disposition_id"] and not r["held"] for r in rows))
+        self.assertEqual([self._status(p) for p in gone], [PartsStatus.COMPLETED] * 2)
+

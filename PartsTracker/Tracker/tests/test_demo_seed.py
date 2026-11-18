@@ -463,3 +463,16 @@ class DemoSeedFlowsTests(TestCase):
                 'reserved_for_core')
             self.assertTrue(reserved.exists())
             self.assertEqual(reserved.first().reserved_for_core.fulfilment_mode, 'REPAIR_RETURN')
+
+    def test_ncrs_carry_their_capa_calls(self):
+        """The seeded CAPAs answer their NCRs (CAPA raised), closed one-offs need none,
+        and only a handful of open ones wait — not every NCR (walk 2026-11-18)."""
+        from Tracker.models import NCR
+        with tenant_context(self.tenant.id):
+            ncrs = NCR.objects.filter(tenant=self.tenant)
+            self.assertTrue(ncrs.filter(capa_decision="PROMOTED").exists())
+            self.assertTrue(ncrs.filter(capa_decision="NOT_REQUIRED").exists())
+            waiting = ncrs.filter(capa_decision__isnull=True)
+            self.assertFalse(waiting.filter(state="CLOSED").exists())
+            self.assertLess(waiting.count(), ncrs.count() / 2)
+

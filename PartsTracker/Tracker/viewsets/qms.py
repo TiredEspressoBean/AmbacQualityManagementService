@@ -194,9 +194,13 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return NCR.objects.none()
+        # One query per relation for the whole page, not per NCR: members, records and
+        # CAPAs are read off these (services/qms/ncr.members uses the prefetch).
         return (super().get_queryset()
                 .select_related('step', 'work_order', 'raised_by', 'containment_completed_by',
                                 'capa_decided_by', 'batch_execution')
+                .prefetch_related('dispositions__part', 'dispositions__material_lot',
+                                  'batch_execution__parts', 'reports__part', 'capas')
                 .distinct())
 
     def get_serializer_class(self):
