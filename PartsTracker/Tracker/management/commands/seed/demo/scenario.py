@@ -301,7 +301,9 @@ class DemoScenario(BaseSeeder):
         hot = (NCR.objects.filter(tenant=self.tenant, batch_execution__isnull=False,
                                   step__name='Wash', state='CLOSED').order_by('created_at').first())
         if bath is not None and hot is not None:
+            # The NCR and the cycle's inspection record it answers.
             bath.ncrs.add(hot)
+            bath.quality_reports.add(*hot.reports.all())
         for capa in CAPA.objects.filter(tenant=self.tenant):
             promoted += stamp_promoted(capa, qa)
         declined = 0

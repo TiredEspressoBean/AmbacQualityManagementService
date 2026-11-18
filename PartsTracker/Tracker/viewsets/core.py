@@ -1513,15 +1513,13 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
             return None, Response(
                 {"detail": "content_type resolves to no model."}, status=status.HTTP_400_BAD_REQUEST,
             )
-        # tenant-safe: `.objects` auto-scopes — a target in another tenant
-        # (or non-existent) is rejected, so attach can't cross tenants.
-        target = model.objects.filter(pk=object_id).first()
-        if target is None:
-            return None, Response(
-                {"detail": "Target object was not found in your tenant."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return target, None
+        # The same rule as a document's own record: in the tenant, and viewable.
+        from Tracker.services.core.documents import link_target_refusal
+        why = link_target_refusal(request.user, ct, object_id)
+        if why:
+            return None, Response({"detail": why}, status=status.HTTP_400_BAD_REQUEST)
+        # tenant-safe: `.objects` auto-scopes (checked just above).
+        return model.objects.filter(pk=object_id).first(), None
 
     def _links_payload(self, document):
         """Lightweight representation of a document's live secondary links.

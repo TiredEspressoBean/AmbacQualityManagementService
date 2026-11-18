@@ -476,3 +476,10 @@ class DemoSeedFlowsTests(TestCase):
             self.assertFalse(waiting.filter(state="CLOSED").exists())
             self.assertLess(waiting.count(), ncrs.count() / 2)
 
+    def test_the_bath_capa_answers_the_hot_loads_ncr_and_its_record(self):
+        from Tracker.models import CAPA
+        with tenant_context(self.tenant.id):
+            capa = CAPA.objects.get(tenant=self.tenant, capa_number="CAPA-2024-006")
+            self.assertTrue(capa.ncrs.filter(step__name="Wash", batch_execution__isnull=False).exists())
+            self.assertTrue(capa.quality_reports.filter(batch_execution__isnull=False).exists())
+

@@ -554,3 +554,32 @@ def auto_detect_document_properties(document, file=None):
     if not document.file_name:
         properties['file_name'] = file.name
     return properties
+
+
+def link_target_refusal(user, content_type, object_id):
+    """Why `user` may not link a document to (content_type, object_id), or None.
+
+    One rule for every link — the document's own record and each one it's attached
+    to: the record must be in the user's tenant and one they may see (its view_
+    permission). An NCR needs view_ncr, a part view_parts. A link to something you
+    can't open would surface it in the document's Links (user ruling 2026-11-18)."""
+    model = content_type.model_class() if content_type is not None else None
+    if model is None:
+        return "That kind of record can't have documents."
+    from django.core.exceptions import ValidationError
+    try:
+        # tenant-safe: `.objects` auto-scopes, so another tenant's record isn't found.
+        found = model.objects.filter(pk=object_id).exists()
+    except (ValueError, ValidationError):  # not even an id of that kind
+        found = False
+    if not found:
+        return "That record was not found in your tenant."
+    perm = f"view_{model._meta.model_name}"
+    if user is not None and getattr(user, 'is_authenticated', False) and not user.has_tenant_perm(perm):
+        name = str(model._meta.verbose_name)
+        name = name if name.isupper() else name.lower()   # "NCR", but "order"
+        # An acronym is said by its letters: "an NCR", "a CAPA".
+        vowel_sound = name[:1] in "AEFHILMNORSX" if name.isupper() else name[:1] in "aeiou"
+        article = "an" if vowel_sound else "a"
+        return f"You can't link a document to {article} {name} you can't view."
+    return None

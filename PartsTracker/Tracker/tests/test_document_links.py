@@ -322,7 +322,8 @@ class DocumentLinkPermissionTests(TenantTestCase):
     def test_attach_and_detach_with_documentlink_perms(self):
         self.grant_tenant_permissions(
             self.user_a, self.tenant_a,
-            ['view_documents', 'add_documentlink', 'delete_documentlink'],
+            # view_orders: a link's record must be one the user may view.
+            ['view_documents', 'add_documentlink', 'delete_documentlink', 'view_orders'],
         )
         self.authenticate_as(self.user_a, self.tenant_a)
 

@@ -44,6 +44,7 @@ const MODEL_LABELS: Record<string, string> = {
     companies: "Company",
     qualityreports: "Inspection Record",
     quarantinedisposition: "Disposition",
+    ncr: "NCR",
     capa: "CAPA",
     threedmodel: "3D Model",
     materiallot: "Material Lot",

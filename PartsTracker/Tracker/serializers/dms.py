@@ -211,6 +211,21 @@ class DocumentsSerializer(SecureModelMixin):
 
         return file
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # The record it's filed under: in your tenant, and one you may view
+        # (services/core/documents.link_target_refusal).
+        ct = attrs.get('content_type', getattr(self.instance, 'content_type', None))
+        oid = attrs.get('object_id', getattr(self.instance, 'object_id', None))
+        moved = ('content_type' in attrs or 'object_id' in attrs)
+        if ct is not None and oid and moved:
+            from Tracker.services.core.documents import link_target_refusal
+            request = self.context.get('request')
+            why = link_target_refusal(getattr(request, 'user', None), ct, oid)
+            if why:
+                raise serializers.ValidationError({'object_id': [why]})
+        return attrs
+
     def create(self, validated_data):
         """Enhanced create using model methods"""
         request = self.context.get('request')

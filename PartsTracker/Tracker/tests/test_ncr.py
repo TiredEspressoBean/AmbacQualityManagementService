@@ -369,3 +369,39 @@ class ReviewFixesTests(_Shop):
         sync_state(ncr.id)
         ncr.refresh_from_db()
         self.assertEqual(ncr.state, "CLOSED")
+
+
+class NcrDocumentLinkTests(_Shop):
+    """A document can be filed under, or attached to, an NCR — by someone who may view
+    NCRs (user ruling 2026-11-18). Containment evidence is the same thing: a document
+    filed under the NCR."""
+
+    def _upload(self, ncr):
+        from django.contrib.contenttypes.models import ContentType
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        return self.client.post("/api/Documents/", {
+            "file": SimpleUploadedFile("tag.pdf", b"%PDF-1.4"), "file_name": "tag.pdf",
+            "classification": "INTERNAL",
+            "content_type": ContentType.objects.get_for_model(NCR).id, "object_id": str(ncr.id),
+        }, format="multipart")
+
+    def _as(self, perms):
+        from django.contrib.auth import get_user_model
+        u = get_user_model().objects.create_user(username=f"doc-{len(perms)}", email=f"doc{len(perms)}@t.test",
+                                                 password="x", tenant=self.tenant_a)
+        self.grant_tenant_permissions(u, self.tenant_a, ['full_tenant_access', 'view_documents',
+                                                         'add_documents', *perms])
+        self.authenticate_as(u, self.tenant_a)
+
+    def test_filing_a_document_under_an_ncr_needs_view_ncr(self):
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        self._as([])
+        r = self._upload(ncr)
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("can't view", str(r.json()))
+        self._as(['view_ncr'])
+        r = self._upload(ncr)
+        self.assertEqual(r.status_code, 201, r.content)
+        listed = self.client.get(f"/api/Documents/?content_type={r.json()['content_type']}&object_id={ncr.id}")
+        self.assertEqual([d["id"] for d in listed.json()["results"]], [r.json()["id"]])
+

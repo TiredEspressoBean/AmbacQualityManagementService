@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, Loader2, Plus } from "lucide-react";
 import { api } from "@/lib/api/generated";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { invalidateAfterNcrChange, useNcr } from "@/hooks/ncrs";
@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MultiPicker } from "@/components/ui/multi-picker";
 import { Combobox } from "@/components/ui/combobox";
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader";
+import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -109,6 +110,7 @@ function NcrDetail({ ncr }: { ncr: Ncr }) {
                     <FoundCard ncr={ncr} />
                     <CapaCard ncr={ncr} onChanged={refresh} />
                     <ReportsCard ncr={ncr} />
+                    <DocumentsCard ncr={ncr} />
                 </div>
             </div>
         </div>
@@ -652,6 +654,36 @@ function CapaCard({ ncr, onChanged }: { ncr: Ncr; onChanged: () => void }) {
                 pending={record.isPending}
                 onSubmit={(note) => asking && record.mutate({ decision: asking, note })}
             />
+        </Card>
+    );
+}
+
+/** The NCR's documents: what was filed under it (containment evidence from the
+ *  Containment card included) and what was attached to it from a document's page. */
+function DocumentsCard({ ncr }: { ncr: Ncr }) {
+    const [open, setOpen] = useState(false);
+    const canAttach = usePermissionSet().has("add_documents");
+    return (
+        <Card>
+            <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Documents</CardTitle>
+                <CardDescription>Evidence for this NCR: containment photos, segregation tags, concessions.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => setOpen(true)}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    View or attach documents
+                </Button>
+                <EntityDocumentsEditor
+                    contentTypeModel="ncr"
+                    objectId={String(ncr.id)}
+                    label={ncr.ncr_number}
+                    description="Evidence for this NCR: containment photos, segregation tags, concessions."
+                    open={open}
+                    onOpenChange={setOpen}
+                    readOnly={!canAttach}
+                />
+            </CardContent>
         </Card>
     );
 }

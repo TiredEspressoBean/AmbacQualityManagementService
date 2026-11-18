@@ -1,4 +1,5 @@
 "use client";
+import { useQuery } from "@tanstack/react-query";
 
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
@@ -38,6 +39,7 @@ import { useQualityReports } from "@/hooks/useQualityReports";
 import { DOCUMENT_MAX_BYTES, DOCUMENT_MAX_LABEL } from "@/lib/upload-limits";
 import { useRetrieveQuarantineDispositions } from "@/hooks/useRetrieveQuarantineDispositions";
 import { useListCapas } from "@/hooks/useListCapas";
+import { listNcrsOptions } from "@/hooks/ncrs";
 import { useRetrieveThreeDModels } from "@/hooks/useRetrieveThreeDModels";
 import { useRetrieveDocument } from "@/hooks/useRetrieveDocument";
 import { useCreateDocument } from "@/hooks/useCreateDocument";
@@ -181,7 +183,7 @@ export default function DocumentFormPage() {
     const validDocumentModels = [
         'parttypes', 'parts', 'orders', 'workorder', 'processes', 'steps',  // MES
         'equipments', 'companies',  // Core
-        'qualityerrorslist', 'qualityreports', 'quarantinedisposition', 'capa', 'threedmodel',  // QMS
+        'qualityerrorslist', 'qualityreports', 'quarantinedisposition', 'ncr', 'capa', 'threedmodel',  // QMS
     ];
     const contentTypeOptions = contentTypesData.filter((ct: { app_label?: string; model?: string; id?: number }) => {
         const appLabelMatch = ct.app_label?.toLowerCase() === 'tracker';
@@ -239,6 +241,11 @@ export default function DocumentFormPage() {
     const { data: qualityReports } = useQualityReports({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "qualityreports" });
     const { data: dispositions } = useRetrieveQuarantineDispositions({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "quarantinedisposition" });
     const { data: capas } = useListCapas({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "capa" });
+    // NCRs search by number and what's wrong (the NCR list's search fields).
+    const { data: ncrs } = useQuery({
+        ...listNcrsOptions({ search: objectSearch, limit: 50 }),
+        enabled: selectedContentTypeModel === "ncr",
+    });
     const { data: threeDModels } = useRetrieveThreeDModels({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "threedmodel" });
 
     // Map content type model to results
@@ -256,6 +263,7 @@ export default function DocumentFormPage() {
             case "qualityreports": return qualityReports?.results;
             case "quarantinedisposition": return dispositions?.results;
             case "capa": return capas?.results;
+            case "ncr": return ncrs?.results;
             case "threedmodel": return threeDModels?.results;
             default: return [];
         }
@@ -330,6 +338,7 @@ export default function DocumentFormPage() {
             'qualityerrorslist': 'Error Type',
             'qualityreports': 'Inspection Record',
             'quarantinedisposition': 'Disposition',
+            'ncr': 'NCR',
             'capa': 'CAPA',
             'threedmodel': '3D Model',
         };
@@ -353,6 +362,8 @@ export default function DocumentFormPage() {
                 return obj.report_number || `Report #${obj.id}`;
             case "quarantinedisposition":
                 return obj.disposition_number || `Disposition #${obj.id}`;
+            case "ncr":
+                return obj.description ? `${obj.ncr_number} — ${obj.description}` : obj.ncr_number;
             case "threedmodel":
                 return obj.name || `Model #${obj.id}`;
             default:
