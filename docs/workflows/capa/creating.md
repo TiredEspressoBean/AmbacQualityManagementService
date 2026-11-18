@@ -8,9 +8,13 @@ This guide covers how to initiate and set up a CAPA investigation.
 
 1. Open the [NCR](../quality/ncrs.md)
 2. On its **CAPA** card, click **Raise CAPA**
-3. The form opens with the NCR's inspection records already linked, and saving
-   it sets the NCR's CAPA decision to **CAPA raised**
-4. Complete the CAPA form
+3. The form opens started from the NCR: *"Raised for NCR-… — started from what it
+   says; change anything that's wrong."* The **Problem Statement** is what's
+   wrong, **Immediate Action** is its containment, and the severity, work order,
+   step and (for a one-part NCR) part are filled in. Only empty fields are
+   filled
+4. Complete the CAPA form and create it. The NCR and its inspection records are
+   linked, and the NCR's CAPA decision becomes **CAPA raised**
 
 ### From CAPA List
 

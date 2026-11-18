@@ -59,9 +59,10 @@ the inspection work waiting on you rather than a generic dashboard:
   with **I'm on it** and **Start check**
 - **Incoming queue**, segmented into **Receiving**, **OSP returns**, and
   **In-process**, with counts and age
-- Counters for **Approvals**, **CAPA tasks**, and **My dispositions**
-- **Unassigned dispositions** — ones a failure opened that nobody has taken yet,
+- Counters for **Approvals**, **CAPA tasks**, and **My NCRs**
+- **NCRs to take** — NCRs a failure opened that nobody owns yet, one row per NCR,
   each with **Take it**
+- **My NCRs** — the NCRs you own, each with what it still needs
 - **Your gauges** — gauges you used in the last 7 days that are due for
   calibration, with **Review calibrations**
 
@@ -268,11 +269,13 @@ An annotation belongs to an **inspection record**, so choose the record first:
 
 ## Managing Quarantine
 
-### Taking a disposition
+### Taking an NCR
 
-A failure's disposition opens **unassigned**. It waits on your Home page under
-*Unassigned dispositions* until someone presses **Take it**; it then moves to
-that person's **My dispositions**.
+A failure's NCR opens with nobody owning it. It waits on your Home page under
+**NCRs to take** until someone presses **Take it**: *"NCR-… is yours — with its
+decisions."* It then shows in that person's **My NCRs**, with chips for what's
+left: *N to decide*, *Containment needed*, *CAPA call needed*, *N to close*. See
+[Owning an NCR](../workflows/quality/ncrs.md#owning-an-ncr).
 
 While it waits, the part can't be started (except to re-capture a voided result):
 the start is refused, naming the disposition. Rework reaches the part through the disposition.

@@ -83,10 +83,30 @@ NCR-…*. Their containment is added as *From NCR-… (&lt;name&gt;, &lt;date&gt
 
 ## The NCR list
 
-**Open** (the default), **Awaiting CAPA decision** and **All**. Each row shows
-the NCR number, what it **Covers** (a serial, *N parts*, or *Lot X*), what's
-wrong, severity, state, how many parts are **Awaiting decision**, where it was
-found and when it opened. Filter by state, severity or CAPA decision.
+**Open** (the default), **Mine** (the NCRs you own), **Awaiting CAPA decision**
+and **All**. Each row shows the NCR number, what it **Covers** (a serial, *N
+parts*, or *Lot X*), what's wrong, severity, state, how many parts are
+**Awaiting decision**, where it was found and when it opened. Filter by state,
+severity or CAPA decision. A date filter (from Home's *NCRs open > 7 days*, say)
+shows as a chip, *Opened before &lt;date&gt;*, with **✕** to clear it.
+
+## Owning an NCR
+
+Every NCR has an **owner**, the QA person who sees it through: its decisions,
+its containment, its CAPA decision, and closing it. An NCR nobody owns waits in
+the queue: **NCRs to take** on Home and the QA home, one row per NCR
+(*NCR-… · INJ-… / 3 parts / Lot … · WO-… · Major · what's wrong*).
+
+**Take it** makes it yours: *"NCR-… is yours — with its decisions."* All its
+decisions not yet closed go with it, and a part added to it later, or failing
+into it, is yours too. On the NCR's **Owner** card, **Reassign** gives it to
+someone else, or **Back to the queue** (*"NCR-… is back in the queue."*). Taking
+or assigning needs `change_quarantinedisposition`.
+
+**My NCRs** on Home lists what you own, each with what it still needs: *N to
+decide*, *Containment needed*, *CAPA call needed*, *N to close*. Combining NCRs
+keeps the kept NCR's owner (or one of the others' if it had none) and moves
+everything to them.
 
 ## An NCR's page
 
@@ -125,18 +145,25 @@ disposition."* Where each decision sends the part is on
 The description and severity, editable by a lead or QA (`change_ncr`).
 
 **Severity** follows the worst defect recorded on the NCR's inspection records
-as they come in, until anything on the NCR is decided. After the first
-decision it can only be **raised**, by a person: *"Decided at this severity: it
-can be raised, not lowered."* A lowering is refused: *"NCR-… is decided;
-severity can't change after the decision (severity may only be raised)."*
+as they come in, up or down, until anything on the NCR is decided. Until then a
+lead or QA can also set it either way, since it's still being judged; once they
+write the description or severity, it stops following the defects. After the
+first decision it can only be **raised**: *"Decided at this severity: it can be
+raised, not lowered."* A lowering is refused: *"NCR-… is Major; its severity may
+only be raised."*
 
 ### Containment
 
 *"The immediate action taken to prevent escape — once, for everything this NCR
 covers."* Describe it, say who performed it under **Performed by (if not you)**,
-attach evidence (a file, with its classification) below it, and **Record
-containment**. Its page then
-reads *Recorded by &lt;name&gt; on &lt;date&gt;*.
+and **Record containment**. Its page then reads *Recorded by &lt;name&gt; on
+&lt;date&gt;*. Photos or segregation tags as evidence go in the
+[Documents](#documents) card.
+
+When missing containment is what stops decisions closing, the card is marked in
+red: *"Record containment before these decisions can close."* A receiving lot
+reject records containment by itself (*"Lot rejected and held at receiving: …"*),
+stamped with who rejected it.
 
 !!! important "Critical and Major NCRs need containment before a decision closes"
     No decision under a Critical or Major NCR can be closed until containment is
@@ -158,15 +185,16 @@ assumed."* Each NCR carries a CAPA decision:
 
 | Decision | Recorded by |
 |----------|-------------|
-| **CAPA raised** | Set when a CAPA links the NCR: **Raise CAPA** opens a new CAPA with the NCR's inspection records |
+| **CAPA raised** | Set when a CAPA links the NCR. **Raise CAPA** opens a new CAPA started from the NCR: problem statement, severity, part, work order, step and immediate action filled in from it (*"Raised for NCR-… — started from what it says; change anything that's wrong."*), and the NCR linked when you create it |
 | **No CAPA needed** | A person, **with a reason** |
 | **Deferred** | A person, **with a reason** |
 | *Not decided yet* | Nobody has looked |
 
 ISO 9001 §10.2.1(b) asks that the need for action be **evaluated**. The reason
 is required, because it's what an auditor reads. NCRs nobody has decided on are
-listed on NCR Analysis under **Awaiting a CAPA decision**. Recording the decision
-needs `initiate_capa`.
+counted on Home (*Awaiting a CAPA decision*) and listed in the NCR list's view of
+that name and on NCR Analysis. Recording the decision, or linking a CAPA to an
+NCR or its records, needs `initiate_capa`.
 
 ### Inspection records
 
@@ -185,6 +213,16 @@ read-only). A document can also be linked to an NCR from the document form's
 
 **When every decision under it is closed.** *"This NCR is closed: every decision
 under it has been carried out."*
+
+Close the decisions from the NCR itself: **Close decided (N)** closes every
+decided one in one go (with `close_disposition`). It's all or nothing: if any
+can't close yet, none does, and the refusal lists what each still needs (*"None
+closed — INJ-…: Cannot complete disposition: Containment action required on
+NCR-… …"*). Clear those and press it again. A whole-lot reject still waiting for
+confirmation isn't counted as decided.
+
+Arriving on an NCR from one of its dispositions, the back button reads **Back to
+DISP-…**.
 
 An NCR where nothing was decided also closes once none of its inspection records
 still fails: a receiving sample re-recorded within its accept number, for

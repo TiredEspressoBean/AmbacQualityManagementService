@@ -12,7 +12,11 @@ described and the part's decision is made.
 1. **Quality** > **Inspection Records**, then **Record Inspection**. The form
    reads: *"Record an inspection result. A Fail puts the
    part on an NCR — its open one, or a new one."*
-2. Complete the form and save.
+2. Choose the part. **Process Step** fills in with the part's current step (the
+   list offers only its process's steps), and **Detected By** with you. Change
+   either if it's wrong, complete the form and save.
+3. A **Fail** confirms *Inspection recorded · on NCR-…*, with **Open NCR** to go
+   straight to it. A Pass confirms *Inspection recorded*.
 
 An inspection substep in the step player also writes an inspection record: a
 substep marked an **inspection point** records one from what the operator

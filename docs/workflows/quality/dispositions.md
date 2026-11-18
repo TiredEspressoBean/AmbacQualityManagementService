@@ -29,9 +29,10 @@ severity and what's wrong, and whether containment is recorded (*"What's wrong,
 its severity and containment are edited on the NCR."*). **Also on NCR-…** lists
 the NCR's other parts with their decisions.
 
-It opens **unassigned**. Nobody is picked for it; it waits on the QA home page,
-under *Unassigned dispositions*, until someone presses **Take it** (which needs
-`change_quarantinedisposition`). It then moves to their **My dispositions**. The part stays
+A disposition belongs to its NCR's **owner**. A new NCR waits unowned in the
+queue (**NCRs to take**, one row per NCR) until someone presses **Take it**:
+the NCR and all its decisions not yet closed become theirs, and show in their
+**My NCRs**. See [Owning an NCR](ncrs.md#owning-an-ncr). The part stays
 quarantined until the disposition acts on it: no one can start it in the
 meantime, except to re-capture a result that was voided.
 
