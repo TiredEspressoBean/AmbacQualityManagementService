@@ -45,16 +45,41 @@ it yourself:
    *Minor - Cosmetic Only*
 3. **Raise NCR** (with several parts, **Raise NCR over N parts**). *NCR raised*
 
-*"One nonconformance over the parts it covers. Each part is held, gets a failed
-inspection record saying what's wrong, and waits for its own decision under
-this NCR."* A description is required: *"Say what is wrong — it's the NCR's
-description."*
+*"Each part gets a failed inspection record saying what's wrong and waits for its
+own decision under this NCR. Parts still here are held; shipped/completed ones
+are recorded."* A description is required: *"Say what is wrong — it's the NCR's
+description."* The parts picker shows each part's status, work order, and any open
+NCR it's already on (*INJ-0042-001 · Shipped · WO-2024-0042-A · on NCR-…*).
+Raising needs `add_ncr`; without it the page says so.
+
+**An escape** (a customer complaint, or a problem found after delivery) goes on an
+NCR the same way. A shipped part isn't held, since it isn't here; its row reads
+*Already shipped*, and its decision is kept as the record of what was decided.
 
 To add parts to an open NCR, **Add parts** on its page, with **Why these parts**
 (*e.g. Same grinder setup*). Each added part is held and gets its own failed
 inspection record. A part already on it is refused (*"Already on
-NCR-2026-000001: INJ-OPS-002."*), and a closed NCR takes no more: *"NCR-… is
-closed — raise a new NCR for these parts."*
+NCR-2026-000001: INJ-OPS-002."*), and so is a part on another open NCR, so it
+isn't recorded twice: *"&lt;serial&gt; is on NCR-…: combine instead."* A closed NCR
+takes no more: *"NCR-… is closed — raise a new NCR for these parts."*
+
+## Combining NCRs
+
+When several NCRs turn out to be the same nonconformance (eight failures logged
+separately, then recognised as one grinder setup), combine them. On the NCR list,
+tick the open NCRs (*Select at least two NCRs to combine.*) and **Combine into one
+NCR**:
+
+*"The others' decisions and inspection records move under the one you keep, and
+each of them closes as combined into it. The one you keep keeps what's wrong; its
+severity becomes the group's highest, and the others' containment is added to its
+own."*
+
+Choose which to **Keep** (the oldest is preselected) and **Combine into NCR-…**:
+*NCRs combined*. Each other NCR closes, reading *Combined into NCR-…*; its parts
+and its CAPA decision now belong to the one you kept, which reads *Combined from
+NCR-…*. Their containment is added as *From NCR-… (&lt;name&gt;, &lt;date&gt;):
+…*. Only open NCRs can be combined. Combining needs `change_ncr`.
 
 ## The NCR list
 
@@ -74,12 +99,21 @@ its serial. It still gets a decision, kept as a record (its notes start
 *"Already past the step when its load failed — decided for the record."*), so
 the NCR can close.
 
-**Decide all waiting (N)**, or tick rows and **Decide N chosen**. The decision
-(*Rework*, *Repair (AS9100)*, *Scrap*, *Use As Is*, *Return to Supplier*) goes
-on each part's own disposition, with you, or a co-signer, as who authorised it.
-*Use As Is* and *Repair* need a **Concession reference**. Without
-`approve_disposition`, the button reads **Co-sign and record**, and an
-authorised colleague co-signs at your screen. *Decision recorded*.
+**Decide all waiting (N)**, or tick rows and **Decide N chosen**: only the ones
+you chose are decided. The decision (*Rework*, *Repair (AS9100)*, *Scrap*, *Use
+As Is*, *Return to Supplier*, *Not a nonconformance (result voided)*) goes on each
+part's own disposition, with you, or a co-signer, as who authorised it.
+- *Use As Is* and *Repair* need a **Concession reference**; the button stays
+  disabled until it's entered. **Concession date** is today if left blank.
+- *Scrap* asks you to confirm first (*Scrap N parts?*), because the parts are
+  scrapped as soon as it's saved.
+- *Not a nonconformance* is for a finding withdrawn in error. It follows the
+  same rules as on a [disposition](dispositions.md#when-the-finding-was-wrong-not-a-nonconformance):
+  each result must have been voided and re-inspected as a pass.
+
+Without `approve_disposition`, the button reads **Co-sign and record**: an
+authorised colleague enters their email and password at your screen and confirms
+*I authorize this disposition decision*. *Decision recorded*.
 
 To change one part's decision afterwards, open its disposition: *"Everything on
 NCR-… already has a decision; change a part's decision on its own
