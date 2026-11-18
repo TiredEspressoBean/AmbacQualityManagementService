@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, FileText, Loader2, Plus } from "lucide-react";
 import { api } from "@/lib/api/generated";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
-import { invalidateAfterNcrChange, partPickerDescription, useNcr, useOpenNcrByPart } from "@/hooks/ncrs";
+import { invalidateAfterNcrChange, ownerChangedMessage, partPickerDescription, useNcr, useOpenNcrByPart } from "@/hooks/ncrs";
 import { useRetrieveParts } from "@/hooks/parts";
 import { useEmployeeSearch } from "@/hooks/employee-search";
 import { useAuthUser } from "@/hooks/useAuthUser";
@@ -634,8 +634,7 @@ function OwnerCard({ ncr, onChanged }: { ncr: Ncr; onChanged: () => void }) {
             api.api_NCRs_assign_create({ assigned_to: userId }, { params: { id: String(ncr.id) } }),
         meta: { errorMessage: "Couldn't change the owner" },
         onSuccess: (n) => {
-            toast.success(n.assigned_to_name ? `${n.ncr_number} is ${n.assigned_to_name}'s — with its decisions.`
-                : `${n.ncr_number} is back in the queue.`);
+            toast.success(ownerChangedMessage(n));
             setPicking(false);
             onChanged();
         },

@@ -711,8 +711,9 @@ class NcrOwnerTests(_Shop):
         self.assertEqual(ncr.assigned_to_id, self.user_a.id)
 
     def test_the_queue_is_one_row_per_ncr(self):
+        from Tracker.services.qms.ncr import add_parts
         ncr = self._ncr_of(self._fail(self.parts[0]))
-        self.client.post(f"/api/NCRs/{ncr.id}/add-parts/", {"parts": [str(self.parts[1].id)]}, format="json")
+        add_parts(ncr, [self.parts[1]], user=self.user_a)  # no take perm: stays in the queue
         r = self.client.get("/api/NCRs/", {"assigned_to__isnull": "true", "state": "OPEN"})
         self.assertEqual([n["id"] for n in r.json()["results"]], [str(ncr.id)])
         self.assertEqual(r.json()["results"][0]["todo"]["awaiting_decision"], 2)
@@ -742,3 +743,19 @@ class NcrOwnerTests(_Shop):
         self.authenticate_as(self.user_a, self.tenant_a)
         r = self.client.post(f"/api/NCRs/{ncr.id}/assign/", {"assigned_to": self.user_a.id}, format="json")
         self.assertEqual(r.status_code, 403, r.content)
+
+    def test_a_hand_raised_ncr_is_its_raisers_when_they_may_take_it(self):
+        # QA and leads own what they raise; an operator's raise waits in the queue.
+        r = self.client.post("/api/NCRs/", {"parts": [str(self.parts[0].id)], "description": "Chatter",
+                                            "severity": "MINOR"}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.json()["assigned_to"], self.superuser.id)
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, ['full_tenant_access', 'view_ncr', 'add_ncr'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        r = self.client.post("/api/NCRs/", {"parts": [str(self.parts[1].id)], "description": "Chatter",
+                                            "severity": "MINOR"}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertIsNone(r.json()["assigned_to"])
+
+    def test_a_failure_raises_an_unowned_ncr(self):
+        self.assertIsNone(self._ncr_of(self._fail(self.parts[0])).assigned_to_id)

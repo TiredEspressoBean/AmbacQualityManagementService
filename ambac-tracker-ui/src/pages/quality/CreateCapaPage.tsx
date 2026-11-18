@@ -314,7 +314,8 @@ function CreateCapaForm() {
     // filled, once, so nothing typed is overwritten.
     const ncrIds = (searchParams.ncrs ?? "").split(",").map((id) => id.trim()).filter(Boolean)
     const { data: sourceNcr } = useNcr(ncrIds.length === 1 ? ncrIds[0] : undefined)
-    const ncrPart = sourceNcr?.members.filter((m) => m.part_id && m.held)
+    // Its one part, held or not (an escape's shipped part isn't held).
+    const ncrPart = sourceNcr?.members.filter((m) => m.part_id)
     const ncrPartId = ncrPart?.length === 1 ? String(ncrPart[0]!.part_id) : null
     useEffect(() => {
         if (!sourceNcr) return

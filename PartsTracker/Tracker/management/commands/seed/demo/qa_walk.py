@@ -740,9 +740,13 @@ class DemoQaWalkSeeder(BaseSeeder):
         signer = signer or self.operator
         stamp = timezone.now().isoformat()
         nodes = _capture_nodes(substep.body_blocks)
-        # A result field on the same substep as the failing reading says FAIL too.
-        fails_here = bool(defect) or any(t == 'measurementInput' and a.get('label') == out_of_spec
-                                         for t, a in nodes)
+        # A result field on the same substep as the failing reading says FAIL too. With a
+        # failing reading, the defect is that substep's — one inspection, one record;
+        # a defect alone (a visual finding) fails the substeps that ask for one.
+        reading_fails = any(t == 'measurementInput' and a.get('label') == out_of_spec for t, a in nodes)
+        fails_here = (reading_fails if out_of_spec
+                      else bool(defect) and any(t == 'errorTypesField' for t, _ in nodes))
+        defect = defect if fails_here else None
         captures = []
         for node_type, attrs in nodes:
             node_id = attrs['node_id']

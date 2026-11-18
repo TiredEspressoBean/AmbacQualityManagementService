@@ -90,3 +90,8 @@ export const awaitingCapaCallOptions = () => queryOptions({
     queryFn: () => api.api_NCRs_list({ queries: { capa_decision__isnull: true, combined_into__isnull: true, limit: 1 } }),
     select: (d) => d.count ?? 0,
 });
+
+/** What taking, assigning or returning an NCR did — the same words wherever it's done. */
+export const ownerChangedMessage = (n: { ncr_number: string; assigned_to_name?: string | null }) =>
+    n.assigned_to_name ? `${n.ncr_number} is ${n.assigned_to_name}'s — with its decisions.`
+        : `${n.ncr_number} is back in the queue.`;

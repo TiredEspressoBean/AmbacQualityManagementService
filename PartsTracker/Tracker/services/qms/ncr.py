@@ -517,7 +517,19 @@ def raise_ncr_for_parts(parts, *, description: str, user, severity: str = 'MAJOR
         raised_by=user, by_hand=True)
     for part in parts:
         _file_failure(ncr, part, user, description)
+    _owned_by_raiser(ncr, user)
     return ncr
+
+
+def _owned_by_raiser(ncr, user) -> None:
+    """A person who may take NCRs (QA, leads: change_quarantinedisposition) and puts
+    parts on one by hand owns it, if nobody does; anyone else's goes to the queue (user
+    ruling 2026-11-18). Not the automatic path: a failure's NCR waits to be taken."""
+    ncr.refresh_from_db(fields=['assigned_to'])
+    if (ncr.assigned_to_id is None and user is not None
+            and getattr(user, 'has_tenant_perm', None) and user.has_tenant_perm('change_quarantinedisposition')):
+        assign_ncr(ncr, user)
+        ncr.assigned_to = user
 
 
 @transaction.atomic
@@ -543,7 +555,9 @@ def add_parts(ncr, parts, *, user, reason: str = '') -> list:
         raise ValueError(" ".join(f"{p.ERP_id} is on {n.ncr_number}: combine instead." for p, n in elsewhere))
     reason = (reason or '').strip()
     description = f"Added to {ncr.ncr_number}" + (f": {reason}" if reason else f": {ncr.description}")
-    return [_file_failure(ncr, p, user, description) for p in parts]
+    filed = [_file_failure(ncr, p, user, description) for p in parts]
+    _owned_by_raiser(ncr, user)
+    return filed
 
 
 # --- containment, CAPA -----------------------------------------------------------------

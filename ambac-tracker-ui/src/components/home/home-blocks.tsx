@@ -66,8 +66,7 @@ import {
 import { useOSPShipments, useReadyToShip } from "@/hooks/useOutsideProcess";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 import { parseDateOnly } from "@/lib/date-only";
-import { UnassignedNcrs, unassignedNcrsOptions } from "@/components/quality/UnassignedDispositions";
-import { MyNcrsList } from "@/components/quality/MyNcrs";
+import { MyNcrsCard, UnassignedNcrsCard } from "@/components/quality/MyNcrs";
 import { awaitingCapaCallOptions, myNcrsOptions } from "@/hooks/ncrs";
 import { BypassRequestsCard } from "@/components/quality/BypassRequestsCard";
 
@@ -356,36 +355,7 @@ function InspectionQueueBlock() {
     );
 }
 
-function UnassignedNcrsBlock({ userPk }: { userPk: number }) {
-    const { data: rows = [] } = useQuery(unassignedNcrsOptions());
-    if (rows.length === 0) return null;
-    return (
-        <Card>
-            <CardHeader className="pb-1">
-                <CardTitle className="text-base">NCRs to take ({rows.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <UnassignedNcrs userPk={userPk} />
-            </CardContent>
-        </Card>
-    );
-}
 
-/** The NCRs you own and what each needs: hidden when you own none. */
-function MyNcrsBlock({ userPk }: { userPk: number }) {
-    const { data: rows = [] } = useQuery(myNcrsOptions(userPk));
-    if (rows.length === 0) return null;
-    return (
-        <Card>
-            <CardHeader className="pb-1">
-                <CardTitle className="text-base">My NCRs ({rows.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <MyNcrsList userPk={userPk} />
-            </CardContent>
-        </Card>
-    );
-}
 
 // ---------------------------------------------------------------------------
 // My quality actions (QA pane 2) — merged personal inbox: approvals + CAPA
@@ -1572,8 +1542,8 @@ const BLOCKS: BlockDef[] = [
     // Triage banner — wide, 4 tiles.
     // The QA queue: dispositions nobody has taken, MRB holds marked (walk 2026-10-22 —
     // a held part's decision was findable only through the dispositions list).
-    { id: "unassigned-dispositions", size: "full", groups: ["QA Manager", "Tenant Admin"], Component: ({ user }) => <UnassignedNcrsBlock userPk={user.pk} /> },
-    { id: "my-ncrs", size: "full", groups: ["QA Manager", "QA Inspector", "Production Manager", "Shift Lead", "Tenant Admin"], Component: ({ user }) => <MyNcrsBlock userPk={user.pk} /> },
+    { id: "unassigned-dispositions", size: "full", groups: ["QA Manager", "Tenant Admin"], Component: ({ user }) => <UnassignedNcrsCard userPk={user.pk} /> },
+    { id: "my-ncrs", size: "full", groups: ["QA Manager", "QA Inspector", "Production Manager", "Shift Lead", "Tenant Admin"], Component: ({ user }) => <MyNcrsCard userPk={user.pk} /> },
     { id: "needs-attention", size: "full", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <NeedsAttentionBlock /> },
     // Bypass and rollback requests waiting on the people who approve them — found only
     // on the inspector's home before (walk 2026-10-26). Renders nothing when none wait.
@@ -1621,9 +1591,9 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     // their order here is a fallback only.
     { group: "Operator", order: ["scan", "wo-queue", "quality-actions"] },
     { group: "QA Inspector", order: ["scan", "inspection", "quality-actions"] },
-    { group: "QA Manager", order: ["needs-attention", "work-in-progress", "bypass-requests", "unassigned-dispositions", "quality-kpis", "capa-status", "ncr-aging", "overdue-calibrations", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "doc-review-due", "quality-actions", "scan"] },
-    { group: "Production Manager", order: ["needs-attention", "work-in-progress", "quality-kpis", "wos-going-late", "wos-on-hold", "wo-queue", "production-osp", "supplier-quals-expiring", "competency-coverage", "available-to-claim", "quality-actions", "scan"] },
-    { group: "Shift Lead", order: ["shift-lead-hero", "work-in-progress", "scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
+    { group: "QA Manager", order: ["needs-attention", "work-in-progress", "bypass-requests", "my-ncrs", "unassigned-dispositions", "quality-kpis", "capa-status", "ncr-aging", "overdue-calibrations", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "doc-review-due", "quality-actions", "scan"] },
+    { group: "Production Manager", order: ["needs-attention", "my-ncrs", "work-in-progress", "quality-kpis", "wos-going-late", "wos-on-hold", "wo-queue", "production-osp", "supplier-quals-expiring", "competency-coverage", "available-to-claim", "quality-actions", "scan"] },
+    { group: "Shift Lead", order: ["shift-lead-hero", "work-in-progress", "scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "my-ncrs", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
     { group: "Engineering", order: ["change-control", "approvals-in-flight", "documents", "scan"] },
     { group: "Document Controller", order: ["doc-review-due", "approvals-in-flight", "documents", "training-strip", "scan"] },
     { group: "Planner", order: ["launchpad-planner", "wos-going-late", "wos-on-hold", "late-deliveries"] },
@@ -1631,7 +1601,7 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     { group: "Receiving", order: ["launchpad-receiving", "scan", "late-deliveries"] },
     { group: "Shipping", order: ["launchpad-shipping", "scan", "production-osp"] },
     { group: "Auditor", order: ["launchpad-auditor", "capa-status", "ncr-aging"] },
-    { group: "Tenant Admin", order: ["needs-attention", "work-in-progress", "bypass-requests", "unassigned-dispositions", "quality-kpis", "capa-status", "ncr-aging", "wos-going-late", "wos-on-hold", "wo-queue", "inspection", "doc-review-due", "approvals-in-flight", "documents", "change-control", "supplier-quals-expiring", "training-strip", "competency-coverage", "available-to-claim", "production-osp", "quality-actions", "scan"] },
+    { group: "Tenant Admin", order: ["needs-attention", "work-in-progress", "bypass-requests", "my-ncrs", "unassigned-dispositions", "quality-kpis", "capa-status", "ncr-aging", "wos-going-late", "wos-on-hold", "wo-queue", "inspection", "doc-review-due", "approvals-in-flight", "documents", "change-control", "supplier-quals-expiring", "training-strip", "competency-coverage", "available-to-claim", "production-osp", "quality-actions", "scan"] },
 ];
 
 /** The user's primary persona (first PERSONA_ORDER match), or null. Home uses

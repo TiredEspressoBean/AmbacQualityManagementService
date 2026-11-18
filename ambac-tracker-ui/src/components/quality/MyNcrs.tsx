@@ -6,7 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { myNcrsOptions } from "@/hooks/ncrs";
-import { ncrCovers } from "@/components/quality/UnassignedDispositions";
+import { ncrCovers, UnassignedNcrs, unassignedNcrsOptions } from "@/components/quality/UnassignedDispositions";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Schema } from "@/lib/api/types";
 
 /** What an NCR still needs, as short chips (shared by every list that shows it). */
@@ -47,5 +48,38 @@ export function MyNcrsList({ userPk, empty }: { userPk: number; empty?: React.Re
                 </Link>
             ))}
         </div>
+    );
+}
+
+/** "My NCRs (N)": the list with what each needs. One shape on every home; hidden when
+ *  you own none. */
+export function MyNcrsCard({ userPk }: { userPk: number }) {
+    const { data: rows = [] } = useQuery(myNcrsOptions(userPk));
+    if (rows.length === 0) return null;
+    return (
+        <Card>
+            <CardHeader className="pb-1">
+                <CardTitle className="text-base">My NCRs ({rows.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <MyNcrsList userPk={userPk} />
+            </CardContent>
+        </Card>
+    );
+}
+
+/** "NCRs to take (N)": the queue. One shape on every home; hidden when it's empty. */
+export function UnassignedNcrsCard({ userPk }: { userPk: number }) {
+    const { data: rows = [] } = useQuery(unassignedNcrsOptions());
+    if (rows.length === 0) return null;
+    return (
+        <Card>
+            <CardHeader className="pb-1">
+                <CardTitle className="text-base">NCRs to take ({rows.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <UnassignedNcrs userPk={userPk} />
+            </CardContent>
+        </Card>
     );
 }

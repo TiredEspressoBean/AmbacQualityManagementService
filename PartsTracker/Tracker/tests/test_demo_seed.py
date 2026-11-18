@@ -171,6 +171,16 @@ class DemoSeedFlowsTests(TestCase):
             self.assertEqual(pair.count(), 2)
             self.assertFalse(pair.filter(assigned_to__isnull=False).exists())
 
+    def test_one_inspection_is_one_record(self):
+        # A body failed once at Body Inspection carries one FAIL record, not one per
+        # substep (Raise CAPA from its NCR showed "4 selected" for two bodies).
+        from Tracker.models import QualityReports
+        with tenant_context(self.tenant.id):
+            for erp_id in ("INJ-QA-MANAGE-002", "INJ-QA-MANAGE-022", "INJ-QA-MANAGE-023",
+                           "INJ-QA-MANAGE-032", "INJ-QA-INSPECT-052"):
+                fails = QualityReports.objects.filter(part__ERP_id=erp_id, status="FAIL")
+                self.assertEqual(fails.count(), 1, erp_id)
+
     def test_a_decided_ncr_without_containment_wont_close(self):
         # Closing is refused until containment is recorded — the lesson's point.
         from Tracker.models import NCR

@@ -18,8 +18,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { BypassRequestsCard } from "@/components/quality/BypassRequestsCard";
-import { UnassignedNcrs } from "@/components/quality/UnassignedDispositions";
-import { MyNcrsList } from "@/components/quality/MyNcrs";
+import { MyNcrsCard, UnassignedNcrsCard } from "@/components/quality/MyNcrs";
 import { myNcrsOptions } from "@/hooks/ncrs";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -354,8 +353,6 @@ function MyActionsPanel({ user }: { user: AuthUser }) {
                 </Link>
             </div>
 
-            <div className="mt-3"><MyNcrsList userPk={user.pk} /></div>
-            <UnassignedNcrs userPk={user.pk} />
 
             {claimable.length > 0 && (
                 <div className="mt-3">
@@ -476,6 +473,9 @@ export function QaHomePage({ user }: { user: AuthUser }) {
                     reassign_stepexecution); renders nothing without it. */}
                 <WorkInProgressCard />
             </div>
+            {/* The same two NCR cards as every Home: what you own, then the queue. */}
+            <MyNcrsCard userPk={user.pk} />
+            <UnassignedNcrsCard userPk={user.pk} />
         </div>
     );
 }

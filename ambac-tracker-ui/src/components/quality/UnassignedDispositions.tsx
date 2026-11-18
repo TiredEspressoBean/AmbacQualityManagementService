@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 import { api } from "@/lib/api/generated";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
-import { invalidateAfterNcrChange } from "@/hooks/ncrs";
+import { invalidateAfterNcrChange, ownerChangedMessage } from "@/hooks/ncrs";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { Button } from "@/components/ui/button";
 import type { Schema } from "@/lib/api/types";
@@ -44,7 +44,7 @@ export function UnassignedNcrs({ userPk }: { userPk: number }) {
         meta: { suppressGlobalError: true },
         mutationFn: (id: string) => api.api_NCRs_assign_create({ assigned_to: userPk }, { params: { id } }),
         onSuccess: (ncr) => {
-            toast.success(`${ncr.ncr_number} is yours — with its decisions.`);
+            toast.success(ownerChangedMessage(ncr));
             void invalidateAfterNcrChange(qc);
         },
         onError: (e) => toast.error(apiErrorMessage(e) ?? "Could not take the NCR"),
