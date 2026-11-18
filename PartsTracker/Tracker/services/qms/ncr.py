@@ -522,12 +522,13 @@ def raise_ncr_for_parts(parts, *, description: str, user, severity: str = 'MAJOR
 
 
 def _owned_by_raiser(ncr, user) -> None:
-    """A person who may take NCRs (QA, leads: change_quarantinedisposition) and puts
-    parts on one by hand owns it, if nobody does; anyone else's goes to the queue (user
-    ruling 2026-11-18). Not the automatic path: a failure's NCR waits to be taken."""
+    """QA and leads own what they raise or add parts to by hand, if nobody does; an
+    operator's goes to the queue (user ruling 2026-11-18). "QA and leads" is change_ncr
+    (NCR_HEADER_WRITE) — the take perm (change_quarantinedisposition) is operators' too.
+    Not the automatic path: a failure's NCR waits to be taken."""
     ncr.refresh_from_db(fields=['assigned_to'])
     if (ncr.assigned_to_id is None and user is not None
-            and getattr(user, 'has_tenant_perm', None) and user.has_tenant_perm('change_quarantinedisposition')):
+            and getattr(user, 'has_tenant_perm', None) and user.has_tenant_perm('change_ncr')):
         assign_ncr(ncr, user)
         ncr.assigned_to = user
 

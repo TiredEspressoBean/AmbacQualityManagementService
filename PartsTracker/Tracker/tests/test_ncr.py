@@ -750,7 +750,9 @@ class NcrOwnerTests(_Shop):
                                             "severity": "MINOR"}, format="json")
         self.assertEqual(r.status_code, 201, r.content)
         self.assertEqual(r.json()["assigned_to"], self.superuser.id)
-        self.grant_tenant_permissions(self.user_a, self.tenant_a, ['full_tenant_access', 'view_ncr', 'add_ncr'])
+        # An operator holds the take perm too; owning by raising is QA's and leads' (change_ncr).
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, ['full_tenant_access', 'view_ncr', 'add_ncr',
+                                                                   'change_quarantinedisposition'])
         self.authenticate_as(self.user_a, self.tenant_a)
         r = self.client.post("/api/NCRs/", {"parts": [str(self.parts[1].id)], "description": "Chatter",
                                             "severity": "MINOR"}, format="json")
