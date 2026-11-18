@@ -210,6 +210,9 @@ def write_header(ncr, header, user) -> None:
     if needs_perm and not _may_edit_header(user):
         raise HeaderRefused(f"What's wrong on {ncr.ncr_number} — its description, severity and "
                             "containment — is edited by a lead or QA.")
+    refusal = recorded_containment_refusal(ncr, changes)
+    if refusal:
+        raise ValueError(refusal)
     if ('severity' in changes and anything_decided(ncr)
             and _RANK.get(changes['severity'], 0) < _RANK.get(ncr.severity, 0)):
         raise ValueError(f"{ncr.ncr_number} is {ncr.get_severity_display()}; its severity may only be raised.")
@@ -602,9 +605,64 @@ def record_containment_complete(ncr, user) -> None:
     ncr.save(update_fields=["containment_completed_by", "containment_completed_at", "updated_at"])
 
 
+_CONTAINMENT = ('containment_action', 'containment_performed_by')
+
+
+def recorded_containment_refusal(ncr, changes) -> str | None:
+    """Why `changes` may not touch the containment: once recorded, it changes only by a
+    correction, which keeps the original and says why (user ruling 2026-11-18). A value
+    equal to what's there isn't a change."""
+    if not ncr.containment_completed_at:
+        return None
+    def current(k):
+        return getattr(ncr, f'{k}_id' if k == 'containment_performed_by' else k)
+    moved = [k for k in _CONTAINMENT if k in changes
+             and getattr(changes[k], 'pk', changes[k]) != current(k)
+             and not (k == 'containment_action' and (changes[k] or '').strip() == (ncr.containment_action or '').strip())]
+    if not moved:
+        return None
+    return (f"Containment on {ncr.ncr_number} is recorded. Change it with Correct containment, "
+            "which keeps the original and says why.")
+
+
+@transaction.atomic
+def correct_containment(ncr, *, action: str, performed_by=None, reason: str, user) -> NCR:
+    """Correct recorded containment: the new wording (and who did it), with who corrected
+    it, when and why. The original recorder and date stay; the first wording is kept the
+    first time it's corrected. A closed NCR isn't edited."""
+    locked = NCR.objects.select_for_update().get(pk=ncr.pk)  # tenant-safe: .objects auto-scopes
+    action = (action or '').strip()
+    reason = (reason or '').strip()
+    if locked.state != 'OPEN':
+        raise ValueError(f"{locked.ncr_number} is closed, so its containment stands as recorded.")
+    if not locked.containment_completed_at:
+        raise ValueError(f"Containment on {locked.ncr_number} isn't recorded yet — record it instead.")
+    if not reason:
+        raise ValueError("Say why it's corrected — the reason is what an auditor reads.")
+    if not action:
+        raise ValueError("Describe the containment action.")
+    performed_id = getattr(performed_by, 'pk', performed_by)
+    if action == (locked.containment_action or '').strip() and performed_id == locked.containment_performed_by_id:
+        raise ValueError("Nothing changed: correct the wording or who did it.")
+    if not locked.containment_original_action:
+        locked.containment_original_action = locked.containment_action
+    locked.containment_action = action
+    locked.containment_performed_by_id = performed_id
+    locked.containment_corrected_by = user if getattr(user, 'is_authenticated', False) else None
+    locked.containment_corrected_at = timezone.now()
+    locked.containment_correction_reason = reason
+    locked.save(update_fields=['containment_original_action', 'containment_action',
+                               'containment_performed_by', 'containment_corrected_by',
+                               'containment_corrected_at', 'containment_correction_reason', 'updated_at'])
+    return locked
+
+
 def record_containment(ncr, *, action: str, user) -> None:
     """Write the containment action and record it done, as the form's save with
-    "containment completed" ticked does."""
+    "containment completed" ticked does. Recorded already, it changes only by a correction."""
+    refusal = recorded_containment_refusal(ncr, {'containment_action': action})
+    if refusal:
+        raise ValueError(refusal)
     ncr.containment_action = (action or '').strip()
     ncr.save(update_fields=["containment_action", "updated_at"])
     record_containment_complete(ncr, user)

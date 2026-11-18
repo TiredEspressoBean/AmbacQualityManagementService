@@ -543,6 +543,7 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
     // 2026-10-07: the record says who vouched for it as well as who did it).
     const [performedBy, setPerformedBy] = useState<number | null>(ncr.containment_performed_by ?? null);
     const done = !!ncr.containment_completed_at;
+    const [correcting, setCorrecting] = useState(false);
     const employees = useEmployeeSearch(canEdit && !done);
 
     const record = useMutation({
@@ -616,7 +617,29 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
                                 {new Date(ncr.containment_completed_at!).toLocaleString()}
                             </p>
                         )}
+                        {/* A correction keeps the first wording in sight, not only in the audit log. */}
+                        {ncr.containment_corrected_at && (
+                            <div className="space-y-1 rounded-md border bg-muted/30 p-2 text-xs">
+                                <p>
+                                    Corrected by {ncr.containment_corrected_by_name ?? "—"} on{" "}
+                                    {new Date(ncr.containment_corrected_at).toLocaleString()}: {ncr.containment_correction_reason}
+                                </p>
+                                {ncr.containment_original_action && (
+                                    <p className="whitespace-pre-wrap text-muted-foreground">
+                                        Originally: {ncr.containment_original_action}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        {done && canEdit && (
+                            <Button size="sm" variant="outline" onClick={() => setCorrecting(true)}>
+                                Correct containment
+                            </Button>
+                        )}
                     </>
+                )}
+                {correcting && (
+                    <CorrectContainmentDialog ncr={ncr} onClose={() => setCorrecting(false)} onDone={onChanged} />
                 )}
                 {/* Evidence goes where every NCR document goes — one place to add and find it. */}
                 {canEdit && (
@@ -626,6 +649,68 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
                 )}
             </CardContent>
         </Card>
+    );
+}
+
+/** Correct recorded containment — the only way it changes once recorded. The original
+ *  recorder and date stay; the correction says who, when and why (change_ncr). */
+function CorrectContainmentDialog({ ncr, onClose, onDone }: { ncr: Ncr; onClose: () => void; onDone: () => void }) {
+    const [action, setAction] = useState(ncr.containment_action ?? "");
+    const [performedBy, setPerformedBy] = useState<number | null>(ncr.containment_performed_by ?? null);
+    const [reason, setReason] = useState("");
+    const employees = useEmployeeSearch(true);
+    const correct = useMutation({
+        mutationFn: () => api.api_NCRs_correct_containment_create({
+            containment_action: action.trim(), containment_performed_by: performedBy, reason: reason.trim(),
+        }, { params: { id: String(ncr.id) } }),
+        meta: { errorMessage: "Couldn't correct the containment", successMessage: "Containment corrected" },
+        onSuccess: () => { onClose(); onDone(); },
+    });
+    return (
+        <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Correct containment on {ncr.ncr_number}</DialogTitle>
+                    <DialogDescription>
+                        Recorded by {ncr.containment_completed_by_name ?? "—"}; that stays. The correction is stamped
+                        with your name, the date and your reason, and the original wording stays on the NCR.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                    <div className="space-y-2">
+                        <Label htmlFor="cc-action">Containment action<RequiredMark /></Label>
+                        <Textarea id="cc-action" value={action} onChange={(e) => setAction(e.target.value)} className="resize-none" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Performed by <span className="text-muted-foreground">(if not the recorder)</span></Label>
+                        <Combobox
+                            value={performedBy == null ? null : String(performedBy)}
+                            onChange={(v) => setPerformedBy(v ? Number(v) : null)}
+                            options={employees.options}
+                            onSearch={employees.onSearch}
+                            loading={employees.loading}
+                            selectedLabel={ncr.containment_performed_by_name ?? undefined}
+                            placeholder="Select employee"
+                            searchPlaceholder="Search..."
+                            emptyText="No employees found."
+                            clearLabel="Nobody else"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="cc-reason">Why it's corrected<RequiredMark /></Label>
+                        <Textarea id="cc-reason" value={reason} onChange={(e) => setReason(e.target.value)}
+                                  className="resize-none" placeholder="e.g. Recorded the wrong rack; the parts were moved to MRB" />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button disabled={!action.trim() || !reason.trim() || correct.isPending} onClick={() => correct.mutate()}>
+                        {correct.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save correction
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 

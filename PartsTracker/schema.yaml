@@ -19761,6 +19761,50 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/NCRs/{id}/correct-containment/:
+    post:
+      operationId: api_NCRs_correct_containment_create
+      description: Correct recorded containment. The original recorder and date stay;
+        the first wording is kept, and the correction says who, when and why.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectContainmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CorrectContainmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CorrectContainmentRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/NCRs/{id}/decide/:
     post:
       operationId: api_NCRs_decide_create
@@ -57050,6 +57094,23 @@ components:
         * `RETURNED_UNREPAIRED` - Returned unrepaired
         * `HARVESTED` - Harvested to inventory
         * `SCRAPPED` - Scrapped
+    CorrectContainmentRequest:
+      type: object
+      description: 'Correct recorded containment: the new wording, who did it, and
+        why.'
+      properties:
+        containment_action:
+          type: string
+          minLength: 1
+        containment_performed_by:
+          type: integer
+          nullable: true
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - containment_action
+      - reason
     CorrectLotSourceRequest:
       type: object
       description: |-
@@ -66587,6 +66648,25 @@ components:
           type: string
           nullable: true
           readOnly: true
+        containment_original_action:
+          type: string
+          readOnly: true
+        containment_corrected_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        containment_corrected_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        containment_corrected_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        containment_correction_reason:
+          type: string
+          readOnly: true
         capa_decision:
           readOnly: true
           nullable: true
@@ -66684,6 +66764,11 @@ components:
       - containment_completed_at
       - containment_completed_by
       - containment_completed_by_name
+      - containment_corrected_at
+      - containment_corrected_by
+      - containment_corrected_by_name
+      - containment_correction_reason
+      - containment_original_action
       - containment_performed_by_name
       - created_at
       - header_by_hand

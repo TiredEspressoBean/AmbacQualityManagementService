@@ -5759,6 +5759,11 @@ export type NCR = {
     (number | null)
     | undefined;
   containment_performed_by_name: string | null;
+  containment_original_action: string;
+  containment_corrected_at: string | null;
+  containment_corrected_by: number | null;
+  containment_corrected_by_name: string | null;
+  containment_correction_reason: string;
   capa_decision: CapaDecisionEnum | NullEnum | null;
   capa_decision_note: string;
   capa_decided_by: number | null;
@@ -24105,6 +24110,11 @@ const NCR = z.object({
   containment_completed_by_name: z.string().nullable(),
   containment_performed_by: z.number().int().nullish(),
   containment_performed_by_name: z.string().nullable(),
+  containment_original_action: z.string(),
+  containment_corrected_at: z.string().datetime({ offset: true }).nullable(),
+  containment_corrected_by: z.number().int().nullable(),
+  containment_corrected_by_name: z.string().nullable(),
+  containment_correction_reason: z.string(),
   capa_decision: z.union([CapaDecisionEnum, NullEnum]).nullable(),
   capa_decision_note: z.string(),
   capa_decided_by: z.number().int().nullable(),
@@ -24173,6 +24183,11 @@ const CapaDecisionRequestDecisionEnum = z.enum(["NOT_REQUIRED", "DEFERRED"]);
 const CapaDecisionRequestRequest = z.object({
   decision: CapaDecisionRequestDecisionEnum,
   note: z.string().min(1),
+});
+const CorrectContainmentRequest = z.object({
+  containment_action: z.string().min(1),
+  containment_performed_by: z.number().int().nullish(),
+  reason: z.string().min(1),
 });
 const api_NCRs_decide_create_Body = z.object({
   disposition_type: z.enum([
@@ -31909,6 +31924,7 @@ export const schemas = {
   AssignNCRRequest,
   CapaDecisionRequestDecisionEnum,
   CapaDecisionRequestRequest,
+  CorrectContainmentRequest,
   api_NCRs_decide_create_Body,
   CombineNCRsRequest,
   NotificationEventTypeCatalog,
@@ -46730,6 +46746,32 @@ Not deleted: an NCR is closed by its decisions.`,
   },
   {
     method: "post",
+    path: "/api/NCRs/:id/correct-containment/",
+    alias: "api_NCRs_correct_containment_create",
+    description: `Correct recorded containment. The original recorder and date stay; the first wording is kept, and the correction says who, when and why.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CorrectContainmentRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/NCRs/:id/decide/",
     alias: "api_NCRs_decide_create",
     description: `Decide the NCR: every part still waiting for a decision, or the parts named. Each part&#x27;s decision is its own disposition&#x27;s. Gated by approve_disposition, co-signable. USE_AS_IS / REPAIR require a customer/design-approval reference.`,
@@ -47325,7 +47367,10 @@ personal rules.`,
       },
     ],
     response: PaginatedPersonalRuleList,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/notifications/rules/personal/",
@@ -47342,10 +47387,7 @@ personal rules.`,
       },
     ],
     response: PersonalRule,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/notifications/rules/personal/:id/",
@@ -52334,7 +52376,10 @@ Lifecycle endpoints:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/process-change-requests/:id/cancel/",
@@ -52366,10 +52411,7 @@ Lifecycle endpoints:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/process-change-requests/:id/extend/",
@@ -57651,7 +57693,10 @@ Response:
       },
     ],
     response: SPCCapabilityResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/spc/data/",
@@ -57708,10 +57753,7 @@ Response:
       },
     ],
     response: SPCDataResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/spc/dimensional-results/",
@@ -63402,7 +63444,10 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TimeEntries/my_hours/",
@@ -63412,10 +63457,7 @@ labour logic Operator Hours uses, so the operator sees what the lead sees; plus
 how many of their finished attendance entries this week await approval. Read-only.`,
     requestFormat: "json",
     response: MyHours,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrackerOrders/",

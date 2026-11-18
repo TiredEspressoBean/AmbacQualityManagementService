@@ -834,3 +834,63 @@ class DefectEntryTests(_Shop):
         r = self.client.post(f"/api/NCRs/{ncr.id}/add-defects/", {
             "report": str(report.id), "defect_rows": [self._row(self.marks)]}, format="json")
         self.assertEqual(r.status_code, 403, r.content)
+
+
+class CorrectContainmentTests(_Shop):
+    """Correct containment, the only way recorded containment changes (ruling 2026-11-18)."""
+
+    def _recorded(self):
+        from Tracker.services.qms.ncr import record_containment
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        record_containment(ncr, action="Held on rack 2.", user=self.user_a)
+        ncr.refresh_from_db()
+        return ncr
+
+    def test_a_correction_keeps_the_original_and_says_who_when_why(self):
+        ncr = self._recorded()
+        stamped = (ncr.containment_completed_by_id, ncr.containment_completed_at)
+        r = self.client.post(f"/api/NCRs/{ncr.id}/correct-containment/", {
+            "containment_action": "Held at MRB.", "reason": "Wrong rack recorded."}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        ncr.refresh_from_db()
+        self.assertEqual((ncr.containment_completed_by_id, ncr.containment_completed_at), stamped)
+        self.assertEqual((ncr.containment_action, ncr.containment_original_action,
+                          ncr.containment_correction_reason, ncr.containment_corrected_by_id),
+                         ("Held at MRB.", "Held on rack 2.", "Wrong rack recorded.", self.superuser.id))
+        # A second correction keeps the first wording as the original.
+        self.client.post(f"/api/NCRs/{ncr.id}/correct-containment/", {
+            "containment_action": "Held at MRB, tagged.", "reason": "Tag added."}, format="json")
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.containment_original_action, "Held on rack 2.")
+
+    def test_recorded_containment_isnt_edited_any_other_way(self):
+        ncr = self._recorded()
+        r = self.client.patch(f"/api/NCRs/{ncr.id}/", {"containment_action": "Quietly changed."}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("Change it with Correct containment", r.content.decode())
+        d = ncr.dispositions.get()
+        r = self.client.patch(f"/api/QuarantineDispositions/{d.id}/", {"containment_action": "Quietly changed."},
+                              format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        from Tracker.services.qms.ncr import record_containment
+        with self.assertRaisesMessage(ValueError, "Change it with Correct containment"):
+            record_containment(ncr, action="Quietly changed.", user=self.user_a)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.containment_action, "Held on rack 2.")
+
+    def test_a_correction_needs_a_reason_an_open_ncr_and_change_ncr(self):
+        ncr = self._recorded()
+        r = self.client.post(f"/api/NCRs/{ncr.id}/correct-containment/", {
+            "containment_action": "Held at MRB.", "reason": " "}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        NCR.objects.filter(pk=ncr.pk).update(state="CLOSED")
+        r = self.client.post(f"/api/NCRs/{ncr.id}/correct-containment/", {
+            "containment_action": "Held at MRB.", "reason": "x"}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("is closed", r.json()["detail"])
+        NCR.objects.filter(pk=ncr.pk).update(state="OPEN")
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, ['full_tenant_access', 'view_ncr', 'add_ncr'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        r = self.client.post(f"/api/NCRs/{ncr.id}/correct-containment/", {
+            "containment_action": "Held at MRB.", "reason": "x"}, format="json")
+        self.assertEqual(r.status_code, 403, r.content)

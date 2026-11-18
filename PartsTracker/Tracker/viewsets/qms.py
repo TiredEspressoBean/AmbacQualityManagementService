@@ -36,7 +36,7 @@ from Tracker.serializers.qms import (
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
     FiveWhysSerializer, FishboneSerializer,
     FPIRecordSerializer, CapaDecisionRequestSerializer,
-    NCRSerializer, RaiseNCRSerializer, AddPartsToNCRSerializer, CombineNCRsSerializer, AssignNCRSerializer, AddDefectsToNCRSerializer,
+    NCRSerializer, RaiseNCRSerializer, AddPartsToNCRSerializer, CombineNCRsSerializer, AssignNCRSerializer, AddDefectsToNCRSerializer, CorrectContainmentSerializer,
 )
 from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSerializer
 # Module-level so `request_approval` can name it in @extend_schema; the
@@ -198,10 +198,12 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         'assign': ['change_quarantinedisposition'],
         # A later finding on its records is the NCR's header work: QA and leads.
         'add_defects': ['change_ncr'],
+        # Correcting recorded containment is recording it: change_ncr.
+        'correct_containment': ['change_ncr'],
         'close_decided': ['close_disposition'],
     }
     crud_exempt_actions = {'decide', 'capa_decision', 'add_parts', 'containment_complete', 'combine',
-                           'assign', 'close_decided', 'add_defects'}
+                           'assign', 'close_decided', 'add_defects', 'correct_containment'}
     cosign_actions = {'decide': 'approve_disposition'}
 
     def get_queryset(self):
@@ -211,6 +213,7 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         # CAPAs are read off these (services/qms/ncr.members uses the prefetch).
         return (super().get_queryset()
                 .select_related('step', 'work_order', 'raised_by', 'assigned_to', 'containment_completed_by',
+                                'containment_corrected_by',
                                 'capa_decided_by', 'batch_execution', 'combined_into')
                 .prefetch_related('dispositions__part', 'dispositions__material_lot',
                                   'batch_execution__parts', 'reports__part', 'reports__defects__error_type',
@@ -302,6 +305,24 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         req.is_valid(raise_exception=True)
         try:
             ncr = assign_ncr(ncr, req.validated_data['assigned_to'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(NCRSerializer(self.get_queryset().get(pk=ncr.pk), context=self.get_serializer_context()).data)
+
+    @extend_schema(request=CorrectContainmentSerializer, responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
+                   description="Correct recorded containment. The original recorder and date stay; the "
+                               "first wording is kept, and the correction says who, when and why.")
+    @action(detail=True, methods=['post'], url_path='correct-containment')
+    def correct_containment(self, request, pk=None):
+        from Tracker.services.qms.ncr import correct_containment
+        ncr = self.get_object()
+        req = CorrectContainmentSerializer(data=request.data, context=self.get_serializer_context())
+        req.is_valid(raise_exception=True)
+        v = req.validated_data
+        try:
+            correct_containment(ncr, action=v['containment_action'],
+                                performed_by=v.get('containment_performed_by'),
+                                reason=v['reason'], user=request.user)
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(NCRSerializer(self.get_queryset().get(pk=ncr.pk), context=self.get_serializer_context()).data)

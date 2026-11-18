@@ -956,6 +956,11 @@ class NCRSerializer(SecureModelMixin):
     combined_from = serializers.SerializerMethodField()
     assigned_to_name = serializers.SerializerMethodField()
     todo = serializers.SerializerMethodField()
+    containment_corrected_by_name = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_containment_corrected_by_name(self, obj):
+        return self._name(obj.containment_corrected_by)
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_assigned_to_name(self, obj):
@@ -975,6 +980,8 @@ class NCRSerializer(SecureModelMixin):
             'raised_by', 'raised_by_name', 'assigned_to', 'assigned_to_name', 'todo',
             'containment_action', 'containment_completed_at', 'containment_completed_by',
             'containment_completed_by_name', 'containment_performed_by', 'containment_performed_by_name',
+            'containment_original_action', 'containment_corrected_at', 'containment_corrected_by',
+            'containment_corrected_by_name', 'containment_correction_reason',
             'capa_decision', 'capa_decision_note', 'capa_decided_by', 'capa_decided_by_name',
             'capa_decided_at',
             'members', 'reports', 'report_ids', 'capa_ids', 'capa_refs',
@@ -987,11 +994,18 @@ class NCRSerializer(SecureModelMixin):
             # Owner changes through `assign`, which moves its open decisions with it.
             'assigned_to',
             'containment_completed_at', 'containment_completed_by',
+            'containment_original_action', 'containment_corrected_at', 'containment_corrected_by',
+            'containment_correction_reason',
             'capa_decision', 'capa_decision_note', 'capa_decided_by', 'capa_decided_at',
             'created_at', 'updated_at', 'archived',
         )
 
     def update(self, instance, validated_data):
+        # Recorded containment changes only by a correction (the correct-containment action).
+        from Tracker.services.qms.ncr import recorded_containment_refusal
+        refusal = recorded_containment_refusal(instance, validated_data)
+        if refusal:
+            raise serializers.ValidationError({'containment_action': refusal})
         # A person wrote what's wrong: from now on it's theirs, not the records'.
         if any(k in validated_data for k in ('description', 'severity')):
             validated_data['header_by_hand'] = True
@@ -1047,6 +1061,14 @@ class NCRSerializer(SecureModelMixin):
                  'part_erp_id': r.part.ERP_id if r.part_id else None, 'created_at': r.created_at,
                  'superseded': r.superseded_at is not None, 'defects': found(r)}
                 for r in sorted((r for r in obj.reports.all() if not r.archived), key=lambda r: r.created_at)]
+
+
+class CorrectContainmentSerializer(serializers.Serializer):
+    """Correct recorded containment: the new wording, who did it, and why."""
+    containment_action = serializers.CharField()
+    containment_performed_by = TenantScopedPrimaryKeyRelatedField(queryset=User.objects.all(), allow_null=True,
+                                                                  required=False)
+    reason = serializers.CharField()
 
 
 class AssignNCRSerializer(serializers.Serializer):
@@ -1346,6 +1368,11 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             # The NCR's own lock: closed, or severity lowered once anything is decided.
             from Tracker.services.core.approval_lock import edit_refusal
             why = edit_refusal(instance.ncr, {k: getattr(v, 'pk', v) for k, v in header.items()})
+            if why:
+                raise serializers.ValidationError(why)
+            # Recorded containment changes only by a correction, here as on the NCR.
+            from Tracker.services.qms.ncr import recorded_containment_refusal
+            why = recorded_containment_refusal(instance.ncr, header)
             if why:
                 raise serializers.ValidationError(why)
             for k, v in header.items():

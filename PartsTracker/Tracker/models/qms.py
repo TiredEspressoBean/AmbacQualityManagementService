@@ -919,6 +919,14 @@ class NCR(SecureModel):
     containment_performed_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
         help_text="Who carried out the containment, if not the person recording it.")
+    # A correction to recorded containment (services/qms/ncr.correct_containment) — the
+    # only way it changes once recorded. The first wording stays, and the latest
+    # correction says who, when and why; auditlog holds every step between.
+    containment_original_action = models.TextField(blank=True, default='')
+    containment_corrected_at = models.DateTimeField(null=True, blank=True)
+    containment_corrected_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    containment_correction_reason = models.TextField(blank=True, default='')
 
     # Whether it needed a CAPA (services/qms/capa_decision.py). Null = undecided, which
     # nothing defaults: an NCR nobody promoted must be distinguishable from one nobody

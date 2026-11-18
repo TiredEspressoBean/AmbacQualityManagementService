@@ -7792,6 +7792,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/NCRs/{id}/correct-containment/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Correct recorded containment. The original recorder and date stay; the first wording is kept, and the correction says who, when and why. */
+        post: operations["api_NCRs_correct_containment_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/NCRs/{id}/decide/": {
         parameters: {
             query?: never;
@@ -24253,6 +24270,12 @@ export interface components {
          * @enum {string}
          */
         CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "RETURNED" | "REBUILT_TO_STOCK" | "SHIPPED" | "AWAITING_AUTHORISATION" | "DECLINED" | "RETURNED_UNREPAIRED" | "HARVESTED" | "SCRAPPED";
+        /** @description Correct recorded containment: the new wording, who did it, and why. */
+        CorrectContainmentRequest: {
+            containment_action: string;
+            containment_performed_by?: number | null;
+            reason: string;
+        };
         /**
          * @description A lot's supplier, item or PO line recorded wrong at receipt — send only what
          *     changes, and why.
@@ -28705,6 +28728,12 @@ export interface components {
             /** @description Who carried out the containment, if not the person recording it. */
             containment_performed_by?: number | null;
             readonly containment_performed_by_name: string | null;
+            readonly containment_original_action: string;
+            /** Format: date-time */
+            readonly containment_corrected_at: string | null;
+            readonly containment_corrected_by: number | null;
+            readonly containment_corrected_by_name: string | null;
+            readonly containment_correction_reason: string;
             readonly capa_decision: (components["schemas"]["CapaDecisionEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly capa_decision_note: string;
             readonly capa_decided_by: number | null;
@@ -57494,6 +57523,44 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NCR"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_NCRs_correct_containment_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this NCR. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectContainmentRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CorrectContainmentRequest"];
+                "multipart/form-data": components["schemas"]["CorrectContainmentRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
