@@ -93,11 +93,12 @@ shows as a chip, *Opened before &lt;date&gt;*, with **✕** to clear it.
 ## Owning an NCR
 
 Every NCR has an **owner**, the QA person who sees it through: its decisions,
-its containment, its CAPA decision, and closing it. An NCR nobody owns waits in
-the queue: **NCRs to take** on Home and the QA home, one row per NCR
+its containment, its CAPA decision, and closing it. An NCR raised by hand by
+someone from QA or a lead is theirs from the start. One a failure opened, or one
+an operator raised, waits unowned in the queue: **NCRs to take** on Home and the QA home, one row per NCR
 (*NCR-… · INJ-… / 3 parts / Lot … · WO-… · Major · what's wrong*).
 
-**Take it** makes it yours: *"NCR-… is yours — with its decisions."* All its
+**Take it** makes it yours: *"NCR-… is &lt;your name&gt;'s — with its decisions."* All its
 decisions not yet closed go with it, and a part added to it later, or failing
 into it, is yours too. On the NCR's **Owner** card, **Reassign** gives it to
 someone else, or **Back to the queue** (*"NCR-… is back in the queue."*). Taking

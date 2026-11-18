@@ -272,8 +272,8 @@ An annotation belongs to an **inspection record**, so choose the record first:
 ### Taking an NCR
 
 A failure's NCR opens with nobody owning it. It waits on your Home page under
-**NCRs to take** until someone presses **Take it**: *"NCR-… is yours — with its
-decisions."* It then shows in that person's **My NCRs**, with chips for what's
+**NCRs to take** until someone presses **Take it**: *"NCR-… is &lt;their name&gt;'s
+— with its decisions."* It then shows in that person's **My NCRs**, with chips for what's
 left: *N to decide*, *Containment needed*, *CAPA call needed*, *N to close*. See
 [Owning an NCR](../workflows/quality/ncrs.md#owning-an-ncr).
 

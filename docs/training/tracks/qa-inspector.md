@@ -63,14 +63,16 @@ Log in as Sarah. The home page is the inspector's queue:
   block the floor, so they come first.
 - **Inbox chips**: All, Receiving, OSP returns, In-process (sampled parts), Urgent,
   each with its count and how long the oldest has waited.
-- **My quality actions**: what's overdue, approvals, CAPA tasks and dispositions
-  assigned to you.
-- **Unassigned dispositions**: dispositions a failed inspection opened that nobody
-  has taken yet, each with **Take it**.
+- **My quality actions**: what's overdue, approvals and CAPA tasks.
+- **My NCRs**: the NCRs you own, each with what it still needs: *N to decide*,
+  *Containment needed*, *CAPA call needed*, *N to close*.
+- **NCRs to take**: NCRs a failure opened that nobody owns yet, one row per NCR,
+  each with **Take it**.
 - **Your gauges**: gauges you used in the last 7 days that are due for calibration.
 
 **Exercise 1.1.** From the home page alone, say which runs are waiting on a first
-piece, and what failed behind each unassigned disposition. Don't open anything yet.
+piece, what failed behind each NCR waiting to be taken, and what each of your own
+NCRs still needs. Don't open anything yet.
 
 **Exercise 1.2.** Type `INJ-QA-INSPECT-004` into the scan box, as you would scan its
 traveler. A serial opens the work order it belongs to with **Start work on parts**
@@ -229,10 +231,13 @@ fresh start.
 **Take and annotate.** `INJ-QA-INSPECT-015` failed its visual inspection yesterday:
 *Burr in bore*, a defect that must be marked on the part's model.
 
-1. On your home page, **Take it** on its disposition: *Taken — it's in your
-   dispositions.* Your **My dispositions** count goes up by one.
-2. Open it (from **Quality** > **Quarantined Parts**, by its serial). **3D Annotations Required**: the disposition can't close until the
-   defect is marked. **Go to Annotator** opens with its inspection record already selected.
+1. On your home page, under **NCRs to take**, **Take it** on its NCR: *"NCR-… is
+   Sarah Chen's — with its decisions."* It moves to your **My NCRs**, and its
+   disposition is yours too.
+2. Open the NCR from **My NCRs**, then its disposition from **Parts and
+   decisions**. **3D Annotations Required**: the disposition can't close until the
+   defect is marked. **Go to Annotator** opens with its inspection record already
+   selected.
 3. Mark the burr on the model, where the fuel passage breaks into the bore, with its
    defect type and severity, and save.
    A marker's severity rates that one finding. The NCR's severity

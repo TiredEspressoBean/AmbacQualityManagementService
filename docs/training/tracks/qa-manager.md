@@ -63,8 +63,10 @@ Log in as Maria. The home page is a list of decisions waiting on you:
   repair unit waiting for a decision, a repair unit waiting on its customer's answer,
   NCRs open more than 7 days, decisions waiting to be made, parts in quarantine,
   CAPAs waiting for their effectiveness check.
-- **Quality**: open NCRs, quarantined parts, active and overdue CAPAs, first pass
-  yield.
+- **Quality**: open NCRs, quarantined parts, NCRs awaiting a CAPA decision, active
+  and overdue CAPAs, first pass yield.
+- **NCRs to take**: NCRs nobody owns yet, one row per NCR, with **Take it**; and
+  **My NCRs**: the ones you own, with what each still needs.
 - **Overdue calibrations**: every gauge past its due date, shop-wide.
 - **Supplier qualifications expiring**, **Competency coverage** and **Training**.
 - **Approvals in flight**, and **My quality actions**: what is assigned to you.
@@ -144,7 +146,44 @@ decision** stays disabled: Use As Is accepts nonconforming product, so it needs 
 recorded concession. Once every body has a decision, the Decide buttons are gone: a
 part's decision is changed on its own disposition after that.
 
-The NCR closes by itself once each body's disposition is closed.
+The NCR closes once each body's disposition is closed.
+
+**Close it from the NCR.** `WO-QA-MANAGE-04`'s body `INJ-QA-MANAGE-032` failed; its
+NCR is yours (it's in **My NCRs**), and you've already decided **Scrap**. Open the
+NCR.
+
+**Try to break it:** press **Close decided (1)**. It's refused, and nothing closes:
+*"None closed — INJ-QA-MANAGE-032: Containment action required on NCR-… before
+closing a decision on a CRITICAL/MAJOR nonconformance"*. The **Containment** card is
+marked in red: *"Record containment before these decisions can close."* A Major
+nonconformance needs its containment on record before anything under it is
+finished.
+
+1. Record the containment: what was done so nothing else like it escapes.
+   **Record containment**.
+2. **Close decided (1)**: *Decided dispositions closed*. The NCR reads *Closed*.
+
+**Two failures, one cause.** `WO-QA-MANAGE-03`'s bodies `INJ-QA-MANAGE-022` and
+`-023` both failed Body Inspection with the bore oversize (*Failed Body Inspection:
+Bore Diameter 4.007 mm (limits 3.995–4.005)*), and each opened its own NCR.
+Both came off the same grinder setup, so they're one nonconformance.
+
+1. **Quality** > **NCRs**, tick the two (*Select at least two NCRs to combine.*
+   shows while only one is ticked), and **Combine into one NCR**. Keep the older
+   one: **Combine into NCR-…**, *NCRs combined*.
+2. Open the one you kept. Both bodies are under it; the other NCR reads *Combined
+   into NCR-…*. Nobody owns it yet: **Take it**. Both bodies' decisions are yours
+   now.
+
+**A complaint from the field.** Great Lakes Diesel reports that `INJ-0038-012`,
+shipped six days ago, came back with low flow.
+
+1. **Quality** > **NCRs** > **Raise NCR**. The parts picker shows it as
+   *Shipped*. Say what's wrong and raise it. Its row reads *Already shipped*: it
+   isn't here to hold, so its decision will be the record of what was decided.
+2. On its **CAPA** card, **Raise CAPA**. The form starts from the NCR (*Raised for
+   NCR-…*); choose type **Customer Complaint**, complete it and create it. The
+   NCR's CAPA decision reads *CAPA raised*, linking the CAPA.
 
 ---
 
