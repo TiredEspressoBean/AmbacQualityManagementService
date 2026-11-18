@@ -55,6 +55,7 @@ def _open_disposition(lot, *, user, disposition_type, quantity, description, rep
     from Tracker.models import QuarantineDisposition
     from Tracker.services.qms.ncr import raise_ncr
     authority = _authority(user) if decided else None
+    reject_note = ""
     # The inspection's NCR (raised when its report failed), or a new one — a later reject
     # of what's left is a new nonconformance. The reject says what's wrong and how bad;
     # the first decision under the NCR sets its header.
@@ -65,11 +66,14 @@ def _open_disposition(lot, *, user, disposition_type, quantity, description, rep
                         description=description or f"Lot {lot.lot_number} rejected at receiving inspection",
                         severity=severity or "MAJOR", raised_by=user,
                         reports=[report] if report is not None else [])
-    elif not ncr.dispositions.exists():
-        if (description or "").strip():
-            ncr.description = description
-        ncr.severity = severity or "MAJOR"
-        ncr.save(update_fields=["description", "severity", "updated_at"])
+    else:
+        # What the reject says is wrong: the one header rule (ncr.write_header). Said by
+        # someone who may not write this NCR's header, it stays on the decision's notes.
+        from Tracker.services.qms.ncr import HeaderRefused, write_header
+        try:
+            write_header(ncr, {"description": (description or "").strip(), "severity": severity}, user)
+        except (HeaderRefused, ValueError):
+            reject_note = (description or "").strip()
     disposition = QuarantineDisposition.objects.create(
         tenant=lot.tenant,
         ncr=ncr,
@@ -81,6 +85,7 @@ def _open_disposition(lot, *, user, disposition_type, quantity, description, rep
         assigned_to=_authority(user) if decided else None,
         decision_authorized_by=authority,
         decision_authorized_at=timezone.now() if authority else None,
+        resolution_notes=reject_note,
     )
     if report is not None:
         disposition.quality_reports.add(report)
@@ -277,6 +282,11 @@ def ship_back(lot, user, *, note: str = "", rma_number: str = "", replacement_pr
                    .exclude(current_state="CLOSED").order_by("-created_at").first())
     if lot.status != "REJECTED" or disposition is None:
         raise ValueError(f"Lot {lot.lot_number} is not waiting to go back to the supplier.")
+    # Shipping it back completes the decision, so it meets what any completion does
+    # (containment on a Major/Critical NCR, annotations).
+    blockers = disposition.get_completion_blockers()
+    if blockers:
+        raise ValueError(f"Lot {lot.lot_number} can't go back yet: {'; '.join(blockers)}.")
     with transaction.atomic():
         returned_qty = lot.quantity_remaining
         inventory.mark_lot_returned(lot)

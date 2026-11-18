@@ -882,6 +882,11 @@ class NCRMemberSerializer(serializers.Serializer):
     held = serializers.BooleanField()
 
 
+class NCRRefSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    ncr_number = serializers.CharField()
+
+
 class NCRReportRefSerializer(serializers.Serializer):
     """A failed inspection record on the NCR."""
     id = serializers.UUIDField()
@@ -906,6 +911,9 @@ class NCRSerializer(SecureModelMixin):
     reports = serializers.SerializerMethodField()
     report_ids = serializers.PrimaryKeyRelatedField(source='reports', many=True, read_only=True)
     capa_ids = serializers.PrimaryKeyRelatedField(source='capas', many=True, read_only=True)
+    combined_into_number = serializers.CharField(source='combined_into.ncr_number', read_only=True,
+                                                 allow_null=True)
+    combined_from = serializers.SerializerMethodField()
 
     class Meta:
         model = NCR
@@ -919,14 +927,22 @@ class NCRSerializer(SecureModelMixin):
             'capa_decision', 'capa_decision_note', 'capa_decided_by', 'capa_decided_by_name',
             'capa_decided_at',
             'members', 'reports', 'report_ids', 'capa_ids',
+            'combined_into', 'combined_into_number', 'combined_from', 'header_by_hand',
             'created_at', 'updated_at', 'archived',
         )
         read_only_fields = (
             'ncr_number', 'state', 'closed_at', 'step', 'work_order', 'batch_execution', 'raised_by',
+            'combined_into', 'header_by_hand',
             'containment_completed_at', 'containment_completed_by',
             'capa_decision', 'capa_decision_note', 'capa_decided_by', 'capa_decided_at',
             'created_at', 'updated_at', 'archived',
         )
+
+    def update(self, instance, validated_data):
+        # A person wrote what's wrong: from now on it's theirs, not the records'.
+        if any(k in validated_data for k in ('description', 'severity')):
+            validated_data['header_by_hand'] = True
+        return super().update(instance, validated_data)
 
     @staticmethod
     def _name(u):
@@ -949,11 +965,22 @@ class NCRSerializer(SecureModelMixin):
         from Tracker.services.qms.ncr import members
         return members(obj)
 
+    @extend_schema_field(NCRRefSerializer(many=True))
+    def get_combined_from(self, obj):
+        """NCRs combined into this one."""
+        return [{'id': n.id, 'ncr_number': n.ncr_number} for n in obj.combined_from.order_by('created_at')]
+
     @extend_schema_field(NCRReportRefSerializer(many=True))
     def get_reports(self, obj):
         return [{'id': r.id, 'report_number': r.report_number or '', 'status': r.status,
                  'part_erp_id': r.part.ERP_id if r.part_id else None, 'created_at': r.created_at}
                 for r in sorted((r for r in obj.reports.all() if not r.archived), key=lambda r: r.created_at)]
+
+
+class CombineNCRsSerializer(serializers.Serializer):
+    """Combine NCRs: `ncrs` move under `into`."""
+    into = TenantScopedPrimaryKeyRelatedField(queryset=NCR.unscoped.all())
+    ncrs = TenantScopedPrimaryKeyRelatedField(queryset=NCR.unscoped.all(), many=True)
 
 
 class RaiseNCRSerializer(serializers.Serializer):
@@ -1150,10 +1177,16 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         scrap_verified = validated_data.pop('scrap_verified', None)
         # Under the NCR its reports are on, else its part's open one, else a new one
         # carrying the header given here.
-        from Tracker.services.qms.ncr import ncr_for_new_disposition
-        validated_data['ncr'] = ncr_for_new_disposition(
-            part=validated_data.get('part'), reports=validated_data.get('quality_reports') or [],
-            step=validated_data.get('step'), user=user, header=validated_data.pop('ncr', {}) or {})
+        from rest_framework.exceptions import PermissionDenied
+        from Tracker.services.qms.ncr import HeaderRefused, ncr_for_new_disposition
+        try:
+            validated_data['ncr'] = ncr_for_new_disposition(
+                part=validated_data.get('part'), reports=validated_data.get('quality_reports') or [],
+                step=validated_data.get('step'), user=user, header=validated_data.pop('ncr', {}) or {})
+        except HeaderRefused as e:
+            raise PermissionDenied(str(e))
+        except ValueError as e:
+            raise serializers.ValidationError({'severity': [str(e)]})
         instance = super().create(validated_data)
         self._record_stamps(instance, user, containment_done, scrap_verified)
         if disposition_type:
@@ -1223,7 +1256,8 @@ class QuarantineDispositionSerializer(SecureModelMixin):
                 raise serializers.ValidationError(why)
             for k, v in header.items():
                 setattr(instance.ncr, k, v)
-            instance.ncr.save(update_fields=[*header, 'updated_at'])
+            instance.ncr.header_by_hand = True
+            instance.ncr.save(update_fields=[*header, 'header_by_hand', 'updated_at'])
         instance = super().update(instance, validated_data)
         user = getattr(self.context.get('request'), 'user', None)
         self._record_stamps(instance, user, containment_done, scrap_verified)

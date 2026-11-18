@@ -313,7 +313,8 @@ class NcrCreateDispositionHeaderTests(_Shop):
         r = self.client.post("/api/QuarantineDispositions/", {
             "part": str(self.parts[0].id), "quality_reports": [str(report.id)],
             "containment_action": "segregated"}, format="json")
-        self.assertEqual(r.status_code, 201, r.content)
+        # Refused, not silently dropped (merged review P1#5).
+        self.assertEqual(r.status_code, 403, r.content)
         ncr.refresh_from_db()
         self.assertEqual(ncr.containment_action, "")
 
@@ -405,3 +406,162 @@ class NcrDocumentLinkTests(_Shop):
         listed = self.client.get(f"/api/Documents/?content_type={r.json()['content_type']}&object_id={ncr.id}")
         self.assertEqual([d["id"] for d in listed.json()["results"]], [r.json()["id"]])
 
+
+
+class P1IntegrityTests(_Shop):
+    """The 2026-11-18 merged review, P1 (data integrity)."""
+
+    def _close(self, ncr):
+        from Tracker.services.qms.disposition import complete_disposition_resolution, decide_disposition
+        from Tracker.services.qms.ncr import record_containment
+        record_containment(ncr, action="Held.", user=self.superuser)
+        for d in ncr.dispositions.all():
+            decide_disposition(d, disposition_type="SCRAP", authorized_by=self.superuser)
+            complete_disposition_resolution(d, self.superuser)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.state, "CLOSED")
+
+    def test_voiding_a_fail_after_its_ncr_closed_raises_nothing(self):
+        from django.utils import timezone
+        report = self._fail(self.parts[0])
+        ncr = self._ncr_of(report)
+        self._close(ncr)
+        report.superseded_at = timezone.now()
+        report.save()
+        report.refresh_from_db()
+        self.assertEqual(report.ncr_id, ncr.id)
+        self.assertEqual(NCR.objects.filter(tenant=self.tenant_a).count(), 1)
+
+    def test_a_resave_of_a_failed_record_doesnt_move_it(self):
+        report = self._fail(self.parts[0])
+        ncr = self._ncr_of(report)
+        self._close(ncr)
+        report.description = "re-saved"
+        report.save()
+        report.refresh_from_db()
+        self.assertEqual(report.ncr_id, ncr.id)
+
+    def test_rollback_settles_only_undecided_decisions(self):
+        from Tracker.services.mes.parts import _settle_dispositions_on_rollback
+        from Tracker.services.qms.disposition import decide_disposition
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        d = ncr.dispositions.get()
+        decide_disposition(d, disposition_type="REWORK", authorized_by=self.superuser)
+        _settle_dispositions_on_rollback(self.parts[0], self.superuser, self.step, self.step, "back")
+        d.refresh_from_db()
+        self.assertEqual((d.disposition_type, d.current_state), ("REWORK", "IN_PROGRESS"))
+
+    def test_mrb_adopts_the_undecided_decision_not_an_older_decided_one(self):
+        from Tracker.services.qms.disposition import decide_disposition
+        from Tracker.services.qms.mrb import open_for_failure
+        from Tracker.tests.base import make_disposition
+        old = make_disposition(tenant=self.tenant_a, part=self.parts[0], step=self.step)
+        decide_disposition(old, disposition_type="REWORK", authorized_by=self.superuser)
+        new = make_disposition(tenant=self.tenant_a, part=self.parts[0], step=self.step)
+        self.assertEqual(open_for_failure(self.parts[0], failed_step=self.step).pk, new.pk)
+
+    def test_the_one_header_rule(self):
+        from Tracker.services.qms.disposition import decide_disposition
+        from Tracker.services.qms.ncr import HeaderRefused, write_header
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        # Still being raised: the raiser says what's wrong, even below the MAJOR default.
+        write_header(ncr, {"description": "Chatter", "severity": "MINOR"}, self.user_a)
+        ncr.refresh_from_db()
+        self.assertEqual((ncr.description, ncr.severity, ncr.header_by_hand), ("Chatter", "MINOR", True))
+        # Written by hand now: change_ncr's, refused without it — not dropped.
+        with self.assertRaises(HeaderRefused):
+            write_header(ncr, {"description": "Other"}, self.user_a)
+        # Containment is always change_ncr's.
+        other = self._ncr_of(self._fail(self.parts[1]))
+        with self.assertRaises(HeaderRefused):
+            write_header(other, {"containment_action": "held"}, self.user_a)
+        # Never lowered once decided.
+        decide_disposition(other.dispositions.get(), disposition_type="SCRAP", authorized_by=self.superuser)
+        with self.assertRaisesMessage(ValueError, "may only be raised"):
+            write_header(other, {"severity": "MINOR"}, self.superuser)
+
+    def test_severity_follows_the_findings_down_too(self):
+        from Tracker.models import QualityErrorsList, QualityReportDefect
+        from Tracker.services.qms.ncr import refresh_description
+        report = self._fail(self.parts[0])
+        ncr = self._ncr_of(report)
+        self.assertEqual(ncr.severity, "MAJOR")
+        err = QualityErrorsList.objects.create(tenant=self.tenant_a, error_name="Scuff")
+        QualityReportDefect.objects.create(report=report, error_type=err, severity="MINOR")
+        refresh_description(ncr)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.severity, "MINOR")
+
+    def test_a_record_only_decision_holds_nothing(self):
+        from Tracker.services.qms.nonconformance import undecided_disposition
+        from Tracker.tests.base import make_disposition
+        make_disposition(tenant=self.tenant_a, part=self.parts[0], step=self.step, held=False)
+        self.assertIsNone(undecided_disposition(self.parts[0]))
+
+    def test_an_ncr_whose_decisions_were_all_removed_closes(self):
+        from Tracker.services.qms.ncr import sync_state
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        ncr.dispositions.update(archived=True)
+        sync_state(ncr.id)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.state, "CLOSED")
+
+    def test_linking_ncrs_on_a_capa_needs_initiate_capa_and_unlinking_undecides(self):
+        from Tracker.models import CAPA
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        capa = CAPA.objects.create(tenant=self.tenant_a, capa_type="CORRECTIVE", severity="MINOR",
+                                   problem_statement="x", initiated_by=self.superuser, capa_number="CAPA-L-1")
+        from django.contrib.auth import get_user_model
+        helper = get_user_model().objects.create_user(username="capa-helper", email="ch@t.test",
+                                                      password="x", tenant=self.tenant_a)
+        self.grant_tenant_permissions(helper, self.tenant_a, ['full_tenant_access', 'view_capa', 'change_capa'])
+        self.authenticate_as(helper, self.tenant_a)
+        r = self.client.patch(f"/api/CAPAs/{capa.id}/", {"ncrs": [str(ncr.id)]}, format="json")
+        self.assertEqual(r.status_code, 403, r.content)
+        self.authenticate_superuser(self.tenant_a)
+        self.assertEqual(self.client.patch(f"/api/CAPAs/{capa.id}/", {"ncrs": [str(ncr.id)]},
+                                           format="json").status_code, 200)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.capa_decision, "PROMOTED")
+        self.assertEqual(self.client.patch(f"/api/CAPAs/{capa.id}/", {"ncrs": []},
+                                           format="json").status_code, 200)
+        ncr.refresh_from_db()
+        self.assertIsNone(ncr.capa_decision)
+
+
+class CombineNcrsTests(_Shop):
+    """Combine NCRs (user go 2026-11-18)."""
+
+    def test_combining_moves_the_decisions_and_records_and_closes_the_others(self):
+        from Tracker.models import QualityErrorsList, QualityReportDefect
+        a = self._ncr_of(self._fail(self.parts[0]))
+        b_report = self._fail(self.parts[1])
+        b = self._ncr_of(b_report)
+        NCR.objects.filter(pk=b.pk).update(severity="CRITICAL", containment_action="Segregated B")
+        r = self.client.post("/api/NCRs/combine/", {"into": str(a.id), "ncrs": [str(b.id)]}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        a.refresh_from_db(); b.refresh_from_db()
+        self.assertEqual(QuarantineDisposition.objects.filter(ncr=a).count(), 2)
+        self.assertEqual(QualityReports.objects.filter(ncr=a).count(), 2)
+        self.assertEqual((a.severity, a.containment_action), ("CRITICAL", "Segregated B"))
+        self.assertEqual((b.state, b.combined_into_id), ("CLOSED", a.id))
+        self.assertEqual([n["ncr_number"] for n in r.json()["combined_from"]], [b.ncr_number])
+
+    def test_only_open_ncrs_combine_and_change_ncr_is_needed(self):
+        a = self._ncr_of(self._fail(self.parts[0]))
+        b = self._ncr_of(self._fail(self.parts[1]))
+        NCR.objects.filter(pk=b.pk).update(state="CLOSED")
+        r = self.client.post("/api/NCRs/combine/", {"into": str(a.id), "ncrs": [str(b.id)]}, format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Only open NCRs can be combined", r.json()["detail"])
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, ['full_tenant_access', 'view_ncr', 'add_ncr'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        r = self.client.post("/api/NCRs/combine/", {"into": str(a.id), "ncrs": [str(b.id)]}, format="json")
+        self.assertEqual(r.status_code, 403)
+
+    def test_adding_a_part_already_on_another_open_ncr_offers_combine(self):
+        a = self._ncr_of(self._fail(self.parts[0]))
+        b = self._ncr_of(self._fail(self.parts[1]))
+        r = self.client.post(f"/api/NCRs/{a.id}/add-parts/", {"parts": [str(self.parts[1].id)]}, format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(r.json()["detail"], f"B-1 is on {b.ncr_number}: combine instead.")

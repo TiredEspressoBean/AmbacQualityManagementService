@@ -5698,6 +5698,10 @@ export type NCR = {
   reports: Array<NCRReportRef>;
   report_ids: Array<string>;
   capa_ids: Array<string>;
+  combined_into: string | null;
+  combined_into_number: string | null;
+  combined_from: Array<NCRRef>;
+  header_by_hand: boolean;
   created_at: string;
   updated_at: string;
   archived: boolean;
@@ -5738,6 +5742,10 @@ export type NCRReportRef = {
   status: string;
   part_erp_id: string | null;
   created_at: string;
+};
+export type NCRRef = {
+  id: string;
+  ncr_number: string;
 };
 export type NCRRequest = Partial<{
   description: string;
@@ -23949,6 +23957,7 @@ const NCRReportRef = z.object({
   part_erp_id: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
 });
+const NCRRef = z.object({ id: z.string().uuid(), ncr_number: z.string() });
 const NCR = z.object({
   id: z.string().uuid(),
   ncr_number: z.string(),
@@ -23979,6 +23988,10 @@ const NCR = z.object({
   reports: z.array(NCRReportRef),
   report_ids: z.array(z.string().uuid()),
   capa_ids: z.array(z.string().uuid()),
+  combined_into: z.string().uuid().nullable(),
+  combined_into_number: z.string().nullable(),
+  combined_from: z.array(NCRRef),
+  header_by_hand: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean(),
@@ -24034,6 +24047,10 @@ const api_NCRs_decide_create_Body = z.object({
   cosign_email: z.string().optional(),
   cosign_password: z.string().optional(),
   parts: z.array(z.string().uuid()).optional(),
+});
+const CombineNCRsRequest = z.object({
+  into: z.string().uuid(),
+  ncrs: z.array(z.string().uuid()),
 });
 const NotificationEventTypeCatalog = z.object({
   code: z.string(),
@@ -31724,6 +31741,7 @@ export const schemas = {
   NCRStateEnum,
   NCRMember,
   NCRReportRef,
+  NCRRef,
   NCR,
   PaginatedNCRList,
   RaiseNCRRequest,
@@ -31733,6 +31751,7 @@ export const schemas = {
   CapaDecisionRequestDecisionEnum,
   CapaDecisionRequestRequest,
   api_NCRs_decide_create_Body,
+  CombineNCRsRequest,
   NotificationEventTypeCatalog,
   OrderProjectionStateEnum,
   OrderProjection,
@@ -46478,6 +46497,27 @@ Not deleted: an NCR is closed by its decisions.`,
     ],
   },
   {
+    method: "post",
+    path: "/api/NCRs/combine/",
+    alias: "api_NCRs_combine_create",
+    description: `Combine NCRs into one: their decisions and inspection records move under &#x60;into&#x60;, and each emptied NCR closes as combined into it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CombineNCRsRequest,
+      },
+    ],
+    response: NCR,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/NCRs/export/:export_format/",
     alias: "api_NCRs_export_retrieve",
@@ -47105,7 +47145,10 @@ personal rules.`,
       },
     ],
     response: PersonalRule,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "delete",
     path: "/api/notifications/rules/personal/:id/",
@@ -47122,10 +47165,7 @@ personal rules.`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/notifications/rules/tenant/",
@@ -52142,7 +52182,10 @@ Lifecycle endpoints:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/process-change-requests/:id/submit/",
@@ -52163,10 +52206,7 @@ Lifecycle endpoints:
       },
     ],
     response: ProcessChangeRequest,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/process-change-requests/propose/",
@@ -57548,7 +57588,10 @@ Response:
       },
     ],
     response: PaginatedStepEquipmentAffinityList,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepEquipmentAffinities/",
@@ -57564,10 +57607,7 @@ Response:
       },
     ],
     response: StepEquipmentAffinity,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepEquipmentAffinities/:id/",
@@ -63192,7 +63232,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.object({ detail: z.string() }),
       },
     ],
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingRecords/",
@@ -63249,10 +63292,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: PaginatedTrainingRecordList,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/TrainingRecords/",

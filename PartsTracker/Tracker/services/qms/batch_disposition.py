@@ -86,8 +86,9 @@ def contain_failed_batch(report) -> None:
         disposition = QuarantineDisposition.objects.create(
             assigned_to=None,  # the QA queue, like every auto-opened disposition
             ncr=ncr, part=p, step=batch.step,
-            # Not held: it had left the step. The note is what says so (ncr.members).
-            resolution_notes="" if held else PAST_STEP_NOTE,
+            # Not held: it had left the step — a decision for the record (held=False),
+            # which holds nothing (nonconformance.undecided_disposition).
+            held=bool(held), resolution_notes="" if held else PAST_STEP_NOTE,
         )
         disposition.quality_reports.add(report)
 

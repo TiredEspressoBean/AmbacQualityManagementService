@@ -36,7 +36,7 @@ from Tracker.serializers.qms import (
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
     FiveWhysSerializer, FishboneSerializer,
     FPIRecordSerializer, CapaDecisionRequestSerializer,
-    NCRSerializer, RaiseNCRSerializer, AddPartsToNCRSerializer,
+    NCRSerializer, RaiseNCRSerializer, AddPartsToNCRSerializer, CombineNCRsSerializer,
 )
 from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSerializer
 # Module-level so `request_approval` can name it in @extend_schema; the
@@ -185,10 +185,11 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
     # — user ruling 2026-11-17.
     action_permissions = {
         'add_parts': ['add_ncr'],
+        'combine': ['change_ncr'],
         'containment_complete': ['change_ncr'],
         'capa_decision': ['initiate_capa'],
     }
-    crud_exempt_actions = {'decide', 'capa_decision', 'add_parts', 'containment_complete'}
+    crud_exempt_actions = {'decide', 'capa_decision', 'add_parts', 'containment_complete', 'combine'}
     cosign_actions = {'decide': 'approve_disposition'}
 
     def get_queryset(self):
@@ -198,9 +199,9 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         # CAPAs are read off these (services/qms/ncr.members uses the prefetch).
         return (super().get_queryset()
                 .select_related('step', 'work_order', 'raised_by', 'containment_completed_by',
-                                'capa_decided_by', 'batch_execution')
+                                'capa_decided_by', 'batch_execution', 'combined_into')
                 .prefetch_related('dispositions__part', 'dispositions__material_lot',
-                                  'batch_execution__parts', 'reports__part', 'capas')
+                                  'batch_execution__parts', 'reports__part', 'capas', 'combined_from')
                 .distinct())
 
     def get_serializer_class(self):
@@ -257,6 +258,20 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         except ValueError as e:
             return Response({'detail': str(e), 'code': 'decide_invalid'}, status=status.HTTP_400_BAD_REQUEST)
         ncr.refresh_from_db()
+        return Response(NCRSerializer(ncr, context=self.get_serializer_context()).data)
+
+    @extend_schema(request=CombineNCRsSerializer, responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
+                   description="Combine NCRs into one: their decisions and inspection records move under "
+                               "`into`, and each emptied NCR closes as combined into it.")
+    @action(detail=False, methods=['post'], url_path='combine')
+    def combine(self, request):
+        from Tracker.services.qms.ncr import combine_ncrs
+        req = CombineNCRsSerializer(data=request.data, context=self.get_serializer_context())
+        req.is_valid(raise_exception=True)
+        try:
+            ncr = combine_ncrs(req.validated_data['into'], req.validated_data['ncrs'], user=request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(NCRSerializer(ncr, context=self.get_serializer_context()).data)
 
     @extend_schema(request=AddPartsToNCRSerializer, responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
@@ -1096,9 +1111,23 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
 
     def perform_update(self, serializer):
         self._check_self_verification_switch(serializer, serializer.instance)
-        # A report linked to the CAPA later says CAPA raised too.
-        from Tracker.services.qms.capa_decision import stamp_promoted
-        stamp_promoted(serializer.save(), self.request.user)
+        # Linking NCRs, or the records and decisions behind them, IS the CAPA decision on
+        # those NCRs, so it needs what that decision needs (user ruling 2026-11-18, R2).
+        capa = serializer.instance
+        links = ('quality_reports', 'dispositions', 'ncrs')
+        before = {f: set(getattr(capa, f).values_list('pk', flat=True)) for f in links}
+        sent = {f: {getattr(o, 'pk', o) for o in serializer.validated_data[f]}
+                for f in links if f in serializer.validated_data}
+        if any(sent[f] != before[f] for f in sent) and not self.request.user.has_tenant_perm('initiate_capa'):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Linking NCRs or their records to a CAPA is the CAPA decision on "
+                                   "them — it needs the permission to raise a CAPA.")
+        # A report linked to the CAPA later says CAPA raised too; an NCR unlinked from
+        # every CAPA is undecided again.
+        from Tracker.services.qms.capa_decision import stamp_promoted, unstamp_unlinked
+        capa = serializer.save()
+        stamp_promoted(capa, self.request.user)
+        unstamp_unlinked(before['ncrs'] - set(capa.ncrs.values_list('pk', flat=True)))
 
     @action(detail=True, methods=['get'], url_path='blocking-items')
     def blocking_items(self, request, pk=None):

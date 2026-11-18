@@ -7758,6 +7758,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/NCRs/combine/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Combine NCRs into one: their decisions and inspection records move under `into`, and each emptied NCR closes as combined into it. */
+        post: operations["api_NCRs_combine_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/NCRs/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -23613,6 +23630,12 @@ export interface components {
         ClockOutInputRequest: {
             notes?: string;
         };
+        /** @description Combine NCRs: `ncrs` move under `into`. */
+        CombineNCRsRequest: {
+            /** Format: uuid */
+            into: string;
+            ncrs: string[];
+        };
         /**
          * @description Company serializer with secure filtering.
          *
@@ -28592,6 +28615,11 @@ export interface components {
             readonly reports: components["schemas"]["NCRReportRef"][];
             readonly report_ids: string[];
             readonly capa_ids: string[];
+            /** Format: uuid */
+            readonly combined_into: string | null;
+            readonly combined_into_number: string | null;
+            readonly combined_from: components["schemas"]["NCRRef"][];
+            readonly header_by_hand: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -28617,6 +28645,11 @@ export interface components {
             current_state: string | null;
             awaiting_decision: boolean;
             held: boolean;
+        };
+        NCRRef: {
+            /** Format: uuid */
+            id: string;
+            ncr_number: string;
         };
         /** @description A failed inspection record on the NCR. */
         NCRReportRef: {
@@ -57271,6 +57304,41 @@ export interface operations {
                     /** @description The parts this decision is for. Omit to decide every part still waiting. */
                     parts?: string[];
                 };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NCR"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_NCRs_combine_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CombineNCRsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CombineNCRsRequest"];
+                "multipart/form-data": components["schemas"]["CombineNCRsRequest"];
             };
         };
         responses: {

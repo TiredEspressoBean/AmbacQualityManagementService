@@ -57,10 +57,15 @@ def open_for_failure(part, *, failed_step):
     The FAIL report usually opened a disposition already: one finding, one decision —
     that one is adopted rather than a second opened."""
     from Tracker.models import PartsStatus, QuarantineDisposition
+    # The failure's own decision: undecided, the newest. An older one already decided
+    # (a rework that sent the part round) isn't this failure's — adopting it, MRB's
+    # routing never ran for the new decision and the part sat at MRB.
+    from django.db.models import Q
     open_ncr = (QuarantineDisposition.objects  # tenant-safe: scoped by the part FK
                 .filter(part=part, archived=False, current_state__in=['OPEN', 'IN_PROGRESS'],
                         escalated_from_step__isnull=True)
-                .order_by('created_at').first())
+                .filter(Q(disposition_type='') | Q(disposition_type__isnull=True))
+                .order_by('-created_at').first())
     if open_ncr is not None:
         open_ncr.escalated_from_step = failed_step
         open_ncr.save(update_fields=['escalated_from_step', 'updated_at'])

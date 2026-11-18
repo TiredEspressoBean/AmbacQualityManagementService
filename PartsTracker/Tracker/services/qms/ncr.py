@@ -26,11 +26,14 @@ from Tracker.models import NCR, QualityReports, QuarantineDisposition
 
 
 def raise_ncr(*, tenant, description: str = '', severity: str = 'MAJOR', step=None,
-              work_order=None, batch_execution=None, raised_by=None, reports=()) -> NCR:
+              work_order=None, batch_execution=None, raised_by=None, reports=(),
+              by_hand: bool = False) -> NCR:
     """Open an NCR. `reports` are attached as its evidence (a report already on another
-    NCR stays there: a record belongs to one)."""
+    NCR stays there: a record belongs to one). `by_hand`: a person said what's wrong, so
+    the description and severity are theirs, not the records' (header_by_hand)."""
     ncr = NCR.unscoped.create(  # tenant-safe: the tenant is given
         tenant=tenant, description=description or '', severity=severity or 'MAJOR',
+        header_by_hand=by_hand and bool((description or '').strip()),
         step=step, work_order=work_order, batch_execution=batch_execution,
         raised_by=raised_by if getattr(raised_by, 'is_authenticated', False) else None)
     for report in reports:
@@ -114,11 +117,22 @@ def open_ncr_for_part(part):
 
 def ncr_for_failed_report(report):
     """The NCR a failed record belongs to: the one it is already on, the open one of its
-    load or its part (a repeat failure joins), else a new one. Returns (ncr, raised)."""
-    if report.ncr_id and report.ncr.state == 'OPEN':
+    load or its part (a repeat failure joins), else a new one. Returns (ncr, raised).
+
+    A record already on an NCR stays there — even a closed one — unless it has just
+    gone INTO fail (`report._entered_fail`, set by the save signal): a failure now on a
+    record whose NCR closed (a declined whole-lot request) is a new nonconformance. A
+    later save of a record that was already failed (a void, a re-save) changes nothing."""
+    if report.ncr_id and (report.ncr.state == 'OPEN' or not getattr(report, '_entered_fail', False)):
         return report.ncr, False
-    # On a closed NCR (a declined whole-lot request), a failure now is a new one.
     reclaim = bool(report.ncr_id)
+    # Join-or-raise under a lock on what fails together — the part, or the load — so two
+    # failures saved at once can't each raise an NCR.
+    from Tracker.models import BatchExecution, Parts
+    if report.batch_execution_id:
+        BatchExecution.unscoped.select_for_update().filter(pk=report.batch_execution_id).first()  # tenant-safe: the report's own FK
+    elif report.part_id:
+        Parts.unscoped.select_for_update().filter(pk=report.part_id).first()  # tenant-safe: the report's own FK
     ncr = None
     if report.batch_execution_id:
         ncr = (NCR.unscoped  # tenant-safe: the report's own tenant
@@ -149,36 +163,68 @@ def ncr_for_failed_report(report):
 _HEADER = ('description', 'severity', 'containment_action', 'containment_performed_by')
 
 
+class HeaderRefused(PermissionError):
+    """A header write the user may not make (change_ncr's) — the API answers 403."""
+
+
+def _may_edit_header(user) -> bool:
+    return bool(user and getattr(user, 'has_tenant_perm', None) and user.has_tenant_perm('change_ncr'))
+
+
+def _still_being_raised(ncr) -> bool:
+    """An NCR the product raised from a failure, nothing decided and nobody having
+    written its header: whoever raises the nonconformance (the reject, the first
+    decision) still says what's wrong."""
+    return (not ncr.header_by_hand
+            and not ncr.dispositions.filter(archived=False).exclude(disposition_type='').exists())
+
+
+def write_header(ncr, header, user) -> None:
+    """The one rule for writing an NCR's header — description, severity, containment —
+    from anywhere other than raising it (user ruling 2026-11-18):
+
+    - an NCR still being raised (`_still_being_raised`) takes the raiser's description
+      and severity;
+    - otherwise the header is change_ncr's, and severity never comes down this way;
+    - containment is always change_ncr's;
+    - a write without the permission is REFUSED (HeaderRefused), never silently dropped.
+    Values equal to what's there aren't writes."""
+    def current(k):
+        return getattr(ncr, f'{k}_id' if k == 'containment_performed_by' else k)
+    changes = {k: v for k, v in (header or {}).items()
+               if k in _HEADER and v not in (None, '') and current(k) != getattr(v, 'pk', v)}
+    if not changes:
+        return
+    raising = _still_being_raised(ncr)
+    needs_perm = any(k.startswith('containment') for k in changes) or not raising
+    if needs_perm and not _may_edit_header(user):
+        raise HeaderRefused(f"What's wrong on {ncr.ncr_number} — its description, severity and "
+                            "containment — is edited by a lead or QA.")
+    if ('severity' in changes and not raising
+            and _RANK.get(changes['severity'], 0) < _RANK.get(ncr.severity, 0)):
+        raise ValueError(f"{ncr.ncr_number} is {ncr.get_severity_display()}; its severity may only be raised.")
+    for k, v in changes.items():
+        setattr(ncr, k, v)
+    ncr.header_by_hand = True
+    ncr.save(update_fields=[*changes, 'header_by_hand', 'updated_at'])
+
+
 def ncr_for_new_disposition(*, part=None, reports=(), step=None, user=None, header=None) -> NCR:
     """The NCR a disposition opened by hand goes under: the open one its reports are on,
-    else its part's open one, else a new one carrying `header` (description, severity,
-    containment). An existing NCR keeps its header; a blank in it is filled.
-
-    Saying what's wrong is part of raising one (add_ncr); containment, and filling in an
-    existing NCR's header, are change_ncr's (user ruling 2026-11-17) — dropped without it."""
-    header = {k: v for k, v in (header or {}).items() if k in _HEADER}
-    may_edit = bool(user and getattr(user, 'has_tenant_perm', None) and user.has_tenant_perm('change_ncr'))
-    if not may_edit:
-        header = {k: v for k, v in header.items() if not k.startswith('containment')}
+    else its part's open one, else a new one. `header` (description, severity,
+    containment) goes through write_header — the one rule — on whichever it is; a new
+    one takes the description and severity as its raising."""
+    header = {k: v for k, v in (header or {}).items() if k in _HEADER and v not in (None, '')}
     ncr = next((r.ncr for r in reports if r.ncr_id and r.ncr.state == 'OPEN'), None)
     if ncr is None and part is not None:
         ncr = open_ncr_for_part(part)
     if ncr is None:
         tenant = part.tenant if part is not None else (reports[0].tenant if reports else None)
-        ncr = raise_ncr(tenant=tenant, description=header.get('description', ''),
-                        severity=header.get('severity') or 'MAJOR', step=step,
+        ncr = raise_ncr(tenant=tenant, description=header.pop('description', ''),
+                        severity=header.pop('severity', None) or 'MAJOR', step=step,
                         work_order=part.work_order if part is not None else None,
-                        raised_by=user, reports=reports)
-        rest = {k: v for k, v in header.items() if k in ('containment_action', 'containment_performed_by')}
-    elif not ncr.dispositions.filter(archived=False).exists():
-        # The first decision says what's wrong, as raising it would have.
-        rest = {k: v for k, v in header.items() if v not in (None, '')}
-    else:
-        rest = {k: v for k, v in header.items() if v and not getattr(ncr, k)} if may_edit else {}
-    if rest:
-        for k, v in rest.items():
-            setattr(ncr, k, v)
-        ncr.save(update_fields=[*rest, 'updated_at'])
+                        raised_by=user, reports=reports, by_hand=True)
+    write_header(ncr, header, user)
     return ncr
 
 
@@ -226,8 +272,8 @@ def refresh_description(ncr) -> None:
 
     A step's captures land after its report is first saved FAIL (defects, a second
     report joining), so the description written at that moment named only the step.
-    Only an auto-written one ("Failed …") is rewritten — never what a person typed."""
-    if not (ncr.description or "").startswith("Failed"):
+    Never once a person has written the header (header_by_hand)."""
+    if ncr.header_by_hand:
         return
     findings = []
     for r in ncr.reports.order_by("created_at"):
@@ -239,22 +285,23 @@ def refresh_description(ncr) -> None:
     if text != ncr.description:
         ncr.description = text
         ncr.save(update_fields=["description", "updated_at"])
-    raise_severity(ncr)
+    follow_severity(ncr)
 
 
 _RANK = {'MINOR': 1, 'MAJOR': 2, 'CRITICAL': 3}
 
 
-def raise_severity(ncr) -> None:
-    """An NCR's severity follows the worst defect on its records as they land (a
-    capture's defects arrive after its FAIL save) — rising only, and only until
-    something under it is decided: after that, a person raises it."""
+def follow_severity(ncr) -> None:
+    """Until something under it is decided, an NCR's severity IS the worst defect on its
+    records as they land — up or down: a FAIL saved before its defects opens at the MAJOR
+    default, and a MINOR-only finding then brings it down (user ruling 2026-11-17). Once
+    decided, or once a person has set the header, it's theirs."""
     from Tracker.services.qms.quality_report import report_severity
-    if ncr.dispositions.filter(archived=False).exclude(disposition_type='').exists():
+    if ncr.header_by_hand or ncr.dispositions.filter(archived=False).exclude(disposition_type='').exists():
         return
-    worst = max((report_severity(r) for r in ncr.reports.all()), key=lambda s: _RANK.get(s, 0),
-                default=ncr.severity)
-    if _RANK.get(worst, 0) > _RANK.get(ncr.severity, 0):
+    worst = max((report_severity(r) for r in ncr.reports.filter(superseded_at__isnull=True)),
+                key=lambda s: _RANK.get(s, 0), default=ncr.severity)
+    if worst != ncr.severity:
         ncr.severity = worst
         ncr.save(update_fields=["severity", "updated_at"])
 
@@ -275,10 +322,15 @@ def sync_state(ncr_id) -> None:
     decisions = ncr.dispositions.filter(archived=False)
     if decisions.exists():
         closed = not decisions.exclude(current_state='CLOSED').exists()
+    elif ncr.dispositions.exists():
+        # It had decisions and every one was removed: nothing is left to decide.
+        closed = True
     else:
-        # Nothing decided yet: open while any of its records still fails. A receiving
-        # sample re-recorded within its accept number leaves nothing to decide.
-        closed = ncr.reports.exists() and not ncr.reports.filter(status='FAIL').exists()
+        # Nothing decided yet: open while any of its records still fails — a withdrawn
+        # (superseded) one doesn't. A receiving sample re-recorded within its accept
+        # number leaves nothing to decide.
+        live = ncr.reports.filter(superseded_at__isnull=True)
+        closed = ncr.reports.exists() and not live.filter(status='FAIL').exists()
     state = 'CLOSED' if closed else 'OPEN'
     if state == ncr.state:
         return
@@ -302,7 +354,6 @@ def members(ncr) -> list[dict]:
     """What the NCR covers, one row per part (or lot): its latest decision, and whether
     that one still waits for a decision. A failed load's parts that had already moved
     past the step are listed too (held: False), so nothing in the load is hidden."""
-    from Tracker.services.qms.batch_disposition import PAST_STEP_NOTE
     rows, seen = [], {}
     for d in member_dispositions(ncr):
         key = d.part_id or d.material_lot_id or d.pk
@@ -314,8 +365,8 @@ def members(ncr) -> list[dict]:
             'disposition_id': d.pk, 'disposition_number': d.disposition_number,
             'disposition_type': d.disposition_type or None, 'current_state': d.current_state,
             'awaiting_decision': not d.disposition_type and d.current_state != 'CLOSED',
-            # A load's part that had left the step: decided for the record, not held.
-            'held': not (d.resolution_notes or '').startswith(PAST_STEP_NOTE),
+            # Not held: a load's part already past the step, a part already shipped.
+            'held': d.held,
         }
         if key in seen:
             rows[seen[key]] = row  # the latest decision on it
@@ -431,7 +482,7 @@ def raise_ncr_for_parts(parts, *, description: str, user, severity: str = 'MAJOR
     ncr = raise_ncr(
         tenant=parts[0].tenant, description=description, severity=severity,
         step=_common(p.step for p in parts), work_order=_common(p.work_order for p in parts),
-        raised_by=user)
+        raised_by=user, by_hand=True)
     for part in parts:
         _file_failure(ncr, part, user, description)
     return ncr
@@ -452,6 +503,12 @@ def add_parts(ncr, parts, *, user, reason: str = '') -> list:
     on = [p.ERP_id for p in parts if p.pk in already]
     if on:
         raise ValueError(f"Already on {ncr.ncr_number}: {', '.join(on)}.")
+    # On another open NCR: one failure, one NCR — combine them instead of a second
+    # failed record and decision for the same part.
+    elsewhere = [(p, open_ncr_for_part(p)) for p in parts]
+    elsewhere = [(p, n) for p, n in elsewhere if n is not None and n.pk != ncr.pk]
+    if elsewhere:
+        raise ValueError(" ".join(f"{p.ERP_id} is on {n.ncr_number}: combine instead." for p, n in elsewhere))
     reason = (reason or '').strip()
     description = f"Added to {ncr.ncr_number}" + (f": {reason}" if reason else f": {ncr.description}")
     return [_file_failure(ncr, p, user, description) for p in parts]
@@ -488,3 +545,70 @@ def link_capa_ncrs(capa) -> None:
     ids |= set(capa.dispositions.exclude(ncr__isnull=True).values_list('ncr_id', flat=True))
     if ids:
         capa.ncrs.add(*ids)
+
+
+# --- combining -------------------------------------------------------------------------
+
+@transaction.atomic
+def combine_ncrs(target, others, *, user) -> NCR:
+    """Combine NCRs into one (user go 2026-11-18): the others' decisions and inspection
+    records move under `target`, and each emptied NCR closes as combined into it — kept,
+    with the link both ways, never deleted.
+
+    - The target keeps its header; its severity becomes the group's highest (never lower).
+    - Containment: the target's stands; another's text is added to it, so nothing
+      recorded is lost (the target takes it whole when it has none of its own).
+    - CAPAs: the target is linked to every CAPA the others were; it says CAPA raised if
+      any of them did, else it keeps its own call.
+
+    Raises:
+        ValueError: nothing to combine, the target among the others, or an NCR that
+            isn't open.
+    """
+    from Tracker.models import CAPA  # noqa: F401 — the related manager below
+    others = [o for o in others]
+    if not others:
+        raise ValueError("Choose the NCRs to combine into it.")
+    if any(o.pk == target.pk for o in others):
+        raise ValueError(f"{target.ncr_number} can't be combined into itself.")
+    ids = sorted([target.pk, *(o.pk for o in others)], key=str)
+    # Lock every NCR involved, in one order, so two combines can't cross.
+    locked = {n.pk: n for n in NCR.objects.select_for_update().filter(pk__in=ids).order_by('pk')}  # tenant-safe: .objects auto-scopes
+    if len(locked) != len(ids):
+        raise ValueError("An NCR to combine was not found.")
+    target = locked[target.pk]
+    others = [locked[o.pk] for o in others]
+    closed = [n.ncr_number for n in [target, *others] if n.state != 'OPEN']
+    if closed:
+        raise ValueError(f"Only open NCRs can be combined: {', '.join(closed)} is closed.")
+
+    for other in others:
+        QuarantineDisposition.objects.filter(ncr=other).update(ncr=target)  # tenant-safe: scoped by the NCR FK
+        QualityReports.unscoped.filter(ncr=other).update(ncr=target)  # tenant-safe: scoped by the NCR FK
+        if _RANK.get(other.severity, 0) > _RANK.get(target.severity, 0):
+            target.severity = other.severity
+        text = (other.containment_action or '').strip()
+        if text:
+            if not (target.containment_action or '').strip():
+                target.containment_action = text
+                target.containment_completed_at = other.containment_completed_at
+                target.containment_completed_by = other.containment_completed_by
+                target.containment_performed_by = other.containment_performed_by
+            else:
+                target.containment_action = f"{target.containment_action}\nFrom {other.ncr_number}: {text}"
+        capas = list(other.capas.all())
+        if capas:
+            target.capas.add(*capas)
+        if other.capa_decision == 'PROMOTED' and target.capa_decision != 'PROMOTED':
+            target.capa_decision = 'PROMOTED'
+            target.capa_decision_note = other.capa_decision_note
+            target.capa_decided_by = other.capa_decided_by
+            target.capa_decided_at = other.capa_decided_at
+        other.state = 'CLOSED'
+        other.closed_at = timezone.now()
+        other.combined_into = target
+        other.save(update_fields=['state', 'closed_at', 'combined_into', 'updated_at'])
+    target.save()
+    sync_state(target.pk)
+    target.refresh_from_db()
+    return target

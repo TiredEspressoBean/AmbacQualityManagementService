@@ -63,3 +63,22 @@ def stamp_promoted(capa, user) -> int:
                                 "capa_decided_at", "updated_at"])
         changed += 1
     return changed
+
+
+def unstamp_unlinked(ncr_ids) -> int:
+    """NCRs a CAPA no longer links: one that says CAPA raised and that no other CAPA
+    covers is undecided again — it had no CAPA (user ruling 2026-11-18, R2). A decision a
+    person recorded (No CAPA needed, Deferred) is left alone. Returns how many changed."""
+    from Tracker.models import NCR
+    changed = 0
+    for ncr in NCR.objects.filter(pk__in=list(ncr_ids), capa_decision="PROMOTED"):  # tenant-safe: .objects auto-scopes
+        if ncr.capas.exists():
+            continue
+        ncr.capa_decision = None
+        ncr.capa_decision_note = ""
+        ncr.capa_decided_by = None
+        ncr.capa_decided_at = None
+        ncr.save(update_fields=["capa_decision", "capa_decision_note", "capa_decided_by",
+                                "capa_decided_at", "updated_at"])
+        changed += 1
+    return changed

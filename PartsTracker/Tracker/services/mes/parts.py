@@ -647,15 +647,18 @@ def _attempt_lot_rejoin(part, operator) -> None:
 
 
 def _settle_dispositions_on_rollback(part, operator, from_step, to_step, reason: str) -> None:
-    """Close the held part's open dispositions with the rollback as their resolution —
-    no decision taken (the type is cleared, as a declined whole-lot request is), the
-    rollback and its reason on the record, closed by whoever rolled it back."""
+    """Close the held part's UNDECIDED dispositions with the rollback as their resolution —
+    no decision taken, the rollback and its reason on the record, closed by whoever
+    rolled it back. A decided one stands: its decision is a signed record, and blanking
+    it closed the NCR with nothing decided."""
     from Tracker.models import QuarantineDisposition
     who = (operator.get_full_name() or operator.get_username()) if operator else 'someone'
     note = (f"Settled by a rollback from {from_step.name} to {to_step.name} by {who}"
             + (f": {reason.strip()}" if (reason or '').strip() else "."))
+    from django.db.models import Q
     for d in (QuarantineDisposition.objects  # tenant-safe: scoped by the part FK
-              .filter(part=part, archived=False).exclude(current_state='CLOSED')):
+              .filter(part=part, archived=False).exclude(current_state='CLOSED')
+              .filter(Q(disposition_type='') | Q(disposition_type__isnull=True))):
         d.disposition_type = ''
         d.resolution_notes = f"{d.resolution_notes}\n{note}".strip() if d.resolution_notes else note
         d.resolution_completed = True

@@ -884,6 +884,10 @@ class NCR(SecureModel):
 
     description = models.TextField(blank=True)
     severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='MAJOR')
+    # Set once a person writes the header (raises it with words, or edits it): until
+    # then the description and severity follow the records as their findings land
+    # (services/qms/ncr.refresh_description); after, they're the person's.
+    header_by_hand = models.BooleanField(default=False)
 
     # Where it was found. The parts' own dispositions keep the step each part is held
     # at, which routing reads; this is the header.
@@ -895,6 +899,10 @@ class NCR(SecureModel):
         'Tracker.BatchExecution', on_delete=models.PROTECT, null=True, blank=True, related_name='ncrs')
     raised_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                   related_name='ncrs_raised')
+    # Combined into another NCR (services/qms/ncr.combine_ncrs): its decisions and
+    # records moved there, and it closed. Kept, not deleted — the history both ways.
+    combined_into = models.ForeignKey('self', on_delete=models.PROTECT, null=True, blank=True,
+                                      related_name='combined_from')
 
     # Containment: the immediate action taken to prevent escape. Recorded once, for
     # everything the nonconformance covers. *_completed_by / *_at are who RECORDED it
@@ -978,6 +986,10 @@ class QuarantineDisposition(SecureModel):
     # The nonconformance this decides part of. Null only on rows made outside the
     # product's paths (services/qms/ncr.py puts every disposition under one).
     ncr = models.ForeignKey(NCR, on_delete=models.PROTECT, null=True, blank=True, related_name='dispositions')
+    # False when the part wasn't held by it: a failed load's part already past the step,
+    # a part already shipped when the NCR was raised. Its decision is a record; it holds
+    # nothing (services/qms/nonconformance).
+    held = models.BooleanField(default=True)
 
     # QA workflow: the decision is the work item QA takes.
     assigned_to = models.ForeignKey(User, on_delete=models.PROTECT, related_name='assigned_dispositions', null=True,

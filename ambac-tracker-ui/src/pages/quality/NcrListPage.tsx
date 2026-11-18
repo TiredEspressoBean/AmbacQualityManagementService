@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ListChecks } from "lucide-react";
+import { Combine, ListChecks, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent } from "@/components/ui/card";
+import { CombineNcrsDialog, type CombinableNcr } from "@/components/quality/CombineNcrsDialog";
 import { useListNcrs } from "@/hooks/ncrs";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
@@ -40,7 +43,19 @@ const covers = (n: Schema<"NCR">) => {
 export function NcrListPage() {
     const navigate = useNavigate();
     const [view, setView] = useState<View>("open");
-    const canRaise = usePermissionSet().has("add_ncr");
+    const perms = usePermissionSet();
+    const canRaise = perms.has("add_ncr");
+    // Combine: open NCRs chosen here, kept across pages (change_ncr).
+    const canCombine = perms.has("change_ncr");
+    const [chosen, setChosen] = useState<Map<string, CombinableNcr>>(new Map());
+    const [combineOpen, setCombineOpen] = useState(false);
+    const toggle = (n: Schema<"NCR">) => setChosen((prev) => {
+        const next = new Map(prev);
+        const id = String(n.id);
+        if (next.has(id)) next.delete(id);
+        else next.set(id, { id, ncr_number: n.ncr_number, created_at: n.created_at, description: n.description });
+        return next;
+    });
 
     const views: { value: View; label: string }[] = [
         { value: "open", label: "Open" },
@@ -49,6 +64,7 @@ export function NcrListPage() {
     ];
 
     return (
+        <>
         <ModelEditorPage
             // A view is a different list: start it from its first page.
             key={view}
@@ -76,6 +92,18 @@ export function NcrListPage() {
                 { label: "Closed (Newest)", value: "-closed_at" },
             ]}
             columns={[
+                ...(canCombine ? [col({
+                    header: "Select",
+                    priority: 1,
+                    renderCell: (n) => n.state === "OPEN" ? (
+                        <Checkbox
+                            checked={chosen.has(String(n.id))}
+                            onCheckedChange={() => toggle(n)}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`Select ${n.ncr_number}`}
+                        />
+                    ) : null,
+                })] : []),
                 col({
                     header: "NCR #",
                     renderCell: (n) => <span className="font-mono font-medium">{n.ncr_number}</span>,
@@ -120,5 +148,24 @@ export function NcrListPage() {
             onCreate={canRaise ? () => navigate({ to: "/quality/ncrs/new" }) : undefined}
             createLabel="Raise NCR"
         />
+        {chosen.size > 0 && (
+            <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
+                <Card className="border-primary shadow-lg">
+                    <CardContent className="flex items-center gap-2 p-3">
+                        <div className="mr-2 border-r pr-2 text-sm font-medium">{chosen.size} selected</div>
+                        <Button size="sm" disabled={chosen.size < 2} onClick={() => setCombineOpen(true)}>
+                            <Combine className="mr-1 h-4 w-4" />
+                            Combine into one NCR
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setChosen(new Map())} aria-label="Clear selection">
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        )}
+        <CombineNcrsDialog ncrs={Array.from(chosen.values())} open={combineOpen}
+                           onOpenChange={setCombineOpen} onDone={() => setChosen(new Map())} />
+        </>
     );
 }

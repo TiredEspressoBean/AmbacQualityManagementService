@@ -584,6 +584,21 @@ function FoundCard({ ncr }: { ncr: Ncr }) {
                 {row("Raised by", ncr.raised_by_name)}
                 {row("Opened", new Date(ncr.created_at).toLocaleString())}
                 {ncr.closed_at && row("Closed", new Date(ncr.closed_at).toLocaleString())}
+                {/* Combined NCRs, both ways (services/qms/ncr.combine_ncrs). */}
+                {ncr.combined_into && row("Combined into",
+                    <Link to="/quality/ncrs/$ncrId" params={{ ncrId: String(ncr.combined_into) }}
+                          className="font-mono text-primary underline-offset-2 hover:underline">
+                        {ncr.combined_into_number}
+                    </Link>)}
+                {ncr.combined_from.length > 0 && row("Combined from",
+                    <span className="flex flex-wrap justify-end gap-x-2">
+                        {ncr.combined_from.map((n) => (
+                            <Link key={String(n.id)} to="/quality/ncrs/$ncrId" params={{ ncrId: String(n.id) }}
+                                  className="font-mono text-primary underline-offset-2 hover:underline">
+                                {n.ncr_number}
+                            </Link>
+                        ))}
+                    </span>)}
             </CardContent>
         </Card>
     );

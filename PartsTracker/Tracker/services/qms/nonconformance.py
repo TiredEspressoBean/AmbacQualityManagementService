@@ -21,8 +21,10 @@ def undecided_disposition(part):
     or None."""
     from django.db.models import Q
     from Tracker.models import QuarantineDisposition
+    # held=False: a decision for the record (a part already past the step or shipped
+    # when the NCR was raised) holds nothing.
     return (QuarantineDisposition.objects  # tenant-safe: FK-correlated to a scoped part
-            .filter(part=part, archived=False)
+            .filter(part=part, archived=False, held=True)
             .exclude(current_state='CLOSED')
             .filter(Q(disposition_type__isnull=True) | Q(disposition_type=''))
             .order_by('-created_at').first())

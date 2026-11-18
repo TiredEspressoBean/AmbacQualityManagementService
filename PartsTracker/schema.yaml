@@ -19694,6 +19694,42 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/NCRs/combine/:
+    post:
+      operationId: api_NCRs_combine_create
+      description: 'Combine NCRs into one: their decisions and inspection records
+        move under `into`, and each emptied NCR closes as combined into it.'
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CombineNCRsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CombineNCRsRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CombineNCRsRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/NCRs/export/{export_format}/:
     get:
       operationId: api_NCRs_export_retrieve
@@ -55624,6 +55660,21 @@ components:
         notes:
           type: string
           minLength: 1
+    CombineNCRsRequest:
+      type: object
+      description: 'Combine NCRs: `ncrs` move under `into`.'
+      properties:
+        into:
+          type: string
+          format: uuid
+        ncrs:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - into
+      - ncrs
     Company:
       type: object
       description: |-
@@ -66307,6 +66358,23 @@ components:
             type: string
             format: uuid
           readOnly: true
+        combined_into:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        combined_into_number:
+          type: string
+          readOnly: true
+          nullable: true
+        combined_from:
+          type: array
+          items:
+            $ref: '#/components/schemas/NCRRef'
+          readOnly: true
+        header_by_hand:
+          type: boolean
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -66328,10 +66396,14 @@ components:
       - capa_decision_note
       - capa_ids
       - closed_at
+      - combined_from
+      - combined_into
+      - combined_into_number
       - containment_completed_at
       - containment_completed_by
       - containment_completed_by_name
       - created_at
+      - header_by_hand
       - id
       - members
       - ncr_number
@@ -66399,6 +66471,17 @@ components:
       - material_lot_id
       - part_id
       - part_status
+    NCRRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ncr_number:
+          type: string
+      required:
+      - id
+      - ncr_number
     NCRReportRef:
       type: object
       description: A failed inspection record on the NCR.

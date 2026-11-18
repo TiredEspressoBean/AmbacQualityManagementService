@@ -46,9 +46,24 @@ def ensure_membership_for_role(sender, instance, created, **kwargs):
         ensure_membership(instance.user, tenant)
 
 
+@receiver(pre_save, sender=QualityReports)
+def note_status_before_save(sender, instance, **kwargs):
+    """What the record's status was before this save, so the NCR logic can tell a record
+    going INTO fail from a later save of one already failed (a void, a re-save)."""
+    if instance._state.adding:
+        instance._entered_fail = instance.status == 'FAIL'
+        return
+    prior = (QualityReports.unscoped.filter(pk=instance.pk)  # tenant-safe: the record's own pk
+             .values_list('status', flat=True).first())
+    instance._entered_fail = instance.status == 'FAIL' and prior != 'FAIL'
+
+
 @receiver(post_save, sender=QualityReports)
 def auto_create_disposition(sender, instance, created, **kwargs):
     """A failed record belongs to an NCR, and needs a decision under it."""
+    # A withdrawn record (its capture voided, superseded by a re-capture) raises nothing.
+    if instance.superseded_at is not None:
+        return
     if instance.status == 'FAIL':
         # Every FAIL is on an NCR: the one it's on, its part's or load's open one (a
         # repeat failure joins), or a new one (services/qms/ncr.py). Each branch below
