@@ -19,10 +19,9 @@
 import { z } from "zod";
 import { schemas } from "@/lib/api/generated";
 
-/** `/production/dispositions/new` and `/production/dispositions/$id/edit` — prefill from a part or QR. */
+/** `/production/dispositions/new` — an old link's part, carried to Raise NCR as it redirects. */
 export const DispositionSearch = z.object({
     partId: z.string().uuid().optional(),
-    qualityReportId: z.string().uuid().optional(),
 });
 export type DispositionSearchParams = z.infer<typeof DispositionSearch>;
 

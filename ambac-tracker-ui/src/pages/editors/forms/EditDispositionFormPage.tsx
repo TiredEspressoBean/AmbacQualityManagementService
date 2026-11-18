@@ -1,6 +1,6 @@
 "use client"
 
-import { DECISION_LABEL, SEVERITY_LABEL } from "@/lib/quality-labels"
+import { DECISION_LABEL } from "@/lib/quality-labels"
 import { ReasonActionButton } from "@/components/common/ReasonActionButton";
 import { MultiPicker } from "@/components/ui/multi-picker";
 import { Combobox } from "@/components/ui/combobox";
@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
-import { useParams, useSearch, useNavigate, Link } from "@tanstack/react-router"
+import { useParams, useNavigate, Link } from "@tanstack/react-router"
 import { useInfiniteQuery, infiniteQueryOptions, useQueryClient, useQueries, useQuery, queryOptions } from "@tanstack/react-query"
 
 import { getCookie } from "@/lib/utils"
@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button"
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -42,7 +41,6 @@ import { useRetrieveDisposition } from "@/hooks/useRetrieveDisposition"
 import { invalidateAfterNcrChange } from "@/hooks/ncrs"
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor"
 import { useRetrievePart } from "@/hooks/parts"
-import { useRetrieveParts } from "@/hooks/parts"
 import { useQualityReports } from "@/hooks/useQualityReports"
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes"
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader"
@@ -112,13 +110,6 @@ const currentStateLabels: Record<string, string> = {
 }
 
 const dispositionTypeLabels: Record<string, string> = DECISION_LABEL
-const severityLabels: Record<string, string> = SEVERITY_LABEL
-
-// Search params for create mode
-type DispositionSearchParams = {
-    partId?: string
-    qualityReportId?: string
-}
 
 const employeeOptionsInfinite = () =>
     infiniteQueryOptions<PaginatedUserSelectList, Error>({
@@ -142,22 +133,14 @@ const dispositionPartOptions = (id: string) =>
 
 export default function EditDispositionFormPage() {
     const params = useParams({ strict: false })
-    const searchParams = useSearch({ strict: false }) as DispositionSearchParams
     const navigate = useNavigate()
     const queryClient = useQueryClient()
 
-    const mode = params.id ? "edit" : "create"
+    // Edit only: a decision is opened under an NCR (Raise NCR), never here (R3).
     const dispositionId = params.id
 
-    // Parse URL search params for create mode
-    const initialPartId = searchParams.partId
-    const initialQualityReportId = searchParams.qualityReportId
-
-    // Fetch disposition data in edit mode
     const { data: disposition, isLoading: dispositionLoading } = useRetrieveDisposition(dispositionId)
-
-    // Determine part ID (from disposition in edit mode, from URL in create mode)
-    const partId = mode === "edit" ? disposition?.part : initialPartId
+    const partId = disposition?.part
 
     // Fetch part data for context panel
     const { data: part } = useRetrievePart(
@@ -175,15 +158,12 @@ export default function EditDispositionFormPage() {
         (ct: any) => ct.model === "quarantinedisposition" && ct.app_label === "Tracker"
     )
 
-    // Fetch parts and quality reports for form dropdowns
-    const [partSearch, setPartSearch] = useState("")
+    // Inspection records for the picker
     const [qualityReportSearch, setQualityReportSearch] = useState("")
-    const { data: partsData } = useRetrieveParts({ limit: 100, search: partSearch })
     const { data: qualityReportsData } = useQualityReports({ limit: 100, search: qualityReportSearch })
-    const parts = partsData?.results ?? []
-    // The pickers search the first 100 records, so the disposition's own report(s) and
-    // part may not be among them — and then their labels fell back to raw ids. Fetch
-    // them by id and merge, so they always show by number / serial.
+    // The picker searches the first 100 records, so the disposition's own report(s) may
+    // not be among them — and then their labels fell back to raw ids. Fetch them by id
+    // and merge, so they always show by number.
     const ownReportIds: string[] = (disposition?.quality_reports ?? []).map(String)
     const ownReports = useQueries({
         queries: ownReportIds.map((id) => dispositionReportOptions(id)),
@@ -195,10 +175,6 @@ export default function EditDispositionFormPage() {
         ...dispositionPartOptions(disposition?.part ? String(disposition.part) : ""),
         enabled: !!disposition?.part,
     })
-    const partLabel = (id: string) =>
-        parts.find((p) => p.id === id)?.ERP_id
-        ?? (ownPart && ownPart.id === id ? ownPart.ERP_id : undefined)
-        ?? "Selected part"
 
     // Popover states
 
@@ -211,7 +187,7 @@ export default function EditDispositionFormPage() {
     // the controlled Select's initial mount and leaves the trigger stuck on
     // its placeholder even though RHF state is correct.
     const editValues = useMemo<FormValues | undefined>(() => {
-        if (mode !== "edit" || !disposition) return undefined
+        if (!disposition) return undefined
         return {
             part: disposition.part ?? null,
             current_state: disposition.current_state ?? "OPEN",
@@ -230,14 +206,14 @@ export default function EditDispositionFormPage() {
             customer_approval_date: disposition.customer_approval_date,
             quality_reports: disposition.quality_reports ?? [],
         } as FormValues
-    }, [mode, disposition])
+    }, [disposition])
 
     // Form setup
     const form = useForm<FormValues, any, FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
         // eslint-disable-next-line local/no-double-cast-via-unknown -- RHF defaultValues: required enum fields must start unset; cast needed to satisfy strict FormValues type
         defaultValues: {
-            part: initialPartId ?? null,
+            part: null,
             current_state: "OPEN",
             disposition_type: undefined,
             severity: "MAJOR",
@@ -252,7 +228,7 @@ export default function EditDispositionFormPage() {
             customer_approval_received: false,
             customer_approval_reference: "",
             customer_approval_date: undefined,
-            quality_reports: initialQualityReportId ? [initialQualityReportId] : [],
+            quality_reports: [],
         } as unknown as FormValues,
         values: editValues,
     })
@@ -262,7 +238,7 @@ export default function EditDispositionFormPage() {
     const showCustomerApproval = watchDispositionType === "USE_AS_IS" || watchDispositionType === "REPAIR"
     // What a decision rests on doesn't change after it (the server refuses it): the
     // concession, unless a new decision is being made with its own.
-    const isDecided = mode === "edit" && !!disposition?.disposition_type
+    const isDecided = !!disposition?.disposition_type
     const concessionLocked = isDecided && watchDispositionType === disposition?.disposition_type
 
     // Display label for an employee. Prefer the server-computed full_name
@@ -286,9 +262,8 @@ export default function EditDispositionFormPage() {
     const [pendingDecision, setPendingDecision] = useState<FormValues | null>(null)
 
     const csrf = () => ({ "X-CSRFToken": getCookie("csrftoken") ?? "" })
-    const extractError = (err: any, m: "edit" | "create") =>
-        apiErrorMessage(err) || err?.response?.data?.message || err?.message
-        || (m === "edit" ? "Failed to update disposition" : "Failed to create disposition")
+    const extractError = (err: any) =>
+        apiErrorMessage(err) || err?.response?.data?.message || err?.message || "Failed to update disposition"
 
     // Everything except the decision and the state: those move only through
     // `decide` and `close` (the approval lock refuses them on a plain edit). After
@@ -348,7 +323,7 @@ export default function EditDispositionFormPage() {
     const [pendingNote, setPendingNote] = useState<string | undefined>(undefined)
 
     const onSubmit = async (values: FormValues) => {
-        const changing = mode === "edit" && !!values.disposition_type
+        const changing = !!values.disposition_type
             && values.disposition_type !== disposition?.disposition_type
         if (changing && values.disposition_type === "SCRAP") {
             setDecisionGate({ values, kind: "scrap" })
@@ -370,7 +345,7 @@ export default function EditDispositionFormPage() {
         // the inspector fixed one thing, tried again, and met the next.
 
         const typeChanged =
-            mode === "edit" && !!values.disposition_type
+            !!values.disposition_type
             && values.disposition_type !== disposition?.disposition_type
 
         // Can't authorize it yourself → collect a co-signature, then replay.
@@ -383,25 +358,17 @@ export default function EditDispositionFormPage() {
         }
 
         try {
-            if (mode === "edit" && dispositionId) {
-                const decided = typeChanged ? await authorizeDecision(values, undefined, note) : null
-                // A decision that closes the record (Not a nonconformance) leaves nothing
-                // to edit — the lock refuses the follow-up save, which showed a
-                // successful close as an error (walk 2026-10-22).
-                if (decided?.current_state !== "CLOSED") await savePatch(values)
-                toast.success(decided?.current_state === "CLOSED" ? "Disposition closed" : "Disposition updated")
-                void invalidateAfterNcrChange(queryClient)  // the decision is its NCR's too
-            } else {
-                const result = await api.api_QuarantineDispositions_create(values, {
-                    headers: csrf(),
-                })
-                toast.success("Disposition created")
-                // Navigate to edit page for the new disposition
-                navigate({ to: "/production/dispositions/$id/edit", params: { id: String(result.id) } })
-            }
+            if (!dispositionId) return
+            const decided = typeChanged ? await authorizeDecision(values, undefined, note) : null
+            // A decision that closes the record (Not a nonconformance) leaves nothing
+            // to edit — the lock refuses the follow-up save, which showed a
+            // successful close as an error (walk 2026-10-22).
+            if (decided?.current_state !== "CLOSED") await savePatch(values)
+            toast.success(decided?.current_state === "CLOSED" ? "Disposition closed" : "Disposition updated")
+            void invalidateAfterNcrChange(queryClient)  // the decision is its NCR's too
         } catch (err: any) {
             console.error("API Error:", err)
-            toast.error(extractError(err, mode))
+            toast.error(extractError(err))
         }
     }
 
@@ -421,14 +388,14 @@ export default function EditDispositionFormPage() {
         } catch (err: any) {
             // Surface the server's own co-sign error (throttled / wrong person /
             // not permitted / missing concession) verbatim.
-            setCosignError(extractError(err, "edit"))
+            setCosignError(extractError(err))
         } finally {
             setCosignPending(false)
         }
     }
 
     // Loading state
-    if (mode === "edit" && (dispositionLoading || employeesLoading)) {
+    if (dispositionLoading || employeesLoading) {
         return (
             <div className="flex h-full items-center justify-center p-6">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -449,12 +416,9 @@ export default function EditDispositionFormPage() {
                     <Separator orientation="vertical" className="h-6" />
                     <div className="flex items-center gap-2">
                         <h1 className="text-lg font-semibold">
-                            {mode === "edit"
-                                ? `Disposition #${disposition?.disposition_number ?? dispositionId}`
-                                : "New Disposition"
-                            }
+                            {`Disposition #${disposition?.disposition_number ?? dispositionId}`}
                         </h1>
-                        {mode === "edit" && disposition && (
+                        {disposition && (
                             <>
                                 <Badge variant={
                                     disposition.current_state === "CLOSED" ? "default" :
@@ -483,7 +447,7 @@ export default function EditDispositionFormPage() {
                             </>
                         )}
                     </div>
-                    {mode === "edit" && dispositionId && (
+                    {dispositionId && (
                         <div className="ml-auto flex items-center gap-2">
                             {/* The report is the NCR's; a decision on no NCR has none to print. */}
                             {disposition?.ncr && (
@@ -530,7 +494,7 @@ export default function EditDispositionFormPage() {
                                 <Form {...form}>
                                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                                         {/* Annotation status alert */}
-                                        {mode === "edit" && disposition?.annotation_status?.has_pending && (
+                                        {disposition?.annotation_status?.has_pending && (
                                             <Alert variant="destructive">
                                                 <AlertTriangle className="h-4 w-4" />
                                                 <AlertTitle>3D Annotations Required</AlertTitle>
@@ -603,7 +567,7 @@ export default function EditDispositionFormPage() {
                                         </div>
 
                                         {/* The NCR this decides part of: what's wrong is said there. */}
-                                        {mode === "edit" && disposition?.ncr && (
+                                        {disposition?.ncr && (
                                             <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium">Decides part of</span>
@@ -624,37 +588,6 @@ export default function EditDispositionFormPage() {
                                                 </p>
                                             </div>
                                         )}
-
-                                        {/* Severity — heads a new NCR when this opens one */}
-                                        {mode === "create" && (<FormField
-                                            control={control}
-                                            name="severity"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel required={required.severity}>Severity</FormLabel>
-                                                    <Select key={field.value ?? "empty"} onValueChange={field.onChange} value={field.value ?? ""}>
-                                                        <FormControl>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select severity" />
-                                                            </SelectTrigger>
-                                                        </FormControl>
-                                                        <SelectContent>
-                                                            {schemas.SeverityEnum.options
-                                                                .map((sev) => (
-                                                                    <SelectItem key={sev} value={sev}>
-                                                                        {severityLabels[sev] ?? sev}
-                                                                    </SelectItem>
-                                                                ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <FormDescription>
-                                                        For a new NCR. A part or report already on an open NCR goes under it,
-                                                        and its NCR's severity stands.
-                                                    </FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />)}
 
                                         {/* Assigned To */}
                                         <FormField
@@ -678,22 +611,6 @@ export default function EditDispositionFormPage() {
                                             )}
                                         />
 
-                                        {/* Description — heads a new NCR when this opens one */}
-                                        {mode === "create" && (<FormField
-                                            control={control}
-                                            name="description"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel required={required.description}>What's wrong</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea placeholder="Describe the nonconformance..." className="resize-none" {...field} />
-                                                    </FormControl>
-                                                    <FormDescription>For a new NCR, as severity is.</FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />)}
-
                                         {/* The concession (one pattern with NCR decide). */}
                                         {showCustomerApproval && (
                                             <div className="space-y-3">
@@ -706,7 +623,7 @@ export default function EditDispositionFormPage() {
                                                     locked={concessionLocked}
                                                 />
                                                 {/* Document upload for customer approval evidence */}
-                                                {mode === "edit" && dispositionId && dispositionContentType && (
+                                                {dispositionId && dispositionContentType && (
                                                     <div className="pt-2 border-t">
                                                         <DocumentUploader
                                                             objectId={dispositionId}
@@ -765,30 +682,6 @@ export default function EditDispositionFormPage() {
                                             </div>
                                         </div>
 
-                                        {/* Related Part */}
-                                        <FormField
-                                            control={control}
-                                            name="part"
-                                            render={({ field }) => (
-                                                <FormItem className="flex flex-col">
-                                                    <FormLabel required={required.part}>Related Part</FormLabel>
-                                                    <FormControl>
-                                                        <Combobox
-                                                            value={field.value || null}
-                                                            onChange={(v) => v && field.onChange(v)}
-                                                            options={parts.map((p) => ({ value: p.id, label: p.ERP_id, ...(p.part_type_name ? { description: p.part_type_name } : {}) }))}
-                                                            onSearch={setPartSearch}
-                                                            selectedLabel={field.value ? partLabel(String(field.value)) : undefined}
-                                                            placeholder="Select part"
-                                                            searchPlaceholder="Search parts..."
-                                                            emptyText="No parts found."
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-
                                         {/* Quality Reports */}
                                         <FormField
                                             control={control}
@@ -829,10 +722,10 @@ export default function EditDispositionFormPage() {
                                                 {isSubmitting ? (
                                                     <>
                                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                        {mode === "edit" ? "Updating..." : "Creating..."}
+                                                        Updating...
                                                     </>
                                                 ) : (
-                                                    mode === "edit" ? "Update Disposition" : "Create Disposition"
+                                                    "Update Disposition"
                                                 )}
                                             </Button>
                                         </div>
@@ -874,7 +767,7 @@ export default function EditDispositionFormPage() {
                         )}
 
                         {/* The other parts on this disposition's NCR, each with its own decision. */}
-                        {mode === "edit" && alsoOnNcr.length > 0 && (
+                        {alsoOnNcr.length > 0 && (
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm flex items-center gap-2">
@@ -911,7 +804,7 @@ export default function EditDispositionFormPage() {
                         )}
 
                         {/* Quality Reports Card */}
-                        {mode === "edit" && disposition?.quality_reports && disposition.quality_reports.length > 0 && (
+                        {disposition?.quality_reports && disposition.quality_reports.length > 0 && (
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm">Inspection Records ({disposition.quality_reports.length})</CardTitle>
@@ -948,7 +841,7 @@ export default function EditDispositionFormPage() {
                         )}
 
                         {/* 3D Annotation Status Card */}
-                        {mode === "edit" && disposition && (
+                        {disposition && (
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm">3D Annotations</CardTitle>
@@ -980,7 +873,7 @@ export default function EditDispositionFormPage() {
                         {/* Documents Card — read through the shared editor (the disposition
                             payload carries no documents; this card used to test a field the
                             API never sent, so it never rendered). */}
-                        {mode === "edit" && dispositionId && (
+                        {dispositionId && (
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm">Documents</CardTitle>
@@ -1003,14 +896,6 @@ export default function EditDispositionFormPage() {
                             </Card>
                         )}
 
-                        {/* Empty state for create mode without part */}
-                        {!part && mode === "create" && (
-                            <Card>
-                                <CardContent className="py-6 text-center text-muted-foreground text-sm">
-                                    Select a part to see its details
-                                </CardContent>
-                            </Card>
-                        )}
                     </div>
                 </div>
             </div>

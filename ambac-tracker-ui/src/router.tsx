@@ -998,7 +998,6 @@ export const dispositionCreateRoute = createRoute({
 
 export const dispositionEditRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/production/dispositions/$id/edit',
-    validateSearch: DispositionSearch,
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditDispositionFormPage")),
 });
 
