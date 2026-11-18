@@ -68,7 +68,8 @@ As a Production Manager, you:
 ### 3. Handle Exceptions
 
 1. Check **Inbox** for CAPA tasks and approval requests
-2. Address quality holds via **Quality** > **Dispositions**
+2. Address quality holds via **Quality** > **Quarantined Parts** and **Quality** >
+   **NCRs**
 3. Resolve resource conflicts
 4. Update customer if needed
 
@@ -219,7 +220,7 @@ locked, and shift leads and operators come to you to push a job up.
 
 When parts are quarantined:
 
-1. View quarantined parts in **Quality** > **Dispositions**
+1. View quarantined parts in **Quality** > **Quarantined Parts**
 2. Understand the issue
 3. Coordinate with Quality
 4. Adjust schedule if needed

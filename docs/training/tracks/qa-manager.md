@@ -61,9 +61,10 @@ Log in as Maria. The home page is a list of decisions waiting on you:
 
 - **Needs attention**: a whole-lot reject an inspector has asked for, a finding on a
   repair unit waiting for a decision, a repair unit waiting on its customer's answer,
-  parts in quarantine, CAPAs waiting for their effectiveness check.
-- **Quality**: open NCRs, parts under disposition, active and overdue CAPAs, first
-  pass yield.
+  NCRs open more than 7 days, decisions waiting to be made, parts in quarantine,
+  CAPAs waiting for their effectiveness check.
+- **Quality**: open NCRs, quarantined parts, active and overdue CAPAs, first pass
+  yield.
 - **Overdue calibrations**: every gauge past its due date, shop-wide.
 - **Supplier qualifications expiring**, **Competency coverage** and **Training**.
 - **Approvals in flight**, and **My quality actions**: what is assigned to you.
@@ -93,13 +94,14 @@ Find it in your **Inbox** > **Dispositions**.
 2. The bore is 0.002 mm over, the seat finish is good, and engineering has issued
    concession `ENG-CONC-0041`. Choose **Use As Is**.
 
-**Try to break it:** submit without a concession reference. Use As Is accepts a
-nonconforming part, so it is refused until a customer or design concession is
-recorded.
+**Try to break it:** leave **Concession reference** empty. Use As Is accepts a
+nonconforming part, so the decision can't be submitted until a customer or design
+concession is recorded.
 
-3. Tick **Requires approval** and **Approval received**, enter `ENG-CONC-0041` as
-   the reference, and say in the resolution notes what the decision rests on.
-   Submit. The decision is recorded as yours, and the part leaves quarantine.
+3. Enter `ENG-CONC-0041` as the **Concession reference** (the **Concession date**
+   is today if you leave it blank), and say in the resolution notes what the
+   decision rests on. Submit. The decision is recorded as yours, and the part leaves
+   quarantine.
 4. Set **Current state** to **Closed** and submit. Closing records who resolved it,
    and when.
 
@@ -122,26 +124,25 @@ bath read 71 °C against its 65 °C limit, so the cycle failed and all three are
 on one NCR, marked *Failed batch load*, each with its own disposition. Sarah
 recorded the NCR's containment (the heater relay was replaced and the bath
 re-verified). Your **Inbox** > **Dispositions** shows its three decisions, one per
-body (*Batch cycle failed at Wash - 3 parts in the load (3 held, 0 already past
-this step)*). Decide them together from the NCR itself: **Quality** > **NCRs**, and
-open the one covering *3 parts* at Wash.
+body (*Failed Wash: Bath Temperature 71 C (limits 55–65)*). Decide them together
+from the NCR itself: **Quality** > **NCRs**, and open the one covering *3 parts* at
+Wash.
 
 1. Read its page. **Where it was found** says *Failed batch load*, 3 parts, raised by
    Ken. **Containment** is recorded, by Sarah. **Parts and decisions** lists the
    three bodies, each *Awaiting decision*, with its own disposition.
 2. Decide one body on its own: tick `INJ-QA-MANAGE-011`, **Decide 1 chosen**, and
-   choose **Scrap**. The dialog warns that the part is scrapped as soon as the
-   decision is recorded. Say why in **Notes** and **Record decision**: *Decision
-   recorded*. The body reads *Scrapped*, and the other two still wait.
+   choose **Scrap**. Say why in **Notes** and **Record decision**. You're asked to
+   confirm first (*Scrap 1 part?*), because the part is scrapped as soon as it's
+   saved. Confirm: *Decision recorded*. The body reads *Scrapped*, and the other two still wait.
 3. Decide the rest together: **Decide all waiting (2)**, **Use As Is**, concession
    `ENG-CONC-0043` in **Concession reference**, and your reason. **Record
    decision**. Each body's decision goes on its own disposition.
 
-**Try to break it:** in step 3, leave **Concession reference** empty. It's refused:
-*"A 'Use As Is' decision accepts nonconforming product and requires recorded
-customer/design approval — provide an approval reference."* Once every body has a
-decision, the Decide buttons are gone: a part's decision is changed on its own
-disposition after that.
+**Try to break it:** in step 3, leave **Concession reference** empty. **Record
+decision** stays disabled: Use As Is accepts nonconforming product, so it needs a
+recorded concession. Once every body has a decision, the Decide buttons are gone: a
+part's decision is changed on its own disposition after that.
 
 The NCR closes by itself once each body's disposition is closed.
 
@@ -159,8 +160,12 @@ panel shows who asked and why.
 
 1. Read her reason and open the inspection behind it.
 2. You've looked at the cartons: the spotting is on the bottom layer only.
-   **Decline request…**, and say why. The lot goes back to inspection, where the
-   affected pieces can be rejected on their own.
+   **Decline request…**, and say why: *Request declined — the lot is back in
+   inspection.* The affected pieces can be rejected on their own there.
+
+The request also shows on the lot's NCR, as *Return to Supplier requested* (*Confirm
+or decline on the lot · Awaiting confirmation*). Declining closes that NCR without a
+decision.
 
 Had the whole lot been bad, **Confirm: reject whole lot** would have rejected it
 back to the supplier.

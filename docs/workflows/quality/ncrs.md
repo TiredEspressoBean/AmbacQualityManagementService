@@ -139,6 +139,14 @@ needs `initiate_capa`.
 The failed inspection records behind the NCR: one per part, or, for a failed
 batch load, the one record of the failed cycle.
 
+### Documents
+
+*"Evidence for this NCR: containment photos, segregation tags, concessions."*
+**View or attach documents** lists everything filed under the NCR, containment
+evidence included, and attaches more (with `add_documents`; otherwise it's
+read-only). A document can also be linked to an NCR from the document form's
+**Link to** list. See [Uploading](../documents/uploading.md#linking-during-upload).
+
 ## When an NCR closes
 
 **When every decision under it is closed.** *"This NCR is closed: every decision

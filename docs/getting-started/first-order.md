@@ -145,8 +145,7 @@ See [Recording Measurements](../workflows/tracking/measurements.md).
 
 If a part has a problem:
 
-1. Go to **Quality** > **Inspection Records** and press **New** (*Record
-   Inspection*)
+1. Go to **Quality** > **Inspection Records** and press **Record Inspection**
 2. Pick the part, describe the issue, and set **Status** to **Fail**
 3. Save. The part enters quarantine and goes on an [NCR](../workflows/quality/ncrs.md),
    with a disposition opened for it

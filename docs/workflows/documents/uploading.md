@@ -122,12 +122,16 @@ Link document to records during upload:
 1. In the upload form
 2. Find **Link to** section
 3. Select record type — Company, Equipment, Order, Part Type, Part, Process,
-   Error Type, Inspection Record, Disposition, CAPA, Step, 3D Model or Work Order
-4. Search and select the record (an inspection record is found by its number)
+   Error Type, Inspection Record, Disposition, NCR, CAPA, Step, 3D Model or Work
+   Order
+4. Search and select the record (an inspection record is found by its number,
+   an NCR by its number or what's wrong)
 5. Document uploads with links established
 
-There is no NCR link type. Evidence for an NCR's containment is attached on the
-NCR itself, in its **Containment** card.
+You can only link a document to a record you can view: *"You can't link a
+document to an NCR you can't view."* An NCR's containment evidence, attached
+from its **Containment** card, is filed under the NCR the same way, so it shows
+with the NCR's other documents.
 
 ## Post-Upload Actions
 

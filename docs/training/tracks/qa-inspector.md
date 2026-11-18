@@ -61,8 +61,10 @@ Log in as Sarah. The home page is the inspector's queue:
 
 - **First piece waiting**: runs held until someone buys off their first piece. These
   block the floor, so they come first.
-- **Inbox chips**: Receiving, OSP returns, In-process (sampled parts), QA sign-off.
-- **My quality actions**: approvals, CAPA tasks and dispositions assigned to you.
+- **Inbox chips**: All, Receiving, OSP returns, In-process (sampled parts), Urgent,
+  each with its count and how long the oldest has waited.
+- **My quality actions**: what's overdue, approvals, CAPA tasks and dispositions
+  assigned to you.
 - **Unassigned dispositions**: dispositions a failed inspection opened that nobody
   has taken yet, each with **Take it**.
 - **Your gauges**: gauges you used in the last 7 days that are due for calibration.
@@ -227,9 +229,9 @@ fresh start.
 **Take and annotate.** `INJ-QA-INSPECT-015` failed its visual inspection yesterday:
 *Burr in bore*, a defect that must be marked on the part's model.
 
-1. On your home page, **Take it** on its disposition. It moves to **My
-   dispositions**.
-2. Open it. **3D Annotations Required**: the disposition can't close until the
+1. On your home page, **Take it** on its disposition: *Taken — it's in your
+   dispositions.* Your **My dispositions** count goes up by one.
+2. Open it (from **Quality** > **Quarantined Parts**, by its serial). **3D Annotations Required**: the disposition can't close until the
    defect is marked. **Go to Annotator** opens with its inspection record already selected.
 3. Mark the burr on the model, where the fuel passage breaks into the bore, with its
    defect type and severity, and save.
@@ -246,13 +248,15 @@ same way.
 
 1. Record the **containment action** on its NCR, the one the disposition names
    (*Decides part of NCR-…*): what was done so nothing else like it escapes.
-2. **Try to break it first:** choose **Use As Is** and leave the approval reference
-   empty. You don't hold the authority, so the co-sign dialog opens; Maria signs in
-   at your screen, and the decision is still refused: use-as-is accepts
-   nonconforming product, and needs a recorded customer or design approval. Don't
-   enter a reference to get past it.
-3. Choose **Rework**, with the justification. Maria co-signs again, and the decision
-   is recorded under Maria's name as the authority, with you as the caller.
+2. **Try to break it first:** choose **Use As Is** and leave **Concession
+   reference** empty. The button stays disabled: Use As Is accepts nonconforming
+   product, so it needs a recorded customer or design concession before it can even
+   go to a co-signer. Don't enter a reference to get past it.
+3. Choose **Rework**, with the justification. You don't hold the authority, so
+   **Co-sign and record** opens *Authorize disposition decision*: Maria enters her
+   own email and password at your screen and ticks *I authorize this disposition
+   decision.* The decision is recorded under Maria's name as the authority, with you
+   as the caller.
 
 ---
 

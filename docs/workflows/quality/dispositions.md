@@ -10,7 +10,8 @@ serious it is and how it was contained, once for all the parts it covers. The
 disposition is that part's decision. An NCR over five parts has five
 dispositions, decided together from the NCR or one at a time.
 
-**Quality** > **Dispositions**
+A part's disposition opens from **Quality** > **Quarantined Parts** (its row's
+**Edit Disposition**), from your Inbox, or from its NCR.
 
 Dispositions also surface where the nonconformance was found: the work order
 **control** page lists open ones under *Exceptions on this WO*, each with an
@@ -93,8 +94,10 @@ result hasn't been captured again with a PASS."*
 ## Use As Is and Repair require recorded approval
 
 These two accept known-nonconforming product, so they carry the highest
-authority burden. The system **will not record the decision without an approval
-reference**:
+authority burden. The system **will not record the decision without a concession
+reference**: **Concession reference** is required (the decide button stays
+disabled until it's filled), and **Concession date** is today if left blank. Sent
+without one anyway, it's refused:
 
 > *A 'Use As Is' decision accepts nonconforming product and requires recorded
 > customer/design approval — provide an approval reference.*
@@ -107,9 +110,8 @@ the parts are made to the agreed spec and never become nonconforming. The
 reference, the date, and who authorized the decision are all stored on the
 record.
 
-Once the disposition is decided, that concession record — **Requires
-Approval**, **Approval Received**, **Approval Reference** and **Approval Date**
-— can't be edited. The edit page greys the fields out: *"It was recorded with
+Once the disposition is decided, its concession reference and date can't be
+edited. The edit page greys the fields out: *"It was recorded with
 the decision and can't be changed now."* Deciding again brings its own
 reference through **Decide**.
 

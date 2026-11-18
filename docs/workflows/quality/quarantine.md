@@ -94,8 +94,10 @@ Quarantined parts display:
 
 View all quarantined parts:
 
-1. Navigate to **Quality** > **Dispositions** (or Quarantine)
-2. See list of held parts
+1. Navigate to **Quality** > **Quarantined Parts**
+2. See every part with the **Quarantined** status (parts awaiting QA or rework
+   have their own queues). Home's *Parts in quarantine* and *Quarantined parts*
+   counts are the same number
 3. Filter by error type, or by whether a disposition is still awaited
 
 Quarantine is a part **status** and nothing more — no timestamp is written when

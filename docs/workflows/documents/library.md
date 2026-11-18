@@ -240,9 +240,11 @@ Documents can be linked to:
 - **Steps**: Step work instructions
 - **CAPAs**: Investigation evidence
 - **Inspection Records**: inspection evidence.
-  An NCR's containment evidence is attached on the NCR itself, in its
-  **Containment** card (there is no NCR link type); see
-  [NCRs](../quality/ncrs.md#containment)
+- **NCRs**: evidence for the nonconformance: containment photos, segregation
+  tags, concessions. Containment evidence attached from the NCR's
+  **Containment** card is filed here too; see [NCRs](../quality/ncrs.md#documents)
+
+A document can only be linked to a record you can view.
 
 
 ### Creating Links

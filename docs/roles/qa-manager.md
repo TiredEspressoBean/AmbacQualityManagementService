@@ -83,11 +83,13 @@ There is no queue of disposition *requests* waiting on you. Whoever is
 authorized records the decision directly, and recording it **is** the
 authorized act. Your involvement takes one of two forms:
 
-- **You record it yourself** — **Quality** > **Dispositions**, or the
+- **You record it yourself** — on the part's NCR (**Quality** > **NCRs**), from
+  **Quality** > **Quarantined Parts**, or the
   *Exceptions on this WO* list on the work order's control page.
 - **You co-sign someone else's.** An inspector without `approve_disposition`
-  presses *Update Disposition* and the editor opens **Authorize disposition
-  decision**. You supply your email, signature and password on their screen.
+  presses *Update Disposition* (or **Co-sign and record** on an NCR) and **Authorize
+  disposition decision** opens. You enter your email and password on their screen
+  and tick *I authorize this disposition decision.*
   The record carries **your** name as the authority, with them as the caller.
 
 Before either, review the disposition's NCR (what's wrong, its severity and
@@ -383,7 +385,7 @@ Templates](../admin/setup/approval-templates.md).
 | Task | Location |
 |------|----------|
 | Record a disposition decision | Quality > Dispositions → open it → set the type · or the NCR's page → **Decide all waiting** |
-| Co-sign someone else's | On *their* screen — they press Update Disposition, you supply email, signature and password |
+| Co-sign someone else's | On *their* screen — they press Update Disposition or Co-sign and record, you enter your email and password and confirm |
 | Create CAPA | Quality > CAPAs → **New CAPAs** |
 | Close CAPA | CAPA detail → Verification → **Effective - Confirmed** |
 | Approve document | Inbox → Document → **Submit Response** → Approve |
