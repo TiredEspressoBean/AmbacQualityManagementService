@@ -774,6 +774,12 @@ CACHES = {
         "TIMEOUT": 300,  # 5 minutes
     }
 }
+# Tests get an in-process cache: each --parallel worker is its own process, so each has
+# its own cache — they shared dev's Redis under one prefix and stepped on each other's
+# keys (cache-backed tests failed only under --parallel 8, 2026-11-17).
+if 'test' in _sys.argv:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                          "LOCATION": "uqmes-tests", "TIMEOUT": 300}}
 
 # Session lifetime. The 14-day default suits a personal machine; a shared
 # shop-floor tablet wants far less, because the next operator inherits the
