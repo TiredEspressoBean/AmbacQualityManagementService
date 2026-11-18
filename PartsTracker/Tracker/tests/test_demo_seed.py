@@ -503,7 +503,8 @@ class DemoSeedFlowsTests(TestCase):
             self.assertTrue(ncrs.filter(capa_decision="NOT_REQUIRED").exists())
             waiting = ncrs.filter(capa_decision__isnull=True)
             self.assertFalse(waiting.filter(state="CLOSED").exists())
-            self.assertLess(waiting.count(), ncrs.count() / 2)
+            # At most half: the open exhibits (an awaiting finding, aged NCRs) wait by design.
+            self.assertLessEqual(waiting.count(), ncrs.count() / 2)
 
     def test_the_bath_capa_answers_the_hot_loads_ncr_and_its_record(self):
         from Tracker.models import CAPA

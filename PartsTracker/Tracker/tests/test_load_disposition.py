@@ -53,7 +53,7 @@ class LoadDispositionTests(TenantTestCase):
         body = {"disposition_type": disposition_type, **extra}
         if parts is not None:
             body["parts"] = [str(p.id) for p in parts]
-        else:
+        elif "dispositions" not in extra:
             body["all"] = True
         return self.client.post(f"/api/NCRs/{self.ncr.id}/decide/", body, format="json")
 

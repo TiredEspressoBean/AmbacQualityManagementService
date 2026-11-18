@@ -52,8 +52,13 @@ class RmaTests(_Fixture):
     def test_ship_back_keeps_the_rma_and_expects_the_replacement(self):
         from Tracker.models import MaterialLot, QuarantineDisposition
         bad = self._lot("RTV-1", qty="40", status="REJECTED", erp_po_number="4500", erp_po_line="3")
-        make_disposition(tenant=self.tenant, material_lot=bad,
-                                             disposition_type="RETURN_TO_SUPPLIER", quantity=Decimal(40))
+        d = make_disposition(tenant=self.tenant, material_lot=bad,
+                             disposition_type="RETURN_TO_SUPPLIER", quantity=Decimal(40))
+        # A real reject records the containment with it (the lot held at receiving).
+        from django.utils import timezone
+        from Tracker.models import NCR
+        NCR.objects.filter(pk=d.ncr_id).update(containment_action="Lot rejected and held at receiving.",
+                                                containment_completed_at=timezone.now())
         due = date.today() + timedelta(days=10)
         resp = self.client.post(f"/api/MaterialLots/{bad.id}/ship-back/",
                                 {"rma_number": "RMA-77", "replacement_promised_date": str(due)}, format="json")

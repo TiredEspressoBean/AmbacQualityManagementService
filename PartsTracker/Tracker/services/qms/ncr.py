@@ -116,6 +116,7 @@ def open_ncr_for_part(part):
             .order_by('-created_at').first())
 
 
+@transaction.atomic  # the lock below needs one; a save outside a request has none
 def ncr_for_failed_report(report):
     """The NCR a failed record belongs to: the one it is already on, the open one of its
     load or its part (a repeat failure joins), else a new one. Returns (ncr, raised).

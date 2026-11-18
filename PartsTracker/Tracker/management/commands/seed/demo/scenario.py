@@ -351,6 +351,12 @@ class DemoScenario(BaseSeeder):
             return None
         ncr = NCR.objects.get(pk=report.ncr_id)
         refresh_description(ncr)
+        # A cosmetic one-off: QA calls it straight away. Still open, so it ages.
+        from Tracker.services.qms.capa_decision import record_decision
+        qa = users.get('qa_manager') or (users.get('qa_staff') or [None])[0]
+        if qa is not None:
+            record_decision(ncr, decision='NOT_REQUIRED', user=qa,
+                            note="Cosmetic, within the functional envelope; no systemic cause.")
         self.log(f"  {ncr.ncr_number} over INJ-0042-020 reads Minor")
         return ncr.ncr_number
 
