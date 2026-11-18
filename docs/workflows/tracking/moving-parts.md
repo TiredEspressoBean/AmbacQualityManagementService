@@ -115,8 +115,9 @@ If an issue is found:
    or change a Pending record to Fail. Either way the part is quarantined
    and goes on an [NCR](../quality/ncrs.md), with a disposition for its
    decision
-2. Add each defect to the record, with its own error type, count, location and
-   severity. Error type is **not** a field on the record itself
+2. The defects themselves (error type, count, location, severity) are captured
+   in the work instruction's defect field, when the failure is found during a
+   step. The **Record Inspection** form has none
 3. The part enters quarantine
 
 To put several parts on one NCR at once, **Raise NCR** instead: see [Raising

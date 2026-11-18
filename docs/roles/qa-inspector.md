@@ -194,10 +194,13 @@ Based on lot size and AQL level:
 | **Process Step** | Where it was found | No |
 | **Description** | Detailed explanation | No |
 
-3. **Add each defect separately** — error type, count, location and severity
-   belong to the defect, not to the record
-4. Attach evidence (photos, data)
-5. Submit
+3. Attach evidence (photos, data)
+4. Submit
+
+This form records no defects. Defects (error type, count, location, severity) are
+captured by the work instruction's defect field during the inspection, the normal
+path. A failure recorded here opens its NCR at Major; set the right severity on the
+NCR.
 
 A **Fail** holds the part and puts it on an NCR: its open one, or a new one.
 See [Inspection Records](../workflows/quality/quality-reports.md).
