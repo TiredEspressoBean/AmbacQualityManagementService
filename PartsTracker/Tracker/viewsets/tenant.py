@@ -617,6 +617,32 @@ class TenantViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     lookup_field = 'slug'
 
+    # Regenerating the demo is the demo's Tenant Admin's too (every training track has the
+    # trainer do it), so these two let any signed-in user in, and `_demo_regen_tenant`
+    # decides. Everything else on tenants stays platform staff only.
+    DEMO_REGEN_ACTIONS = ('regenerate_demo_data', 'regenerate_demo_status')
+
+    def get_permissions(self):
+        if self.action in self.DEMO_REGEN_ACTIONS:
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
+    def _demo_regen_tenant(self, request, slug):
+        """The demo tenant, or the refusal: only slug 'demo', and only platform staff or a
+        Tenant Admin OF the demo tenant (groups are per tenant). The slug is checked before
+        any lookup, so another tenant can't be acted on or probed through these actions."""
+        from Tracker.services.core.demo_regenerate import DEMO_TENANT_SLUG
+        if slug != DEMO_TENANT_SLUG:
+            return None, Response(
+                {"detail": f"Refused: regeneration only supported on slug='{DEMO_TENANT_SLUG}'."},
+                status=status.HTTP_403_FORBIDDEN)
+        tenant = self.get_object()
+        user = request.user
+        if not (user.is_staff or user.is_superuser) and "Tenant Admin" not in user.get_tenant_group_names(tenant):
+            return None, Response({"detail": "Tenant Admin role required."},
+                                  status=status.HTTP_403_FORBIDDEN)
+        return tenant, None
+
     def get_queryset(self):
         from Tracker.models import Tenant
         return Tenant.objects.all().order_by('-created_at')
@@ -694,29 +720,10 @@ class TenantViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="regenerate-demo-data")
     def regenerate_demo_data(self, request, slug=None):
         """Wipe + reseed the demo tenant. Refuses on any other tenant."""
-        from Tracker.services.core.demo_regenerate import DEMO_TENANT_SLUG
-
-        tenant = self.get_object()
-        if tenant.slug != DEMO_TENANT_SLUG:
-            return Response(
-                {"detail": f"Refused: regeneration only supported on slug='{DEMO_TENANT_SLUG}'."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Permission gate: tenant admin or platform staff. The demo
-        # tenant has its own "Tenant Admin" group; staff bypass.
+        tenant, refusal = self._demo_regen_tenant(request, slug)
+        if refusal is not None:
+            return refusal
         user = request.user
-        if not (user.is_staff or user.is_superuser):
-            user_group_names = (
-                user.get_tenant_group_names(tenant)
-                if hasattr(user, "get_tenant_group_names")
-                else set()
-            )
-            if "Tenant Admin" not in user_group_names:
-                return Response(
-                    {"detail": "Tenant Admin role required."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
 
         from uuid import uuid4
         from django.db import transaction
@@ -777,6 +784,9 @@ class TenantViewSet(viewsets.ModelViewSet):
     def regenerate_demo_status(self, request, slug=None, task_id=None):
         """Poll the status of a queued demo-regeneration job."""
         from celery.result import AsyncResult
+        _, refusal = self._demo_regen_tenant(request, slug)
+        if refusal is not None:
+            return refusal
 
         result = AsyncResult(task_id)
         payload = {"task_id": task_id, "status": result.status}
