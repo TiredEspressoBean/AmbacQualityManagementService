@@ -51,7 +51,7 @@ organisation.
 | **System Admin** | Platform administrator — manages all tenants and system settings. Not created in an organisation |
 | **Tenant Admin** | Full access within one organization |
 | **QA Manager** | Quality management, approvals, CAPA control |
-| **QA Inspector** | Perform inspections, create quality reports, initiate CAPAs |
+| **QA Inspector** | Perform inspections, record inspection results, raise NCRs, initiate CAPAs |
 | **Production Manager** | Production operations, work orders, scheduling |
 | **Operator** | Production floor work, inspections, data entry |
 | **Shift Lead** | Floor supervisor: operator work plus team visibility and quality oversight |
@@ -156,7 +156,7 @@ Permissions are organized by model:
 |----------|----------|
 | **Orders** | view_orders, add_orders, change_orders |
 | **Parts** | view_parts, change_parts, delete_parts |
-| **Quality** | add_qualityreports, approve_disposition |
+| **Quality** | add_qualityreports, add_ncr, change_ncr, approve_disposition |
 | **Documents** | view_documents, respond_to_approval |
 | **CAPA** | add_capa, initiate_capa, verify_capa |
 | **Admin** | view_user, change_tenantgroup |
@@ -167,7 +167,7 @@ Permissions are organized by model:
 - `view_orders` - View order records
 - `add_parts` - Create parts; `add_<model>` also shows a list's **Import**
   button and allows a create-only import
-- `change_qualityreports` - Edit quality reports still **Pending Review**;
+- `change_qualityreports` - Edit inspection records still **Pending Review**;
   `change_<model>` is also needed for an update or create-or-update import
 - `delete_documents` - Remove documents
 - `verify_capa` - Record a CAPA effectiveness check

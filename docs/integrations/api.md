@@ -103,12 +103,25 @@ GET    /api/Parts/{id}/history/   # Part history
 GET    /api/Parts/{id}/traveler/  # Traveler document
 ```
 
-### Quality Reports
+### Inspection records
 ```
-GET    /api/QualityReports/        # List NCRs
-POST   /api/QualityReports/        # Create NCR
-GET    /api/QualityReports/{id}/   # Get NCR detail
+GET    /api/QualityReports/        # List inspection records
+POST   /api/QualityReports/        # Record an inspection (a FAIL puts the part on an NCR)
+GET    /api/QualityReports/{id}/   # Get inspection record detail
 ```
+
+### NCRs
+```
+GET    /api/NCRs/                  # List NCRs
+POST   /api/NCRs/                  # Raise an NCR
+GET    /api/NCRs/{id}/             # Get NCR detail
+PATCH  /api/NCRs/{id}/             # Edit what's wrong (description, severity, containment)
+```
+
+An NCR is never deleted: it closes when every decision under it is closed.
+
+See [NCRs](../workflows/quality/ncrs.md) for what an NCR holds; the schema
+(`/api/schema/`) lists its actions.
 
 ### Work Orders
 ```
@@ -145,7 +158,7 @@ Use query parameters:
 ```
 GET /api/Orders/?status=in_progress
 GET /api/Parts/?order=123
-GET /api/QualityReports/?severity=critical
+GET /api/NCRs/?severity=CRITICAL
 ```
 
 ### Common Filters

@@ -55,10 +55,10 @@ generates the PDF and either downloads it or emails it to you.
 | Report type | Title | Typically generated from |
 |-------------|-------|--------------------------|
 | `work_order_traveler` | Work Order Traveler | Work order detail |
-| `ncr_report` | Non-Conformance Report | Quality report / disposition |
+| `ncr_report` | Non-Conformance Report — prints one NCR: its header, inspection records, containment, a table of each part's decision, and closure | **NCR Report** on an NCR, or on any of its dispositions (which prints its NCR) |
 | `capa_report` | CAPA Report | CAPA detail |
 | `scar` | Supplier Corrective Action Request | Supplier quality |
-| `deviation_request` | Deviation Request | Quality report / disposition |
+| `deviation_request` | Deviation Request | Disposition — carries its NCR's severity and description |
 | `spc` | SPC Report | SPC page |
 | `bom_report` | Bill of Materials | Part type |
 | `calibration_certificate` | Calibration Certificate | Calibration record |
@@ -85,7 +85,7 @@ generates the PDF and either downloads it or emails it to you.
 | `cycle_count_report` | Cycle Count Report | A submitted count |
 | `material_lot_label` | Material Lot Label | Material lot |
 | `location_label` | Location Label | Storage location |
-| `hold_tag` | Hold Tag | A held or rejected material lot; a held part's row in Quarantined Parts; its disposition |
+| `hold_tag` | Hold Tag — a part's carries its NCR number and description | A held or rejected material lot; a held part's row in Quarantined Parts; its disposition |
 
 #### Return to Vendor (RTV) Sheet
 
@@ -162,7 +162,8 @@ Generating reports requires the export permission; see
 ## Planned: Report Categories
 
 ### Quality Records
-- Quality report (NCR) history
+- NCR history
+- Inspection records
 - Disposition records
 - CAPA records
 - Measurement data

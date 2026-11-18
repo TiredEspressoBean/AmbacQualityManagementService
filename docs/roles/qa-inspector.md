@@ -1,6 +1,6 @@
 # QA Inspector Guide
 
-This guide is for Quality Assurance Inspectors who perform inspections, record measurements, create quality reports, and manage sampling in uqmes.
+This guide is for Quality Assurance Inspectors who perform inspections, record measurements, record inspection results and NCRs, and manage sampling in uqmes.
 
 !!! tip "Learning the role"
     The [QA Inspector training track](../training/tracks/qa-inspector.md) walks
@@ -12,7 +12,7 @@ As a QA Inspector, you:
 
 - Perform inspections at quality gates
 - Record measurements and inspection data
-- Create quality reports (NCRs) for non-conformances
+- Record inspection results, and raise NCRs for non-conformances
 - Document defects with annotations
 - Record disposition decisions
 
@@ -42,7 +42,8 @@ As a QA Inspector, you:
 | **Home** | Home | Your inspection queue — first pieces, incoming, OSP returns |
 | **Incoming Inspection** | Supply > Incoming Inspection | Purchased lots **and** OSP returns, one queue |
 | **Work Orders** | Production > Work Orders | Work order detail and history |
-| **Quality Reports** | Quality > Quality Reports | NCRs you've created |
+| **NCRs** | Quality > NCRs | Nonconformances, their containment and each part's decision |
+| **Inspection Records** | Quality > Inspection Records | Inspection results, pass and fail |
 | **Dispositions** | Quality > Dispositions | Quarantined parts |
 | **Inbox** | Personal > Inbox | CAPA tasks and pending approvals |
 | **Heat Map** | Quality > Heat Map | Visual defect analysis |
@@ -89,9 +90,10 @@ are met, they advance automatically.
 When problems are found:
 
 1. A failure on an inspection does it for you: a reading out of spec, or your
-   **Fail** on the inspection's result. On a report you raise yourself, set it to
-   **FAIL**, either when you create it or by editing a Pending one. Either way the
-   part is quarantined, the step is alerted, and a disposition opens, unassigned
+   **Fail** on the inspection's result. On an inspection record you make yourself,
+   set it to **Fail**, either when you create it or by editing a Pending one.
+   Either way the part is quarantined, the step is alerted, and the part goes on
+   an NCR (its open one, or a new one) with its disposition, unassigned
 2. Add annotations (if 3D model available)
 3. Notify appropriate parties
 
@@ -111,8 +113,8 @@ Where you record depends on what you are inspecting.
 
 **In-process, on parts** — measurements are substeps inside the step player.
 Work the step's inspection-point substep and enter the value there; the system
-evaluates it against the specification as you confirm, and writes it to a
-Quality Report alongside the completion.
+evaluates it against the specification as you confirm, and writes it to an
+inspection record alongside the completion.
 
 **Incoming lots** — receiving inspection has its own surface. Open the lot from
 the receiving inspection queue and use **Record Measurements** there.
@@ -165,12 +167,12 @@ Based on lot size and AQL level:
 
 **If Rejected:**
 - Options: 100% inspect, scrap, RTV
-- Create quality report
+- The lot goes on an NCR, opened by the reject
 - Disposition required
 
-## Creating Quality Reports (NCRs)
+## Recording Inspections and NCRs
 
-### When to Create
+### When to Record
 
 - Any non-conformance found
 - Failed measurements
@@ -178,27 +180,38 @@ Based on lot size and AQL level:
 - Material issues
 - Customer complaints
 
-### Creating the Report
+### Recording an Inspection
 
-1. **Quality** > **Quality Reports**, then **New Quality Reports**. It opens
-   *Create Quality Report (NCR)*. There is no button for it on a part
+1. **Quality** > **Inspection Records**, then **Record Inspection**. There is
+   no button for it on a part
 2. Pick the part on the form, and fill in the fields:
 
 | Field | What to Enter | Required |
 |-------|---------------|----------|
-| **Status** | Where the report stands | **Yes — the only one** |
+| **Status** | **Pending Review**, **Pass**, **Fail** or **Needs repair** | **Yes — the only one** |
 | **Part** | The affected part | No |
 | **Process Step** | Where it was found | No |
 | **Description** | Detailed explanation | No |
 
 3. **Add each defect separately** — error type, count, location and severity
-   belong to the defect, not to the report
+   belong to the defect, not to the record
 4. Attach evidence (photos, data)
 5. Submit
 
-!!! note "There is no Immediate Action field"
-    Containment and root cause belong to the CAPA raised from the report, not
-    to the report itself.
+A **Fail** holds the part and puts it on an NCR: its open one, or a new one.
+See [Inspection Records](../workflows/quality/quality-reports.md).
+
+### Raising an NCR over several parts
+
+When the same problem hits several parts, raise one NCR over them: **Quality** >
+**NCRs** > **Raise NCR**, or tick the parts on the work order's control page and
+press **Raise NCR** in the bulk toolbar. Say **What's wrong** and pick the
+**Severity**. To add parts to an open NCR, **Add parts** on its page. See
+[Raising an NCR by hand](../workflows/quality/ncrs.md#raising-an-ncr-by-hand).
+
+!!! note "There is no Immediate Action field on the inspection record"
+    Containment is recorded once on the [NCR](../workflows/quality/ncrs.md#containment),
+    for every part it covers. Root cause belongs to the CAPA.
 
 ### Severity Guidelines
 
@@ -208,7 +221,10 @@ Based on lot size and AQL level:
 | **Major** | Out of spec, affects function |
 | **Critical** | Safety risk, regulatory violation |
 
-A new defect defaults to **Major** — set it deliberately.
+A new defect defaults to **Major** — set it deliberately. The worst defect sets
+the severity of the part's NCR until anything on the NCR is decided; after that
+it can only be raised. See [NCRs: What's
+wrong](../workflows/quality/ncrs.md#whats-wrong).
 
 ## Annotating Defects
 
@@ -216,29 +232,29 @@ If 3D models are configured:
 
 ### Adding Annotations
 
-An annotation belongs to a **quality report**, so choose the report first:
+An annotation belongs to an **inspection record**, so choose the record first:
 
 1. On the work order's page, select the part — the **QA panel** on the right
    shows its model; or open the **Annotator** (`/annotator`) and pick the
-   report; or use the step's **Defect annotation (3D)** capture if it has one
+   record; or use the step's **Defect annotation (3D)** capture if it has one
 2. Click the location of the defect on the model
 3. Fill in **Error Type**, **Severity Level** and **Notes**
 4. Save
 
 !!! note "Two severity scales"
     An annotation's severity is **Low, Medium, High or Critical** — a different
-    scale from the defect's Minor / Major / Critical on the report itself. A
-    marker rates one finding where it sits on the part; the report and the
-    disposition rate the nonconformance the findings add up to.
+    scale from the defect's Minor / Major / Critical on the inspection record.
+    A marker rates one finding where it sits on the part; the NCR's severity
+    rates the nonconformance the findings add up to.
 
 !!! info "Some defects must be marked before the disposition can close"
     A defect type can require a 3D annotation. Its disposition then shows **3D
-    Annotations Required**, and **Go to Annotator** opens with the report already
+    Annotations Required**, and **Go to Annotator** opens with the record already
     selected.
 
-!!! important "Delete misplaced markers before you finish the report"
-    While the report is still Pending you can delete an annotation and place it
-    again. Once the report is **Pass** or **Fail**, the annotation is inspection
+!!! important "Delete misplaced markers before you finish the record"
+    While the record is still Pending you can delete an annotation and place it
+    again. Once the record is **Pass** or **Fail**, the annotation is inspection
     evidence and only the quality team can delete it — by default QA Inspector,
     QA Manager and Tenant Admin, so you can, but your operators cannot. See
     [Annotations](../3d-models/annotations.md).
@@ -263,14 +279,17 @@ the start is refused, naming the disposition. Rework reaches the part through th
 
 ### Working it
 
-1. Record the **containment action**
+1. Record the **containment action** on the disposition's NCR, once for every
+   part it covers. A Critical or Major NCR needs it before any decision under
+   it can close. See [NCRs: Containment](../workflows/quality/ncrs.md#containment)
 2. Mark the defect on the model, if the disposition asks for it
 3. Choose the decision; an approver co-signs on your screen if you don't hold
-   `approve_disposition`
+   `approve_disposition`. To decide every part on the NCR together, use
+   **Decide all waiting** (or **Decide N chosen**) on the NCR's page
 4. After rework, re-inspect the part. When it leaves the rework step its Rework
    or Repair disposition closes by itself; if something still blocks it
-   (containment, an annotation), it stays open for you to clear and close. See
-   [Dispositions](../workflows/quality/dispositions.md)
+   (the NCR's containment, an annotation), it stays open for you to clear and
+   close. See [Dispositions](../workflows/quality/dispositions.md)
 
 ## First Piece Inspection (FPI)
 
@@ -308,8 +327,8 @@ sign-off is refused (*"The first piece is 1 more piece short — each nest's pie
 is made before the buy-off."*).
 
 **Fail** asks **Which pieces failed?** and the reason. Each ticked piece is
-quarantined with a FAIL report carrying your reason, and its disposition opens,
-unassigned. The untouched pieces wait and are released when the re-run first
+quarantined with a failed inspection record carrying your reason, and the failed
+pieces go on one NCR, each with its disposition, unassigned. The untouched pieces wait and are released when the re-run first
 piece passes. The run stays held: the control page shows **First piece failed at
 &lt;step&gt; — run held**. Once the setup is corrected, the next part started is the
 new first piece.
@@ -354,8 +373,9 @@ For material from suppliers:
 
 ### Rejected Incoming Material
 
-Reject from the lot itself — **the disposition is opened with it**, on every
-branch, so there is no separate "raise an NCR then mark the lot" sequence.
+Reject from the lot itself — **the lot's NCR and its disposition open with
+it**, on every branch, so there is no separate "raise an NCR then mark the
+lot" sequence.
 
 | What you reject | What happens |
 |-----------------|--------------|
@@ -417,8 +437,9 @@ Either finish it or say so.
 | Task | Steps |
 |------|-------|
 | Record measurement | On a part: step player → inspection substep → enter value → **Confirm & next** · On an incoming lot: receiving inspection → **Record Measurements** |
-| Create NCR | Quality → Quality Reports → New Quality Reports → pick the part → Submit |
-| Add annotation | Work order page → select part → QA panel, or **Annotator** → choose the report → click the defect → Save |
+| Record an inspection | Quality → Inspection Records → Record Inspection → pick the part → Submit (a **Fail** puts the part on an NCR) |
+| Raise an NCR over several parts | Quality → NCRs → **Raise NCR**, or tick the parts on the work order's control page → **Raise NCR** |
+| Add annotation | Work order page → select part → QA panel, or **Annotator** → choose the inspection record → click the defect → Save |
 | Buy off a first piece | Home red banner → **Start check** → review captures → **Sign off & pass** (or Fail / Waive) |
 | Accept lot | Complete sampling → Record results → System calculates |
 
@@ -459,7 +480,7 @@ owns calibration.
 - Verify work order assignment
 - Part may be at different step
 
-### Quality report won't submit
+### Inspection record won't submit
 
 - Check required fields
 - Ensure parts are selected
@@ -470,8 +491,8 @@ owns calibration.
 - **Void** the capture with a reason, and capture it again. A held part can be
   started for that re-capture. See [Voiding a
   completion](../workflows/dwi/running.md#voiding-a-completion).
-- A FAIL that should have passed: void it and re-inspect. The disposition it
-  opened is then closed as **Not a nonconformance** by someone other than you —
+- A FAIL that should have passed: void it and re-inspect. The part's
+  disposition on its NCR is then closed as **Not a nonconformance** by someone other than you —
   see [Dispositions](../workflows/quality/dispositions.md#when-the-finding-was-wrong-not-a-nonconformance).
 - A first piece passed in error: **Void pass**, and the run holds until it is
   re-inspected.
@@ -481,7 +502,8 @@ Right](../workflows/fixing-mistakes.md#quality).
 
 ## Related Documentation
 
-- [Quality Reports](../workflows/quality/quality-reports.md)
+- [Inspection Records](../workflows/quality/quality-reports.md)
+- [NCRs](../workflows/quality/ncrs.md)
 - [Recording Measurements](../workflows/tracking/measurements.md)
 - [Sampling Rules](../workflows/quality/sampling.md)
 - [Creating Annotations](../3d-models/annotations.md)

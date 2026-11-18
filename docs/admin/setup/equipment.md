@@ -233,7 +233,7 @@ the most recent record.
     That field is not bookkeeping. A gauge found **out** of tolerance means
     everything it measured since its last good calibration is suspect, and the
     record's **exposure list** is what turns that into a list to assess: the
-    quality reports it was used on, and the visits where an operator picked it for
+    inspection records it was used on, and the visits where an operator picked it for
     a reading in the work instructions. Recording a pass because the gauge passed *after* adjustment
     destroys the only evidence that there was anything to go back for.
 

@@ -85,8 +85,8 @@ once, Low half.
 
 ## Creating Annotations
 
-An annotation has to belong to a **quality report**: the annotator asks you to
-*select a report to annotate* before you can place a point.
+An annotation has to belong to an **inspection record**: the annotator asks you
+to *select a report to annotate* before you can place a point.
 
 ### Where
 
@@ -100,7 +100,7 @@ An annotation has to belong to a **quality report**: the annotator asks you to
 
 From the work order page:
 
-1. Choose the quality report
+1. Choose the inspection record
 2. Click the defect location on the 3D model
 3. Click the marker and fill in **Error Type**, **Severity Level** and **Notes**
 4. **Save New**
@@ -116,7 +116,7 @@ See [Annotations](../3d-models/annotations.md) for the full procedure.
 
 !!! note "No photo on an annotation"
     An annotation carries no image. Photograph the defect with a **Photo**
-    capture on the inspection substep, or attach it to the quality report.
+    capture on the inspection substep, or attach it to the inspection record.
 
 ## Analyzing Heat Maps
 

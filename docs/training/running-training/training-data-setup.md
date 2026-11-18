@@ -38,7 +38,7 @@ All demo accounts use password: `demo123`
 | **Orders** | ORD-2024-0042 (in progress), ORD-2024-0038 (completed), ORD-2024-0048 (pending) |
 | **Parts** | INJ-0042-001 through INJ-0042-024 (various statuses) |
 | **Work Orders** | WO-2024-0042-A, WO-2024-0038-A, WO-2024-0048-A, plus WO-QA-INSPECT-01 to -06 and WO-QA-MANAGE-01 (the QA exhibits) |
-| **Quality Reports** | QR-0042-001-FT, QR-0038-003-NI — both are Flow Calibration reports |
+| **Inspection Records** | QR-0042-001-FT, QR-0038-003-NI — both are Flow Calibration records |
 | **Dispositions** | The QA Inspector exhibits' rework on INJ-QA-INSPECT-013, plus the history the quality seeder writes |
 | **CAPA** | CAPA-2024-003 (nozzle defect investigation) |
 | **Equipment** | Flow Test Stand #1, #2, Torque Wrench TW-25 (overdue calibration), Micrometer MIC-1 (overdue; Body OD's default, so the floor can't use it) and Micrometer MIC-3 (in calibration; Body OD's backup) |
@@ -115,7 +115,7 @@ The command creates:
 4. **Processes** - Manufacturing workflows with steps
 5. **Orders & Work Orders** - In various states
 6. **Parts** - Distributed across workflow steps
-7. **Quality Reports** - Sample NCRs with dispositions
+7. **Inspection Records and NCRs** - Sample failed inspections, their NCRs and dispositions
 8. **CAPA** - Active investigation with tasks
 9. **Documents** - Sample work instructions
 10. **Equipment** - With calibration records (including overdue)
@@ -186,8 +186,9 @@ TRAIN-ORD-001).
 
 #### Scenario: Quarantined Parts
 
-1. Create quality report for a part
-2. Set its status to FAIL: the part is quarantined and a disposition opens
+1. Record an inspection for a part (**Quality** > **Inspection Records**)
+2. Set its status to **Fail**: the part is quarantined and goes on an NCR, with
+   a disposition
 3. Part available for disposition practice
 
 #### Scenario: CAPA Investigation
@@ -216,7 +217,7 @@ TRAIN-ORD-001).
 **Minimum data needed:**
 - [ ] Parts at inspection steps
 - [ ] Measurement definitions with specs
-- [ ] Quality report examples
+- [ ] Inspection record examples
 
 **Exercise support:** WO-QA-INSPECT-01 to -06 and WO-QA-MANAGE-01 — see the
 [shop day](../shop-day.md) and the [QA Inspector track](../tracks/qa-inspector.md).
@@ -230,7 +231,7 @@ TRAIN-ORD-001).
 
 **Exercise support:**
 - CAPA in various states (one open, one pending verification)
-- Quality reports needing disposition decision
+- NCRs with parts awaiting a decision
 
 ### Production Manager Training
 
@@ -326,7 +327,8 @@ with tenant_context(t.id):
     print(f'Users: {User.objects.filter(tenant=t).count()}')
     print(f'Orders: {Orders.objects.count()}')
     print(f'Parts: {Parts.objects.count()}')
-    print(f'Quality Reports: {QualityReports.objects.count()}')
+    print(f'Inspection records: {QualityReports.objects.count()}')
+    print(f'NCRs: {NCR.objects.count()}')
     print(f'CAPAs: {CAPA.objects.count()}')
 "
 ```
@@ -337,7 +339,8 @@ with tenant_context(t.id):
 |-------|-------------|----------|
 | Orders exist | Tracker | See order cards |
 | Parts distributed | Order detail | Parts at various steps |
-| Quality reports | Quality > Quality Reports | Sample NCRs visible |
+| Inspection records | Quality > Inspection Records | Sample records visible, failed ones among them |
+| NCRs | Quality > NCRs | Sample NCRs visible |
 | CAPA active | Quality > CAPAs | At least one open |
 | Equipment | Data Management > Equipment | Items with calibration |
 | SPC data | Analytics > **SPC** (on the FPY Trend card) | Chart displays with points |
@@ -364,7 +367,7 @@ including the instance's whole audit log, so only on a training instance.
 ### Option B: Reset Specific Records
 
 There isn't one. Exercises write evidence, and evidence can't be put back: a recorded
-quality report is final, a closed CAPA can't be edited or reopened by hand, and a
+inspection record is final, a closed CAPA can't be edited or reopened by hand, and a
 part with an open disposition changes status only through it. Regenerate (Option A)
 instead.
 

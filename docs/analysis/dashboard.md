@@ -10,7 +10,7 @@ is the Quality dashboard.
 |-----------|-------|-------|
 | **Analytics** | `/analysis` | Quality KPIs, FPY trend, what needs attention, top defects, downtime. Headed *Quality Dashboard* |
 | **Quality dashboard** | `/quality` | **CAPAs** — counts, quick actions, approvals, your tasks |
-| **NCR Analysis** | `/quality/ncrs` | NCR trend, aging, disposition breakdown |
+| **NCR Analysis** | `/quality/ncr-analysis` | NCRs opened and closed, aging, disposition breakdown. Not in the sidebar: reached from Analytics, the Scrap and Rework Rate cards, and Home's NCR aging card. The NCRs themselves are listed at **Quality** > **NCRs** (`/quality/ncrs`) |
 | **Defect Analysis** | `/quality/defects` | Defects by type, process, part — with filters and CSV export. See [Defect Analysis](defects.md) |
 | **SPC Charts** | `/spc` | Control charts, capability indices. See [SPC](spc.md) |
 | **Tracker** | `/tracker` | Order progress |
@@ -56,8 +56,8 @@ and Downtime; the other cards are current counts.
     There is no part type, process, customer or error type filter here, no
     custom date range, nothing to click through from a chart, and no export.
     To see the records behind a number, open the page that owns them: [Defect
-    Analysis](defects.md), [Quality Reports](../workflows/quality/quality-reports.md),
-    or [SPC](spc.md). For files, see [Exporting Data](exporting.md).
+    Analysis](defects.md), [NCRs](../workflows/quality/ncrs.md), [Inspection
+    Records](../workflows/quality/quality-reports.md), or [SPC](spc.md). For files, see [Exporting Data](exporting.md).
 
 ## Quality dashboard (`/quality`)
 
@@ -77,20 +77,25 @@ Below: **Quick Actions** (*View All CAPAs*, *Create New CAPA*), the items
     Yield, scrap and defect charts are on **Analytics**. The *In quarantine*
     count is on **Home**.
 
-## NCR Analysis (`/quality/ncrs`)
+## NCR Analysis (`/quality/ncr-analysis`)
 
 Headed *NCR & Disposition Analysis*, with the same **30 / 60 / 90 day** toggle.
 Cards for **Total NCRs**, **Open NCRs**, **Avg Age** and **Closure Rate**; then
-the **NCR Trend** (created against closed), the **Disposition Breakdown** —
-rework, repair, scrap, use as is, return to supplier, not a nonconformance — the
-**NCR Aging** buckets and **Summary Statistics**. **Open NCRs** is the number
-open now (*Currently unresolved*), whatever the window.
+the **NCR Trend** (NCRs opened against NCRs closed), the **Disposition
+Breakdown** — rework, repair, scrap, use as is, return to supplier, not a
+nonconformance — the **NCR Aging** buckets and **Summary Statistics**. They all
+count [NCRs](../workflows/quality/ncrs.md): a failed load over ten parts is one
+NCR. **Open NCRs** is the number open now (*Currently unresolved*), whatever the
+window.
 
-**Awaiting a CAPA decision** lists failed reports nobody has yet decided a CAPA
-on, and **Open Dispositions** the non-conforming parts still being dispositioned.
+**Awaiting a CAPA decision**: *"NCRs nobody has decided on yet: raise a CAPA, or
+record why one isn't needed"*, by NCR, what it covers, the finding and when it
+opened; each row opens the NCR. When there are none: *Every NCR has a CAPA
+decision*. **Open Dispositions** lists the non-conforming parts still being
+dispositioned.
 
 **Repeat defects** lists every defect recorded **three or more times on failed
-reports** in the selected period — the classic CAPA candidate. Each row names
+inspection records** in the selected period — the classic CAPA candidate. Each row names
 the defect, the part types and steps it turned up on, and the count. See
 [Repeat Defects](defects.md#repeat-defects).
 

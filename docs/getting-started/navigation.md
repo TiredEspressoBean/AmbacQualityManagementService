@@ -72,8 +72,9 @@ Three links sit at the top with no section header:
 
 ### Quality
 - **Dashboard** - CAPA counts, your approvals and your CAPA tasks (yield and defect KPIs are on **Analytics**)
+- **NCRs** - Nonconformances: what's wrong, containment, and each part's decision
 - **CAPAs** - Corrective and Preventive Actions
-- **Quality Reports** - Non-conformance reports
+- **Inspection Records** - Pass/fail inspection results, the evidence behind an NCR
 - **Change Control** - Process change requests, orders, and notices
 - **Dispositions** - Quarantine and disposition management
 - **Training** - Training records and compliance

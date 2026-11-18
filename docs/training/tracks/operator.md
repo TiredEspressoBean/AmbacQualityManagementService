@@ -302,9 +302,9 @@ It shouldn't go on with the rest of the lot.
 part can't go to rework without a reason.
 
 3. **Send to rework**. 004 is split from its lot and goes straight to Rework, so the
-   rest of the lot isn't held up. Your reason is recorded as a failed quality report
-   under your name, and a disposition opens for QA to review. If QA had already
-   opened one on the part, your report joins theirs.
+   rest of the lot isn't held up. Your reason is recorded as a failed inspection
+   record under your name, and the part goes on an NCR with a disposition for QA
+   to review. If the part already had an open NCR, your record joins it.
 
 ---
 
@@ -335,7 +335,7 @@ Two things on your home page are yours, and neither voids anything:
   step needs approval, it reads **Undo (needs approval)**: **Send for approval** asks
   QA, and the part moves back once they approve. What you recorded stays on file
   either way; voiding it is still QA's.
-- **Something's wrong with a part.** **Flag** beside it opens a new quality report
+- **Something's wrong with a part.** **Flag** beside it opens *Record Inspection*
   with the part, the step and you as **Detected By** already filled in.
 
 ---

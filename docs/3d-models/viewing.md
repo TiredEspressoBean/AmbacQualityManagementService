@@ -88,7 +88,7 @@ its defaults.
 
 !!! note "There is no Add button"
     Annotations are created by clicking the model itself while in annotate
-    mode, and the annotation has to belong to a quality report. See
+    mode, and the annotation has to belong to an inspection record. See
     [Annotations](annotations.md).
 
 ## How annotations appear
@@ -108,7 +108,7 @@ edit button (**Edit Annotation**) for the error type, severity and notes.
 
 !!! note "No links out from the panel"
     The panel has no *View NCR*, *View Part* or *View Similar* action. Open the
-    quality report or the part from their own lists.
+    inspection record, its NCR or the part from their own lists.
 
 ## Filtering
 

@@ -180,8 +180,8 @@ the specification. There is no "near the limit" warning — only those two.
 What happens next depends on the substep:
 
 - At an **inspection point**, confirming an out-of-spec reading fails the
-  quality report, which **quarantines the part and opens a disposition by
-  itself**. You do not flag it separately
+  inspection record, which **quarantines the part and puts it on an NCR, with
+  a disposition, by itself**. You do not flag it separately
 - Anywhere else, the reading is recorded as process data — it feeds SPC — and
   nothing is quarantined. If you think the part is bad, **tell your lead** or
   quarantine it from the parts list
@@ -192,7 +192,7 @@ There is **no Flag button on a part**. Where a problem goes depends on where
 you find it:
 
 - **Working the step** — record the result on the inspection-point substep in
-  the step player. That writes the quality record for you.
+  the step player. That writes the inspection record for you.
 - **Part already past the step** — tick it in the work order's parts list and
   click **Quarantine**.
 - **A machine is down** — on Home, **Report a problem** → **Machine problem**,
@@ -348,7 +348,7 @@ These are the default groups an organisation starts with. Group permissions can 
 
 !!! note "You can do more than you might expect"
     The shared staff base is broad: an Operator **can** create orders and work
-    orders, upload documents, and raise a quality report. Whether you *should*
+    orders, upload documents, record an inspection and raise an NCR. Whether you *should*
     is your shop's procedure, not a permission.
 
     On a remanufactured core you work its teardown and rebuild steps as usual;
@@ -377,8 +377,8 @@ completion](../workflows/dwi/running.md#voiding-a-completion).
   needs approval, it reads **Undo (needs approval)**: **Send for approval** sends
   a rollback request to QA, and the part moves back once it's approved. This moves the part back; it doesn't erase what you
   recorded — that is still a void, above.
-- **Something's wrong with that part** — **Flag** beside it opens a new quality
-  report with the part, the step and you as **Detected By** filled in.
+- **Something's wrong with that part** — **Flag** beside it opens *Record
+  Inspection* with the part, the step and you as **Detected By** filled in.
 - A part moved on too soon **after someone else's step**, the **wrong part loaded
   into a cycle**, or **your clock times are wrong**: tell your shift lead. Those
   corrections are theirs.

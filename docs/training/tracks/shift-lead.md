@@ -231,7 +231,7 @@ Open `/production/shift-notes`. It isn't in the sidebar, so bookmark it.
 2. Your notes list below with their acknowledgement count: *Acknowledged 0 of 3*.
    Operators get a must-acknowledge note at clock-in and can't dismiss it unread.
 
-A note is not a quality record: a part that looked wrong goes in a quality report.
+A note is not a quality record: a part that looked wrong goes in an inspection record, or on an NCR.
 
 Then approve the shift's hours: **Scheduling** > **Operator Hours**. It shows each
 operator's on-shift, direct, rework and unallocated hours. Nobody clocks onto a job:

@@ -196,7 +196,7 @@ Answer: _______________
 
 | Signal | Action |
 |--------|--------|
-| Point beyond limits | Document on quality report, flag for investigation |
+| Point beyond limits | Document on the inspection record, flag for investigation |
 | Trend developing | Note in inspection comments, alert QA Manager |
 | Capability declining | Include in shift report |
 

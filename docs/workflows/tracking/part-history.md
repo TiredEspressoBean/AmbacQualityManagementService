@@ -18,7 +18,7 @@ The detail page is laid out as sections on a single page, not tabs:
 
 The **Activity History** section is the part's timeline: the changes to the
 part and to every record about it — step executions, measurements, material
-draws, quality reports, dispositions, overrides — newest first, 25 at a time
+draws, inspection records, dispositions, overrides — newest first, 25 at a time
 with **Show older**. Each entry carries:
 
 | Element | Shows |
@@ -55,9 +55,11 @@ the Auditor hold by default, and you must be able to open the record itself.
 There's no list of corrections across records.
 
 !!! note "Quality events also have their own sections"
-    Quality reports and dispositions have their own **Quality Reports** and
-    **Dispositions** sections on the same page; their changes appear in the
-    activity history as well.
+    Inspection records and dispositions have their own **Inspection Records**
+    and **Dispositions** sections on the same page; their changes appear in the
+    activity history as well. A disposition names the [NCR](../quality/ncrs.md)
+    it decides part of.
+
 
 !!! tip "For the whole story in one document, use the Traveler"
     Activity History is the record's **change log** — fields altered, by whom.
@@ -75,7 +77,7 @@ There's no list of corrections across records.
 ## Event Types
 
 Each entry is a change to a record about the part — a step execution, a
-measurement, a material draw, a quality report, a disposition, an override, the
+measurement, a material draw, an inspection record, a disposition, an override, the
 part itself — and shows which fields changed. A status change reads as the
 part's **Part status** field changing; a step move as its **Step** field
 changing, from one step's name to the next.
@@ -167,7 +169,7 @@ takes no filters — only `limit` and `offset` for paging. Filter on your side.
 From part history, you can navigate to:
 
 - **Order History**: All parts in the order
-- **Quality Report**: Linked NCR details
+- **Inspection records** and **Dispositions**, and through them the part's NCR
 - **CAPA**: Corrective action records
 - **Equipment Log**: Machine history
 
@@ -182,5 +184,6 @@ From part history, you can navigate to:
 ## Next Steps
 
 - [Audit Trail](../../analysis/audit-trail.md) - System-wide audit log
-- [Quality Reports](../quality/quality-reports.md) - NCR management
+- [Inspection Records](../quality/quality-reports.md) - Inspection results
+- [NCRs](../quality/ncrs.md) - Nonconformances and their parts
 - [Compliance Reports](../../compliance/reports.md) - Compliance documentation

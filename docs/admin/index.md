@@ -85,7 +85,7 @@ The **Data Management** page (`/Edit`) provides access to all data editors:
 | Equipment | Machines and tools |
 | Equipment Types | Equipment categories |
 | Error Types | Defect classifications |
-| Quality Reports | NCR management |
+| Quality Reports | Inspection records: each part's inspection result. See [Inspection Records](../workflows/quality/quality-reports.md) |
 | Documents | Document library |
 | Document Types | Document categories |
 | Sampling Rules | Quality sampling configuration |

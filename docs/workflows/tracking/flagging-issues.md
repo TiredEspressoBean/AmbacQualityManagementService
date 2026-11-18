@@ -21,8 +21,9 @@ found and where you are standing when you find it.
 | Situation | Route |
 |-----------|-------|
 | You're working the step and the substep asks for a result | Record it **in the step player** |
-| You just finished the step and then saw the problem | **Flag** beside your last finished step on Home — it opens a [quality report](../quality/quality-reports.md#creating-a-quality-report) with the part, step and you filled in |
-| The part is already past that step, or you're not the one running it | **Quarantine** it from the parts list |
+| You just finished the step and then saw the problem | **Flag** beside your last finished step on Home — it opens *Record Inspection* ([inspection record](../quality/quality-reports.md#recording-an-inspection)) with the part, step and you filled in |
+| The part is already past that step, or you're not the one running it | **Quarantine** it from the parts list, or **Raise NCR** from the same toolbar to hold it and say what's wrong |
+| Several parts share one problem | Tick them on the work order's control page and **Raise NCR**: one [NCR](../quality/ncrs.md#raising-an-ncr-by-hand) over all of them |
 | A machine or resource is down | **Report…** downtime on the work order |
 | The problem is the process or the whole lot | Raise a **disposition** or a **CAPA** — **Report…** links to both |
 | **You can't run the job at all** | Tell your lead |
@@ -33,9 +34,9 @@ If the step has an **inspection point** substep, that is where a bad result
 belongs. Record the quality status, the defects against their error types, and
 any signatures the substep asks for, then confirm.
 
-You do not raise anything separately: an inspection point's captures write a
-Quality Report as well as the substep record, so the nonconformance becomes a
-queryable quality record on its own. This is the path that keeps the finding
+You do not raise anything separately: an inspection point's captures write an
+inspection record as well as the substep record, and a Fail puts the part on an
+[NCR](../quality/ncrs.md) by itself. This is the path that keeps the finding
 attached to the work that produced it.
 
 ### Quarantining from the parts list
@@ -47,9 +48,11 @@ yourself:
 2. **Tick the parts** in the parts list
 3. Click **Quarantine** in the actions that appear
 
-The same selection also offers **Rework**, **Scrap**, and **Split selection…**.
-Quarantine holds the parts; it does not by itself say what is wrong with them,
-so follow it with a quality report or a disposition.
+The same selection also offers **Rework**, **Scrap**, **Split selection…** and
+**Raise NCR**. Quarantine holds the parts; it does not by itself say what is
+wrong with them. **Raise NCR** holds them *and* says what's wrong, with a
+decision for each part: see [Raising an NCR by
+hand](../quality/ncrs.md#raising-an-ncr-by-hand).
 
 !!! warning "Quarantine acts on the selection, not the row you clicked"
     These are bulk actions on every ticked part. Check the selection before
@@ -78,11 +81,13 @@ resolves it there.
 
     Equipment whose type has **Track downtime** turned off is not offered.
 
-### Raising a report after the fact
+### Raising it after the fact
 
 For something found later — a customer complaint, an audit finding, a problem
-noticed off the floor — create the report directly under **Quality** >
-**Quality Reports**. See [Quality Reports](../quality/quality-reports.md).
+noticed off the floor — record the inspection under **Quality** > **Inspection
+Records**, or raise the NCR directly under **Quality** > **NCRs** > **Raise
+NCR**. See [Inspection Records](../quality/quality-reports.md) and
+[NCRs](../quality/ncrs.md).
 
 ## Error Types
 
@@ -128,7 +133,9 @@ For critical issues, take immediate action:
 3. **Notify** quality manager
 4. **Document** containment actions
 
-The quality report tracks containment activities.
+Containment is recorded on the NCR, once for every part it covers. A Critical
+or Major NCR's decisions can't close until it is. See
+[NCRs: Containment](../quality/ncrs.md#containment).
 
 ## Linking Issues
 
@@ -136,8 +143,9 @@ Connect related issues:
 
 ### Link to CAPA
 
-If a CAPA is raised, the quality report links to it and the investigation is
-tracked there.
+Whether a CAPA is needed is decided on the NCR's **CAPA** card: **Raise CAPA**
+there opens one with the NCR's inspection records linked, and the
+investigation is tracked on the CAPA. See [NCRs: CAPA](../quality/ncrs.md#capa).
 
 !!! note "The two close independently"
     A linked CAPA does **not** hold the disposition open, and the disposition
@@ -182,9 +190,9 @@ Issue Flagged → Quarantine → Investigation → Disposition → Resolution
 1. **Quarantine**: the part is held. It can never ship, and work can't start
    on it at its next step. If its current step was already under way, it stays
    at that step until its disposition is decided
-2. **Investigation**: Quality reviews
+2. **Investigation**: Quality reviews the part's [NCR](../quality/ncrs.md)
 3. **Disposition**: the decision — Use As Is, Rework, Repair, Scrap or Return to
-   Supplier
+   Supplier — one per part, made from the NCR or on the part's own disposition
 4. **Resolution**: the part is processed per the decision, then the disposition
    is closed
 5. **CAPA**: corrective action, *if* the pattern warrants it — most
@@ -197,13 +205,15 @@ See [Dispositions](../quality/dispositions.md) for disposition workflow.
 
 | Permission | Allows |
 |------------|--------|
-| `add_qualityreports` | Create quality reports |
-| `view_qualityreports` | View existing reports |
-| `change_qualityreports` | Edit quality reports that are still Pending Review |
+| `add_qualityreports` | Record inspections |
+| `view_qualityreports` | View inspection records |
+| `change_qualityreports` | Edit inspection records that are still Pending Review |
+| `add_ncr` | Raise an NCR, add parts to one. Held by everyone who can flag a problem, operators included |
 
 ## Next Steps
 
-- [Quality Reports](../quality/quality-reports.md) - Full NCR management
+- [Inspection Records](../quality/quality-reports.md) - Recording inspection results
+- [NCRs](../quality/ncrs.md) - The nonconformance and its parts
 - [Quarantine](../quality/quarantine.md) - Managing held parts
 - [Dispositions](../quality/dispositions.md) - Making decisions
 - [CAPA Overview](../capa/overview.md) - Corrective actions

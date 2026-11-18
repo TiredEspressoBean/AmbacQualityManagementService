@@ -242,7 +242,7 @@ repeat.
 | **Route to alternate edge** | Send parts down a different path |
 | **Tighten sampling** | Switch to a stricter rule set |
 | **Hold / quarantine** | Stop the material |
-| **Raise CAPA / SCAR** | Opens a CAPA of the gate's configured type (a SCAR when the type is Supplier). It records the step, part and work order and links the report that tripped the gate. Superseded reports don't count toward a gate |
+| **Raise CAPA / SCAR** | Opens a CAPA of the gate's configured type (a SCAR when the type is Supplier). It records the step, part and work order and links the inspection record that tripped the gate, which also links that record's NCR and marks it **CAPA raised**. Superseded records don't count toward a gate |
 | **Require approval** | Demand an approval before continuing |
 
 A gate also sets a **minimum sample** before it can trip, so it does not fire
@@ -365,5 +365,6 @@ were changed.
 ## Next Steps
 
 - [Sampling Workflow](../../workflows/quality/sampling.md) - Using sampling
-- [Quality Reports](../../workflows/quality/quality-reports.md) - When sampling fails
+- [Inspection Records](../../workflows/quality/quality-reports.md) - When sampling fails
+- [NCRs](../../workflows/quality/ncrs.md) - The NCR a failed sample goes on
 - [SPC Charts](../../analysis/spc.md) - Statistical monitoring

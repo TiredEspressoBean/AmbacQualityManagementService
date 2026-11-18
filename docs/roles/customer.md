@@ -190,7 +190,7 @@ As a customer portal user:
 - You cannot access another customer's data — every list is filtered to orders you
   own or were invited onto
 
-!!! note "You can see quality reports on your own parts"
+!!! note "You can see inspection records on your own parts"
     Inspection records and their defects are visible to you where they sit on a part
     belonging to one of your orders. What stays internal is the investigation around
     them — CAPAs, corrective actions and NCR analysis.

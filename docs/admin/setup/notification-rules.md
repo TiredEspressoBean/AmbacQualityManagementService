@@ -64,7 +64,7 @@ A tenant is seeded in two passes when it is created.
 
 | Event | Routes to |
 |-------|-----------|
-| NCR opened | QA Manager |
+| NCR opened — once per NCR, however many parts it covers | QA Manager |
 | Step failure | QA Manager and QA Inspector |
 | CAPA assigned or reassigned | The assignee |
 | CAPA ready for effectiveness verification | QA Manager |
@@ -73,6 +73,11 @@ A tenant is seeded in two passes when it is created.
 | Training expiring soon | QA Manager, Production Manager, and the operator |
 | Training expired | QA Manager, Production Manager, and the operator |
 | Shift note posted | The note's audience |
+
+The *NCR opened* notification reads *[MAJOR] NCR-2026-000001 on &lt;part&gt;*,
+where the part is a serial, *N parts* or *Lot X*. A condition can route on
+`payload.severity` (for example `== "CRITICAL"`). A part that fails again and
+joins its open NCR sends nothing new. See [NCRs](../../workflows/quality/ncrs.md#notifications).
 
 **A start refused by a step's gate** gets a rule per gate, each named *Start
 refused (&lt;gate&gt;) - call &lt;groups&gt;* and conditional on that gate. A machine

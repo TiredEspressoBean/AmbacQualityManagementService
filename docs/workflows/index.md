@@ -89,11 +89,12 @@ Managing production assignments.
 - [Work Order Progress](work-orders/progress.md) - Tracking completion
 - [First Piece Inspection](work-orders/fpi.md) - FPI workflow
 
-### [Quality Control](quality/quality-reports.md)
+### [Quality Control](quality/ncrs.md)
 Handling non-conformances and dispositions.
 
-- [Quality Reports](quality/quality-reports.md) - Creating NCRs
-- [Dispositions](quality/dispositions.md) - Making decisions
+- [Inspection Records](quality/quality-reports.md) - Recording inspection results
+- [NCRs](quality/ncrs.md) - The nonconformance and its parts
+- [Dispositions](quality/dispositions.md) - Each part's decision
 - [Quarantine](quality/quarantine.md) - Managing held parts
 - [Sampling Rules](quality/sampling.md) - Inspection sampling
 
@@ -132,7 +133,7 @@ the page each is made on.
 |-----------------|---------------|
 | **Operator** | [Running Work Instructions](dwi/running.md), [Moving Parts](tracking/moving-parts.md) |
 | **Shift Lead** | [FPI](work-orders/fpi.md), [Shift Notes](tracking/shift-notes.md), [Dispositions](quality/dispositions.md) |
-| **QA Inspector** | [Quality Reports](quality/quality-reports.md), [Dispositions](quality/dispositions.md) |
+| **QA Inspector** | [Inspection Records](quality/quality-reports.md), [NCRs](quality/ncrs.md), [Dispositions](quality/dispositions.md) |
 | **QA Manager** | [CAPA Overview](capa/overview.md), [Verification & Closure](capa/verification.md) |
 | **Planner** | [Schedule (Gantt)](scheduling/gantt.md), [Releasing Work](scheduling/releasing.md), [Capacity](scheduling/capacity.md) |
 | **Production Manager** | [Work Order Basics](work-orders/basics.md), [Order Status](orders/order-status.md) |

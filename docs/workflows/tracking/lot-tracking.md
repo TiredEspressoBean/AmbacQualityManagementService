@@ -284,13 +284,15 @@ When SPC charts show out-of-control signals:
 - Material variation is a common root cause
 - Lot-level analysis helps identify supplier issues
 
-### Quality Reports
+### Inspection records and NCRs
 
-When creating quality reports:
+When recording inspections:
 
 - Link to material lot if material-related
 - Supports supplier quality tracking
-- Enables lot-based containment actions
+
+A rejected lot opens an [NCR](../quality/ncrs.md) for the lot, and its
+containment is recorded there, once.
 
 ### CAPA
 
@@ -320,6 +322,7 @@ Material lots are available via the REST API:
 
 ## Related Topics
 
-- [Quality Reports](../quality/quality-reports.md) - Linking lots to NCRs
+- [NCRs](../quality/ncrs.md) - A rejected lot's NCR
+- [Inspection Records](../quality/quality-reports.md) - Inspection results
 - [Quarantine](../quality/quarantine.md) - Managing quarantined lots
 - [SPC Analysis](../../analysis/spc.md) - Material-related variations

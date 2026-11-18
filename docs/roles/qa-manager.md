@@ -28,11 +28,12 @@ As a QA Manager, you:
 | **Home** | Home | Your role's landing page — what needs you today |
 | **Quality Dashboard** | Quality > Dashboard | CAPA counts, your approvals, your CAPA tasks |
 | **CAPAs** | Quality > CAPAs | Corrective actions |
-| **Quality Reports** | Quality > Quality Reports | All NCRs |
+| **NCRs** | Quality > NCRs | All NCRs: what's wrong, containment, each part's decision, the CAPA decision |
+| **Inspection Records** | Quality > Inspection Records | Inspection results, the evidence behind each NCR |
 | **Inbox** | Personal > Inbox | Pending approvals and CAPA tasks |
 | **Approvals** | Approvals > Overview | All pending approval requests |
 | **Analytics** | Analytics | Quality KPIs — yield, scrap, rework — and top defects |
-| **NCR Analysis** | From Analytics or Home, or `/quality/ncrs` | NCR trend, aging, disposition breakdown |
+| **NCR Analysis** | From Analytics or Home, or `/quality/ncr-analysis` | NCR trend, aging, disposition breakdown, NCRs awaiting a CAPA decision |
 | **Dispositions** | Quality > Dispositions | Quarantine management |
 
 ## Daily Workflow
@@ -59,12 +60,15 @@ Two things that look like they should be in this queue and are not:
 — and **CAPA closure**, which follows from verification and has no approval step
 of its own.
 
-### 3. Review Quality Reports
+### 3. Review NCRs
 
-1. Check new quality reports
-2. Review severity assignments
-3. Ensure appropriate disposition
-4. Identify CAPA candidates
+1. Check new NCRs on **Quality** > **NCRs**
+2. Review severity assignments, and that Critical and Major NCRs have their
+   containment recorded
+3. Ensure appropriate disposition for each part
+4. Record each NCR's CAPA decision: **Raise CAPA**, or **No CAPA needed** /
+   **Deferred** with a reason. NCR Analysis lists those **Awaiting a CAPA
+   decision**. See [NCRs: CAPA](../workflows/quality/ncrs.md#capa)
 
 ### 4. Manage CAPAs
 
@@ -86,8 +90,11 @@ authorized act. Your involvement takes one of two forms:
   decision**. You supply your email, signature and password on their screen.
   The record carries **your** name as the authority, with them as the caller.
 
-Before either, review the originating NCR, the justification, and the affected
-parts.
+Before either, review the disposition's NCR (what's wrong, its severity and
+containment, and its other parts under **Also on NCR-…**) and the
+justification. To decide every part on an NCR together, use **Decide all
+waiting** (or **Decide N chosen**) on the NCR's page. See
+[NCRs](../workflows/quality/ncrs.md#parts-and-decisions).
 
 ### The three decisions
 
@@ -138,7 +145,7 @@ bypass](../workflows/tracking/moving-parts.md#requesting-a-bypass).
 
 For significant issues:
 
-1. Click **New CAPAs** or create from NCR
+1. Click **New CAPAs**, or **Raise CAPA** on an NCR's CAPA card
 2. Fill in:
    - Problem statement
    - **Severity** — Critical, Major or Minor
@@ -375,7 +382,7 @@ Templates](../admin/setup/approval-templates.md).
 
 | Task | Location |
 |------|----------|
-| Record a disposition decision | Quality > Dispositions → open it → set the type |
+| Record a disposition decision | Quality > Dispositions → open it → set the type · or the NCR's page → **Decide all waiting** |
 | Co-sign someone else's | On *their* screen — they press Update Disposition, you supply email, signature and password |
 | Create CAPA | Quality > CAPAs → **New CAPAs** |
 | Close CAPA | CAPA detail → Verification → **Effective - Confirmed** |
@@ -398,6 +405,7 @@ The full list is [Putting a Mistake Right](../workflows/fixing-mistakes.md).
 ## Related Documentation
 
 - [CAPA Overview](../workflows/capa/overview.md)
+- [NCRs](../workflows/quality/ncrs.md)
 - [Dispositions](../workflows/quality/dispositions.md)
 - [Document Approval](../workflows/documents/approval.md)
 - [Dashboard](../analysis/dashboard.md)

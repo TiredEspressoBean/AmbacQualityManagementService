@@ -63,7 +63,8 @@ Each row ends with a link that opens the part.
 
 **Export** downloads CSV. With nothing ticked it writes **every** record
 matching the filters and period, not only the 100 the table shows — Part, Part
-Type, Process, Defect Types, Date, Inspector, Order, Work Order and Disposition.
+Type, Process, Defect Types, Date, Inspector, Order, Work Order, NCR and
+Disposition.
 It needs `export_data`, is logged as a bulk export, and is refused past 50,000
 rows: *Filter the list first, then export.* With rows ticked, the button reads
 **Export selected** and writes just those, with the same columns.
@@ -72,7 +73,7 @@ rows: *Filter the list first, then export.* With rows ticked, the button reads
 problem statement is drafted from the count, the period and the active filters —
 in the form *&lt;M&gt; failed inspections in the last &lt;N&gt; days (defect
 type &lt;type&gt;, part type &lt;type&gt;, process &lt;process&gt;).*, naming only
-the filters that are set — and the failed reports are linked: the ticked rows, or else the
+the filters that are set — and the failed inspection records are linked: the ticked rows, or else the
 matching ones, up to 50. When more match than are linked, the statement says
 the rest are on Defect Records. Edit both before saving. The button shows only
 to holders of `initiate_capa`.
@@ -145,8 +146,9 @@ delivery, and open supplier corrective action requests (SCARs). See
 
 ## Repeat Defects
 
-The **Repeat defects** card on **NCR Analysis** (`/quality/ncrs`) lists every
-defect recorded **three or more times on failed reports** in the page's period,
+The **Repeat defects** card on **NCR Analysis** (`/quality/ncr-analysis`) lists
+every defect recorded **three or more times on failed inspection records** in
+the page's period,
 most frequent first, up to ten. Each row shows:
 
 - the defect
@@ -177,7 +179,7 @@ the same page, already narrowed to match; each row's link opens its part.
 
 ## Other exports
 
-The quality reports list (**Quality** > **Quality Reports**) exports **CSV** or
+The inspection records list (**Quality** > **Inspection Records**) exports **CSV** or
 **Excel**, the latter with reference sheets and validation. See [Exporting
 Data](exporting.md).
 

@@ -27,7 +27,7 @@ SPC data connects to several pages in uqmes:
 Sidebar (standalone links, no section header)
     ├── Documents (/documents)
     ├── Analytics (/analysis)
-    │       └── Links to: SPC, NCR Analysis, Defect Analysis, CAPAs, Quality Reports
+    │       └── Links to: SPC, NCR Analysis (/quality/ncr-analysis), Defect Analysis, CAPAs, Inspection Records
     └── AI Chat (/ai-chat)
 
     From Analytics page:
@@ -36,8 +36,9 @@ Sidebar (standalone links, no section header)
 
 Quality (sidebar)
     ├── Dashboard (/quality)
+    ├── NCRs (/quality/ncrs)
     ├── CAPAs (/quality/capas)
-    ├── Quality Reports (/editor/quality-reports)
+    ├── Inspection Records (/editor/quality-reports)
     ├── Change Control (/quality/change-control)
     ├── Dispositions (/production/dispositions)
     ├── Training (/quality/training)
@@ -442,6 +443,7 @@ Monthly SPC summary for leadership:
 | [Defect Analysis](defects.md) | Defect Analysis | `/quality/defects` |
 | [CAPA Overview](../workflows/capa/overview.md) | CAPA List | `/quality/capas` |
 | [Dispositions](../workflows/quality/dispositions.md) | Dispositions | `/production/dispositions` |
-| [Quality Reports](../workflows/quality/quality-reports.md) | Quality Reports | `/editor/quality-reports` |
+| [NCRs](../workflows/quality/ncrs.md) | NCRs | `/quality/ncrs` |
+| [Inspection Records](../workflows/quality/quality-reports.md) | Inspection Records | `/editor/quality-reports` |
 | [Heat Maps](../3d-models/heatmap-viz.md) | Heat Map Viewer | `/heatmap` |
 | [Calibrations](../admin/setup/equipment.md) | Calibration Dashboard | `/quality/calibrations` |

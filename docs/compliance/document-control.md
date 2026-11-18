@@ -35,8 +35,9 @@ Secret** — plus per-document links and customer access control.
     from the floor.
 
     **Secret** is the only tier that restricts within staff — Tenant Admin and
-    Document Controller. Note a QA Manager can classify a document Secret and
-    then be unable to read it back.
+    Document Controller. Nobody can set a level they couldn't then view (*"You
+    can't classify a document above what you can view."*), so only they can
+    mark a document Secret.
 
     If a control plan or a customer drawing must not be visible to the floor,
     Confidential will not do it.

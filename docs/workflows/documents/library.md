@@ -239,7 +239,11 @@ Documents can be linked to:
 - **Processes**: Process procedures
 - **Steps**: Step work instructions
 - **CAPAs**: Investigation evidence
-- **Quality Reports**: NCR attachments
+- **Inspection Records**: inspection evidence.
+  An NCR's containment evidence is attached on the NCR itself, in its
+  **Containment** card (there is no NCR link type); see
+  [NCRs](../quality/ncrs.md#containment)
+
 
 ### Creating Links
 

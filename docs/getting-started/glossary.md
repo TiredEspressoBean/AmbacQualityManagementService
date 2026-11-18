@@ -76,7 +76,8 @@ operators qualified for the step.
 ### Disposition
 The recorded decision about a non-conforming part, and **who authorised it**.
 There are five: **Rework**, **Repair**, **Scrap**, **Use As Is** and **Return to
-Supplier**.
+Supplier**. Each disposition decides one part (or a lot quantity) under an
+**NCR**; an NCR over several parts has one disposition per part.
 
 Rework and Repair are not the same thing and auditors check the difference:
 rework restores full conformance, repair leaves a known accepted deviation.
@@ -126,6 +127,12 @@ A visual representation showing defect frequency overlaid on a 3D model or part 
 
 ## I
 
+### Inspection Record
+The result of inspecting one part: **Pass**, **Fail**, **Pending Review** or
+**Needs repair**, with the defects found. It is the evidence; a **Fail** puts
+the part on an **NCR**. See [Inspection
+Records](../workflows/quality/quality-reports.md).
+
 ### ITAR (International Traffic in Arms Regulations)
 US export control regulations for defense articles. ITAR-controlled parts require special handling and US Person verification.
 
@@ -160,7 +167,11 @@ applicable. Substeps can no longer be marked N/A; these records still read and
 count as they did.
 
 ### NCR (Non-Conformance Report)
-See **Quality Report**. A document recording that a part or material doesn't meet specifications.
+A numbered record (e.g. NCR-2026-000001) of one nonconformance: what's wrong,
+its severity, where it was found, its containment and its CAPA decision. It
+covers one or many parts, each with its own **disposition**, and closes when
+every disposition under it is closed. Every failed inspection opens one, or
+joins the part's open NCR. See [NCRs](../workflows/quality/ncrs.md).
 
 ## O
 
@@ -203,9 +214,6 @@ The department or function responsible for ensuring products meet quality standa
 
 ### QMS (Quality Management System)
 The organizational structure, procedures, and resources for managing quality. uqmes is a QMS software.
-
-### Quality Report
-A record documenting a non-conformance or quality issue with a part. Requires disposition and may trigger CAPA.
 
 ### Quarantine
 A part status indicating the part is held for quality review. A quarantined part

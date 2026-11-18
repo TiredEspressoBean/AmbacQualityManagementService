@@ -134,7 +134,7 @@ Measurements are recorded as part of the work at a step rather than from a
 standalone button on the part:
 
 - During **Incoming Inspection**, via **Record Measurements** on the lot
-- As part of a **Quality Report**, which captures measurement results against
+- As part of an **Inspection Record**, which captures measurement results against
   each measurement definition
 - Inside the operator step runtime, where a step defines measurement substeps
 
@@ -145,17 +145,20 @@ See [Recording Measurements](../workflows/tracking/measurements.md).
 
 If a part has a problem:
 
-1. Go to **Quality** > **Quality Reports**
-2. Create a quality report against the part
-3. Choose the error type, describe the issue, and set the result to **FAIL**
-4. The part enters quarantine, and a disposition is opened for it
+1. Go to **Quality** > **Inspection Records** and press **New** (*Record
+   Inspection*)
+2. Pick the part, describe the issue, and set **Status** to **Fail**
+3. Save. The part enters quarantine and goes on an [NCR](../workflows/quality/ncrs.md),
+   with a disposition opened for it
 
 !!! note "Pending, then Fail, works the same"
-    The quarantine and the disposition happen when the report reaches FAIL,
-    whether it was created as FAIL or saved as Pending and failed later. See
-    [Quarantine](../workflows/quality/quarantine.md).
+    The quarantine, the NCR and the disposition happen when the record reaches
+    Fail, whether it was created as Fail or saved as Pending and failed later.
+    See [Quarantine](../workflows/quality/quarantine.md).
 
-Quality issues are tracked separately and require disposition (Use As Is, Rework, Scrap, etc.).
+To put several parts on one NCR at once, raise it from **Quality** > **NCRs** >
+**Raise NCR**. Each part on the NCR gets its own decision (Use As Is, Rework,
+Scrap, etc.).
 
 ## Step 7: Complete the Order
 
@@ -186,7 +189,8 @@ Congratulations! You've completed the basic workflow:
 
 Explore more features:
 
-- **[Quality Reports](../workflows/quality/quality-reports.md)** - Learn NCR management
+- **[NCRs](../workflows/quality/ncrs.md)** - Learn NCR management
+- **[Inspection Records](../workflows/quality/quality-reports.md)** - Recording inspection results
 - **[Tracker Overview](../workflows/tracking/tracker-overview.md)** - Advanced tracking features
 - **[Documents](../workflows/documents/library.md)** - Attach documents to orders
 - **[Glossary](glossary.md)** - Reference for all terms

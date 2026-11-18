@@ -55,7 +55,7 @@ step**.
 ## Quality data on individual parts
 
 Quality data is captured **in the step player**, not from a button on the part.
-A substep marked as an inspection point writes a Quality Report alongside its
+A substep marked as an inspection point writes an inspection record alongside its
 completion record, so recording the result at the step is what creates the
 quality record.
 
@@ -75,8 +75,8 @@ If a step requires measurements, you record them as you run the step:
 2. Work through the substeps, entering each measurement where it is asked for
 3. Complete the step — the values are saved with the completion record
 
-You do not fill in a Quality Report to enter measurements. The quality report
-is produced *by* an inspection-point substep when you record its result.
+You do not fill in an inspection record to enter measurements. The inspection
+record is produced *by* an inspection-point substep when you record its result.
 
 ### Decision Points
 
@@ -111,12 +111,16 @@ Each transition records:
 
 If an issue is found:
 
-1. Create a Quality Report against the part with its result set to **FAIL**,
-   or change an existing report to FAIL. Either way the part is quarantined
-   and a disposition opens
-2. Add each defect to the report, with its own error type, count, location and
-   severity. Error type is **not** a field on the report itself
+1. **Record Inspection** against the part with its status set to **Fail**,
+   or change a Pending record to Fail. Either way the part is quarantined
+   and goes on an [NCR](../quality/ncrs.md), with a disposition for its
+   decision
+2. Add each defect to the record, with its own error type, count, location and
+   severity. Error type is **not** a field on the record itself
 3. The part enters quarantine
+
+To put several parts on one NCR at once, **Raise NCR** instead: see [Raising
+an NCR by hand](../quality/ncrs.md#raising-an-ncr-by-hand).
 
 !!! important "A quarantined part stops where it is"
     A quarantined part can never leave the building. Work can't start on it

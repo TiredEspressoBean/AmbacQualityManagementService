@@ -1,8 +1,14 @@
 # Dispositions
 
-A **disposition** is the recorded decision about what happens to nonconforming
-product. It is the controlled act at the centre of ISO 9001 **8.7** and AS9100 —
-the record has to say what was decided, on what authority, and why.
+A **disposition** is the recorded decision about what happens to one
+nonconforming part (or a quantity of a lot). It is the controlled act at the
+centre of ISO 9001 **8.7** and AS9100 — the record has to say what was decided,
+on what authority, and why.
+
+Every disposition sits under an [NCR](ncrs.md), which says what's wrong, how
+serious it is and how it was contained, once for all the parts it covers. The
+disposition is that part's decision. An NCR over five parts has five
+dispositions, decided together from the NCR or one at a time.
 
 **Quality** > **Dispositions**
 
@@ -12,15 +18,15 @@ Dispositions also surface where the nonconformance was found: the work order
 
 ## Where a disposition comes from
 
-A failure opens one by itself: a reading out of spec, an inspector's FAIL, a
-report edited to FAIL, a failed first piece. Its description says what failed,
-for example *"Failed Nozzle Inspection: Hole blockage"*, or the report's own
-description when it has one.
+A failure opens one by itself, under its NCR: a reading out of spec, an
+inspector's FAIL, a record edited to FAIL, a failed first piece. See [How an NCR
+opens](ncrs.md#how-an-ncr-opens). A part that fails again while its decision is
+still open joins its NCR and keeps that disposition.
 
-Another failure at the same step on the same visit joins the disposition
-already open there, but only while nothing has been decided on it (no type
-chosen). Once it's decided, a new failure opens its own disposition. A second
-failed check on a load joins the load's open disposition.
+The disposition's page shows its NCR: *Decides part of NCR-…*, the NCR's
+severity and what's wrong, and whether containment is recorded (*"What's wrong,
+its severity and containment are edited on the NCR."*). **Also on NCR-…** lists
+the NCR's other parts with their decisions.
 
 It opens **unassigned**. Nobody is picked for it; it waits on the QA home page,
 under *Unassigned dispositions*, until someone presses **Take it** (which needs
@@ -153,46 +159,24 @@ Either way the record stores **who authorized it and when** — that pair is wha
     an inspector closes it once that is cleared, even one who needed a
     co-signature for the decision.
 
-## Severity
+## Severity and containment are the NCR's
 
-| Severity | Meaning |
-|----------|---------|
-| **Critical** | Safety or regulatory impact; needs special handling |
-| **Major** | Affects function, correctable (the default) |
-| **Minor** | Cosmetic, no functional impact |
+**Severity** (Critical, Major, Minor) and **containment** belong to the NCR, not
+to each disposition: they're recorded once for every part it covers. See
+[NCRs: What's wrong](ncrs.md#whats-wrong) and [Containment](ncrs.md#containment).
+A lead or QA records them there.
 
-After the decision, severity can be **raised but not lowered** — it decides what
-the close demands, so lowering it would dodge the containment check. The field
-reads *"Decided at this severity: it can be raised, not lowered."* and offers only
-the current severity and the ones above it. An edit that lowers it anyway is
-refused (*"…can't change after the decision (severity may only
-be raised)."*).
+Containment comes before the decision: the immediate step taken to stop
+nonconforming product escaping (parts pulled to quarantine, a machine stopped, a
+lot put on hold). It's time-stamped with who did it, and kept separate from the
+decision, because containment is urgent and the decision often is not. Attach
+the evidence (a photo of the segregated bin, a signed hold tag) to the NCR's
+containment, rather than describing it.
 
 !!! note "Annotation severity is a different scale"
     A marker on the part's 3D model carries its own severity, Low to Critical.
-    It rates that one finding where it sits on the part. The disposition's
-    severity rates the nonconformance the findings add up to, so the two
-    needn't match.
-
-## Containment comes first
-
-Before the disposition decision, record the **containment action** — the
-immediate step taken to stop nonconforming product escaping: parts pulled to
-quarantine, a machine stopped, a lot put on hold.
-
-Containment is time-stamped with who completed it. It is deliberately separate
-from the decision, because containment is urgent and the decision often is not.
-An auditor reading the record wants to see the gap between *found* and
-*contained* be short, regardless of how long the disposition took.
-
-### Attaching evidence
-
-Containment usually has evidence behind it — a photo of the segregated bin, a
-signed hold tag, the tooling report that prompted the stop. Documents can be
-attached to the disposition, under **Containment Action** on its edit page.
-
-Attach the evidence rather than describing it. "Parts moved to quarantine cage"
-is an assertion; the same sentence with a photo and a timestamp is a record.
+    It rates that one finding where it sits on the part. The NCR's severity rates
+    the nonconformance the findings add up to, so the two needn't match.
 
 ## States
 
@@ -279,18 +263,20 @@ outstanding against it. If blockers remain, the close is rejected and names
 everything in the way in one message. Clear those first.
 
 !!! info "Some defects must be marked on the 3D model"
-    When a report carries a defect type that needs a 3D annotation, the
-    disposition shows **3D Annotations Required** and can't close until the
-    defect is marked. **Go to Annotator** opens the annotator with that report
-    already selected. Every annotation belongs to a quality report, so each
+    When an inspection record carries a defect type that needs a 3D annotation,
+    the disposition shows **3D Annotations Required** and can't close until the
+    defect is marked. **Go to Annotator** opens the annotator with that record
+    already selected. Every annotation belongs to an inspection record, so each
     marker on the model traces back to the inspection that found it.
 
 !!! warning "Critical and Major need containment recorded first"
-    A disposition of **Critical** or **Major** severity cannot be closed until a
-    **containment action** is recorded on it. That is the commonest blocker and
-    the one most often missed, because containment is captured in a different
-    place from the decision — see [Containment comes first](#containment-comes-first)
-    above.
+    No disposition under a **Critical** or **Major** NCR can be closed until the
+    NCR's **containment** is recorded: *"Cannot complete disposition:
+    Containment action required on NCR-… before closing a decision on a
+    CRITICAL/MAJOR nonconformance"*. That is the commonest blocker, because
+    containment is recorded on the NCR, not on the disposition.
+
+When every disposition under an NCR is closed, the NCR closes too.
 
 ## Permissions
 
@@ -319,6 +305,7 @@ person who closes it needn't be either.
 
 ## Next Steps
 
+- [NCRs](ncrs.md) - The nonconformance each disposition decides part of
 - [Quarantine](quarantine.md) - Managing held parts
-- [Quality Reports](quality-reports.md) - Creating NCRs
+- [Inspection Records](quality-reports.md) - The evidence behind an NCR
 - [CAPA Overview](../capa/overview.md) - When a pattern needs root-cause work

@@ -10,8 +10,8 @@ operator works a step, because you will review what they record. See [Running
 Work Instructions](../../workflows/dwi/running.md).
 
 !!! warning "On a training instance only"
-    Every exercise writes real records: a FAIL quarantines a part and opens a
-    disposition, a sign-off releases a run, and signatures can't be undone. See the
+    Every exercise writes real records: a FAIL quarantines a part and puts it on
+    an NCR, a sign-off releases a run, and signatures can't be undone. See the
     [training program](../index.md).
 
 ## How a session runs
@@ -102,8 +102,8 @@ Inspection.
 
 1. **Fail**, give a reason a shift lead can act on (what was wrong, what to
    correct), and **Record failure**.
-2. The first piece is quarantined and a disposition opens in the unassigned queue,
-   described as *Failed quality report:* followed by your reason.
+2. The first piece is quarantined and goes on an NCR described as *Failed quality
+   report:* followed by your reason, with its disposition in the unassigned queue.
 3. WO Control shows **First piece failed at Body Inspection — run held**, with your
    reason. The run stays held: once the setup is corrected, the next part started is
    the new first piece (or **Start a new first piece** on that card), and it's bought
@@ -136,8 +136,8 @@ before the buy-off."* A first piece of several parts is judged whole, once every
 piece is made.
 
 When a first piece of several parts fails, **Fail** asks **Which pieces failed?**.
-Tick only the bad ones. Each ticked piece is quarantined with your reason. The
-others wait and are released when the re-run first piece passes.
+Tick only the bad ones. Each ticked piece is quarantined with your reason, and
+the failed pieces go on one NCR. The others wait and are released when the re-run first piece passes.
 
 ---
 
@@ -216,7 +216,8 @@ model, and decide it with the authority's co-sign.
 
 **A reading out of spec.** `INJ-QA-INSPECT-012` waits at Flow Calibration. Run it and
 record a flow rate of **95 mL/min** (limits 100–140). Nobody decides that this is a
-failure; the spec does. The part is quarantined and a disposition opens, unassigned.
+failure; the spec does. The part is quarantined and goes on an NCR, with its
+disposition unassigned.
 
 **Try to break it:** try to start `INJ-QA-INSPECT-012` again. Start Work lists it as
 *quarantined — waiting on its disposition* and won't tick it: a quarantined part
@@ -229,21 +230,22 @@ fresh start.
 1. On your home page, **Take it** on its disposition. It moves to **My
    dispositions**.
 2. Open it. **3D Annotations Required**: the disposition can't close until the
-   defect is marked. **Go to Annotator** opens with its report already selected.
+   defect is marked. **Go to Annotator** opens with its inspection record already selected.
 3. Mark the burr on the model, where the fuel passage breaks into the bore, with its
    defect type and severity, and save.
-   A marker's severity rates that one finding. The disposition's severity
+   A marker's severity rates that one finding. The NCR's severity
    (Minor, Major, Critical) rates the nonconformance the findings add up to, so
    the two needn't match.
 
 **Try to break it:** before annotating, set it to **Closed** and save. It is
 refused, naming everything still missing in one message: no decision yet, the 3D
-annotation, and the containment a Major disposition needs.
+annotation, and the containment its Major NCR needs.
 
 **Decide one.** Now the 10:00 failure: take `INJ-QA-INSPECT-012`'s disposition the
 same way.
 
-1. Record the **containment action**: what was done so nothing else like it escapes.
+1. Record the **containment action** on its NCR, the one the disposition names
+   (*Decides part of NCR-…*): what was done so nothing else like it escapes.
 2. **Try to break it first:** choose **Use As Is** and leave the approval reference
    empty. You don't hold the authority, so the co-sign dialog opens; Maria signs in
    at your screen, and the decision is still refused: use-as-is accepts
@@ -305,8 +307,8 @@ what you did, and complete it.
 Open the traveler of any shipped part on `WO-2024-0038-A` and narrate it backward:
 when it shipped, every step, every inspection and who signed it.
 
-**What to look for:** a part QUARANTINED or SCRAPPED with no report or disposition
-behind it is a broken record, not a finished one.
+**What to look for:** a part QUARANTINED or SCRAPPED with no inspection record, NCR
+or disposition behind it is a broken record, not a finished one.
 
 ---
 
@@ -322,7 +324,8 @@ disposition is open and the part is quarantined.
 1. **WO Control Center**, open `WO-QA-INSPECT-06`. Open the part's history, the
    Body Inspection checks, and **Void** the visual inspection. The dialog says what
    happens: the recorded result is marked superseded and kept as recorded, with your
-   reason; the re-capture writes a new report; the disposition stays open for QA.
+   reason; the re-capture writes a new inspection record; the disposition stays open
+   for QA.
    Give the reason. *Completion voided.*
 2. Open the work order, **Start Work**, tick `INJ-QA-INSPECT-052` (quarantined, but
    startable for its re-capture) and **Start**. Ken recorded the inspection, so it's
@@ -335,8 +338,8 @@ disposition is open and the part is quarantined.
 **Try to break it:** close the disposition yourself as *Not a nonconformance*. You
 voided the finding, so you can't also be the one to clear it: a QA manager signs.
 
-The FAIL report is still there, marked superseded, with your reason and the new PASS
-report beside it. Nothing about the mistake is lost; it's just no longer the answer.
+The failed inspection record is still there, marked superseded, with your reason and
+the new passing record beside it. Nothing about the mistake is lost; it's just no longer the answer.
 
 ---
 

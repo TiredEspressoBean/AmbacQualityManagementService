@@ -193,10 +193,10 @@ covers the whole load rather than each part in it.
 
 Turn on **Inspection point** when a substep's result should be a queryable
 quality record, not just an entry in the substep audit trail. Its structured
-captures then also write a Quality Report.
+captures then also write an [inspection record](../quality/quality-reports.md).
 
 **Add inspection substep** adds a new substep with the switch on and the minimum
-capture set a quality report needs already in its body. Turning **Inspection
+capture set an inspection record needs already in its body. Turning **Inspection
 point** on for an existing substep adds no captures; put them in yourself. A
 substep containing a **Defect annotation (3D)** is always an inspection point.
 

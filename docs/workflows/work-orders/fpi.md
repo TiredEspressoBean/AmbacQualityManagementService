@@ -79,9 +79,9 @@ with the step and, under a narrower scope, its context — *&lt;step&gt; for &lt
 or *for the &lt;date&gt; shift* with no shift calendar), a *First piece failed at &lt;step&gt; for &lt;machine&gt; — run held* card for a
 held step, and — for people who can sign off a first piece — a *First piece
 waived at &lt;step&gt;* row for each waiver. On QA home, a *First piece waiting —
-&lt;step&gt; for &lt;machine&gt;* banner whose **Start check** opens the control page. A quality report also
-carries a **First Piece Inspection (FPI)** flag; it is set when a first piece
-passes, or ticked by hand on the report form, and nothing waits on it.
+&lt;step&gt; for &lt;machine&gt;* banner whose **Start check** opens the control page. An inspection record also
+carries a **First Piece Inspection** flag; it is set when a first piece
+passes, or ticked by hand on the *Record Inspection* form, and nothing waits on it.
 
 !!! warning "There is no 'submit for FPI review' step"
     Nothing is submitted and nothing queues for review. The first piece becomes
@@ -148,9 +148,10 @@ inspection; the others wait and release when the re-run first piece passes."*)
 and a **Reason / findings**. **Record failure** confirms with *FPI failed —
 correct the setup and re-run the first piece.* It does three things:
 
-- Each ticked piece gets a FAIL quality report, with your reason as its
-  description. It is **quarantined**, and a disposition opens for it, unassigned,
-  in the QA queue (see [Dispositions](../quality/dispositions.md#where-a-disposition-comes-from)).
+- Each ticked piece gets a failed inspection record, with your reason as its
+  description, and is **quarantined**. One [NCR](../quality/ncrs.md) opens over
+  the failed pieces, with a disposition for each, unassigned, in the QA queue
+  (see [Dispositions](../quality/dispositions.md#where-a-disposition-comes-from)).
 - The run stays held. The work order's control page shows **First piece failed
   at *step* — run held**, with who failed it and the reason. The untouched
   pieces wait, and are released when the re-run first piece passes.
@@ -339,7 +340,8 @@ After it passes, the other parts can start, and the first piece's parts move on.
 
 When FPI fails:
 
-1. **The failed pieces** are quarantined, each with a disposition
+1. **The failed pieces** are quarantined and go on one NCR, each with its own
+   disposition
 2. **The Production Manager** is told: *First piece failed … correct the setup
    and re-run the first piece; the run stays held*, and the step's banner and the
    work order's control page show the run held
@@ -391,5 +393,6 @@ permission is needed beyond being able to start the work.
 ## Next Steps
 
 - [Recording Measurements](../tracking/measurements.md) - Measurement capture
-- [Quality Reports](../quality/quality-reports.md) - Handling failures
+- [NCRs](../quality/ncrs.md) - Handling failures
+- [Inspection Records](../quality/quality-reports.md) - Inspection results
 - [Process Configuration](../../admin/processes/overview.md) - Configure FPI

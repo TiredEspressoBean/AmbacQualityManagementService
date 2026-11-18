@@ -278,9 +278,10 @@ Life exceedances can trigger CAPAs:
 - Missing life tracking for required items
 - Incorrect life data discovered
 
-### Quality Reports
+### Inspection records and NCRs
 
-Create quality reports when:
+Record an [inspection](../quality/quality-reports.md), or raise an
+[NCR](../quality/ncrs.md), when:
 
 - Part found at or beyond hard limit
 - Life data accuracy in question

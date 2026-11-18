@@ -26,7 +26,7 @@ Operator plus supervisor authority: FPI sign-off, manual decision points, traini
 ## Quality
 
 ### [QA Inspector](qa-inspector.md)
-Quality inspection, measurements, and NCR creation. Learn to perform inspections, create quality reports, and record dispositions.
+Quality inspection, measurements, and NCR creation. Learn to perform inspections, record inspection results, raise NCRs, and record dispositions.
 
 ### [QA Manager](qa-manager.md)
 Quality oversight, CAPA management, approvals, and analytics. Learn to approve dispositions, manage CAPAs, and analyze quality trends.
@@ -151,7 +151,7 @@ shares a common base and can already:
 
 - view orders, work orders, parts and their histories
 - run steps, record measurements and complete work
-- raise a quality report (NCR)
+- record an inspection and raise an NCR
 - upload documents
 - create orders and work orders
 - see the whole tenant's data

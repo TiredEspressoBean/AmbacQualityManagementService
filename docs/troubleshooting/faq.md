@@ -50,17 +50,22 @@ captures, quarantine, or a training gap. See
 Parts are soft-deleted (archived). They're hidden from active views but retained for audit compliance.
 
 ### How do I view part history?
-Open the part detail. The **Activity History** section on that page shows the audit trail; quality reports and dispositions have their own sections. See [Part History](../workflows/tracking/part-history.md).
+Open the part detail. The **Activity History** section on that page shows the audit trail; inspection records and dispositions have their own sections. See [Part History](../workflows/tracking/part-history.md).
 
 ## Quality
 
-### How do I create a quality report (NCR)?
-**Quality** > **Quality Reports** > **New Quality Reports**, pick the part on the form, fill in the details and submit. There is no button for it on a part. An inspection step that records a FAIL also produces one. See [Quality Reports](../workflows/quality/quality-reports.md).
+### How do I record an inspection?
+**Quality** > **Inspection Records** > **Record Inspection**, pick the part on the form, fill in the details and submit. There is no button for it on a part. An inspection step also writes one. See [Inspection Records](../workflows/quality/quality-reports.md).
+
+### How do I raise an NCR?
+A failed inspection raises one by itself: a **Fail** puts the part on its open NCR, or a new one. To put several parts on one NCR, **Quality** > **NCRs** > **Raise NCR**, or tick the parts on the work order's control page and press **Raise NCR**. See [NCRs](../workflows/quality/ncrs.md).
 
 ### What's the difference between Minor, Major, and Critical?
 - **Minor**: Cosmetic, no functional impact
 - **Major**: Out of spec, affects function
 - **Critical**: Safety or regulatory concern
+
+Each defect carries one; the NCR's severity follows the worst of them until anything on it is decided. A Critical or Major NCR needs its containment recorded before any decision under it can close. See [NCRs](../workflows/quality/ncrs.md#whats-wrong).
 
 ### When should I create a CAPA?
 For recurring issues, major/critical NCRs, customer complaints, or audit findings.

@@ -84,12 +84,12 @@ decide; **My Submitted Requests** lists what you asked others for. Find
 the decision rests on.
 
 `INJ-QA-MANAGE-002`'s bore measured **4.007 mm** against a maximum of 4.005.
-Ken failed it at Body Inspection. Sarah contained it (the other bodies from that
-grinder setup were re-checked) and assigned the decision to you. Find it in your **Inbox** >
-**Dispositions**.
+Ken failed it at Body Inspection. Sarah recorded containment on its NCR (the other
+bodies from that grinder setup were re-checked) and assigned the decision to you.
+Find it in your **Inbox** > **Dispositions**.
 
-1. Open it. Read the failed report it carries: the reading, the limits, and the
-   defect Ken recorded.
+1. Open it. Read its NCR (*Decides part of NCR-…*) and the failed inspection record
+   it carries: the reading, the limits, and the defect Ken recorded.
 2. The bore is 0.002 mm over, the seat finish is good, and engineering has issued
    concession `ENG-CONC-0041`. Choose **Use As Is**.
 
@@ -119,25 +119,31 @@ and the decision stands until you do. Your reason goes into the resolution notes
 
 **A failed load.** `WO-QA-MANAGE-02`'s three bodies were washed together, and the
 bath read 71 °C against its 65 °C limit, so the cycle failed and all three are held
-under one disposition: *Batch cycle failed at Wash - 3 parts in the load (3 held, 0
-already past this step).* Sarah contained it (the heater relay was replaced and the
-bath re-verified) and assigned it to you. Find it in your **Inbox** >
-**Dispositions**.
+on one NCR, marked *Failed batch load*, each with its own disposition. Sarah
+recorded the NCR's containment (the heater relay was replaced and the bath
+re-verified). Your **Inbox** > **Dispositions** shows its three decisions, one per
+body (*Batch cycle failed at Wash - 3 parts in the load (3 held, 0 already past
+this step)*). Decide them together from the NCR itself: **Quality** > **NCRs**, and
+open the one covering *3 parts* at Wash.
 
-1. Open it. **Affected Load** lists the three bodies, each *Held — awaiting
-   decision*.
-2. Decide one body on its own: under **Applies to**, choose **Choose parts**, tick
-   `INJ-QA-MANAGE-011`, and choose **Scrap**. Confirm. The body gets its own
-   disposition, linked from **Affected Load** (*DISP-… · Scrap*), and the other two
-   are still held.
-3. Decide the rest together: **Whole load (2 held parts)**, **Use As Is**, with
-   **Requires approval**, **Approval received** and concession `ENG-CONC-0043`.
-   Submit. Each gets its own Use As Is disposition, and the load's notes record both
-   decisions.
+1. Read its page. **Where it was found** says *Failed batch load*, 3 parts, raised by
+   Ken. **Containment** is recorded, by Sarah. **Parts and decisions** lists the
+   three bodies, each *Awaiting decision*, with its own disposition.
+2. Decide one body on its own: tick `INJ-QA-MANAGE-011`, **Decide 1 chosen**, and
+   choose **Scrap**. The dialog warns that the part is scrapped as soon as the
+   decision is recorded. Say why in **Notes** and **Record decision**: *Decision
+   recorded*. The body reads *Scrapped*, and the other two still wait.
+3. Decide the rest together: **Decide all waiting (2)**, **Use As Is**, concession
+   `ENG-CONC-0043` in **Concession reference**, and your reason. **Record
+   decision**. Each body's decision goes on its own disposition.
 
-**Try to break it:** close the load's disposition now. It's refused — *"Cannot complete
-disposition: 3 part disposition(s) from this load are still open"* — because the load
-is settled only when every part's own disposition is.
+**Try to break it:** in step 3, leave **Concession reference** empty. It's refused:
+*"A 'Use As Is' decision accepts nonconforming product and requires recorded
+customer/design approval — provide an approval reference."* Once every body has a
+decision, the Decide buttons are gone: a part's decision is changed on its own
+disposition after that.
+
+The NCR closes by itself once each body's disposition is closed.
 
 ---
 
@@ -171,27 +177,29 @@ yours: the lot comes from **Bargain Bolts LLC**, an unqualified supplier.
 
 ## 4. Which nonconformances get a CAPA
 
-**You will:** decide, for each failed report, whether it needs corrective action,
-and record why when it doesn't.
+**You will:** decide, for each NCR, whether it needs corrective action, and record
+why when it doesn't.
 
 ISO 9001 10.2.1(b) asks you to *evaluate* whether action is needed to stop a
-nonconformance recurring. The evaluation is the record. **Open NCRs** on your home page
-opens **NCR & Disposition Analysis**. **Awaiting a CAPA decision** lists failed reports nobody has
-decided on yet. **Repeat defects** lists defects on three or more failed reports in
-30 days.
+nonconformance recurring. The evaluation is the record. **Open NCRs** on your home
+page opens the NCR list, whose **Awaiting CAPA decision** tab lists NCRs nobody has
+decided on yet; **NCR & Disposition Analysis** (from **Analytics**) lists them too,
+under **Awaiting a CAPA decision**. Its **Repeat defects** lists defects on three or
+more failed inspection records in 30 days.
 
 **A one-off:** `QR-0038-010-NI`, a spray angle of 20 degrees on a part that was
 scrapped.
 
-1. Open it. Under **CAPA decision**, choose **No CAPA needed** and say why: one
-   part, damaged in handling, with nothing like it since. **Record decision**. The
-   record keeps your name, the time and your reason, and the report leaves the
-   list.
+1. Open it. Its **NCR** card links the NCR it is on: open that. On the NCR's
+   **CAPA** card, choose **No CAPA needed** and say why: one part, damaged in
+   handling, with nothing like it since. **Record**. The NCR keeps your name, the
+   time and your reason, and leaves the list.
 
 **A pattern:** **Repeat defects** shows *Flow rate out of spec*, three times at Flow
 Calibration.
 
-2. Open `QR-0042-017-FT` and **Create CAPA**. The report comes linked. Make it a
+2. Open `QR-0042-017-FT`, follow its **NCR** card to the NCR, and **Raise CAPA** on
+   the NCR's **CAPA** card. The NCR's inspection records come linked. Make it a
    Major corrective action, state the problem (three injectors below the 100 mL/min
    limit in 30 days), record the containment already in place, and assign it to
    Jennifer.
@@ -276,7 +284,7 @@ go-ahead and effectiveness check as module 5.
 may be wrong.
 
 1. **Quality** > **Calibrations** > **View All Calibration Records**. Under MIC-2's
-   failed result, **What it measured** lists every quality report it was used on
+   failed result, **What it measured** lists every inspection record it was used on
    since its last good calibration. Here, five bodies at Body Inspection.
 2. Say what you would do about each. The list doesn't act: re-inspecting, accepting
    on other evidence, telling a customer or raising an NCR is your decision, made
@@ -369,13 +377,13 @@ judge right:
 
 - the whole-lot reject request on `RCV-MAT-0007`
 - the disposition on `INJ-QA-MANAGE-002`
-- the failed reports awaiting a CAPA decision, including the repeat flow-rate defect
+- the NCRs awaiting a CAPA decision, including the repeat flow-rate defect
 - `CAPA-2024-004`'s go-ahead, and `CAPA-2024-002`'s effectiveness
 - what MIC-2 measured before it failed, and what you'll do about it
 
 Your trainer is watching for:
 
-- [ ] You read the evidence (readings, reasons, reports) before deciding.
+- [ ] You read the evidence (readings, reasons, inspection records) before deciding.
 - [ ] Each reason you wrote would make sense to an auditor who wasn't there.
 - [ ] You never approved or verified your own work.
 - [ ] When the system refused something, you read the refusal and acted on it.
@@ -421,7 +429,7 @@ moves the unit on.
    reached at Nozzle Inspection (2 visit(s)). Decide: scrap, use as is on a
    concession, or one more rework.* Nobody has taken it yet. **Take it**: it leaves
    the queue for your **Inbox** > **Dispositions**. Open it from there.
-2. It carries the last failed report, the finding that sent the unit round the loop.
+2. It carries the last failed inspection record, the finding that sent the unit round the loop.
    Read it, and the unit's earlier failures: what was out, by how much, and what each
    rework did. The second rework's own disposition is closed, pointing at this one.
 3. Choose the decision:

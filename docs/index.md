@@ -33,7 +33,7 @@ uqmes helps manufacturing teams:
 |------|------------|
 | **Operator** | [Operator Guide](roles/operator.md) - Moving parts through production steps |
 | **Shift Lead** | [Shift Lead Guide](roles/shift-lead.md) - Running a shift, holds and decisions |
-| **QA Inspector** | [Inspector Guide](roles/qa-inspector.md) - Inspections and quality reports |
+| **QA Inspector** | [Inspector Guide](roles/qa-inspector.md) - Inspections, inspection records and NCRs |
 | **QA Manager** | [QA Manager Guide](roles/qa-manager.md) - Approvals, CAPA, and analytics |
 | **Production Manager** | [Production Guide](roles/production-manager.md) - Orders and work orders |
 | **Planner** | [Planner Guide](roles/planner.md) - Scheduling and releasing work |

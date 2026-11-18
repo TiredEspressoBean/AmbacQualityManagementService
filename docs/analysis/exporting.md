@@ -31,7 +31,7 @@ The same data as a workbook, with reference sheets for lookups.
     | A received lot | Receiving inspection record; lot and part labels |
     | The schedule | **Dispatch list**; pick and staging lists |
     | A calibration | Certificate, and the calibrations-due list |
-    | A quality record | NCR, CAPA report, SCAR, deviation request |
+    | A quality record | Non-Conformance Report (from the NCR, or from any of its dispositions), CAPA report, SCAR, deviation request |
     | The SPC page | **SPC Report** |
 
     Plus requirements, lot trace, BOM, labour hours and training records. If you
@@ -96,7 +96,7 @@ filtered to that order.
 
 | Report | How to Access |
 |--------|---------------|
-| **Table Exports** | Click **Export** on any data table (Orders, Parts, Quality Reports, etc.) |
+| **Table Exports** | Click **Export** on any data table (Orders, Parts, Inspection Records, etc.) |
 | **Part Traveler** | The **Traveler** button on the part detail page — *"this serial's as-built traveler: its work order's routing, filled with who did each step, what was measured, the lots that went in"*. Also available at `GET /api/Parts/{id}/traveler/` |
 | **SPC Report** | The **SPC Report** button on the SPC page |
 | **Material outlook** | **Capacity Planning** > the Materials header > **Excel** or **CSV** — demand for every bought item by month. See [Material outlook](../workflows/scheduling/capacity.md#material-outlook) |
@@ -106,7 +106,7 @@ PDF in the background and emails it to you.
 
 ### Running a Table Export
 
-1. Navigate to the data page (e.g., **Quality > Quality Reports**, **Data Management > Orders**)
+1. Navigate to the data page (e.g., **Quality > Inspection Records**, **Data Management > Orders**)
 2. Apply filters as needed
 3. Click **Export** button
 4. Select format (CSV or Excel)
@@ -132,7 +132,7 @@ For bulk data extraction, use the export feature on individual data tables:
 
 Each data type has its own export:
 - Orders and parts
-- Quality reports
+- Inspection records
 - Measurements
 - Equipment, companies, etc.
 

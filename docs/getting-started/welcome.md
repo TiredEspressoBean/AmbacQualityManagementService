@@ -9,7 +9,7 @@ uqmes serves different roles in your organization:
 | Role | What They Do | Example User |
 |------|--------------|--------------|
 | **Operators** | Move parts through production steps, record measurements, flag issues | Mike Rodriguez |
-| **QA Inspectors** | Perform inspections, create quality reports, manage dispositions | Sarah Chen |
+| **QA Inspectors** | Perform inspections, record inspection results, manage NCRs and dispositions | Sarah Chen |
 | **Production Managers** | Plan and schedule production, manage orders and work orders, monitor progress | Jennifer Walsh |
 | **QA Managers** | Oversee CAPA, approve dispositions, review quality analytics | Maria Santos |
 | **Administrators** | Configure processes, manage users, set up system | Alex Demo |
@@ -41,8 +41,8 @@ Instructions](../workflows/dwi/overview.md).
 ### Work Orders
 A **Work Order** links a process to an order, defining what work needs to be done. It tracks which step each part is currently at.
 
-### Quality Reports (NCRs)
-When something goes wrong, a **Quality Report** (also called a Non-Conformance Report or NCR) documents the issue, affected parts, and required disposition.
+### Inspection Records and NCRs
+An **Inspection Record** is one part's inspection result: pass or fail, with the defects found. When something goes wrong, an **NCR** (Non-Conformance Report) records the nonconformance: what's wrong, how serious it is, and how it was contained. It covers one or many parts, and each part gets its own decision, its **disposition**. See [NCRs](../workflows/quality/ncrs.md).
 
 ### CAPA
 **Corrective and Preventive Action** (CAPA) is a formal process for addressing quality issues, identifying root causes, and preventing recurrence.
@@ -61,7 +61,7 @@ When something goes wrong, a **Quality Report** (also called a Non-Conformance R
 
 === "Quality"
 
-    - Create and manage quality reports
+    - Record inspections and manage NCRs
     - Handle quarantine and dispositions
     - Run CAPA investigations
     - Configure sampling rules

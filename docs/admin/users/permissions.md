@@ -85,7 +85,8 @@ or export-control status is what needs looking at.
 |------------|--------|
 | `view_orders` | See orders list and details |
 | `view_parts` | See parts |
-| `view_qualityreports` | See NCRs |
+| `view_qualityreports` | See inspection records |
+| `view_ncr` | See NCRs and print them. Every staff role holds it |
 | `view_capa` | See CAPAs |
 | `view_documents` | See documents |
 
@@ -97,7 +98,8 @@ or export-control status is what needs looking at.
 |------------|--------|
 | `add_orders` | Create new orders |
 | `add_parts` | Add parts to orders |
-| `add_qualityreports` | Create NCRs |
+| `add_qualityreports` | Record inspections. A Fail puts the part on an NCR by itself |
+| `add_ncr` | Raise an NCR by hand, and add parts to an open one. Everyone who can flag a problem holds it, operators included |
 | `add_capa` | The underlying create right for a CAPA — **not sufficient on its own** |
 | `initiate_capa` | **Raise** a CAPA. Checked in addition to `add_capa`, so every staff role holds the first and only the supervisory roles hold the second |
 
@@ -114,7 +116,8 @@ Export](../data/import-export.md).
 |------------|--------|
 | `change_orders` | Edit order details |
 | `change_parts` | Modify parts |
-| `change_qualityreports` | Edit quality reports that are still **Pending Review** — a recorded result is final |
+| `change_qualityreports` | Edit inspection records that are still **Pending Review** — a recorded result is final |
+| `change_ncr` | Edit what's wrong on an NCR (description, severity) and record its containment. QA Inspector, QA Manager, Shift Lead, Production Manager and Tenant Admin hold it |
 | `change_companies`, `change_equipmenttype`, `change_qualityerrorslist` | Edit customers and suppliers, equipment types, and the defect list. These and their `add_` counterparts are manager-tier: Tenant Admin, QA Manager, Production Manager and Document Controller hold them when an organisation is created |
 | `change_workorder` | Edit work orders |
 
@@ -138,7 +141,7 @@ Export](../data/import-export.md).
 | Permission | Allows |
 |------------|--------|
 | `respond_to_approval` | Respond to any approval request routed to you — documents and processes included |
-| `approve_disposition` | Approve disposition decisions |
+| `approve_disposition` | Record each part's decision under an NCR, on the NCR or on its disposition, or co-sign it |
 | `verify_capa` | Record a CAPA's effectiveness check — this is what closes it |
 
 !!! note

@@ -169,7 +169,7 @@ The following depend on deployment configuration and are **not application featu
 |-------|----------------|
 | System Admin | Platform-level: all tenants |
 | Tenant Admin | Full access within one organization |
-| QA Manager | Quality reports, dispositions, CAPA closure, approvals |
+| QA Manager | Inspection records, NCRs, dispositions, CAPA closure, approvals |
 | QA Inspector | Inspections, measurements, CAPA initiation |
 | Production Manager | Orders, work orders, parts, scheduling |
 | Operator | Part tracking, data recording |

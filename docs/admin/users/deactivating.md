@@ -42,7 +42,7 @@ and use the bulk bar.
 | Effect | Description |
 |--------|-------------|
 | **Cannot log in** | Their membership of this organisation is suspended |
-| **Assigned items remain** | Parts, NCRs and the rest keep their assignment |
+| **Assigned items remain** | Parts, dispositions and the rest keep their assignment |
 | **History preserved** | The audit trail still shows their name |
 | **Still listed** | They are not hidden. User Management badges them **Inactive**; the Data Management users list says **Access removed** |
 

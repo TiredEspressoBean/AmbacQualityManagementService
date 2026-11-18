@@ -77,7 +77,7 @@ physical or infrastructure domains.
 | AC.L2-3.1.2 | Function-level authorization | ✅ | 15 role presets (`GROUP_PRESETS` in `Tracker/presets.py`) over model permissions, enforced by `TenantModelPermissions` (HTTP method → view/add/change/delete) plus per-action gates declared on the viewsets |
 | AC.L2-3.1.3 | CUI flow control | ✅ | Five classification levels — Public, Internal, Confidential, Restricted, Secret — filtered by `for_classification()` in `SecureQuerySet`; ITAR- and EAR-flagged records are filtered by `for_export_control()`, keyed to the user's US-person, ITAR-authorisation and citizenship fields |
 | AC.L2-3.1.4 | Separation of duties | ✅ | Distinct roles. The segregation-of-duties permissions (verify a CAPA, review an RCA, approve a disposition or step override, grant supplier and part approvals) are in the QA Manager and Tenant Admin presets only. A requester decides their own approval only where the template allows it, or for a CAPA plan when nobody else can — always with a written justification, and recorded as `self_approved`. `self_verified` records when a CAPA or RCA was verified by its own conductor |
-| AC.L2-3.1.5 | Least privilege | ✅ | Presets grant per role. The Customer role sees only orders it is the customer or a viewer of, and the work, parts, documents and quality reports on them; it can also answer approval requests sent to it and invite viewers to its own orders |
+| AC.L2-3.1.5 | Least privilege | ✅ | Presets grant per role. The Customer role sees only orders it is the customer or a viewer of, and the work, parts, documents and inspection records on them; it can also answer approval requests sent to it and invite viewers to its own orders |
 | AC.L2-3.1.7 | Privileged functions | ✅ | Group membership and group permissions can be changed only by holders of `change_tenantgroup` (Tenant Admin), so no other user can grant themselves a permission. Every such change is in the audit log with who made it |
 | AC.L2-3.1.8 | Unsuccessful logon attempts | ⚠️ | Sign-in is rate-limited per client IP (`THROTTLE_LOGIN`, default 10 a minute). There is no per-account lockout; with SSO, cite your identity provider's lockout |
 | AC.L2-3.1.9 | Privacy and security notices | ✅ | The tenant sets a system-use notice for the login page (**Settings** > **Organization** > **Sign-in notice**) and can require it acknowledged. Password sign-in without the acknowledgement is refused by the server, and each acknowledgement is an access entry with the user, trusted IP and a hash of the wording. The wording is the shop's; none ships. A Microsoft sign-in is gated on the page only, and not recorded. On a dedicated installation the notice is always the organization's |
@@ -294,7 +294,7 @@ input to your own scoring.
 |------------|--------------|------------|
 | Documents | May contain CUI | Classification, export-control flags, access records |
 | Parts data | May reference CUI specs | Tenant isolation, role-based access, export-control flags where set |
-| Quality reports | May reference CUI | Role-based access |
+| Inspection records and NCRs | May reference CUI | Role-based access |
 | CAPA records | May discuss CUI issues | Role-based access |
 
 ## Related Documentation

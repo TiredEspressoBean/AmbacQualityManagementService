@@ -46,7 +46,7 @@ Below them are the CAPAs by state and how old the open nonconformances are.
 `INJ-QA-INSPECT-013` failed flow calibration and is waiting to be reworked.
 
 1. Open work order `WO-QA-INSPECT-02`, then **Parts**, then the part's **View Part
-   Details**. The part page lists its quality reports, its disposition
+   Details**. The part page lists its inspection records, its disposition
    (`DISP-2026-000014`, Rework) and why it can't move on yet.
 2. **Traveler** > **Download PDF** prints this serial's record. Each operation shows
    who did it and when, every reading against its specification (*Flow Rate 98
@@ -67,7 +67,7 @@ is a copy of it on the day you printed it.
    expires …*, a week after the shop was set up); the person is the row.
 2. **Calibration records**. The micrometer `MIC-2` failed its check this morning.
    Open that record's exposure: **What Micrometer MIC-2 measured** lists every
-   report it was used for since it last passed, `INJ-QA-INSPECT-013`'s bore among
+   inspection record it was used for since it last passed, `INJ-QA-INSPECT-013`'s bore among
    them. The page lists them; deciding what to do about them is the QA manager's.
 
 Where someone worked a step without the training on record, the authorisation sits

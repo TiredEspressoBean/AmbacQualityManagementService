@@ -207,7 +207,8 @@ The discarded load is kept, archived, with who discarded it and when.
 !!! warning "A failed completion check holds the whole load"
     A completion check out of limits — a bath that ran hot — fails the cycle,
     and every unit in the load that is still in production is quarantined
-    together, with one disposition opened for the batch. See [A whole load
+    together. One [NCR](../quality/ncrs.md) opens over the load, marked *Failed
+    batch load*, with a disposition for each part. See [A whole load
     quarantined at once](../quality/quarantine.md#a-whole-load-quarantined-at-once).
 
 ## Picking work back up
@@ -315,8 +316,8 @@ Your entry is saved when you move off it, and the player advances.
 
 !!! warning "A draft is not a record — Complete step is"
     Nothing is official until you tap **Complete step**. That is what writes the
-    captures, and only then can a failed measurement raise a report or hold the
-    unit. A value you fix before completing the step never becomes a
+    captures, and only then can a failed measurement record a failed inspection
+    or hold the unit. A value you fix before completing the step never becomes a
     nonconformance.
 
     It also means an unfinished step records nothing. If you want the work on the
@@ -492,13 +493,13 @@ piece of work a held part may take. If the person who did the work isn't the one
 to redo it, a lead reassigns it the usual way. The new capture is a new record; the
 voided one stays beside it.
 
-**An inspection result** is the same, with its report:
+**An inspection result** is the same, with its inspection record:
 
-- Voiding the capture **supersedes** its quality report. The report is kept,
+- Voiding the capture **supersedes** its inspection record. The record is kept,
   marked superseded, with the void's reason, and the re-capture records a **new**
-  report.
-- If the voided result was a **FAIL** that opened a disposition, re-inspecting does
-  not close it. The part stays held until the disposition is decided. When the
+  one.
+- If the voided result was a **FAIL** that put the part on an NCR, re-inspecting
+  does not close the part's disposition. The part stays held until the disposition is decided. When the
   finding was simply wrong and the new result is a PASS, a QA manager (not the
   inspector who recorded or voided it) closes it as **Not a nonconformance** —
   see [Dispositions](../quality/dispositions.md#when-the-finding-was-wrong-not-a-nonconformance).

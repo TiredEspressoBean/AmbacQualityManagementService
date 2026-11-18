@@ -122,7 +122,8 @@ nav:
       - Work Order Progress: workflows/work-orders/progress.md
       - First Piece Inspection: workflows/work-orders/fpi.md
     - Quality Control:
-      - Quality Reports: workflows/quality/quality-reports.md
+      - NCRs: workflows/quality/ncrs.md
+      - Inspection Records: workflows/quality/quality-reports.md
       - Dispositions: workflows/quality/dispositions.md
       - Quarantine: workflows/quality/quarantine.md
       - Sampling Rules: workflows/quality/sampling.md

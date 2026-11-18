@@ -1,73 +1,71 @@
-# Quality Reports (NCRs)
+# Inspection Records
 
-Quality Reports document non-conformances found during production or inspection. Also known as Non-Conformance Reports (NCRs).
+An inspection record is the result of inspecting one part: pass or fail, the
+defects found, who found it and where. It is the **evidence**. When the result
+is a **Fail**, the part goes on an [NCR](ncrs.md), where the nonconformance is
+described and the part's decision is made.
 
-## What is a Quality Report?
+**Quality** > **Inspection Records**.
 
-A Quality Report is a formal record of:
+## Recording an inspection
 
-- **What** went wrong (defect description)
-- **Where** it was found (step, location)
-- **How many** parts are affected
-- **What caused it** (error type, root cause)
-- **What to do** (disposition, corrective action)
+1. **Quality** > **Inspection Records**, then **Record Inspection**. The form
+   reads: *"Record an inspection result. A Fail puts the
+   part on an NCR — its open one, or a new one."*
+2. Complete the form and save.
 
-## Creating a Quality Report
-
-1. Navigate to **Quality** > **Quality Reports**
-2. Click **New Quality Reports**
-3. Complete the form
-4. Click **Submit**
-
-A report can also be produced by an inspection substep in the step player — a
-substep marked an **inspection point** writes a quality report from what the
-operator captures. See [Authoring Work
-Instructions](../dwi/authoring.md).
+An inspection substep in the step player also writes an inspection record: a
+substep marked an **inspection point** records one from what the operator
+captures. See [Authoring Work Instructions](../dwi/authoring.md).
 
 An operator's Home offers a third route: beside the step they last finished,
 **Flag** opens this form with the **Part** and **Process Step** filled in and
-**Detected By** set to them. See [Operator](../../roles/operator.md).
+**Detected By** set to them. A Fail saved there puts the part on an NCR. See
+[Operator](../../roles/operator.md).
+
+To put several parts on one NCR at once, raise the NCR instead: see [Raising
+an NCR by hand](ncrs.md#raising-an-ncr-by-hand).
 
 !!! note "No scan-to-report flow"
-    Scanning a barcode does not open a report. The pre-filled report comes only
-    from **Flag** on the operator's Home.
+    Scanning a barcode does not open an inspection record. The pre-filled form
+    comes only from **Flag** on the operator's Home.
 
-## Quality Report Form
+## The form
 
 | Field | Required | Description |
 |-------|:--------:|-------------|
-| **Status** | Yes | **Pending Review**, **Pass**, **Fail (NCR)**, or **Needs repair (rebuild checks only)** — the last is refused except on a core in rebuild at a check with planned repairs |
+| **Status** | Yes | **Pending Review**, **Pass**, **Fail**, or **Needs repair (rebuild checks only)** — the last is refused except on a core in rebuild at a check with planned repairs. *"A Fail holds the part and puts it on an NCR, where its decision is made."* |
 | **Part** | No | The affected part |
 | **Process Step** | No | Where it was found |
 | **Machine/Equipment** | No | Equipment involved |
 | **Description** | No | Explanation of the issue, up to 300 characters |
 | **Detected By** | No | Who found it |
 | **Verified By** | No | Who verified it |
-| **First Piece Inspection** | No | A flag marking *this* report as the first-piece inspection. It does not link to a separate FPI record. |
-| **Archived** | No | Archive the report — only while it is still Pending |
+| **First Piece Inspection** | No | A flag marking *this* record as the first-piece inspection. It does not link to a separate FPI record. |
+| **Archived** | No | Archive the record — only while it is still Pending |
 
 !!! important "A result is final"
-    A report can be edited, archived or deleted only while it is **Pending
-    Review**. Once it is saved as Pass, Fail or Needs repair it is the recorded
-    result, and every edit or delete is refused:
+    An inspection record can be edited, archived or deleted only while it is
+    **Pending Review**. Once it is saved as Pass, Fail or Needs repair it is the
+    recorded result, and every edit or delete is refused:
 
-    > &lt;report&gt; is recorded as a result, so it can't be edited or deleted.
+    > &lt;record&gt; is recorded as a result, so it can't be edited or deleted.
 
-    So moving a Pending report to **Fail** is one-way — there is no editing it
+    So moving a Pending record to **Fail** is one-way — there is no editing it
     back. A mistaken FAIL is closed as **Not a nonconformance**; see [When the
     finding was wrong](dispositions.md#when-the-finding-was-wrong-not-a-nonconformance)
     and [Putting a Mistake Right](../fixing-mistakes.md).
 
 !!! note "Defects are added separately"
-    **Error types are not fields on the report.** Each defect is its own entry
+    **Error types are not fields on the record.** Each defect is its own entry
     with an error type, a **count**, a **location**, a **severity**, and notes.
-    One report can carry several defects at different severities, which is why
-    severity sits on the defect rather than the report.
+    One record can carry several defects at different severities. The worst of
+    them sets the severity of a new NCR.
 
 !!! note "Not on the form"
     There is no quantity-affected, customer-reference, immediate-action, or
-    root-cause field. Containment and root cause belong to the
-    [CAPA](../capa/creating.md) raised from the report.
+    root-cause field. What's wrong across several parts, and containment, live on
+    the [NCR](ncrs.md); root cause on the [CAPA](../capa/creating.md).
 
 ### Attachments
 
@@ -107,150 +105,81 @@ Your administrator configures available error types.
 | **Major** | Out of spec, may affect function | Dimensional error, material deviation |
 | **Critical** | Safety risk or regulatory violation | Cracked safety component, wrong material in medical device |
 
-Severity is a judgement you record for the reader — nothing in the system reads
-it. It does not change notification urgency, demand an extra approval, or trip a
-CAPA threshold on its own.
+A defect's severity sets the severity of the **NCR** the part goes on: the
+worst defect recorded, or Major when none is. That's where severity binds: no
+decision under a Critical or Major NCR closes until its containment is
+recorded. See [NCRs](ncrs.md#containment).
 
-The one place severity does bind is on the **disposition**, not the defect: a
-disposition of Critical or Major severity cannot be closed until a containment
-action is recorded on it. See [Dispositions](dispositions.md).
-
-## Quality Report Status
+## Status
 
 | Status | Meaning | Next Action |
 |--------|---------|-------------|
 | **Pending** | Inspection not yet complete | Complete inspection |
 | **Pass** | Part passed inspection | Continue production |
-| **Fail** | Part failed inspection | Decide the disposition |
-| **Needs repair** | At a rebuild check, the component needs planned repair work — inspected, not failed | Repair it; no disposition opens |
+| **Fail** | Part failed inspection | It's on an NCR, where it's decided |
+| **Needs repair** | At a rebuild check, the component needs planned repair work — inspected, not failed | Repair it; no NCR opens |
 
 !!! info "What a Fail sets off"
-    A report reaching **Fail** quarantines the part, alerts the step, updates
-    sampling and opens the disposition. It does this once, on the move into Fail,
-    whether the report was created as Fail or edited to Fail from Pending.
+    A record reaching **Fail** quarantines the part, alerts the step, updates
+    sampling, and puts the part on an NCR: its open one, or a new one. It does
+    this once, on the move into Fail, whether the record was created as Fail or
+    edited to Fail from Pending. See [How an NCR opens](ncrs.md#how-an-ncr-opens).
 
-    *(Quarantine needs the report to name a part. Receiving-inspection and
-    batch-cycle failures take their own routes — a lot reject opens a populated
-    disposition itself, and a failed batch cycle [contains the load](quarantine.md#a-whole-load-quarantined-at-once)
-    — the parts of it still in production.)*
+## The NCR and the decision
 
-## Disposition
+A failed inspection record's page has an **NCR** card: *"This failure is on
+NCR-… . The decision on the part, and whether a CAPA is needed, are made
+there."* The part's decision is its [disposition](dispositions.md) under that
+NCR, and whether the nonconformance needs a CAPA is the NCR's [CAPA
+decision](ncrs.md#capa).
 
-Disposition decisions are made through the Dispositions feature, not on the
-quality report itself.
+## Searching inspection records
 
-Available dispositions:
+Find existing records:
 
-| Disposition | Meaning |
-|-------------|---------|
-| **Use As Is** | Accept despite non-conformance (requires customer approval) |
-| **Rework** | Correct and re-inspect to full conformance |
-| **Repair** | Correct but may deviate from spec (requires approval) |
-| **Scrap** | Dispose of parts |
-| **Return to Supplier** | Send back to supplier |
-
-See [Dispositions](dispositions.md) for detailed workflow.
-
-## Linking to CAPA
-
-Major or recurring issues may require CAPA:
-
-1. Open the quality report
-2. Click **Create CAPA** (shown on a failed report)
-3. CAPA tracks root cause analysis and corrective actions
-4. Quality report links to CAPA record
-
-See [CAPA Overview](../capa/overview.md) for details.
-
-### Deciding a failed report does *not* need a CAPA
-
-**Most failed reports don't become CAPAs** — the disposition handles that part,
-or it was a one-off with no systemic cause. ISO 9001 §10.2.1(b) asks that the
-need for action be **evaluated**, not only that action be taken. So the decision
-is recorded rather than left implied.
-
-Every failed report carries a CAPA decision:
-
-| Decision | Means | Recorded by |
-|----------|-------|-------------|
-| **CAPA raised** | A CAPA covers it | Set automatically when a CAPA links the report |
-| **No CAPA needed** | Evaluated, no systemic action required | A person, **with a reason** |
-| **Deferred** | The call is being put off | A person, **with a reason** |
-| *(undecided)* | Nobody has looked yet | — the default |
-
-!!! important "The reason is required, and it is what an auditor reads"
-    You cannot decline a CAPA silently. *"Say why"* is enforced — a decision
-    without a reason is refused.
-
-!!! note "Undecided is visible, not invisible"
-    A failed report with no decision is listed on the NCR page under **Awaiting
-    a CAPA decision**, so the backlog of unevaluated nonconformities is a number
-    you can see.
-
-!!! tip "You can change a decision"
-    A decision can be revised, and the audit log keeps the earlier one. What you
-    cannot do is set **CAPA raised** by hand — that follows from actually
-    raising the CAPA, so the two can never disagree.
-
-## Searching Quality Reports
-
-Find existing reports:
-
-- By status — **Pending**, **Pass**, **Fail** or **Needs repair** (there is no
-  Open/Closed on a report; a report is not a thing that closes — its
-  *disposition* is)
+- By status — **Pending**, **Pass**, **Fail** or **Needs repair** (an inspection
+  record doesn't close; its NCR does)
 - By part
 - By step
 - By work order
 - Search by description or part ERP ID
 
-To find failed reports by error type, period, process or part type, use the
+To find failed records by error type, period, process or part type, use the
 **Defect Records** page (`/quality/defects`), opened from **Analytics** >
-**Defect Patterns**.
+**Defect Patterns**. Its CSV includes each defect's NCR.
 
-## Quality Report Metrics
+## Metrics
 
-- **NCR Analysis** (`/quality/ncrs`): the NCR trend, **Avg Age**, **Closure
-  Rate**, the ageing buckets and the disposition breakdown
+- **NCR Analysis** (`/quality/ncr-analysis`): NCRs opened and closed, **Avg
+  Age**, **Closure Rate**, the ageing buckets and the disposition breakdown
 - **Defect Analysis** (`/quality/defects`): defects by error type, process and
   part, with CSV export
 - **Analytics**: first-pass yield, top defects, what needs attention
 
-See [Dashboards](../../analysis/dashboard.md). The **Quality** > **Dashboard**
-page is about CAPAs, not NCRs.
+See [Dashboards](../../analysis/dashboard.md).
 
 ## Notifications
 
-Notifications are **rule-driven and configurable** — who gets told what is
-decided by this tenant's notification rules, not by the event itself. Any rule
-can be edited, disabled or deleted, so treat routing as something to check
-rather than something to rely on. See [Notification
+Notifications are **rule-driven and configurable**. See [Notification
 Rules](../../admin/setup/notification-rules.md).
 
-Two relevant rules ship by default: **every NCR opened** goes to the QA
-Manager group, and **step failures** go to QA Manager and QA Inspector.
-Severity-based routing, assignment alerts and closure notices are not seeded.
-
-The NCR notification carries the report's **severity**: the worst defect on it
-(Critical, then Major, then Minor), or Major when none is recorded, as for an
-out-of-spec reading. It reads e.g. *[MAJOR] NCR on &lt;part&gt;*. To route Critical
-NCRs differently, give a rule a condition on `payload.severity == "CRITICAL"`.
-The report's PASS/FAIL is `payload.status`.
+By default, **step failures** go to QA Manager and QA Inspector, and each **NCR
+opened** goes to the QA Manager group, once per NCR, not once per part. See
+[NCRs](ncrs.md#notifications).
 
 ## Permissions
 
 | Permission | Allows |
 |------------|--------|
-| `view_qualityreports` | View reports |
-| `add_qualityreports` | Create reports |
-| `change_qualityreports` | Edit reports that are still Pending Review |
+| `view_qualityreports` | View inspection records |
+| `add_qualityreports` | Record inspections |
+| `change_qualityreports` | Edit records that are still Pending Review |
 
-!!! note "A quality report is not approved"
-    There is no approval step on a report and no approval type for one, so
-    there are no approve permissions either. The authorized act is the
-    **disposition**, gated by `approve_disposition`, and a Critical or Major
-    disposition cannot close without a recorded containment action. That is
-    where the authority to accept a nonconformance sits.
+!!! note "An inspection record is not approved"
+    There is no approval step on an inspection record, so there are no approve
+    permissions either. The authorized act is the part's **decision** on its
+    NCR, gated by `approve_disposition`. That is where the authority to accept
+    a nonconformance sits.
 
 !!! note "Where self-approval is controlled"
     Not here. Each approval **template** carries **Allow Self-Approval**, off by
@@ -260,6 +189,7 @@ The report's PASS/FAIL is `payload.status`.
 
 ## Next Steps
 
+- [NCRs](ncrs.md) - The nonconformance a failed record goes on
 - [Dispositions](dispositions.md) - Making disposition decisions
 - [Quarantine](quarantine.md) - Managing held parts
 - [CAPA Overview](../capa/overview.md) - Corrective actions

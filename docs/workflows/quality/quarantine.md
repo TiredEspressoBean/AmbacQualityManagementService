@@ -19,7 +19,7 @@ Parts enter quarantine when:
 |---------|-------------|
 | **Failed inspection** | Measurement out of tolerance |
 | **Visual defect** | Operator flags issue |
-| **Quality report** | A report reaching FAIL, whether created as FAIL or edited to it |
+| **Inspection record** | A record reaching FAIL, whether created as FAIL or edited to it |
 | **Customer complaint** | Return or field issue |
 | **Suspect material** | Material lot under investigation |
 | **Process deviation** | Unauthorized change occurred |
@@ -28,14 +28,14 @@ Parts enter quarantine when:
 
 ### Automatic Quarantine
 
-A part is quarantined when a quality report against it reaches **FAIL**: created
-as FAIL, edited to FAIL, a reading out of spec, an inspector's FAIL on an
-inspection, or a failed first piece. A report at PASS or PENDING leaves the part
+A part is quarantined when an inspection record against it reaches **FAIL**:
+created as FAIL, edited to FAIL, a reading out of spec, an inspector's FAIL on an
+inspection, or a failed first piece. A record at PASS or PENDING leaves the part
 where it is. The part's history records the status change and who made it.
 
-The failure also opens a disposition, **unassigned**. It waits on the QA home
-page under *Unassigned dispositions* until someone takes it with **Take it**. See
-[Dispositions](dispositions.md#where-a-disposition-comes-from).
+The failure also puts the part on an [NCR](ncrs.md), with a disposition for the
+part, **unassigned**. It waits on the QA home page under *Unassigned
+dispositions* until someone takes it with **Take it**. See [Dispositions](dispositions.md#where-a-disposition-comes-from).
 
 ### Manual Quarantine
 
@@ -43,8 +43,10 @@ There are two manual routes, and they record different things.
 
 **Holding specific parts** — from the work order's control page, tick the parts
 in the list and click **Quarantine**. This sets their status and nothing more:
-it holds the material but does not say what is wrong with it, so follow it with
-a quality report or a disposition.
+it holds the material but does not say what is wrong with it. To hold the parts
+*and* say what's wrong in one go, use **Raise NCR** from the same toolbar
+instead: it opens [an NCR](ncrs.md#raising-an-ncr-by-hand) with the ticked parts
+filled in.
 
 !!! warning "It acts on the whole selection"
     **Quarantine**, like **Rework** and **Scrap** beside it, applies to every
@@ -55,8 +57,8 @@ rather than to particular parts, open the **disposition form**. The work
 order's **Report…** dialog offers **Quarantine (quality hold)** as a type, but
 only as a link to that form; it does not hold anything by itself.
 
-A **failed** quality report against a part also puts it into quarantine; a
-passing or pending one does not — see [Quality Reports](quality-reports.md).
+A **failed** inspection record against a part also puts it into quarantine; a
+passing or pending one does not — see [Inspection Records](quality-reports.md).
 
 Parts immediately show quarantine status.
 
@@ -166,7 +168,8 @@ A rejected item is never released — it ends when it leaves — so its tag clos
 with who sent it back or scrapped it. Every tag also carries:
 
 - **Item** — part type, serial, quantity, location, work order and step
-- **Why it is held** — the NCR, the quality reports and the finding
+- **Why it is held** — the NCR number and its description, the inspection
+  records and the finding
 - **Placed by** and **Placed** — from the record's history
 
 A part that isn't held has no tag to print: *&lt;serial&gt; isn't held
@@ -183,10 +186,11 @@ supplier escape, a recall — the question is *which units did this lot go into?
    the list
 3. Investigate
 
-!!! note "There is still no bulk disposition"
-    You can quarantine many parts in one action. **Deciding** them is one record
-    at a time — see [A whole load quarantined at once](#a-whole-load-quarantined-at-once)
-    below for the single exception, which the system raises itself.
+!!! tip "Decide them together on one NCR"
+    To decide the suspect parts together, put them on one NCR: tick them on the
+    work order's control page and **Raise NCR**, or **Add parts** to an open
+    NCR. On the NCR, **Decide all waiting** (or **Decide N chosen**) records
+    each part's decision in one go. See [NCRs](ncrs.md#parts-and-decisions).
 
 The lot itself also has its own hold and reject routes at receiving, which are
 separate from part quarantine — see [Supply](../supply/overview.md).
@@ -200,8 +204,9 @@ rather than something to rely on. See [Notification
 Rules](../../admin/setup/notification-rules.md).
 
 No quarantine-specific routing is seeded by default. The related rule that
-does ship sends **NCRs to the QA Manager**, so a quarantine raised through a
-quality report is usually covered while one raised directly is not.
+does ship sends each **NCR opened to the QA Manager**, so a quarantine that came
+with an NCR is usually covered, while a part quarantined directly from the
+control page, without an NCR, is not.
 
 !!! warning "Do not rely on a notification to hand work over"
     Quarantined parts hold their lot. If a disposition needs deciding, check
@@ -217,42 +222,24 @@ chart anywhere.
 
 ## A whole load quarantined at once
 
-There is no multi-select bulk disposition for unrelated parts — you cannot tick
-several quarantined parts and decide them together. Each disposition is decided on
-its own record.
+When a shared batch cycle fails (one ultrasonic wash, one heat-treat load), the
+system raises one [NCR](ncrs.md) over the load, marked *Failed batch load*. The
+parts from that load **still in production** (in progress, awaiting QA, ready for
+their next step, or at an outside process) are quarantined together, each with
+its own disposition under the NCR.
 
-The exception is a **failed load**, and the system starts it, not you: if a shared
-batch cycle fails — one ultrasonic wash, one heat-treat load — the parts from that
-load **still in production** (in progress, awaiting QA, ready for their next step,
-or at an outside process) are quarantined together, and a single disposition is
-opened for the batch. That is one decision covering the load because they genuinely
-share one event, not a convenience for grouping unrelated parts.
+Parts from the load that had already moved on (completed, shipped, scrapped)
+aren't held. On the NCR they read *Already past the step*, and each gets a
+decision kept as a record, so the NCR can close.
 
-Parts from the load that have already moved on — completed, shipped, scrapped —
-aren't held, but the disposition counts them so they can be followed up: *Batch
-cycle failed at Wash - 6 parts in the load (0 held, 6 already past this step).*
-
-### Deciding a failed load
-
-Decide the load's disposition as any other, and say what the decision is for in
-**Applies to**, under **Disposition Type**: **Whole load (N held parts)**, or
-**Choose parts** and tick the held parts' serials. *Each part gets its own
-disposition with this decision. Parts not chosen stay held until they're decided.*
-
-Each chosen part gets its **own disposition**, decided with the same type and
-authority, and from there it behaves like any part's decision: Scrap scraps it,
-Rework sends it to the process's rework step, Use As Is needs its approval
-reference. The load's **Affected Load** card links each part to its disposition
-(*DISP-… · Scrap*), and marks a part still waiting **Held — awaiting decision**.
-Parts that had already moved past the step when the cycle failed weren't held and
-can't be chosen.
-
-A whole-load decision is also recorded on the load's disposition. A load decided in
-parts keeps no single type; each decision is noted on it. Once every held part has
-a decision, the load takes no more: *"Every held part in this load has a decision.
-Change a part's decision on its own disposition (listed under Affected Load)."* The
-load's disposition closes only when none of its held parts is waiting and every
-part disposition from it is closed.
+Decide the load from the NCR's page like any NCR: **Decide all waiting**, or
+tick parts and **Decide N chosen**. Each part's decision goes on its own
+disposition, and from there it behaves like any part's decision: Scrap scraps
+it, Rework sends it down the step's Fail branch or to the Rework step, Use As Is
+needs its approval reference. Parts not chosen stay held until they're decided.
+Once every part has a decision: *"Everything on NCR-… already has a decision;
+change a part's decision on its own disposition."* The NCR closes when every
+decision under it is closed.
 
 See [Running Work Instructions](../dwi/running.md#per-part-work-and-shared-cycles)
 for how shared cycles differ from per-part work.
@@ -282,6 +269,7 @@ The narrow permissions are the ones that decide what happens next:
 
 ## Next Steps
 
+- [NCRs](ncrs.md) - What's wrong, and deciding many parts together
 - [Dispositions](dispositions.md) - Making decisions
-- [Quality Reports](quality-reports.md) - Documenting issues
+- [Inspection Records](quality-reports.md) - Documenting inspection results
 - [CAPA Overview](../capa/overview.md) - Corrective actions

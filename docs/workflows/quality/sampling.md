@@ -231,17 +231,17 @@ the step is that decision, not a marker on the part itself.
 
 ## Accept/Reject Decisions
 
-Based on quality report results:
+Based on inspection record results:
 
 - **Pass**: Sampled parts pass quality check → lot continues
-- **Fail**: Sampled part fails → quality report created, lot may be held
+- **Fail**: Sampled part fails → failed inspection record, lot may be held
 
-### Quality Report Integration
+### Inspection Record Integration
 
 When a sampled part fails:
-1. Quality report is created automatically
-2. Part may be quarantined
-3. Disposition workflow triggers
+1. Its inspection record is recorded as **Fail**
+2. The part is quarantined and goes on an [NCR](ncrs.md)
+3. Its disposition waits for a decision under that NCR
 4. Remaining lot may need 100% inspection
 
 ## Lot Accept/Reject
@@ -300,8 +300,8 @@ Track sampling performance:
 ## Sampling Analytics
 
 There is no sampling-metrics screen or endpoint. A per-rule-set tally of parts
-sampled and defects found is kept as quality reports are written, but nothing
-shows it. Work rates out from the decisions below and the quality reports. The
+sampled and defects found is kept as inspection records are written, but nothing
+shows it. Work rates out from the decisions below and the inspection records. The
 step editor's coverage figure is an estimate from the rules, not a measured
 rate.
 
@@ -320,7 +320,7 @@ excluded it, and when. A substep's decisions show in the operator's step
 runtime, which marks each substep as skipped or waiting; decisions still
 pending show on the control page's pending-decisions panel, with **Reconcile
 now**. There is no list of a part's past substep decisions. The inspection
-result is not in the log; it is on the part's quality report.
+result is not in the log; it is on the part's inspection record.
 
 ## Permissions
 
@@ -353,6 +353,7 @@ recording one is part of running the step.
 
 ## Next Steps
 
-- [Quality Reports](quality-reports.md) - When sampling fails
+- [Inspection Records](quality-reports.md) - Inspection results
+- [NCRs](ncrs.md) - When sampling fails
 - [Sampling Configuration](../../admin/setup/sampling-rules.md) - Admin setup
 - [Analytics](../../analysis/dashboard.md) - Quality metrics

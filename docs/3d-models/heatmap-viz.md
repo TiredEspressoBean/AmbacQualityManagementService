@@ -138,7 +138,7 @@ Look for:
 1. Narrow the filters until the hot spot is what you are looking at
 2. Select the annotation points inside it — each shows its defect type,
    severity, notes, date found and who reported it
-3. Open the linked quality reports for the parts involved
+3. Open the linked inspection records, and their NCRs, for the parts involved
 4. Look for what they share: step, machine, material lot, shift
 
 ### Root Cause Questions

@@ -4,11 +4,12 @@ This guide covers how to initiate and set up a CAPA investigation.
 
 ## Starting a CAPA
 
-### From Quality Report
+### From an NCR
 
-1. Open the quality report
-2. Click **Create CAPA**
-3. CAPA is automatically linked to the NCR
+1. Open the [NCR](../quality/ncrs.md)
+2. On its **CAPA** card, click **Raise CAPA**
+3. The form opens with the NCR's inspection records already linked, and saving
+   it sets the NCR's CAPA decision to **CAPA raised**
 4. Complete the CAPA form
 
 ### From CAPA List
@@ -29,9 +30,9 @@ visible on the dashboard and in [Defect Analysis](../../analysis/defects.md),
 but noticing the pattern and deciding it warrants a CAPA is yours.
 
 Once you have narrowed **Defect Records** to the pattern, its **Create CAPA**
-opens the form with a drafted problem statement and the failed reports already
-linked — see [Defect Analysis](../../analysis/defects.md). Otherwise raise it
-from the CAPA list and link the reports it answers.
+opens the form with a drafted problem statement and the failed inspection
+records already linked — see [Defect Analysis](../../analysis/defects.md).
+Otherwise raise it from the CAPA list and link the records it answers.
 
 ## CAPA Form
 
@@ -69,17 +70,17 @@ already exists. All of these are optional:
 | **Step** | The process step where the issue occurred |
 | **Work Order** | The work order involved |
 | **Supplier** | Set when the CAPA is raised as a SCAR from receiving; not on this form |
-| **Quality Reports** | One or more NCRs this CAPA answers |
-| **Dispositions** | Quarantine dispositions this CAPA answers |
+| **Quality Reports** | One or more failed inspection records this CAPA answers. Linking one links its NCR too |
+| **Dispositions** | Parts' decisions this CAPA answers. Linking one links its NCR too |
 
 ## Deciding *not* to raise one
 
 Not every nonconformance becomes a CAPA, and declining is a recorded decision
-rather than silence. From a quality report you can record the outcome as:
+rather than silence. On the NCR's **CAPA** card you can record the outcome as:
 
 | Decision | Means |
 |----------|-------|
-| **Not required** | This does not warrant corrective action |
+| **No CAPA needed** | This does not warrant corrective action |
 | **Deferred** | It might, but not now |
 
 Both demand a **written reason**, and that is the point: ISO 9001 **10.2.1**
@@ -87,23 +88,31 @@ asks you to evaluate whether action is needed, and an evaluation nobody wrote
 down is indistinguishable from never having looked.
 
 !!! tip "The reason is what an auditor reads"
-    A list of reports with no CAPA and no explanation is the finding. A list
+    A list of NCRs with no CAPA and no explanation is the finding. A list
     with *"single occurrence, contained, supplier notified"* against each one is
-    a quality system working.
+    a quality system working. NCRs nobody has decided on are listed on NCR
+    Analysis under **Awaiting a CAPA decision**.
+
+Recording the decision needs `initiate_capa`. See [NCRs: CAPA](../quality/ncrs.md#capa).
 
 ## Linking Records
 
 Connect related items:
 
-### Quality Reports
-1. On the create form, under **Linked Quality Reports**, search and select them
+### Inspection records
+1. On the create form, under **Linked Inspection Records**, search and select
+   the failed inspection records
 
-The CAPA's **Overview** tab lists them under **Linked Quality Reports**.
+Each one links its NCR to the CAPA too, and marks that NCR **CAPA raised**. The
+CAPA's **Overview** tab lists them under **Linked Inspection Records**, and the
+NCRs under **Linked NCRs**, each with its description.
+
 
 ### Parts
 1. In the **Part** field, pick a single representative part
 2. There is no affected-parts list — if several parts are involved, link their
-   quality reports and name the population in the problem statement
+   inspection records (or raise the CAPA from an NCR that covers them) and name
+   the population in the problem statement
 
 ### Documents
 1. On the **Documents** tab, upload evidence:
@@ -139,6 +148,9 @@ Primary responsible person:
 Containment is recorded as a single **Immediate Action** field on the CAPA —
 describe what was done to contain the problem while the root cause is
 investigated. It is not a list of separately-tracked action items.
+
+The containment of a particular nonconformance, the one that gates its parts'
+decisions, is recorded on its [NCR](../quality/ncrs.md#containment), not here.
 
 If containment needs tracked, assignable work, raise **CAPA tasks** for it.
 
@@ -215,8 +227,8 @@ further rules.
     somebody else raised — and cannot raise one. That is deliberate: a CAPA
     commits the shop to root cause analysis, effectiveness verification and an
     audit trail, so starting one is a supervisory act. If you find something
-    that warrants it, raise the quality report and ask a lead or QA to promote
-    it.
+    that warrants it, record the inspection or raise an NCR, and ask a lead or
+    QA to raise the CAPA from the NCR.
 
 ## Next Steps
 

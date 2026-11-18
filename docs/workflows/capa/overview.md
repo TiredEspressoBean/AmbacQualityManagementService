@@ -22,6 +22,9 @@ Create a CAPA for:
 | **Near misses** | Potential safety issues |
 | **Trend analysis** | Data shows concerning patterns |
 
+Every NCR carries a CAPA decision: **Raise CAPA** on the NCR's CAPA card, or
+record why one isn't needed. See [NCRs: CAPA](../quality/ncrs.md#capa).
+
 ## CAPA Process
 
 !!! note "8D is a method you run, not a structure uqmes tracks"
@@ -161,12 +164,14 @@ Note: Status transitions automatically based on task completion and RCA progress
 
 CAPAs connect to:
 
-- **Quality Reports** and **Dispositions**: the triggering NCRs and the
-  dispositions behind them, any number of each
+- **Inspection records** and **Dispositions**: the failed inspection records
+  and the parts' decisions behind it, any number of each. Linking either links
+  its [NCR](../quality/ncrs.md) too, and the NCR's CAPA decision then reads
+  **CAPA raised**
 - **One part, step and work order** for context: a representative part, the
   step where the issue occurred, and its work order. The affected parts are
-  reached through the linked quality reports and dispositions: each belongs to
-  a part, or to a failed load and its parts. There's no link to an order
+  reached through the linked NCRs: each covers one part, several, a failed
+  load or a lot. There's no link to an order
 - **Supplier**: the supplier it is raised against, for a supplier corrective
   action (SCAR)
 - **Documents**: related procedures, evidence

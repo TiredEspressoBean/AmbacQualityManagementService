@@ -7,7 +7,7 @@ Annotations mark defect locations on 3D models, enabling visual tracking and hea
 Annotations are:
 
 - **Location markers** on 3D models
-- **Linked to quality data** (NCRs, parts)
+- **Linked to quality data** (inspection records, parts)
 - **Aggregated for heat maps** to show patterns
 - **Visual documentation** of defects
 
@@ -22,7 +22,7 @@ Create annotations when:
 
 !!! example "Diesel Injector Annotation"
     Inspecting an injector body, an inspector marks a burr where a fuel passage
-    breaks into the bore. The marker belongs to that inspection's quality report,
+    breaks into the bore. The marker belongs to that inspection's record,
     and every marker like it adds to the heat map, where a repeat location shows up
     as a pattern.
 
@@ -32,9 +32,9 @@ Create annotations when:
 
 1. Open the work order, select the part, and open the **3D** tab of the **QA
    panel** on the right — see [which model it uses](uploading.md#linking-to-part-types)
-2. Under **Quality Report**, choose the report the defect belongs to. The list
-   offers the work order's **Fail** reports that carry an error type marked
-   **Requires 3D Annotation**
+2. Under **Quality Report**, choose the inspection record the defect belongs
+   to. The list offers the work order's **Fail** records that carry an error
+   type marked **Requires 3D Annotation**
 3. Click the location on the model where the defect is — a marker appears
 4. Click the marker to open *Edit Defect Annotation*, and fill in **Error
    Type**, **Severity Level** and **Notes**
@@ -46,30 +46,30 @@ annotations — those are on the [heat map](heatmap-viz.md) and in the Annotator
 ### Method 2: The Annotator (`/annotator`)
 
 The standalone page starts from **Select Quality Reports**, which lists the
-reports carrying an error type marked **Requires 3D Annotation**. Tick the report
-or reports and click **Start Annotating**: it opens their part on its model —
+inspection records carrying an error type marked **Requires 3D Annotation**.
+Tick the record or records and click **Start Annotating**: it opens their part on its model —
 see [which model it uses](uploading.md#linking-to-part-types) — with the
 annotations already on that part and model. Clicking the model opens
 *Edit Defect Annotation* straight away, and the annotation is saved when you
 close it. A disposition that is waiting on annotations links here — **Go to
-Annotator** — with its reports already selected.
+Annotator** — with its inspection records already selected.
 
 !!! note "There is no 'Add Annotation' button"
     Annotations are created by clicking the model itself while in annotate
-    mode, and only once a quality report is selected — the annotation has to
+    mode, and only once an inspection record is selected — the annotation has to
     belong to something.
 
 ### Method 3: As a substep capture
 
 A step can include a **Defect annotation (3D)** capture, so the operator marks the
-model as part of the work instructions. There the report is already the
-substep's own. See [Authoring Work Instructions](../workflows/dwi/authoring.md).
+model as part of the work instructions. There the inspection record is already
+the substep's own. See [Authoring Work Instructions](../workflows/dwi/authoring.md).
 
 !!! important "Some defects must be annotated before a disposition can close"
     An error type can be marked **Requires 3D Annotation**. A disposition linked
-    to a quality report carrying such an error **cannot be completed** until
-    that report has at least one annotation — the disposition form says *"N
-    quality report(s) require 3D annotations before this disposition can be
+    to an inspection record carrying such an error **cannot be completed** until
+    that record has at least one annotation — the disposition form says *"N
+    inspection record(s) require 3D annotations before this disposition can be
     closed"* and links to the Annotator. See [Error Types](../admin/setup/error-types.md).
 
 ## Annotation Form
@@ -77,14 +77,15 @@ substep's own. See [Authoring Work Instructions](../workflows/dwi/authoring.md).
 | Field | Description |
 |-------|-------------|
 | **Location** | Captured from your click on the model (X, Y, Z) — you do not type it |
-| **Error Type** | Category of defect — the error types marked **Requires 3D Annotation** (from the work order page, those on the chosen report). Starts at the first one |
+| **Error Type** | Category of defect — the error types marked **Requires 3D Annotation** (from the work order page, those on the chosen inspection record). Starts at the first one |
 | **Severity Level** | Low, Medium, High or Critical. Starts at Low |
 | **Notes** | Free text |
 
-!!! note "The quality report is not an optional field"
-    An annotation belongs to a report — in standalone QA review you select the
-    report *before* the model accepts a click, and in a substep capture the
-    report is the substep's own. There is no "Linked NCR" picker on the form.
+!!! note "The inspection record is not an optional field"
+    An annotation belongs to an inspection record — in standalone QA review you
+    select the record *before* the model accepts a click, and in a substep
+    capture the record is the substep's own. There is no NCR picker on the form:
+    an annotation reaches its NCR through its inspection record.
 
 ## Where the annotation lands
 
@@ -97,15 +98,15 @@ in annotate mode.
 | Change | Where |
 |--------|-------|
 | **Error type, severity, notes** | **Edit Annotation** on the heat map viewer, or *Edit Defect Annotation* in the annotator |
-| **Delete it** | Select it in the annotator — *Edit Defect Annotation* — and delete. Once its quality report is finished, only the quality team can |
+| **Delete it** | Select it in the annotator — *Edit Defect Annotation* — and delete. Once its inspection record is finished, only the quality team can |
 | **Move it** | Not possible. Delete it and place a new one |
 
-!!! important "Deleting is open while inspecting, closed once the report is finished"
-    While every quality report an annotation belongs to is still **Pending**,
+!!! important "Deleting is open while inspecting, closed once the record is finished"
+    While every inspection record an annotation belongs to is still **Pending**,
     anyone on staff can delete it, so an inspector can remove a misplaced
     marker as they work.
 
-    Once **any** of its reports is no longer Pending — **Pass**, **Fail** or
+    Once **any** of its records is no longer Pending — **Pass**, **Fail** or
     **Needs repair** — the annotation is inspection evidence. Deleting it then needs
     `delete_submitted_heatmapannotations`, by default held by **QA Inspector,
     QA Manager and Tenant Admin**; anyone else does not see **Delete**, and the
@@ -117,7 +118,7 @@ in annotate mode.
 
 ## Attaching Photos
 
-Photos are attached through the quality report the annotation belongs to, not
+Photos are attached through the inspection record the annotation belongs to, not
 through the annotation itself.
 
 ## Viewing Existing Annotations
@@ -140,8 +141,8 @@ filters.
 |------------|--------|
 | `add_heatmapannotations` | Create annotations |
 | `change_heatmapannotations` | Edit an annotation's type, severity and notes |
-| `delete_heatmapannotations` | Remove an annotation whose reports are all still Pending, or that has none |
-| `delete_submitted_heatmapannotations` | Remove an annotation on a finished (Pass, Fail or Needs repair) report |
+| `delete_heatmapannotations` | Remove an annotation whose inspection records are all still Pending, or that has none |
+| `delete_submitted_heatmapannotations` | Remove an annotation on a finished (Pass, Fail or Needs repair) inspection record |
 | `view_heatmapannotations` | View annotations |
 
 ## Troubleshooting
@@ -158,11 +159,12 @@ filters.
   moved
 
 ### Photo Won't Upload
-Photos attach to the **quality report**, not to the annotation. Upload it
+Photos attach to the **inspection record**, not to the annotation. Upload it
 there.
 
 ## Next Steps
 
 - [Heat Map Visualization](heatmap-viz.md) - See aggregated data
 - [Viewing Models](viewing.md) - Navigation guide
-- [Quality Reports](../workflows/quality/quality-reports.md) - NCR management
+- [Inspection Records](../workflows/quality/quality-reports.md) - The inspection an annotation belongs to
+- [NCRs](../workflows/quality/ncrs.md) - The nonconformance a failed record goes on

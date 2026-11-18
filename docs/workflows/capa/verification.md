@@ -247,5 +247,5 @@ There is no submit-for-closure action, no closure approval and no reopen, so
 ## Next Steps
 
 - [CAPA Overview](overview.md) - Process reference
-- [Quality Reports](../quality/quality-reports.md) - Where CAPAs start
+- [NCRs](../quality/ncrs.md) - Where CAPAs start
 - [Compliance](../../compliance/audit-trails.md) - Audit trail

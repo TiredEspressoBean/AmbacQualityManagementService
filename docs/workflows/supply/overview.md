@@ -548,7 +548,9 @@ you do to bought stock.
 | **Some of them** (default) | You enter how many are bad. Those pieces **split into their own rejected lot** — numbered `-01`, `-02` … and carrying the heat number, source, PO and CoC — with a disposition for that quantity in pieces. **The rest of the lot is accepted.** |
 | **Reject whole lot** | The entire lot goes back. Needs permission — see below |
 
-The reject and its disposition are created **together**, in one step.
+The reject, an [NCR](../quality/ncrs.md) for the lot and its disposition are
+created **together**, in one step. The disposition is the lot's decision under
+that NCR; containment is recorded on the NCR.
 
 If the sample wasn't finished, the inspection is recorded as **failed**: the
 reject decided it. The lot still counts toward the supplier's Z1.4 severity.
@@ -585,7 +587,8 @@ instead:
 
 A permission holder can also escalate later: **Reject remaining stock…** at the bottom of the
 Materials row menu, in red, rejects the **unconsumed remainder** of an accepted lot, with
-a reason and a destination. Anything already used is not reversed.
+a reason and a destination. Anything already used is not reversed. It always
+opens a new NCR for the lot.
 
 ### Sending it back
 
@@ -647,8 +650,9 @@ is in quarantine or rejected. It reads:
 
 - **HOLD** — held for named reasons, listed in words: *Unqualified supplier*,
   *Awaiting heat number* — under *DO NOT USE UNTIL RELEASED*
-- **QUARANTINE** — awaiting a disposition, with the VDMR, the quality report and
-  the finding (*Whole lot reject requested*) — under *DO NOT USE UNTIL RELEASED*
+- **QUARANTINE** — awaiting a disposition, with the lot's NCR number and what's
+  wrong, the failed inspection records and the finding (*Whole lot reject
+  requested*) — under *DO NOT USE UNTIL RELEASED*
 - **REJECTED** — with the same, under *DO NOT USE — TO BE RETURNED OR SCRAPPED*
 
 with the lot, quantity and location. A held or quarantined lot's tag ends with a

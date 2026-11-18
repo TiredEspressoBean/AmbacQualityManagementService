@@ -78,7 +78,7 @@ Contacts**.
 ### Orders & records
 
 **Orders**, **Work Orders**, **Parts**, **Cores**, **Order Milestones** `rev`,
-**Quality Reports**.
+**Quality Reports** (the [inspection records](../../workflows/quality/quality-reports.md)).
 
 ### Documents & audit
 
@@ -185,7 +185,7 @@ Most edit forms carry a **History** card at the bottom. It lists each revision â
 it and when. In-place changes and deletes are listed too.
 
 It reaches beyond the config tables: **3D Models**, **Users**, **Orders**, **Work
-Orders**, **Parts**, **Quality Reports**, **Receiving Inspection Plans**, **User
+Orders**, **Parts**, **Inspection Records**, **Receiving Inspection Plans**, **User
 Groups** and the **core detail** page have one as well. **Work Centers**,
 **Shifts** and **Order Milestones** carry History on the row rather than the
 form.

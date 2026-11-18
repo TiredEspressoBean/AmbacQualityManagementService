@@ -50,8 +50,9 @@ what to create and what to call it, not a set of options to pick from:
     inspector marks the defect location on the model. Use it for defects whose
     position matters — see [Annotations](../../3d-models/annotations.md).
 
-    It is a **gate**, not a hint: a disposition linked to a report carrying one
-    of these errors cannot be completed until that report has an annotation.
+    It is a **gate**, not a hint: a disposition linked to an inspection record
+    carrying one of these errors cannot be completed until that record has an
+    annotation.
 
 ## Error Type Hierarchy
 
@@ -81,9 +82,11 @@ There is no code, description, parent, severity, colour, or icon field.
     Error types carry no rules of their own — no default severity, no
     auto-quarantine, and no automatic CAPA trigger.
 
-    Severity is set on the **quality report** and the **CAPA** when they are
-    raised. Quarantine follows from the quality report rather than from the
-    error type. A CAPA is raised deliberately, not by a threshold rule.
+    Severity is set on each defect of an **inspection record**, and on the
+    **CAPA** when it is raised. The worst defect sets the severity of the
+    [NCR](../../workflows/quality/ncrs.md) the part goes on. Quarantine follows
+    from the inspection record's result rather than from the error type. A CAPA
+    is raised deliberately, not by a threshold rule.
 
 ## Reporting and Analysis
 
@@ -128,11 +131,11 @@ See [Import & Export](../data/import-export.md).
 
 *Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../users/roles.md).
 
-An inspector picks from the list on a quality report but cannot add to it; a
+An inspector picks from the list on an inspection record but cannot add to it; a
 missing category is a request to one of those groups.
 
 ## Next Steps
 
-- [Quality Reports](../../workflows/quality/quality-reports.md) - Using error types
+- [Inspection Records](../../workflows/quality/quality-reports.md) - Using error types
 - [Defect Analysis](../../analysis/defects.md) - Analyzing data
 - [CAPA](../../workflows/capa/overview.md) - Corrective actions

@@ -1,0 +1,184 @@
+# NCRs
+
+An **NCR** (non-conformance report) records one nonconformance: what's wrong,
+how serious it is, where it was found and how it was contained. It covers the
+parts the nonconformance affects, one or many, and each part gets its **own
+decision** (its [disposition](dispositions.md)) under the NCR.
+
+So an NCR answers *what is wrong*, and its dispositions answer *what we decided
+for each part*. The failed [inspection records](quality-reports.md) behind it
+are the evidence: one per part, or one for a failed batch cycle.
+
+**Quality** > **NCRs** (`/quality/ncrs`).
+
+## How an NCR opens
+
+**Every failure belongs to an NCR.** You don't have to raise one for a failed
+inspection: it opens on its own.
+
+| What failed | The NCR |
+|-------------|---------|
+| An inspection record saved as **Fail**, an out-of-spec reading at a step that holds on it, a failed sample | One NCR for the part. Its severity starts at the worst defect recorded, or Major when none is |
+| A batch cycle (wash, heat-treat, plating) | One NCR over the load: every part in it, each with its own decision |
+| A first piece of several parts failed | One NCR over the failed pieces |
+| A rejected outside-process return | One NCR, with a decision for each part it carried |
+| A received lot rejected, or its remainder rejected | One NCR for the lot. Rejecting the remainder of an already-accepted lot always opens a new NCR |
+
+**A part that fails again joins its open NCR**, as long as its own decision on
+that NCR is still open. Once its decision there is done, a new failure opens a
+new NCR.
+
+Parts are only grouped where the event is one: a load, a first-piece run, or
+parts you put together yourself. The system never guesses that two failures
+belong together.
+
+## Raising an NCR by hand
+
+To put several parts on one NCR (the same burr on 8 of 50 bodies, say), raise
+it yourself:
+
+1. **Quality** > **NCRs** > **Raise NCR**, or select the parts on **WO Control**
+   and press **Raise NCR** in the bulk toolbar (it opens with them filled in)
+2. Choose the parts, say **What's wrong** (*e.g. Bores oversize from grinder
+   setup 2 — 4.007 against 4.005 max*) and pick the **Severity**: *Critical -
+   Safety/Regulatory Impact*, *Major - Functional Impact* (the default) or
+   *Minor - Cosmetic Only*
+3. **Raise NCR** (with several parts, **Raise NCR over N parts**). *NCR raised*
+
+*"One nonconformance over the parts it covers. Each part is held, gets a failed
+inspection record saying what's wrong, and waits for its own decision under
+this NCR."* A description is required: *"Say what is wrong — it's the NCR's
+description."*
+
+To add parts to an open NCR, **Add parts** on its page, with **Why these parts**
+(*e.g. Same grinder setup*). Each added part is held and gets its own failed
+inspection record. A part already on it is refused (*"Already on
+NCR-2026-000001: INJ-OPS-002."*), and a closed NCR takes no more: *"NCR-… is
+closed — raise a new NCR for these parts."*
+
+## The NCR list
+
+**Open** (the default), **Awaiting CAPA decision** and **All**. Each row shows
+the NCR number, what it **Covers** (a serial, *N parts*, or *Lot X*), what's
+wrong, severity, state, how many parts are **Awaiting decision**, where it was
+found and when it opened. Filter by state, severity or CAPA decision.
+
+## An NCR's page
+
+### Parts and decisions
+
+One row per part (or lot): its status, its disposition, the decision and its
+state. A part still to be decided reads *Awaiting decision*. A part of a failed
+load that had already moved past the step reads *Already past the step* under
+its serial. It still gets a decision, kept as a record (its notes start
+*"Already past the step when its load failed — decided for the record."*), so
+the NCR can close.
+
+**Decide all waiting (N)**, or tick rows and **Decide N chosen**. The decision
+(*Rework*, *Repair (AS9100)*, *Scrap*, *Use As Is*, *Return to Supplier*) goes
+on each part's own disposition, with you, or a co-signer, as who authorised it.
+*Use As Is* and *Repair* need a **Concession reference**. Without
+`approve_disposition`, the button reads **Co-sign and record**, and an
+authorised colleague co-signs at your screen. *Decision recorded*.
+
+To change one part's decision afterwards, open its disposition: *"Everything on
+NCR-… already has a decision; change a part's decision on its own
+disposition."* Where each decision sends the part is on
+[Dispositions](dispositions.md#what-the-decision-does-to-the-part).
+
+### What's wrong
+
+The description and severity, editable by a lead or QA (`change_ncr`).
+
+**Severity** follows the worst defect recorded on the NCR's inspection records
+as they come in, until anything on the NCR is decided. After the first
+decision it can only be **raised**, by a person: *"Decided at this severity: it
+can be raised, not lowered."* A lowering is refused: *"NCR-… is decided;
+severity can't change after the decision (severity may only be raised)."*
+
+### Containment
+
+*"The immediate action taken to prevent escape — once, for everything this NCR
+covers."* Describe it, say who performed it under **Performed by (if not you)**,
+attach evidence (a file, with its classification) below it, and **Record
+containment**. Its page then
+reads *Recorded by &lt;name&gt; on &lt;date&gt;*.
+
+!!! important "Critical and Major NCRs need containment before a decision closes"
+    No decision under a Critical or Major NCR can be closed until containment is
+    recorded: *"Cannot complete disposition: Containment action required on
+    NCR-… before closing a decision on a CRITICAL/MAJOR nonconformance"*.
+    Marking containment complete needs its description first (*"Describe the
+    containment action before marking it complete."*), and a closed NCR can't
+    be edited.
+
+### Where it was found
+
+The work order and step, set by the system and not editable; *Failed batch
+load* for a load; who raised it, and when it opened and closed.
+
+### CAPA
+
+*"Whether this nonconformance needs corrective action — decided, not
+assumed."* Each NCR carries a CAPA decision:
+
+| Decision | Recorded by |
+|----------|-------------|
+| **CAPA raised** | Set when a CAPA links the NCR: **Raise CAPA** opens a new CAPA with the NCR's inspection records |
+| **No CAPA needed** | A person, **with a reason** |
+| **Deferred** | A person, **with a reason** |
+| *Not decided yet* | Nobody has looked |
+
+ISO 9001 §10.2.1(b) asks that the need for action be **evaluated**. The reason
+is required, because it's what an auditor reads. NCRs nobody has decided on are
+listed on NCR Analysis under **Awaiting a CAPA decision**. Recording the decision
+needs `initiate_capa`.
+
+### Inspection records
+
+The failed inspection records behind the NCR: one per part, or, for a failed
+batch load, the one record of the failed cycle.
+
+## When an NCR closes
+
+**When every decision under it is closed.** *"This NCR is closed: every decision
+under it has been carried out."*
+
+An NCR where nothing was decided also closes once none of its inspection records
+still fails: a receiving sample re-recorded within its accept number, for
+example.
+
+## Printing and tags
+
+**NCR Report** prints the *Non-Conformance Report*: the header, the inspection
+records, containment, a table of each part's decision, and closure. Printing
+from a disposition prints its NCR. A part's **hold tag** carries the NCR number
+and description.
+
+## Notifications
+
+One notification per NCR, when it opens, to the QA Manager group by default:
+*[MAJOR] NCR-2026-000001 on &lt;part&gt;*, where the part is a serial, *N parts*
+or *Lot X*. A rule can route on `payload.severity` (e.g. `== "CRITICAL"`), and
+also offers the NCR number and part count. See [Notification
+Rules](../../admin/setup/notification-rules.md).
+
+## Permissions
+
+| Action | Permission | Held by default |
+|--------|------------|-----------------|
+| See NCRs and print them | `view_ncr` | All staff |
+| Raise an NCR, add parts to one | `add_ncr` | Everyone who can flag a problem, operators included |
+| Edit what's wrong, record containment | `change_ncr` | QA Inspector, QA Manager, Shift Lead, Production Manager, Tenant Admin |
+| Decide parts | `approve_disposition` | As for dispositions; co-signable |
+| The CAPA decision | `initiate_capa` | As for CAPAs |
+
+Where it was found isn't editable by anyone. Editing a disposition can't change
+its NCR's header either: *"What's wrong on NCR-… — its description, severity and
+containment — is edited by a lead or QA."*
+
+## Next Steps
+
+- [Dispositions](dispositions.md) - Each part's decision
+- [Inspection Records](quality-reports.md) - The evidence behind an NCR
+- [CAPA Overview](../capa/overview.md) - Corrective action

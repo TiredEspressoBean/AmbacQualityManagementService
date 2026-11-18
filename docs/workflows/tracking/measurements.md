@@ -36,11 +36,11 @@ When a step defines measurement captures, they appear as substeps:
 
 The value is evaluated against the specification as you enter it.
 
-### On a Quality Report
+### On an Inspection Record
 
-A quality report captures measurement results against each measurement
-definition — used for inspections and when documenting a non-conformance. See
-[Quality Reports](../quality/quality-reports.md).
+An inspection record captures measurement results against each measurement
+definition — used for inspections, and as the evidence behind an
+[NCR](../quality/ncrs.md). See [Inspection Records](../quality/quality-reports.md).
 
 ### During Incoming Inspection
 
@@ -143,7 +143,7 @@ Measurements may require calibrated equipment:
 
 There is no **Measurements** tab on a part. A measurement recorded at an
 inspection-point substep is written as a measurement result against the
-**Quality Report** that substep produced, and that report is where the numeric
+**inspection record** that substep produced, and that record is where the numeric
 evidence is listed — characteristic, value, specification, result, and
 **Recorded by**: who recorded it, with the date and time.
 
@@ -196,23 +196,24 @@ When a measurement fails:
 
 ### Automatic Quarantine
 A failed measurement at an inspection-point substep fails that substep's
-quality report, which quarantines the part. There is no setting for this.
+inspection record, which quarantines the part and puts it on an
+[NCR](../quality/ncrs.md). There is no setting for this.
 
 ### Manual Review
 The operator decides between:
 
 1. **Re-measure**, if the reading itself is suspect — and before the step is
    completed, a corrected value simply replaces the draft
-2. **Create a quality report**, which is the route that raises the issue
-   formally
+2. **Record a failed inspection**, or **raise an NCR**, which are the routes
+   that raise the issue formally
 
 !!! note "There is no Flag button on a part"
-    Raising an issue means creating a quality report. There is no separate
-    flag-for-review action.
+    Raising an issue means recording a failed inspection or raising an NCR.
+    There is no separate flag-for-review action on the part.
 
 ### Rework
 Rework is a **disposition decision**, not a move the operator makes. Record the
-failed measurement, raise a quality report, and let the disposition decide
+failed measurement, and the part goes on an NCR, where its disposition decides
 between Rework, Repair, Use As Is, Scrap or Return to Supplier.
 
 !!! note "There is no 'move to rework step' button"
