@@ -17709,6 +17709,10 @@ export type SamplePlanResponse = {
      */
     (string | null)
     | undefined;
+  recorded_defects?: /**
+   * Defects recorded on the open inspection. Any one makes the sample at least one defective, whatever the readings say.
+   */
+  Array<string> | undefined;
 };
 export type ReceivingCharacteristic = {
   id: string;
@@ -23601,6 +23605,7 @@ const SamplePlanResponse = z.object({
   report_id: z.string().uuid().nullish(),
   report_status: z.string().nullish(),
   accept_incomplete_pending: z.string().nullish(),
+  recorded_defects: z.array(z.string()).optional(),
 });
 const ShipBackRequest = z
   .object({

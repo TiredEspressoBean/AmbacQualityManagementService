@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { recordedDefectReason, withRecordedDefects } from "@/lib/receiving-tally";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -183,9 +184,11 @@ export function ReceivingAcceptanceStage({
     }, [capturedMeasurements, samplePlan]);
     const capturedFailures = Object.values(failedByChar).reduce((a, b) => a + b, 0);
     const countFor = (id: string) => Math.max(parseInt(defectByChar[id]) || 0, failedByChar[id] ?? 0);
-    const bd = useByChar
+    const recordedDefects = samplePlan?.recorded_defects ?? [];
+    const counted = useByChar
         ? characteristics.reduce((sum, c) => sum + countFor(String(c.id)), 0)
         : Math.max(parseInt(defectTotal) || 0, capturedFailures);
+    const bd = withRecordedDefects(counted, recordedDefects);
     const defectBreakdown = useByChar
         ? characteristics
             .filter((c) => countFor(String(c.id)) > 0)
@@ -215,7 +218,7 @@ export function ReceivingAcceptanceStage({
             // Persist the attribute count so the QR carries defectives_found and the
             // server-side acceptance evaluation matches.
             if (!isVariables && hasPlan) {
-                try { await recordBulkMut.mutateAsync({ id: lotId, defectives_found: bd }); } catch { /* non-fatal */ }
+                try { await recordBulkMut.mutateAsync({ id: lotId, defectives_found: counted }); } catch { /* non-fatal */ }
             }
             await acceptMut.mutateAsync({ id: lotId });
             toast.success("Lot accepted");
@@ -236,7 +239,7 @@ export function ReceivingAcceptanceStage({
         try {
             if (!(await ensureFlushed())) { toast.error("Could not save inspection captures"); return; }
             if (!isVariables && hasPlan) {
-                try { await recordBulkMut.mutateAsync({ id: lotId, defectives_found: bd }); } catch { /* non-fatal */ }
+                try { await recordBulkMut.mutateAsync({ id: lotId, defectives_found: counted }); } catch { /* non-fatal */ }
             }
             // One call: the server rejects (all, or the bad pieces split off) and opens the
             // disposition with it — no second request to fail half-way.
@@ -321,7 +324,7 @@ export function ReceivingAcceptanceStage({
                         </div>
                     )}
                     <p className={`text-sm font-medium ${verdict === "reject" ? "text-destructive" : verdict === "accept" ? "text-green-600" : "text-muted-foreground"}`}>
-                        Total defective: {bd} · Accept ≤ {ac} · Reject ≥ {re}
+                        Total defective: {bd}{recordedDefectReason(counted, recordedDefects)} · Accept ≤ {ac} · Reject ≥ {re}
                         {verdict === "reject" && " — will REJECT"}
                         {verdict === "accept" && " — will ACCEPT"}
                     </p>
@@ -408,6 +411,7 @@ export function ReceivingAcceptanceStage({
                 canRaiseScar={canInitiateCapa}
                 quantity={Number(lot?.quantity ?? 0)}
                 defectives={isVariables ? undefined : bd}
+                defectivesReason={isVariables ? "" : recordedDefectReason(counted, recordedDefects)}
                 sampleSize={hasPlan ? n : undefined}
                 acceptNumber={ac}
                 defectBreakdown={defectBreakdown || undefined}

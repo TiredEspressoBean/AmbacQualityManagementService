@@ -37194,6 +37194,8 @@ export interface components {
             report_status?: string | null;
             /** @description Approval number of the request to accept this lot unfinished, while it waits. */
             accept_incomplete_pending?: string | null;
+            /** @description Defects recorded on the open inspection. Any one makes the sample at least one defective, whatever the readings say. */
+            recorded_defects?: string[];
         };
         /**
          * @description Append-only sampling decision per (StepExecution, Substep). The

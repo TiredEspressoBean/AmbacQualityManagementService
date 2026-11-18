@@ -725,6 +725,11 @@ def evaluate_lot_acceptance(report):
         units_recorded = n
     else:
         defectives, units_recorded = 0, 0
+    # A unit carrying a recorded nonconformity is a defective unit (attributes sampling):
+    # a defect on the lot's record is at least one, even with every reading in spec.
+    # Not its count — that's occurrences, possibly on one piece (user ruling 2026-11-18).
+    if defectives < 1 and report.defects.exists():
+        defectives = 1
 
     ac = report.accept_number if report.accept_number is not None else 0
     re = report.reject_number if report.reject_number is not None else (ac + 1)

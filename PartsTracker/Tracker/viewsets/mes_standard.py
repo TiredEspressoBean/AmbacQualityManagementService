@@ -1178,6 +1178,8 @@ class MaterialLotViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, 
             'report_id': report.id if report else None,
             'report_status': report.status if report else None,
             'accept_incomplete_pending': waiting.approval_number if waiting else None,
+            'recorded_defects': ([d.error_type.error_name for d in report.defects.select_related('error_type')]
+                                 if report else []),
             **plan,
             'variables_characteristic_id': rs.variables_characteristic_id if rs else None,
             'characteristics': chars,

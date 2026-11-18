@@ -82401,6 +82401,12 @@ components:
           nullable: true
           description: Approval number of the request to accept this lot unfinished,
             while it waits.
+        recorded_defects:
+          type: array
+          items:
+            type: string
+          description: Defects recorded on the open inspection. Any one makes the
+            sample at least one defective, whatever the readings say.
       required:
       - accept_number
       - characteristics

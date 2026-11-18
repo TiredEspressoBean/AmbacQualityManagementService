@@ -220,7 +220,7 @@ class QualityReportsSerializer(SecureModelMixin):
     """Quality reports serializer"""
     measurements = MeasurementResultSerializer(many=True, required=False)
     # The defects found, written with the record (services/qms/quality_report.record_defects):
-    # on create, or on edit while it's still pending — a recorded result stays final.
+    # on create, or on edit while it's still pending — a recorded result is locked.
     defect_rows = DefectRowSerializer(many=True, required=False, write_only=True)
     # Role-tagged equipment (read). The operator-runtime path populates these
     # via dedicated capture endpoints; the manual QR form writes the single
@@ -424,12 +424,10 @@ class QualityReportsSerializer(SecureModelMixin):
         # Silently discard the field on update so the form can't clobber the
         # linked MeasurementResult rows by sending an empty array.
         validated_data.pop("measurements", None)
+        # A recorded result isn't editable at all (approval_lock): defects come with
+        # the record, or while it's pending.
         defect_rows = validated_data.pop("defect_rows", None)
         prior_status = instance.status
-        if defect_rows and prior_status != 'PENDING':
-            raise serializers.ValidationError({'defect_rows': (
-                "A recorded result is final: its defects were recorded with it. A finding "
-                "made later goes on its NCR (Add a defect).")})
         people_changed = bool({"detected_by", "verified_by"} & set(validated_data))
         instance = super().update(instance, validated_data)
         if has_equipment:
@@ -2676,6 +2674,10 @@ class SamplePlanResponseSerializer(serializers.Serializer):
     accept_incomplete_pending = serializers.CharField(
         allow_null=True, required=False,
         help_text="Approval number of the request to accept this lot unfinished, while it waits.")
+    recorded_defects = serializers.ListField(
+        child=serializers.CharField(), required=False,
+        help_text="Defects recorded on the open inspection. Any one makes the sample at "
+                  "least one defective, whatever the readings say.")
 
 
 class IncomingInspectionRowSerializer(serializers.Serializer):

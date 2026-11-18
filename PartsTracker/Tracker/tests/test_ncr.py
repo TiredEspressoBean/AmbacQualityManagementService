@@ -792,8 +792,10 @@ class DefectEntryTests(_Shop):
         report = self._fail(self.parts[0])
         r = self.client.patch(f"/api/QualityReports/{report.id}/", {"defect_rows": [self._row(self.marks)]},
                               format="json")
-        self.assertEqual(r.status_code, 400, r.content)
-        self.assertIn("A recorded result is final", r.content.decode())
+        # The approval lock: a recorded result isn't edited at all.
+        self.assertIn(r.status_code, (400, 403), r.content)
+        self.assertEqual(r.json()["code"], "approval_locked")
+        self.assertEqual(report.defects.count(), 0)
         pending = QualityReports.objects.create(tenant=self.tenant_a, part=self.parts[1], step=self.step,
                                                 status="PENDING", detected_by=self.user_a)
         r = self.client.patch(f"/api/QualityReports/{pending.id}/", {"defect_rows": [self._row(self.marks)]},

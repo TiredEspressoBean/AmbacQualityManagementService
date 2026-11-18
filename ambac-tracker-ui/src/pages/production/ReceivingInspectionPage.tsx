@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { recordedDefectReason, withRecordedDefects } from "@/lib/receiving-tally";
 import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -154,7 +155,9 @@ export function ReceivingInspectionPage() {
     const unitComplete = (u: number) =>
         characteristics.length > 0 && characteristics.every((c) => cellInSpec(c, cells[`${u}:${c.id}`]) !== null);
 
-    const defectives = units.filter(unitDefective).length;
+    const recordedDefects = samplePlan?.recorded_defects ?? [];
+    const readingDefectives = units.filter(unitDefective).length;
+    const defectives = withRecordedDefects(readingDefectives, recordedDefects);
     const unitsComplete = units.filter(unitComplete).length;
     const verdict: "reject" | "accept" | "progress" =
         defectives >= re ? "reject" : unitsComplete >= n && defectives <= ac ? "accept" : "progress";
@@ -433,7 +436,7 @@ export function ReceivingInspectionPage() {
                                         </TooltipProvider>
                                     ) : (
                                         <div className={`text-sm font-medium ${verdict === "reject" ? "text-destructive" : verdict === "accept" ? "text-green-600" : "text-muted-foreground"}`}>
-                                            Defectives: {defectives} / Accept ≤ {ac} / Reject ≥ {re}
+                                            Defectives: {defectives}{recordedDefectReason(readingDefectives, recordedDefects)} / Accept ≤ {ac} / Reject ≥ {re}
                                             {verdict === "reject" && " — will REJECT"}
                                             {verdict === "accept" && " — will ACCEPT"}
                                             {verdict === "progress" && ` — ${unitsComplete}/${n} units inspected`}
@@ -450,7 +453,8 @@ export function ReceivingInspectionPage() {
                             )}
 
                             {mode === "bulk" && (() => {
-                                const bd = parseInt(bulkDefectives) || 0;
+                                const typed = parseInt(bulkDefectives) || 0;
+                                const bd = withRecordedDefects(typed, recordedDefects);
                                 const v = bd >= re ? "reject" : bd <= ac ? "accept" : "progress";
                                 return (
                                     <div className="space-y-2">
@@ -464,12 +468,12 @@ export function ReceivingInspectionPage() {
                                             <span className="text-sm text-muted-foreground">of {n} inspected</span>
                                         </div>
                                         <div className={`text-sm font-medium ${v === "reject" ? "text-destructive" : v === "accept" ? "text-green-600" : "text-muted-foreground"}`}>
-                                            Defectives: {bd} / Accept ≤ {ac} / Reject ≥ {re}
+                                            Defectives: {bd}{recordedDefectReason(typed, recordedDefects)} / Accept ≤ {ac} / Reject ≥ {re}
                                             {v === "reject" && " — will REJECT"}
                                             {v === "accept" && " — will ACCEPT"}
                                         </div>
                                         <Button variant="outline" disabled={recordBulkMut.isPending}
-                                            onClick={() => recordBulkMut.mutate({ id: lotId, defectives_found: bd }, {
+                                            onClick={() => recordBulkMut.mutate({ id: lotId, defectives_found: typed }, {
                                                 onSuccess: () => { toast.success("Result recorded"); lotQuery.refetch(); },
                                                 onError: () => toast.error("Could not record result"),
                                             })}>
@@ -551,7 +555,8 @@ export function ReceivingInspectionPage() {
                 hasSupplier={!!lot.supplier}
                 canRaiseScar={canInitiateCapa}
                 quantity={Number(lot.quantity ?? 0)}
-                defectives={mode === "bulk" ? (parseInt(bulkDefectives) || 0) : defectives}
+                defectives={mode === "bulk" ? withRecordedDefects(parseInt(bulkDefectives) || 0, recordedDefects) : defectives}
+                defectivesReason={recordedDefectReason(mode === "bulk" ? (parseInt(bulkDefectives) || 0) : readingDefectives, recordedDefects)}
                 sampleSize={n}
                 acceptNumber={ac}
                 submitting={rejectSubmitting}

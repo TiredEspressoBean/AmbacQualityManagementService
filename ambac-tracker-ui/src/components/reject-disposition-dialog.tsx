@@ -33,7 +33,7 @@ export type RejectDispositionValues = {
 };
 
 export function RejectDispositionDialog({
-    open, onOpenChange, lotNumber, supplierName, hasSupplier, canRaiseScar = true, quantity, defectives, sampleSize, acceptNumber,
+    open, onOpenChange, lotNumber, supplierName, hasSupplier, canRaiseScar = true, quantity, defectives, defectivesReason, sampleSize, acceptNumber,
     defectBreakdown, submitting, onConfirm, canRejectWholeLot = false, unitOfMeasure,
 }: {
     /** Holds `reject_whole_lot`. Without it a whole-lot reject is sent to QA as a request. */
@@ -52,6 +52,8 @@ export function RejectDispositionDialog({
     quantity: number;
     /** Inspection context, used to pre-fill the nonconformance summary. */
     defectives?: number;
+    /** Why the count is what it is — " (a recorded defect: …)" when that's what made it one. */
+    defectivesReason?: string;
     sampleSize?: number;
     acceptNumber?: number;
     /** Defect tally by RIP characteristic, e.g. "Outer Diameter: 2, Visual: 1". */
@@ -132,7 +134,7 @@ export function RejectDispositionDialog({
                         <legend className="px-1 font-medium">Which pieces?</legend>
                         {defectives != null && sampleSize != null && (
                             <p className="text-xs text-muted-foreground">
-                                {defectives} defective found in the sample of {sampleSize} (accept ≤ {acceptNumber ?? 0}).
+                                {defectives} defective{defectivesReason ?? ""} found in the sample of {sampleSize} (accept ≤ {acceptNumber ?? 0}).
                             </p>
                         )}
                         <label className="flex items-start gap-2">

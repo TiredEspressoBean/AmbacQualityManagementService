@@ -274,3 +274,26 @@ class SuspensionReachesTheDockTests(_Fixture):
         self.assertNotEqual(waiting.status, "QUARANTINE")
         self.assertEqual(lot_holds.holds(other), ["WHOLE_LOT_REJECT_REQUESTED"])
         self.assertEqual(other.status, "QUARANTINE")
+
+
+class RecordedDefectTallyTests(_Fixture):
+    """A defect recorded on the lot's inspection is at least one defective (ruling 11/18)."""
+
+    def test_a_recorded_defect_rejects_a_zero_accept_sample_with_readings_in_spec(self):
+        from Tracker.models import MaterialLot, QualityErrorsList
+        from Tracker.services.qms.quality_report import upsert_defect_rows
+        self._material_rip(self.bar)
+        lot = self._receive(material=str(self.bar.id), quantity="120", lot_number="DEF-1").json()
+        # Received for inspection: its inspection is open already.
+        report = MaterialLot.objects.get(pk=lot["id"]).quality_reports.order_by("-created_at").first()
+        self.assertIsNotNone(report)
+        self.assertEqual(report.accept_number or 0, 0)
+        pitting = QualityErrorsList.objects.create(tenant=self.tenant, error_name="Corrosion pitting")
+        upsert_defect_rows(report, [{"error_type": pitting, "severity": "MAJOR"}])
+        plan = self.client.get(f"/api/MaterialLots/{lot['id']}/sample_plan/").json()
+        self.assertEqual(plan["recorded_defects"], ["Corrosion pitting"])
+        # The inspector counted none; the recorded defect still makes it one.
+        r = self.client.post(f"/api/MaterialLots/{lot['id']}/record_bulk/", {"defectives_found": 0}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        report.refresh_from_db()
+        self.assertEqual(report.status, "FAIL")
