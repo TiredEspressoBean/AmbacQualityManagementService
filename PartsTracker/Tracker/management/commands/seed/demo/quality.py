@@ -906,10 +906,13 @@ class DemoQualitySeeder(BaseSeeder):
         # bare (OPEN, no type), and `.objects` includes archived rows, so
         # without this we'd re-enrich a dead record: type it and assign it to a
         # QA user, leaving a soft-deleted "zombie" disposition on their name.
+        # A report the seed says is awaiting its disposition stays that way: its NCR is
+        # the open exhibit, not one to advance.
+        awaiting = [q['id'] for q in DEMO_QUALITY_REPORTS if q.get('needs_disposition')]
         bare = list(
             QuarantineDisposition.objects.active().filter(
                 tenant=self.tenant, current_state='OPEN', disposition_type=''
-            ).order_by('disposition_number')
+            ).exclude(quality_reports__report_number__in=awaiting).order_by('disposition_number')
         )
         if not bare:
             return 0
@@ -983,6 +986,13 @@ class DemoQualitySeeder(BaseSeeder):
                     })
 
             QuarantineDisposition.objects.filter(pk=d.pk).update(**fields)
+            if outcome == 2 and part_status == 'QUARANTINED':
+                # Closed: the part left quarantine as the decision took it, as the real
+                # close does — a held part under a closed NCR is a state no flow leaves.
+                from Tracker.models import Parts, PartsStatus
+                Parts.objects.filter(pk=d.part_id).update(part_status={
+                    'SCRAP': PartsStatus.SCRAPPED, 'RETURN_TO_SUPPLIER': PartsStatus.CANCELLED,
+                }.get(dtype, PartsStatus.IN_PROGRESS))
             if d.ncr_id:
                 NCR.objects.filter(pk=d.ncr_id).update(**ncr_fields)
                 sync_state(d.ncr_id)

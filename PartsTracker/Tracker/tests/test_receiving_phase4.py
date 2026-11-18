@@ -105,6 +105,9 @@ class PartialRejectTests(_Fixture):
         lot = self._lot()
         resp = self.client.post(f"/api/MaterialLots/{lot.id}/reject/", {"rejected_quantity": "500"}, format="json")
         self.assertEqual(resp.json()["outcome"], "WHOLE_LOT")
+        # The toast names the NCR the reject is on.
+        from Tracker.models import NCR
+        self.assertEqual(resp.json()["ncr_number"], NCR.objects.get(pk=resp.json()["ncr_id"]).ncr_number)
 
 
 class WholeLotTests(_Fixture):

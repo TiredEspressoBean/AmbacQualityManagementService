@@ -1,7 +1,7 @@
 "use client"
 
+import { DECISION_LABEL, SEVERITY_LABEL } from "@/lib/quality-labels"
 import { ReasonActionButton } from "@/components/common/ReasonActionButton";
-import { parseDateOnly } from "@/lib/date-only";
 import { MultiPicker } from "@/components/ui/multi-picker";
 import { Combobox } from "@/components/ui/combobox";
 import { useMemo, useState } from "react"
@@ -12,7 +12,7 @@ import { format } from "date-fns"
 import { useParams, useSearch, useNavigate, Link } from "@tanstack/react-router"
 import { useInfiniteQuery, infiniteQueryOptions, useQueryClient, useQueries, useQuery, queryOptions } from "@tanstack/react-query"
 
-import { cn, getCookie } from "@/lib/utils"
+import { getCookie } from "@/lib/utils"
 import { api, type PaginatedUserSelectList } from "@/lib/api/generated"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,25 +24,19 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Calendar as CalendarIcon, Loader2, AlertTriangle, ExternalLink, CheckCircle, FileText, Boxes } from "lucide-react"
+import { ArrowLeft, Loader2, AlertTriangle, ExternalLink, CheckCircle, FileText, Boxes } from "lucide-react"
 
 import { ReportButton } from "@/components/reports/ReportButton"
 import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog"
 import { ReasonPromptDialog } from "@/components/change-control/ReasonPromptDialog"
-import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
-    AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { ScrapConfirmDialog } from "@/components/quality/ScrapConfirmDialog"
+import { ConcessionFields } from "@/components/quality/ConcessionFields"
 import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { useRetrieveDisposition } from "@/hooks/useRetrieveDisposition"
 import { invalidateAfterNcrChange } from "@/hooks/ncrs"
@@ -117,21 +111,8 @@ const currentStateLabels: Record<string, string> = {
     CLOSED: "Closed",
 }
 
-const dispositionTypeLabels: Record<string, string> = {
-    REWORK: "Rework",
-    REPAIR: "Repair (AS9100)",
-    SCRAP: "Scrap",
-    USE_AS_IS: "Use As Is",
-    RETURN_TO_SUPPLIER: "Return to Supplier",
-    // Only for a withdrawn finding (its capture voided); closes the record.
-    NOT_NONCONFORMANCE: "Not a nonconformance (result voided)",
-}
-
-const severityLabels: Record<string, string> = {
-    CRITICAL: "Critical - Safety/Regulatory Impact",
-    MAJOR: "Major - Functional Impact",
-    MINOR: "Minor - Cosmetic Only",
-}
+const dispositionTypeLabels: Record<string, string> = DECISION_LABEL
+const severityLabels: Record<string, string> = SEVERITY_LABEL
 
 // Search params for create mode
 type DispositionSearchParams = {
@@ -713,86 +694,16 @@ export default function EditDispositionFormPage() {
                                             )}
                                         />)}
 
-                                        {/* Customer Approval Section */}
+                                        {/* The concession (one pattern with NCR decide). */}
                                         {showCustomerApproval && (
-                                            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                                                <h4 className="font-medium text-sm">Customer Approval Required</h4>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {watchDispositionType === "REPAIR" ? "Repair" : "Use As Is"} accepts nonconforming product: it requires a customer or design concession reference.
-                                                    {concessionLocked && " It was recorded with the decision and can't be changed now."}
-                                                </p>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <FormField
-                                                        control={control}
-                                                        name="requires_customer_approval"
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                                                <FormControl>
-                                                                    <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} disabled={concessionLocked} />
-                                                                </FormControl>
-                                                                <div className="space-y-1 leading-none">
-                                                                    <FormLabel>Requires Approval</FormLabel>
-                                                                </div>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={control}
-                                                        name="customer_approval_received"
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                                                <FormControl>
-                                                                    <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} disabled={concessionLocked} />
-                                                                </FormControl>
-                                                                <div className="space-y-1 leading-none">
-                                                                    <FormLabel>Approval Received</FormLabel>
-                                                                </div>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                                <FormField
-                                                    control={control}
-                                                    name="customer_approval_reference"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Approval Reference</FormLabel>
-                                                            <FormControl>
-                                                                <Input placeholder="PO#, email reference, or approval document number" {...field} disabled={concessionLocked} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <FormField
-                                                    control={control}
-                                                    name="customer_approval_date"
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex flex-col">
-                                                            <FormLabel>Approval Date</FormLabel>
-                                                            <Popover>
-                                                                <PopoverTrigger asChild>
-                                                                    <FormControl>
-                                                                        <Button variant="outline" disabled={concessionLocked} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                            {field.value ? format(parseDateOnly(field.value), "PPP") : <span>Pick a date</span>}
-                                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                        </Button>
-                                                                    </FormControl>
-                                                                </PopoverTrigger>
-                                                                <PopoverContent className="w-auto p-0" align="start">
-                                                                    <Calendar
-                                                                        mode="single"
-                                                                        selected={field.value ? parseDateOnly(field.value) : undefined}
-                                                                        // A DateField: the local YYYY-MM-DD, not a UTC timestamp
-                                                                        // (the server refused "2026-11-17T05:00:00.000Z").
-                                                                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : undefined)}
-                                                                        initialFocus
-                                                                    />
-                                                                </PopoverContent>
-                                                            </Popover>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
+                                            <div className="space-y-3">
+                                                <ConcessionFields
+                                                    decision={String(watchDispositionType)}
+                                                    reference={watch("customer_approval_reference") ?? ""}
+                                                    onReference={(v) => form.setValue("customer_approval_reference", v, { shouldDirty: true })}
+                                                    date={watch("customer_approval_date")}
+                                                    onDate={(v) => form.setValue("customer_approval_date", v, { shouldDirty: true })}
+                                                    locked={concessionLocked}
                                                 />
                                                 {/* Document upload for customer approval evidence */}
                                                 {mode === "edit" && dispositionId && dispositionContentType && (
@@ -1105,30 +1016,16 @@ export default function EditDispositionFormPage() {
             </div>
 
             {/* Scrap ends the part's life here — confirm it. */}
-            <AlertDialog open={decisionGate?.kind === "scrap"} onOpenChange={(o) => { if (!o) setDecisionGate(null) }}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Scrap {disposition?.part_erp_id ?? "this part"}?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            The part is scrapped as soon as this is saved. While the disposition is
-                            still open, the decision can be changed, with a reason, which un-scraps it.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={() => {
-                                const v = decisionGate?.values
-                                setDecisionGate(null)
-                                if (v) void proceed(v)
-                            }}
-                        >
-                            Scrap
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <ScrapConfirmDialog
+                open={decisionGate?.kind === "scrap"}
+                onOpenChange={(o) => { if (!o) setDecisionGate(null) }}
+                what={disposition?.part_erp_id ?? "this part"}
+                onConfirm={() => {
+                    const v = decisionGate?.values
+                    setDecisionGate(null)
+                    if (v) void proceed(v)
+                }}
+            />
 
             {/* Changing a Scrap / Return to Supplier decision reinstates the part: the
                 reason goes on the record. */}

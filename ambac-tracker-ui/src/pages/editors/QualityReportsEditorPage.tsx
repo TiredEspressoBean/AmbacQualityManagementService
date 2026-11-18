@@ -123,7 +123,7 @@ export function QualityReportsEditorPage() {
                     renderCell: (qr) => new Date(qr.created_at).toLocaleDateString(),
                 }),
             ]}
-            renderActions={(qualityReport) => <EditQualityReportActionsCell qualityReportId={qualityReport.id} />}
+            renderActions={(qualityReport) => <EditQualityReportActionsCell qualityReportId={qualityReport.id} reportNumber={qualityReport.report_number} />}
             onCreate={() => navigate({ to: "/editor/quality-reports/new" })}
             createLabel="Record Inspection"
         />

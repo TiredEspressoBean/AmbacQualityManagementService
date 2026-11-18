@@ -28,12 +28,9 @@ function usePartsList({
         offset,
         limit,
         archived: false,
-        status__in: [
-            "AWAITING_QA",
-            "QUARANTINED",
-            "REWORK_NEEDED",
-            "REWORK_IN_PROGRESS",
-        ],
+        // What the title says, and what the home tile and Needs attention count:
+        // parts held in quarantine. Awaiting QA and rework have their own queues.
+        status__in: ["QUARANTINED"],
         ...filters,
     };
     if (ordering !== undefined) queries.ordering = ordering;

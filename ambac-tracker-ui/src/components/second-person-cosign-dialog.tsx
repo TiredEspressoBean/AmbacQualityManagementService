@@ -10,12 +10,14 @@
  *  to collect and hand back (email, password). The caller owns the mutation, the
  *  attestation wording, and any extra fields.
  *
- *  `FpiSignOffDialog` predates this and carries its own copy of the same form
- *  plus FPI-specific notes; worth collapsing into this once a third gate lands.
+ *  No drawn signature: none of these acts records one, so a pad here would collect a
+ *  signature nobody keeps. A first-piece buy-off does record it, and draws it in
+ *  `FpiSignOffDialog` (signature only where the act requires one — NCR review P3).
  */
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Dialog,
     DialogContent,
@@ -26,11 +28,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    SignatureVerification,
-    validateSignatureVerification,
-    type SignatureVerificationData,
-} from "@/components/approval/SignatureVerification";
 
 export type SecondPersonCosignDialogProps = {
     open: boolean;
@@ -63,22 +60,14 @@ export function SecondPersonCosignDialog({
     onConfirm,
 }: SecondPersonCosignDialogProps) {
     const [email, setEmail] = useState("");
-    const [signature, setSignature] = useState<SignatureVerificationData>({
-        signature_data: "",
-        password: "",
-        confirmed: false,
-    });
+    const [password, setPassword] = useState("");
+    const [attested, setAttested] = useState(false);
     const [localError, setLocalError] = useState<string | null>(null);
-
-    // SignatureVerification fires onChange from a useEffect on every state
-    // change — an unmemoized handler re-renders it into a loop.
-    const handleSignatureChange = useCallback((d: SignatureVerificationData) => {
-        setSignature(d);
-    }, []);
 
     const close = () => {
         setEmail("");
-        setSignature({ signature_data: "", password: "", confirmed: false });
+        setPassword("");
+        setAttested(false);
         setLocalError(null);
         onOpenChange(false);
     };
@@ -89,18 +78,18 @@ export function SecondPersonCosignDialog({
             setLocalError(`Enter the ${emailLabel.toLowerCase()}.`);
             return;
         }
-        const invalid = validateSignatureVerification(signature, {
-            requireSignature: true,
-            requireConfirmation: true,
-            requirePassword: true,
-        });
-        if (invalid) {
-            setLocalError(invalid);
+        if (!password) {
+            setLocalError("Enter their password.");
             return;
         }
-        onConfirm({ email: email.trim(), password: signature.password });
+        if (!attested) {
+            setLocalError("They must confirm the statement.");
+            return;
+        }
+        onConfirm({ email: email.trim(), password });
     };
 
+    const shown = localError ?? error ?? null;
     return (
         <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : close())}>
             <DialogContent>
@@ -121,12 +110,27 @@ export function SecondPersonCosignDialog({
                             placeholder="name@example.com"
                         />
                     </div>
-                    <SignatureVerification
-                        onChange={handleSignatureChange}
-                        confirmationText={confirmationText}
-                        passwordHelpText="Their password, to verify their identity. They are not logged in here."
-                        error={localError ?? error ?? null}
-                    />
+                    <div className="space-y-2">
+                        <Label htmlFor="cosign-password">Password</Label>
+                        <Input
+                            id="cosign-password"
+                            type="password"
+                            autoComplete="off"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Their password, to verify their identity. They are not logged in here.
+                        </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <Checkbox id="cosign-attest" checked={attested}
+                                  onCheckedChange={(v) => setAttested(v === true)} />
+                        <Label htmlFor="cosign-attest" className="text-sm font-normal leading-snug">
+                            {confirmationText}
+                        </Label>
+                    </div>
+                    {shown && <p className="text-sm text-destructive">{shown}</p>}
                 </div>
 
                 <DialogFooter>

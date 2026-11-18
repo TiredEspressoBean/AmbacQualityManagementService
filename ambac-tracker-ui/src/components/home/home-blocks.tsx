@@ -605,9 +605,8 @@ function QualityKpisBlock() {
     return (
         <StatSection icon={Gauge} title="Quality">
             <StatTile label="Open NCRs" value={data?.open_ncrs ?? 0} icon={FileWarning} link="/quality/ncrs" />
-            {/* Distinct parts with an open disposition — including ones already released to
-                rework. "Parts in quarantine" under Needs attention is the narrower
-                status count; the two labels used to read as the same thing. */}
+            {/* Parts held in quarantine — the same count as "Parts in quarantine" under Needs
+                attention and the Quarantined Parts page's list. */}
             <StatTile label="Quarantined parts" value={data?.parts_in_quarantine ?? 0} icon={PackageSearch} link="/production/dispositions" />
             <StatTile label="Active CAPAs" value={data?.active_capas ?? 0} icon={ClipboardCheck} link="/quality/capas" />
             <StatTile label="Overdue CAPAs" value={overdue} icon={AlertTriangle} link="/quality/capas" variant={overdue > 0 ? "danger" : "default"} />

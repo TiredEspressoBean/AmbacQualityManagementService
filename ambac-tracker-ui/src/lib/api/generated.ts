@@ -5699,6 +5699,7 @@ export type NCR = {
   reports: Array<NCRReportRef>;
   report_ids: Array<string>;
   capa_ids: Array<string>;
+  capa_refs: Array<{}>;
   combined_into: string | null;
   combined_into_number: string | null;
   combined_from: Array<NCRRef>;
@@ -5736,6 +5737,7 @@ export type NCRMember = {
   current_state: string | null;
   awaiting_decision: boolean;
   held: boolean;
+  requested: boolean;
 };
 export type NCRReportRef = {
   id: string;
@@ -17176,6 +17178,8 @@ export type RejectLotResponse = {
   lot: MaterialLot;
   disposition_id: string;
   disposition_number: string;
+  ncr_id: string | null;
+  ncr_number: string | null;
 };
 export type RejectLotResponseOutcomeEnum =
   /**
@@ -23458,6 +23462,8 @@ const RejectLotResponse = z.object({
   lot: MaterialLot,
   disposition_id: z.string(),
   disposition_number: z.string(),
+  ncr_id: z.string().nullable(),
+  ncr_number: z.string().nullable(),
 });
 const LotDecisionRequest = z.object({
   disposition_type:
@@ -23950,6 +23956,7 @@ const NCRMember = z.object({
   current_state: z.string().nullable(),
   awaiting_decision: z.boolean(),
   held: z.boolean(),
+  requested: z.boolean(),
 });
 const NCRReportRef = z.object({
   id: z.string().uuid(),
@@ -23990,6 +23997,7 @@ const NCR = z.object({
   reports: z.array(NCRReportRef),
   report_ids: z.array(z.string().uuid()),
   capa_ids: z.array(z.string().uuid()),
+  capa_refs: z.array(z.object({}).partial().passthrough()),
   combined_into: z.string().uuid().nullable(),
   combined_into_number: z.string().nullable(),
   combined_from: z.array(NCRRef),

@@ -220,6 +220,14 @@ class DemoScenario(BaseSeeder):
         # Each NCR's CAPA call, as QA makes it: the seeded CAPAs link the NCRs they answer
         # (CAPA raised), and a closed one-off is recorded as needing none — leaving the
         # open ones for the "Awaiting CAPA decision" list.
+        # One open NCR the product raised from a cosmetic finding: its record has only a
+        # MINOR defect, so the NCR reads Minor (an undecided NCR follows its worst defect).
+        self.log("\n--- Phase 6d2b: A Minor finding ---")
+        result['minor_ncr'] = self._seed_minor_finding(result['users'])
+        # An NCR the product raised is as old as the failure that raised it. The seed
+        # backdates records after the fact, so the NCRs follow them (aging has data).
+        result['ncr_dates'] = self._date_ncrs_by_their_records()
+
         self.log("\n--- Phase 6d3: CAPA calls on NCRs ---")
         result['capa_calls'] = self._decide_capa_calls(result['users'])
 
@@ -316,6 +324,49 @@ class DemoScenario(BaseSeeder):
         self.log(f"  {promoted} NCR(s) CAPA raised, {declined} closed one-off(s) need none, "
                  f"{waiting} awaiting a decision")
         return {'promoted': promoted, 'declined': declined, 'waiting': waiting}
+
+    def _seed_minor_finding(self, users):
+        """INJ-0042-020 at Assembly: tool marks on the turned body, recorded as a MINOR
+        defect. The failure raises its NCR at the MAJOR default; the defect brings it down."""
+        from Tracker.models import NCR, Parts, QualityErrorsList, QualityReportDefect, QualityReports
+        from Tracker.services.qms.ncr import refresh_description
+        part = Parts.objects.filter(tenant=self.tenant, ERP_id='INJ-0042-020').select_related('step').first()
+        marks = QualityErrorsList.objects.filter(tenant=self.tenant, error_name='Tool marks').first()
+        who = (users.get('operators') or users.get('employees') or [None])[0]
+        if part is None or part.step_id is None or marks is None or who is None:
+            return None
+        report, _ = QualityReports.objects.get_or_create(
+            tenant=self.tenant, report_number='QR-0042-020-AS',
+            defaults={'part': part, 'step': part.step, 'status': 'FAIL', 'detected_by': who,
+                      'description': 'Light tool marks on the turned body diameter - cosmetic, '
+                                     'within the functional envelope'})
+        QualityReportDefect.objects.get_or_create(
+            report=report, error_type=marks, defaults={'count': 1, 'severity': 'MINOR'})
+        # Found a week and a half ago, still waiting: the aged-NCR exhibit too.
+        from datetime import timedelta
+        from django.utils import timezone
+        QualityReports.objects.filter(pk=report.pk).update(created_at=timezone.now() - timedelta(days=11))
+        report.refresh_from_db()
+        if not report.ncr_id:
+            return None
+        ncr = NCR.objects.get(pk=report.ncr_id)
+        refresh_description(ncr)
+        self.log(f"  {ncr.ncr_number} over INJ-0042-020 reads Minor")
+        return ncr.ncr_number
+
+    def _date_ncrs_by_their_records(self):
+        """Each NCR the product raised from a failure, dated at its earliest record, never later
+        than it was. A person's NCR (header by hand) keeps its own date."""
+        from django.db.models import Min
+        from Tracker.models import NCR
+        moved = 0
+        for ncr in (NCR.objects.filter(tenant=self.tenant, header_by_hand=False)
+                    .annotate(first=Min('reports__created_at'))):
+            if ncr.first is not None and ncr.first < ncr.created_at:
+                NCR.objects.filter(pk=ncr.pk).update(created_at=ncr.first)
+                moved += 1
+        self.log(f"  {moved} NCR(s) dated at the record that raised them")
+        return moved
 
     def _name_portal_customers(self, users):
         from Tracker.models import Orders

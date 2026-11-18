@@ -20,6 +20,7 @@ import {
     CommandList,
 } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
+import { RequiredMark } from "@/components/ui/required-mark";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +39,8 @@ export interface MultiPickerProps<T extends string | number> {
     emptyHint?: string;
     /** Hide the label above the trigger. Useful when wrapping in another control. */
     hideLabel?: boolean;
+    /** Mark the label required, as a form label is. */
+    required?: boolean;
     placeholder?: string;
     disabled?: boolean;
     /** Server-side search, called as the user types. Turns local filtering off. */
@@ -56,6 +59,7 @@ export function MultiPicker<T extends string | number>({
     onChange,
     emptyHint = "No matches.",
     hideLabel = false,
+    required = false,
     placeholder,
     disabled = false,
     onSearch,
@@ -90,7 +94,7 @@ export function MultiPicker<T extends string | number>({
 
     return (
         <div className="space-y-1.5">
-            {!hideLabel && <Label className="text-xs">{label}</Label>}
+            {!hideLabel && <Label>{label}{required && <RequiredMark />}</Label>}
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button

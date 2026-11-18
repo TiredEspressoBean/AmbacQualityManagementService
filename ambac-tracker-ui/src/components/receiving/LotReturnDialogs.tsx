@@ -126,7 +126,7 @@ export function RejectRemainderDialog({ lotId, lotNumber, remaining, unitOfMeasu
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={reject.isPending}>Cancel</Button>
                     <Button variant="destructive" disabled={!reason.trim() || reject.isPending}
                         onClick={() => reject.mutate({ id: lotId, disposition_type: type, description: reason.trim() }, {
-                            onSuccess: () => { toast.success(`Rest of lot ${lotNumber} rejected · disposition opened`); onOpenChange(false); },
+                            onSuccess: () => { toast.success(`Rest of lot ${lotNumber} rejected · on an NCR`); onOpenChange(false); },
                             onError: (e) => toast.error(errorOf(e, "Could not reject the remainder")),
                         })}>
                         {reject.isPending ? "Rejecting…" : "Reject remaining stock"}

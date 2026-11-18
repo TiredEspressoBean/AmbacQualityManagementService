@@ -1339,6 +1339,8 @@ class MaterialLotViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, 
             'lot': rejected,
             'disposition_id': str(disposition.id),
             'disposition_number': disposition.disposition_number,
+            'ncr_id': str(disposition.ncr_id) if disposition.ncr_id else None,
+            'ncr_number': disposition.ncr.ncr_number if disposition.ncr_id else None,
         }, context={'request': request}).data)
 
     @extend_schema(

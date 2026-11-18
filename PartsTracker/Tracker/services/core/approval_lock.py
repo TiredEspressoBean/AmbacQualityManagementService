@@ -69,6 +69,11 @@ DECISION_FIELDS = {
 # without; a new decision brings its own through Decide. An NCR's severity decides
 # what closing a decision under it demands (containment for Major/Critical): raising it
 # only asks more, lowering it once anything is decided dodged the containment check.
+def _ncr_decided(ncr) -> bool:
+    from Tracker.services.qms.ncr import anything_decided  # the NCR header rule's own test
+    return anything_decided(ncr)
+
+
 DECIDED_FIELDS = {
     'QuarantineDisposition': (
         lambda o: bool(o.disposition_type),
@@ -77,7 +82,7 @@ DECIDED_FIELDS = {
         {},
         "decided"),
     'NCR': (
-        lambda o: o.dispositions.filter(archived=False).exclude(disposition_type='').exists(),
+        _ncr_decided,
         {'severity'},
         {'severity': ('MINOR', 'MAJOR', 'CRITICAL')},
         "decided"),

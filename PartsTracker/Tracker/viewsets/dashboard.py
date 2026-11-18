@@ -55,6 +55,11 @@ def _day_start(day, tz):
     return datetime.combine(day, time.min, tzinfo=tz)
 
 
+
+def _quarantined_parts(parts):
+    """Parts held in quarantine: what "Quarantined parts" counts and lists everywhere."""
+    return parts.filter(archived=False, part_status='QUARANTINED')
+
 class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
     """
     ViewSet for Quality Dashboard / Analysis page.
@@ -123,13 +128,9 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             status='CLOSED'
         ).count()
 
-        # Parts in quarantine (parts with open disposition)
-        parts_in_quarantine = self.qs_for_user(QuarantineDisposition).filter(
-            archived=False,
-            part__isnull=False,
-        ).exclude(
-            current_state='CLOSED'
-        ).values('part').distinct().count()
+        # Parts in quarantine: status Quarantined — the one definition the home tile, the
+        # needs-attention item and the Quarantined Parts page all use.
+        parts_in_quarantine = _quarantined_parts(self.qs_for_user(Parts)).count()
 
         # Current FPY (7-day average)
         # A planned repair (REPAIR) is scoped work, not a first-pass failure: it is left
@@ -1025,10 +1026,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             })
 
         # 4. Parts in quarantine
-        quarantine_parts = self.qs_for_user(Parts).filter(
-            archived=False,
-            part_status='QUARANTINED',
-        ).count()
+        quarantine_parts = _quarantined_parts(self.qs_for_user(Parts)).count()
 
         if quarantine_parts > 0:
             data.append({
@@ -1036,8 +1034,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'message': 'Parts in quarantine',
                 'count': quarantine_parts,
                 'severity': 'low',
-                'link': '/editor/parts',
-                'linkParams': {'status': 'quarantined'},
+                'link': '/production/dispositions',
             })
 
         # 5. CAPAs pending verification

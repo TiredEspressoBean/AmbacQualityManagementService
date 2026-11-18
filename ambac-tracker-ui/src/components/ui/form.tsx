@@ -1,4 +1,5 @@
 import * as React from "react"
+import { RequiredMark } from "@/components/ui/required-mark"
 import * as LabelPrimitive from "@radix-ui/react-label"
 import { Slot } from "@radix-ui/react-slot"
 import {
@@ -106,7 +107,7 @@ function FormLabel({
       {...props}
     >
       {children}
-      {required && <span className="text-destructive ml-1">*</span>}
+      {required && <RequiredMark />}
     </Label>
   )
 }

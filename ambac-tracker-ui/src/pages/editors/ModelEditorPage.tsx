@@ -303,6 +303,9 @@ export interface ModelEditorProps<T> {
     resetKey?: string;
 }
 
+/** A list title as a noun in a sentence: lowercased, except an acronym ("NCRs", not "ncrs"). */
+const listNoun = (title: string) => /^[A-Z]{2}/.test(title) ? title : title.toLowerCase();
+
 export function ModelEditorPage<T extends { id: string | number }>({
                                                               title,
                                                               hideTitle,
@@ -423,7 +426,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
     // Build search placeholder from metadata
     const searchPlaceholder = metadata?.search_fields_display?.length
         ? `Search by ${metadata.search_fields_display.join(", ")}...`
-        : `Search ${title.toLowerCase()}...`;
+        : `Search ${listNoun(title)}...`;
 
     useEffect(() => {
         setOffset(0);
@@ -627,7 +630,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
     );
     if (error) return (
         <div className="p-6">
-            <p className="text-sm text-destructive">Couldn't load {title.toLowerCase()}. Try refreshing.</p>
+            <p className="text-sm text-destructive">Couldn't load {listNoun(title)}. Try refreshing.</p>
         </div>
     );
 
@@ -867,7 +870,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                     colSpan={columns.length + (bulkEnabled ? 1 : 0) + (showDetailsLink ? 1 : 0) + (renderActions ? 1 : 0)}
                                     className="h-24 text-center text-muted-foreground"
                                 >
-                                    No {title.toLowerCase()} found
+                                    No {listNoun(title)} found
                                     {debouncedSearch ? ` for "${debouncedSearch}"` : ""}.
                                 </TableCell>
                             </TableRow>

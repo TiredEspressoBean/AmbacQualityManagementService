@@ -15,7 +15,7 @@ import {
     useUploadLotCoC, materialLotOptions } from "@/hooks/useReceivingMutations";
 import { useSupplierQualificationStatus } from "@/hooks/useSupplierQualifications";
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
-import { RejectDispositionDialog, type RejectDispositionValues } from "@/components/reject-disposition-dialog";
+import { RejectDispositionDialog, rejectOutcomeMessage, type RejectDispositionValues } from "@/components/reject-disposition-dialog";
 import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
 import { LotHoldBadges, canExtend, lotHolds } from "@/components/receiving/lotStatus";
 import { LotHoldPanel } from "@/components/receiving/LotHoldPanel";
@@ -208,7 +208,6 @@ export function ReceivingInspectionPage() {
     async function confirmReject(values: RejectDispositionValues) {
         if (!lot) return;
         setRejectSubmitting(true);
-        let outcome: string | undefined;
         try {
             // One call: the server rejects (all, or the bad pieces split off) and opens the
             // disposition with it — no second request to fail half-way.
@@ -220,7 +219,6 @@ export function ReceivingInspectionPage() {
                 rejected_quantity: values.rejected_quantity,
                 whole_lot: values.whole_lot,
             });
-            outcome = res.outcome;
             // Non-fatal but NOT silent — the reject already committed, so we
             // don't roll back, but the user asked for a SCAR and needs to know
             // it didn't happen (e.g. missing initiate_capa → 403).
@@ -228,10 +226,7 @@ export function ReceivingInspectionPage() {
             if (values.raise_scar && lot.supplier) {
                 try { await scarMut.mutateAsync({ id: lotId }); } catch { scarFailed = true; }
             }
-            toast.success(
-                outcome === "PARTIAL" ? "Bad pieces split off and rejected · the rest accepted"
-                : outcome === "WHOLE_LOT_REQUESTED" ? "Whole-lot reject requested · the lot is held for QA"
-                : "Lot rejected · disposition opened");
+            toast.success(rejectOutcomeMessage(res));
             if (scarFailed) {
                 toast.error("Lot rejected, but the SCAR could not be raised — ask QA to raise it.");
             }

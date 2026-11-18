@@ -172,12 +172,18 @@ def _may_edit_header(user) -> bool:
     return bool(user and getattr(user, 'has_tenant_perm', None) and user.has_tenant_perm('change_ncr'))
 
 
+def anything_decided(ncr) -> bool:
+    """Something under the NCR has a decision. From then on its severity only rises
+    (user ruling 2026-11-18): before it, the nonconformance is still being judged. The
+    one test — the PATCH lock (approval_lock) asks it too."""
+    return ncr.dispositions.filter(archived=False).exclude(disposition_type='').exists()
+
+
 def _still_being_raised(ncr) -> bool:
     """An NCR the product raised from a failure, nothing decided and nobody having
     written its header: whoever raises the nonconformance (the reject, the first
     decision) still says what's wrong."""
-    return (not ncr.header_by_hand
-            and not ncr.dispositions.filter(archived=False).exclude(disposition_type='').exists())
+    return not ncr.header_by_hand and not anything_decided(ncr)
 
 
 def write_header(ncr, header, user) -> None:
@@ -186,7 +192,9 @@ def write_header(ncr, header, user) -> None:
 
     - an NCR still being raised (`_still_being_raised`) takes the raiser's description
       and severity;
-    - otherwise the header is change_ncr's, and severity never comes down this way;
+    - otherwise the header is change_ncr's;
+    - severity may be set either way until anything is decided, then only rises — the
+      same rule, and words, as a PATCH (`anything_decided`);
     - containment is always change_ncr's;
     - a write without the permission is REFUSED (HeaderRefused), never silently dropped.
     Values equal to what's there aren't writes."""
@@ -201,7 +209,7 @@ def write_header(ncr, header, user) -> None:
     if needs_perm and not _may_edit_header(user):
         raise HeaderRefused(f"What's wrong on {ncr.ncr_number} — its description, severity and "
                             "containment — is edited by a lead or QA.")
-    if ('severity' in changes and not raising
+    if ('severity' in changes and anything_decided(ncr)
             and _RANK.get(changes['severity'], 0) < _RANK.get(ncr.severity, 0)):
         raise ValueError(f"{ncr.ncr_number} is {ncr.get_severity_display()}; its severity may only be raised.")
     for k, v in changes.items():
@@ -368,6 +376,9 @@ def members(ncr) -> list[dict]:
             'awaiting_decision': not d.disposition_type and d.current_state != 'CLOSED',
             # Not held: a load's part already past the step, a part already shipped.
             'held': d.held,
+            # An inspector's whole-lot reject request: the outcome asked for, nobody's
+            # decision yet — confirmed or declined on the lot, not decided here.
+            'requested': bool(d.material_lot_id and d.disposition_type and not d.decision_authorized_by_id),
         }
         if key in seen:
             rows[seen[key]] = row  # the latest decision on it
@@ -381,7 +392,7 @@ def members(ncr) -> list[dict]:
                              'material_lot_id': None, 'lot_number': None,
                              'disposition_id': None, 'disposition_number': None,
                              'disposition_type': None, 'current_state': None,
-                             'awaiting_decision': False, 'held': False})
+                             'awaiting_decision': False, 'held': False, 'requested': False})
     return rows
 
 

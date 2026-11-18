@@ -5,6 +5,8 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { api } from "@/lib/api/generated";
 import { useRetrieveParts } from "@/hooks/parts";
 import { invalidateAfterNcrChange, partPickerDescription, useOpenNcrByPart } from "@/hooks/ncrs";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { RequiredMark } from "@/components/ui/required-mark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -12,14 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { MultiPicker } from "@/components/ui/multi-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { CreateNcrSearchParams } from "@/lib/routes/search-params";
+import { SEVERITIES, type Severity } from "@/lib/quality-labels";
 
-type Severity = "CRITICAL" | "MAJOR" | "MINOR";
-
-const SEVERITIES: { value: Severity; label: string }[] = [
-    { value: "CRITICAL", label: "Critical - Safety/Regulatory Impact" },
-    { value: "MAJOR", label: "Major - Functional Impact" },
-    { value: "MINOR", label: "Minor - Cosmetic Only" },
-];
 
 /** Raise one NCR over parts a person picks: each part gets a failed inspection record
  *  and its own decision under the NCR, and is held until it's decided. */
@@ -56,6 +52,17 @@ export function NcrCreatePage() {
     });
 
     const ready = parts.length > 0 && description.trim().length > 0;
+    // Raising one is add_ncr's; say so here rather than letting the save refuse.
+    const { has, isLoading: permsLoading } = usePermissionSet();
+    if (!permsLoading && !has("add_ncr")) {
+        return (
+            <div className="container max-w-3xl py-8 px-4 md:px-6">
+                <p className="text-sm text-muted-foreground">
+                    Raising an NCR needs the permission to flag a nonconformance. Ask a lead or QA.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="container max-w-3xl space-y-6 py-8 px-4 md:px-6">
@@ -75,6 +82,7 @@ export function NcrCreatePage() {
                 <CardContent className="space-y-5">
                     <MultiPicker
                         label="Parts"
+                        required
                         items={(partsData?.results ?? []).map((p) => ({
                             id: p.id, label: p.ERP_id,
                             description: partPickerDescription(p, elsewhere.get(String(p.id))),
@@ -88,14 +96,14 @@ export function NcrCreatePage() {
                         emptyHint="No parts found."
                     />
                     <div className="space-y-2">
-                        <Label htmlFor="ncr-description">What's wrong</Label>
+                        <Label htmlFor="ncr-description">What's wrong<RequiredMark /></Label>
                         <Textarea id="ncr-description" value={description}
                                   onChange={(e) => setDescription(e.target.value)}
                                   placeholder="e.g. Bores oversize from grinder setup 2 — 4.007 against 4.005 max"
                                   className="resize-none" rows={4} />
                     </div>
                     <div className="space-y-2">
-                        <Label>Severity</Label>
+                        <Label>Severity<RequiredMark /></Label>
                         <Select value={severity} onValueChange={(v) => v && setSeverity(v as Severity)}>
                             <SelectTrigger className="w-[320px]"><SelectValue /></SelectTrigger>
                             <SelectContent>

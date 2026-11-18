@@ -18,9 +18,12 @@ import { toast } from "sonner";
 
 type Props = {
     qualityReportId: string;
+    /** Its number (QR-…), how a person knows it; the id is the fallback. */
+    reportNumber?: string | null;
 };
 
-export function EditQualityReportActionsCell({ qualityReportId }: Props) {
+export function EditQualityReportActionsCell({ qualityReportId, reportNumber }: Props) {
+    const name = `Inspection record ${reportNumber || qualityReportId}`;
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const deleteQualityReport = useDeleteQualityReport();
@@ -36,11 +39,11 @@ export function EditQualityReportActionsCell({ qualityReportId }: Props) {
         deleteQualityReport.mutate(qualityReportId, {
             onSuccess: () => {
                 setOpen(false);
-                toast.success(`Quality Report #${qualityReportId} deleted successfully.`);
+                toast.success(`${name} deleted.`);
             },
             onError: (error) => {
                 console.error("Failed to delete quality report:", error);
-                toast.error(`Failed to delete Quality Report #${qualityReportId}`);
+                toast.error(`Couldn't delete ${name}`);
             },
         });
     };
@@ -51,7 +54,7 @@ export function EditQualityReportActionsCell({ qualityReportId }: Props) {
                 variant="ghost"
                 size="icon"
                 onClick={handleEdit}
-                title="Edit Quality Report"
+                title="Edit inspection record"
             >
                 <Pencil className="h-4 w-4" />
             </Button>
@@ -61,7 +64,7 @@ export function EditQualityReportActionsCell({ qualityReportId }: Props) {
                         variant="ghost"
                         size="icon"
                         className="text-destructive"
-                        title="Delete Quality Report"
+                        title="Delete inspection record"
                     >
                         <Trash2 className="h-4 w-4" />
                     </Button>
@@ -69,11 +72,11 @@ export function EditQualityReportActionsCell({ qualityReportId }: Props) {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Delete Quality Report #{qualityReportId}?
+                            Delete {name}?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
-                            The quality report will be removed from the system.
+                            It no longer shows in the lists.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

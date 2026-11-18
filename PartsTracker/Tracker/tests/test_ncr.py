@@ -478,6 +478,11 @@ class P1IntegrityTests(_Shop):
         other = self._ncr_of(self._fail(self.parts[1]))
         with self.assertRaises(HeaderRefused):
             write_header(other, {"containment_action": "held"}, self.user_a)
+        # Written by hand but nothing decided: still being judged, so it can come down.
+        write_header(ncr, {"severity": "CRITICAL"}, self.superuser)
+        write_header(ncr, {"severity": "MINOR"}, self.superuser)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.severity, "MINOR")
         # Never lowered once decided.
         decide_disposition(other.dispositions.get(), disposition_type="SCRAP", authorized_by=self.superuser)
         with self.assertRaisesMessage(ValueError, "may only be raised"):
@@ -637,3 +642,40 @@ class P2FixesTests(_Shop):
         self.assertEqual(item["count"], 1)
         listed = self.client.get("/api/NCRs/", item["linkParams"]).json()["results"]
         self.assertEqual([n["id"] for n in listed], [str(ncr.id)])
+
+
+class P3FixesTests(_Shop):
+    """NCR fix batch, P3 (2026-11-18)."""
+
+    def test_severity_comes_down_by_hand_until_something_is_decided(self):
+        # One rule for PATCH and the header path: either way until decided, then up only.
+        from Tracker.services.qms.disposition import decide_disposition
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        self.client.patch(f"/api/NCRs/{ncr.id}/", {"severity": "CRITICAL"}, format="json")
+        r = self.client.patch(f"/api/NCRs/{ncr.id}/", {"severity": "MINOR"}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        decide_disposition(ncr.dispositions.get(), disposition_type="SCRAP", authorized_by=self.superuser)
+        r = self.client.patch(f"/api/NCRs/{ncr.id}/", {"severity": "MAJOR"}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        r = self.client.patch(f"/api/NCRs/{ncr.id}/", {"severity": "MINOR"}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn(f"{ncr.ncr_number} is Major; its severity may only be raised.", r.content.decode())
+
+    def test_linked_capas_read_by_number(self):
+        from Tracker.models import CAPA
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        capa = CAPA.objects.create(tenant=self.tenant_a, capa_number="CAPA-T-1", capa_type="CORRECTIVE",
+                                   severity="MAJOR", problem_statement="x", initiated_by=self.superuser)
+        capa.ncrs.add(ncr)
+        r = self.client.get(f"/api/NCRs/{ncr.id}/")
+        self.assertEqual(r.json()["capa_refs"], [{"id": str(capa.id), "capa_number": "CAPA-T-1"}])
+
+    def test_home_quarantine_counts_agree(self):
+        from Tracker.models import Parts
+        Parts.objects.filter(pk=self.parts[0].pk).update(part_status="QUARANTINED")
+        Parts.objects.filter(pk=self.parts[1].pk).update(part_status="REWORK_NEEDED")
+        kpis = self.client.get("/api/dashboard/kpis/").json()
+        item = next(i for i in self.client.get("/api/dashboard/needs-attention/").json()["data"]
+                    if i["type"] == "quarantine")
+        self.assertEqual((kpis["parts_in_quarantine"], item["count"]), (1, 1))
+        self.assertEqual(item["link"], "/production/dispositions")

@@ -2,12 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QRMeasurementsSection } from "./QRMeasurementsSection";
+import { CAPA_DECISION_LABEL } from "@/lib/quality-labels";
 
-const LABEL: Record<string, string> = {
-    PROMOTED: "CAPA raised",
-    NOT_REQUIRED: "No CAPA needed",
-    DEFERRED: "Deferred",
-};
+const LABEL = CAPA_DECISION_LABEL;
 
 /**
  * The NCR a failed record is on. What's wrong, the decision on each part and whether it

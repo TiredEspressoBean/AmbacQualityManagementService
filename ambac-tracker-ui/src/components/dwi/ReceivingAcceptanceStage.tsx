@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import {
     useSamplePlan, useAcceptLot, useRejectLot, useRecordBulk, useRaiseScar, materialLotOptions } from "@/hooks/useReceivingMutations";
-import { RejectDispositionDialog, type RejectDispositionValues } from "@/components/reject-disposition-dialog";
+import { RejectDispositionDialog, rejectOutcomeMessage, type RejectDispositionValues } from "@/components/reject-disposition-dialog";
 
 /** A measurement the operator captured in the DWI, flattened for verdict math. */
 export type CapturedMeasurement = {
@@ -233,7 +233,6 @@ export function ReceivingAcceptanceStage({
     // resulting report, optionally raise a SCAR.
     async function confirmReject(values: RejectDispositionValues) {
         setBusy(true);
-        let outcome: string | undefined;
         try {
             if (!(await ensureFlushed())) { toast.error("Could not save inspection captures"); return; }
             if (!isVariables && hasPlan) {
@@ -249,7 +248,6 @@ export function ReceivingAcceptanceStage({
                 rejected_quantity: values.rejected_quantity,
                 whole_lot: values.whole_lot,
             });
-            outcome = res.outcome;
             // Non-fatal but NOT silent — the reject already committed, so we
             // don't roll back, but the user asked for a SCAR and needs to know
             // it didn't happen (e.g. missing initiate_capa → 403).
@@ -257,10 +255,7 @@ export function ReceivingAcceptanceStage({
             if (values.raise_scar && lot?.supplier) {
                 try { await scarMut.mutateAsync({ id: lotId }); } catch { scarFailed = true; }
             }
-            toast.success(
-                outcome === "PARTIAL" ? "Bad pieces split off and rejected · the rest accepted"
-                : outcome === "WHOLE_LOT_REQUESTED" ? "Whole-lot reject requested · the lot is held for QA"
-                : "Lot rejected · disposition opened");
+            toast.success(rejectOutcomeMessage(res));
             if (scarFailed) {
                 toast.error("Lot rejected, but the SCAR could not be raised — ask QA to raise it.");
             }

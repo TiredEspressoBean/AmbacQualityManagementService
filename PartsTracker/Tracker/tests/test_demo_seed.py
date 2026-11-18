@@ -134,6 +134,35 @@ class DemoSeedFlowsTests(TestCase):
                      .values_list("disposition_number", "part__ERP_id"))
             self.assertEqual(list(stray), [])
 
+    def test_an_open_ncr_reads_minor_from_its_only_defect(self):
+        # An undecided NCR follows its worst defect: one raised from a cosmetic finding
+        # opens at the MAJOR default and comes down to Minor.
+        from Tracker.models import QualityReports
+        with tenant_context(self.tenant.id):
+            report = QualityReports.objects.select_related("ncr").get(report_number="QR-0042-020-AS")
+            self.assertEqual(list(report.defects.values_list("severity", flat=True)), ["MINOR"])
+            self.assertEqual((report.ncr.state, report.ncr.severity, report.ncr.header_by_hand),
+                             ("OPEN", "MINOR", False))
+            self.assertFalse(report.ncr.dispositions.exclude(disposition_type="").exists())
+
+    def test_the_awaiting_finding_is_held_under_an_open_ncr(self):
+        # INJ-0042-017's failed flow test waits for its decision: held, its NCR open.
+        from Tracker.models import QualityReports
+        with tenant_context(self.tenant.id):
+            report = QualityReports.objects.select_related("ncr", "part").get(report_number="QR-0042-017-FT")
+            self.assertEqual(report.part.part_status, "QUARANTINED")
+            self.assertEqual(report.ncr.state, "OPEN")
+            self.assertFalse(report.ncr.dispositions.exclude(disposition_type="").exists())
+
+    def test_some_open_ncrs_are_over_a_week_old(self):
+        # The home aging tile and "NCRs open > 7 days" have something to show.
+        from datetime import timedelta
+        from django.utils import timezone
+        from Tracker.models import NCR
+        with tenant_context(self.tenant.id):
+            aged = NCR.objects.filter(state="OPEN", created_at__lt=timezone.now() - timedelta(days=8))
+            self.assertGreaterEqual(aged.count(), 1)
+
     def test_a_finding_waits_for_the_lead(self):
         # The Shift Lead's pending finding: recorded at Nozzle Inspection, where a
         # replacement isn't pre-approved, so it waits and the unit holds at the check.

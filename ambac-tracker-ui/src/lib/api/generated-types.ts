@@ -28616,6 +28616,9 @@ export interface components {
             readonly reports: components["schemas"]["NCRReportRef"][];
             readonly report_ids: string[];
             readonly capa_ids: string[];
+            readonly capa_refs: {
+                [key: string]: unknown;
+            }[];
             /** Format: uuid */
             readonly combined_into: string | null;
             readonly combined_into_number: string | null;
@@ -28646,6 +28649,7 @@ export interface components {
             current_state: string | null;
             awaiting_decision: boolean;
             held: boolean;
+            requested: boolean;
         };
         NCRRef: {
             /** Format: uuid */
@@ -36512,6 +36516,8 @@ export interface components {
             lot: components["schemas"]["MaterialLot"];
             disposition_id: string;
             disposition_number: string;
+            ncr_id: string | null;
+            ncr_number: string | null;
         };
         /**
          * @description * `PARTIAL` - PARTIAL

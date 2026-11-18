@@ -13,7 +13,10 @@ const invalidateReceiving = (queryClient: ReturnType<typeof useQueryClient>) =>
         // showing AWAITING_INSPECTION + "Run Inspection" after an Accept/Reject.
         // logs / record-edits / record-history back the lot's History card, which
         // otherwise kept showing "No recorded changes" after a release or decline.
+        // sample-plan carries the inspection's open step execution, which a cleared
+        // hold creates: without it "Run Inspection (DWI)" stayed disabled until a reload.
         predicate: (q) =>
+            q.queryKey[0] === "sample-plan" ||
             q.queryKey[0] === "material-lots" ||
             q.queryKey[0] === "incomingInspection" ||
             q.queryKey[0] === "material-lot" ||

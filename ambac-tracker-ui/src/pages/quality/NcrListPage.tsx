@@ -98,6 +98,7 @@ export function NcrListPage() {
                 { label: "Severity (Critical First)", value: "severity" },
                 { label: "Severity (Minor First)", value: "-severity" },
                 { label: "Closed (Newest)", value: "-closed_at" },
+                { label: "Closed (Oldest)", value: "closed_at" },
             ]}
             columns={[
                 ...(canCombine ? [col({

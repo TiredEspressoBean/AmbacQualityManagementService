@@ -8,11 +8,9 @@ import { invalidateAfterNcrChange, partPickerDescription, useNcr, useOpenNcrByPa
 import { useRetrieveParts } from "@/hooks/parts";
 import { useEmployeeSearch } from "@/hooks/employee-search";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiPicker } from "@/components/ui/multi-picker";
@@ -26,33 +24,15 @@ import {
 import { ReportButton } from "@/components/reports/ReportButton";
 import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog";
 import { ReasonPromptDialog } from "@/components/change-control/ReasonPromptDialog";
+import { ScrapConfirmDialog } from "@/components/quality/ScrapConfirmDialog";
+import { ConcessionFields } from "@/components/quality/ConcessionFields";
+import { RequiredMark } from "@/components/ui/required-mark";
 import type { Schema } from "@/lib/api/types";
+import {
+    CAPA_DECISION_LABEL, CONCESSION_DECISIONS, DECISIONS, SEVERITIES, decisionLabel, type DispositionType,
+} from "@/lib/quality-labels";
 
 type Ncr = Schema<"NCR">;
-type DispositionType = "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER" | "NOT_NONCONFORMANCE";
-
-const DECISIONS: { value: DispositionType; label: string }[] = [
-    { value: "REWORK", label: "Rework" },
-    { value: "REPAIR", label: "Repair (AS9100)" },
-    { value: "SCRAP", label: "Scrap" },
-    { value: "USE_AS_IS", label: "Use As Is" },
-    { value: "RETURN_TO_SUPPLIER", label: "Return to Supplier" },
-    // Only for a withdrawn finding (its capture voided and re-inspected PASS); closes the
-    // decision — the same rule as on a single disposition.
-    { value: "NOT_NONCONFORMANCE", label: "Not a nonconformance (result voided)" },
-];
-const decisionLabel = (t: string | null | undefined) =>
-    t ? (DECISIONS.find((d) => d.value === t)?.label ?? t) : null;
-
-const SEVERITIES = [
-    { value: "CRITICAL", label: "Critical - Safety/Regulatory Impact" },
-    { value: "MAJOR", label: "Major - Functional Impact" },
-    { value: "MINOR", label: "Minor - Cosmetic Only" },
-] as const;
-
-const CAPA_LABEL: Record<string, string> = {
-    PROMOTED: "CAPA raised", NOT_REQUIRED: "No CAPA needed", DEFERRED: "Deferred",
-};
 
 export function NcrDetailPage() {
     const { ncrId } = useParams({ strict: false }) as { ncrId: string };
@@ -208,9 +188,7 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
                                         </td>
                                         <td className="py-2">
                                             {m.part_status
-                                                ? <Badge variant={m.part_status === "QUARANTINED" ? "destructive" : "outline"}>
-                                                    {m.part_status.replace(/_/g, " ")}
-                                                </Badge>
+                                                ? <StatusBadge status={m.part_status} />
                                                 : <span className="text-muted-foreground">—</span>}
                                         </td>
                                         <td className="py-2">
@@ -225,14 +203,28 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
                                             </span>}
                                         </td>
                                         <td className="py-2">
-                                            {decisionLabel(m.disposition_type)
+                                            {m.requested ? (
+                                                // Asked for, not decided: QA confirms or declines it on the lot.
+                                                <span className="text-amber-600 dark:text-amber-400">
+                                                    {decisionLabel(m.disposition_type)} requested
+                                                    {m.material_lot_id && (
+                                                        <Link to="/production/receiving-inspection/$lotId"
+                                                              params={{ lotId: String(m.material_lot_id) }}
+                                                              className="block text-xs text-primary underline-offset-2 hover:underline">
+                                                            Confirm or decline on the lot
+                                                        </Link>
+                                                    )}
+                                                </span>
+                                            ) : decisionLabel(m.disposition_type)
                                                 ?? (m.awaiting_decision
                                                     ? <span className="text-amber-600 dark:text-amber-400">Awaiting decision</span>
                                                     : <span className="text-muted-foreground">—</span>)}
                                         </td>
                                         <td className="py-2">
-                                            {m.current_state
-                                                ? <StatusBadge status={m.current_state} label={m.current_state.replace(/_/g, " ")} />
+                                            {m.requested
+                                                ? <StatusBadge status="PENDING" label="Awaiting confirmation" />
+                                                : m.current_state
+                                                ? <StatusBadge status={m.current_state} />
                                                 : <span className="text-muted-foreground">—</span>}
                                         </td>
                                     </tr>
@@ -264,13 +256,14 @@ function DecideDialog({ ncr, open, onOpenChange, dispositions, count, onDone }: 
     const [type, setType] = useState<DispositionType | "">("");
     const [notes, setNotes] = useState("");
     const [reference, setReference] = useState("");
+    const [referenceDate, setReferenceDate] = useState<string | undefined>(undefined);
     const [cosignOpen, setCosignOpen] = useState(false);
     const [cosignError, setCosignError] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const concession = type === "USE_AS_IS" || type === "REPAIR";
+    const concession = CONCESSION_DECISIONS.includes(type);
 
     useEffect(() => {
-        if (open) { setType(""); setNotes(""); setReference(""); setError(null); }
+        if (open) { setType(""); setNotes(""); setReference(""); setReferenceDate(undefined); setError(null); }
     }, [open]);
 
     const decide = useMutation({
@@ -278,6 +271,7 @@ function DecideDialog({ ncr, open, onOpenChange, dispositions, count, onDone }: 
             disposition_type: type as DispositionType,
             ...(notes.trim() ? { notes: notes.trim() } : {}),
             ...(concession && reference.trim() ? { customer_approval_reference: reference.trim() } : {}),
+            ...(concession && referenceDate ? { customer_approval_date: referenceDate } : {}),
             // The chosen rows, or everything by name — the server refuses a request with neither.
             ...(dispositions ? { dispositions } : { all: true }),
             ...(cosign ? { cosign_email: cosign.email, cosign_password: cosign.password } : {}),
@@ -298,14 +292,23 @@ function DecideDialog({ ncr, open, onOpenChange, dispositions, count, onDone }: 
     });
 
     const needsReference = concession && !reference.trim();
-    const submit = () => {
-        if (!type || needsReference) return;
+    // Scrap is confirmed first, as everywhere a scrap is decided; then signed.
+    const [scrapAsk, setScrapAsk] = useState(false);
+    const record = () => {
         if (!canApprove) { setCosignError(null); setCosignOpen(true); return; }
         decide.mutate(undefined);
+    };
+    const submit = () => {
+        if (!type || needsReference) return;
+        if (type === "SCRAP") { setScrapAsk(true); return; }
+        record();
     };
 
     return (
         <>
+            <ScrapConfirmDialog open={scrapAsk} onOpenChange={setScrapAsk}
+                                what={count === 1 ? "1 part" : `${count} parts`}
+                                onConfirm={() => { setScrapAsk(false); record(); }} />
             <Dialog open={open && !cosignOpen} onOpenChange={onOpenChange}>
                 <DialogContent>
                     <DialogHeader>
@@ -317,7 +320,7 @@ function DecideDialog({ ncr, open, onOpenChange, dispositions, count, onDone }: 
                     </DialogHeader>
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label>Decision</Label>
+                            <Label>Decision<RequiredMark /></Label>
                             <Select value={type} onValueChange={(v) => v && setType(v as DispositionType)}>
                                 <SelectTrigger><SelectValue placeholder="Choose the decision" /></SelectTrigger>
                                 <SelectContent>
@@ -326,16 +329,9 @@ function DecideDialog({ ncr, open, onOpenChange, dispositions, count, onDone }: 
                             </Select>
                         </div>
                         {concession && (
-                            <div className="space-y-2">
-                                <Label htmlFor="ncr-concession">
-                                    Concession reference <span className="text-destructive" aria-hidden>*</span>
-                                </Label>
-                                <Input id="ncr-concession" value={reference} onChange={(e) => setReference(e.target.value)}
-                                       placeholder="Customer or design approval: PO#, email reference, document number" />
-                                <p className="text-xs text-muted-foreground">
-                                    {type === "REPAIR" ? "Repair" : "Use As Is"} accepts nonconforming product and needs one.
-                                </p>
-                            </div>
+                            <ConcessionFields decision={type} idPrefix="ncr-concession"
+                                              reference={reference} onReference={setReference}
+                                              date={referenceDate} onDate={setReferenceDate} />
                         )}
                         {type === "NOT_NONCONFORMANCE" && (
                             <p className="text-xs text-muted-foreground">
@@ -348,12 +344,6 @@ function DecideDialog({ ncr, open, onOpenChange, dispositions, count, onDone }: 
                             <Textarea id="ncr-notes" value={notes} onChange={(e) => setNotes(e.target.value)}
                                       className="resize-none" placeholder="Why — kept on each part's disposition" />
                         </div>
-                        {type === "SCRAP" && (
-                            <p className="text-sm text-destructive">
-                                The parts are scrapped as soon as this is recorded. While a disposition is open its
-                                decision can be changed, with a reason, which un-scraps the part.
-                            </p>
-                        )}
                         {error && <p className="text-sm text-destructive">{error}</p>}
                     </div>
                     <DialogFooter>
@@ -414,6 +404,7 @@ function AddPartsDialog({ ncr, open, onOpenChange, onDone }: {
                 <div className="space-y-4">
                     <MultiPicker
                         label="Parts"
+                        required
                         items={(data?.results ?? []).filter((p) => !on.has(String(p.id))).map((p) => ({
                             id: p.id, label: p.ERP_id,
                             description: partPickerDescription(p, elsewhere.get(String(p.id))),
@@ -469,8 +460,11 @@ function HeaderCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boolean; o
             <CardContent className="space-y-4">
                 {canEdit ? (
                     <>
-                        <Textarea value={description} onChange={(e) => setDescription(e.target.value)}
-                                  className="resize-none" rows={4} aria-label="Description" />
+                        <div className="space-y-2">
+                            <Label htmlFor="ncr-description">Description</Label>
+                            <Textarea id="ncr-description" value={description} onChange={(e) => setDescription(e.target.value)}
+                                      className="resize-none" rows={4} />
+                        </div>
                         <div className="flex flex-wrap items-end gap-3">
                             <div className="space-y-2">
                                 <Label>Severity</Label>
@@ -538,9 +532,12 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
             <CardContent className="space-y-3">
                 {canEdit && !done ? (
                     <>
-                        <Textarea value={action} onChange={(e) => setAction(e.target.value)} className="resize-none"
-                                  aria-label="Containment action"
-                                  placeholder="e.g. Segregated the run; re-checked the other bores from this setup" />
+                        <div className="space-y-2">
+                            <Label htmlFor="ncr-containment">Containment action</Label>
+                            <Textarea id="ncr-containment" value={action} onChange={(e) => setAction(e.target.value)}
+                                      className="resize-none"
+                                      placeholder="e.g. Segregated the run; re-checked the other bores from this setup" />
+                        </div>
                         <div className="space-y-2">
                             <Label>Performed by <span className="text-muted-foreground">(if not you)</span></Label>
                             <Combobox
@@ -657,7 +654,7 @@ function CapaCard({ ncr, onChanged }: { ncr: Ncr; onChanged: () => void }) {
                     </p>
                 ) : decision ? (
                     <div className="space-y-1">
-                        <Badge variant="outline">{CAPA_LABEL[decision] ?? decision}</Badge>
+                        <StatusBadge status={decision} label={CAPA_DECISION_LABEL[decision] ?? decision} />
                         {ncr.capa_decision_note && <p className="whitespace-pre-wrap">{ncr.capa_decision_note}</p>}
                         {ncr.capa_decided_by_name && (
                             <p className="text-xs text-muted-foreground">
@@ -682,12 +679,12 @@ function CapaCard({ ncr, onChanged }: { ncr: Ncr; onChanged: () => void }) {
                         <Button size="sm" variant="outline" onClick={() => setAsking("DEFERRED")}>Defer</Button>
                     </div>
                 )}
-                {ncr.capa_ids.length > 0 && (
+                {ncr.capa_refs.length > 0 && (
                     <div className="space-y-1">
-                        {ncr.capa_ids.map((id) => (
-                            <Link key={String(id)} to="/quality/capas/$id" params={{ id: String(id) }}
-                                  className="flex items-center gap-1.5 text-primary underline-offset-2 hover:underline">
-                                <ExternalLink className="h-3.5 w-3.5" /> Linked CAPA
+                        {ncr.capa_refs.map((c) => (
+                            <Link key={String(c.id)} to="/quality/capas/$id" params={{ id: String(c.id) }}
+                                  className="flex items-center gap-1.5 font-mono text-primary underline-offset-2 hover:underline">
+                                <ExternalLink className="h-3.5 w-3.5" /> {String(c.capa_number)}
                             </Link>
                         ))}
                     </div>
@@ -753,7 +750,7 @@ function ReportsCard({ ncr }: { ncr: Ncr }) {
                             {r.report_number || "Inspection record"}
                         </span>
                         <span className="text-xs text-muted-foreground">{r.part_erp_id ?? ""}</span>
-                        <Badge variant={r.status === "FAIL" ? "destructive" : "outline"}>{r.status}</Badge>
+                        <StatusBadge status={r.status} />
                     </Link>
                 ))}
             </CardContent>

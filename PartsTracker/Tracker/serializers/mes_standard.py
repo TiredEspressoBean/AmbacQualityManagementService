@@ -817,6 +817,9 @@ class RejectLotResponseSerializer(serializers.Serializer):
                                           "reject, the new lot of the bad pieces.")
     disposition_id = serializers.CharField()
     disposition_number = serializers.CharField()
+    # The NCR the reject is on (it opens one, or joins the lot's open one).
+    ncr_id = serializers.CharField(allow_null=True)
+    ncr_number = serializers.CharField(allow_null=True)
 
 
 class LotDecisionSerializer(serializers.Serializer):

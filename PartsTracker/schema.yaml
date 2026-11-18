@@ -66405,6 +66405,12 @@ components:
             type: string
             format: uuid
           readOnly: true
+        capa_refs:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         combined_into:
           type: string
           format: uuid
@@ -66442,6 +66448,7 @@ components:
       - capa_decision
       - capa_decision_note
       - capa_ids
+      - capa_refs
       - closed_at
       - combined_from
       - combined_into
@@ -66507,6 +66514,8 @@ components:
           type: boolean
         held:
           type: boolean
+        requested:
+          type: boolean
       required:
       - awaiting_decision
       - current_state
@@ -66519,6 +66528,7 @@ components:
       - material_lot_id
       - part_id
       - part_status
+      - requested
     NCRRef:
       type: object
       properties:
@@ -81001,10 +81011,18 @@ components:
           type: string
         disposition_number:
           type: string
+        ncr_id:
+          type: string
+          nullable: true
+        ncr_number:
+          type: string
+          nullable: true
       required:
       - disposition_id
       - disposition_number
       - lot
+      - ncr_id
+      - ncr_number
       - outcome
     RejectLotResponseOutcomeEnum:
       enum:

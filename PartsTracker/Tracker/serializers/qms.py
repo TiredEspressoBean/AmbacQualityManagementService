@@ -878,8 +878,10 @@ class NCRMemberSerializer(serializers.Serializer):
     current_state = serializers.CharField(allow_null=True)
     # Still waiting for a decision — what `decide` offers.
     awaiting_decision = serializers.BooleanField()
-    # A failed load's part that had already moved past the step: listed, not held.
+    # Not held: a failed load's part already past the step, or a part already gone.
     held = serializers.BooleanField()
+    # A whole-lot reject request: the outcome asked for, confirmed or declined on the lot.
+    requested = serializers.BooleanField()
 
 
 class NCRRefSerializer(serializers.Serializer):
@@ -912,6 +914,7 @@ class NCRSerializer(SecureModelMixin):
     reports = serializers.SerializerMethodField()
     report_ids = serializers.SerializerMethodField()
     capa_ids = serializers.PrimaryKeyRelatedField(source='capas', many=True, read_only=True)
+    capa_refs = serializers.SerializerMethodField()
     combined_into_number = serializers.CharField(source='combined_into.ncr_number', read_only=True,
                                                  allow_null=True)
     combined_from = serializers.SerializerMethodField()
@@ -927,7 +930,7 @@ class NCRSerializer(SecureModelMixin):
             'containment_completed_by_name', 'containment_performed_by', 'containment_performed_by_name',
             'capa_decision', 'capa_decision_note', 'capa_decided_by', 'capa_decided_by_name',
             'capa_decided_at',
-            'members', 'reports', 'report_ids', 'capa_ids',
+            'members', 'reports', 'report_ids', 'capa_ids', 'capa_refs',
             'combined_into', 'combined_into_number', 'combined_from', 'header_by_hand',
             'created_at', 'updated_at', 'archived',
         )
@@ -969,6 +972,12 @@ class NCRSerializer(SecureModelMixin):
     def get_members(self, obj):
         from Tracker.services.qms.ncr import members
         return members(obj)
+
+    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
+    def get_capa_refs(self, obj):
+        """The CAPAs linked to it, by number — what a person reads."""
+        return [{'id': str(c.id), 'capa_number': c.capa_number}
+                for c in sorted(obj.capas.all(), key=lambda c: c.capa_number)]
 
     @extend_schema_field(serializers.ListField(child=serializers.UUIDField()))
     def get_report_ids(self, obj):

@@ -97,8 +97,8 @@ export function RejectDispositionDialog({
                 <DialogHeader>
                     <DialogTitle>Reject lot <span className="font-mono">{lotNumber}</span></DialogTitle>
                     <DialogDescription>
-                        Rejecting opens a nonconformance (disposition) so the material has a defined
-                        outcome — it isn't just marked rejected.
+                        Rejecting puts the lot on an NCR, with a decision for the rejected material, so
+                        it has a defined outcome — it isn't just marked rejected.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -224,10 +224,17 @@ export function RejectDispositionDialog({
                     >
                         {submitting ? "Rejecting…"
                             : scope === "WHOLE" && !canRejectWholeLot ? "Request whole-lot reject"
-                            : "Reject & open disposition"}
+                            : "Reject & raise NCR"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     );
+}
+
+/** What a reject did, for its toast — the same words wherever a lot is rejected. */
+export function rejectOutcomeMessage(res: { outcome?: string; ncr_number?: string | null }) {
+    if (res.outcome === "PARTIAL") return "Bad pieces split off and rejected · the rest accepted";
+    if (res.outcome === "WHOLE_LOT_REQUESTED") return "Whole-lot reject requested · the lot is held for QA";
+    return res.ncr_number ? `Lot rejected · ${res.ncr_number}` : "Lot rejected · NCR raised";
 }
