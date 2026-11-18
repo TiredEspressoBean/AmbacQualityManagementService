@@ -39,11 +39,16 @@ it yourself:
 
 1. **Quality** > **NCRs** > **Raise NCR**, or select the parts on **WO Control**
    and press **Raise NCR** in the bulk toolbar (it opens with them filled in)
-2. Choose the parts, say **What's wrong** (*e.g. Bores oversize from grinder
-   setup 2 — 4.007 against 4.005 max*) and pick the **Severity**: *Critical -
-   Safety/Regulatory Impact*, *Major - Functional Impact* (the default) or
-   *Minor - Cosmetic Only*
-3. **Raise NCR** (with several parts, **Raise NCR over N parts**). *NCR raised*
+2. Choose the parts and say **What's wrong** (*e.g. Bores oversize from grinder
+   setup 2 — 4.007 against 4.005 max*)
+3. Under **Defects found**, **+ Add defect** for what was found: error type,
+   severity, location, count, notes. The same defects go on every part's record
+   (a finding on one part alone can be added on the NCR afterwards). They're what
+   puts the NCR in defect analysis
+4. **Severity**: *Critical - Safety/Regulatory Impact*, *Major - Functional
+   Impact* or *Minor - Cosmetic Only*. It follows the worst defect you entered
+   until you pick one yourself
+5. **Raise NCR** (with several parts, **Raise NCR over N parts**). *NCR raised*
 
 *"Each part gets a failed inspection record saying what's wrong and waits for its
 own decision under this NCR. Parts still here are held; shipped/completed ones
@@ -57,7 +62,8 @@ NCR the same way. A shipped part isn't held, since it isn't here; its row reads
 *Already shipped*, and its decision is kept as the record of what was decided.
 
 To add parts to an open NCR, **Add parts** on its page, with **Why these parts**
-(*e.g. Same grinder setup*). Each added part is held and gets its own failed
+(*e.g. Same grinder setup*), and any **Defects found** (the same go on every
+added part's record). Each added part is held and gets its own failed
 inspection record. A part already on it is refused (*"Already on
 NCR-2026-000001: INJ-OPS-002."*), and so is a part on another open NCR, so it
 isn't recorded twice: *"&lt;serial&gt; is on NCR-…: combine instead."* A closed NCR
@@ -174,6 +180,28 @@ stamped with who rejected it.
     containment action before marking it complete."*), and a closed NCR can't
     be edited.
 
+#### Correcting containment
+
+Recorded containment isn't edited: it's corrected, with a reason. While the NCR
+is open, **Correct containment** (for leads and QA, who record it) opens
+*Correct containment on NCR-…*: *"Recorded by &lt;name&gt;; that stays. The
+correction is stamped with your name, the date and your reason, and the original
+wording stays on the NCR."* Change the **Containment action** or **Performed by
+(if not the recorder)**, say **Why it's corrected** (*e.g. Recorded the wrong
+rack; the parts were moved to MRB*), and **Save correction**: *Containment
+corrected*.
+
+The card then shows the current wording with *Corrected by &lt;name&gt; on
+&lt;date&gt;: &lt;reason&gt;*, and *Originally: …*. A later correction keeps the
+first wording as the original; the audit log holds every step between. The
+containment a lot reject records by itself is corrected the same way.
+
+It's refused without a reason (*"Say why it's corrected — the reason is what an
+auditor reads."*), with nothing changed, and on a closed NCR (*"NCR-… is closed,
+so its containment stands as recorded."*). Every other way of changing recorded
+containment is refused: *"Containment on NCR-… is recorded. Change it with
+Correct containment, which keeps the original and says why."*
+
 ### Where it was found
 
 The work order and step, set by the system and not editable; *Failed batch
@@ -200,7 +228,14 @@ NCR or its records, needs `initiate_capa`.
 ### Inspection records
 
 The failed inspection records behind the NCR: one per part, or, for a failed
-batch load, the one record of the failed cycle.
+batch load, the one record of the failed cycle. Each lists its defects
+(*Tool marks (Minor) · Crack ×2 (Critical)*), or *No defects recorded.*
+
+**Add a defect** records a finding made after the inspection, at MRB review
+say, on that record: *"A finding made after the inspection. Until something on
+NCR-… is decided, its severity follows the worst defect."* **Record defect(s)**:
+*Defect recorded*. It's offered while the NCR is open and the record hasn't
+been withdrawn, to QA and leads (`change_ncr`).
 
 ### Documents
 

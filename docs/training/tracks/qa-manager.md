@@ -174,13 +174,21 @@ Both came off the same grinder setup, so they're one nonconformance.
 2. Open the one you kept. Both bodies are under it; the other NCR reads *Combined
    into NCR-…*. Nobody owns it yet: **Take it**. Both bodies' decisions are yours
    now.
+3. Reviewing them, you find `INJ-QA-MANAGE-022`'s seat also shows chatter from the
+   same setup. Under **Inspection records**, **Add a defect** to its record: the
+   defect type, **Major**, and where (*seat face*). **Record defect**. A finding
+   made after the inspection goes on the NCR this way. Until something under the
+   NCR is decided, its severity follows the worst defect on its records.
 
 **A complaint from the field.** Great Lakes Diesel reports that `INJ-0038-012`,
 shipped six days ago, came back with low flow.
 
 1. **Quality** > **NCRs** > **Raise NCR**. The parts picker shows it as
-   *Shipped*. Say what's wrong and raise it. Its row reads *Already shipped*: it
+   *Shipped*. Say what's wrong, and under **Defects found** record the defect
+   (a functional fault: low flow). Raise it. Its row reads *Already shipped*: it
    isn't here to hold, so its decision will be the record of what was decided.
+   The defect puts this field failure in **Defect Analysis** alongside the
+   shop's own.
 2. On its **CAPA** card, **Raise CAPA**. The form starts from the NCR (*Raised for
    NCR-…*); choose type **Customer Complaint**, complete it and create it. The
    NCR's CAPA decision reads *CAPA raised*, linking the CAPA.

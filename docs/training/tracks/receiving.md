@@ -112,6 +112,10 @@ while nothing has been used from the lot, split off it or adjusted.
    says what that means: *Total defective: 0 … will ACCEPT*.
 4. **Accept lot**.
 
+A defect you record counts even when every reading is in spec: pitting on a
+sampled bar makes it *Total defective: 1 (a recorded defect: Corrosion pitting)*,
+and under this plan the lot is rejected.
+
 **Incoming Inspection** (in **Supply**) is the same queue with parts back from a
 subcontract vendor mixed in; **Inspect** opens the same runtime for both.
 

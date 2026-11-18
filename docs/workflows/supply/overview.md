@@ -499,6 +499,15 @@ The sampling plan decides the lot, not any one reading. An out-of-spec reading
 on a sampled unit counts toward the plan; you can leave the result Pending and
 carry on with the sample.
 
+**A recorded defect counts as a defective.** A defect recorded on the lot's
+inspection makes the sample at least one defective, even when every reading is in
+spec, and the count says so: *Total defective: 1 (a recorded defect: Corrosion
+pitting) · Accept ≤ 0 · Reject ≥ 1 — will REJECT*. Under a zero-acceptance plan
+that rejects the lot, and its inspection record is a Fail, so the defect reaches
+defect analysis. A defect's count is how many times it occurs, perhaps all on one
+piece, so it isn't read as that many defective units. A plan that accepts some
+defectives can still accept the lot.
+
 The plan is fixed when the inspection opens. The sample size and Ac/Re you see,
 and the plan badge in the inbox, are the plan as it was then. Editing the rule
 set afterwards doesn't change an inspection already open. Without its rule set's

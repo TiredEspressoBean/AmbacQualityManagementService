@@ -30,8 +30,11 @@ instead.
    part on an NCR — its open one, or a new one."*
 2. Choose the part. **Process Step** fills in with the part's current step (the
    list offers only its process's steps), and **Detected By** with you. Change
-   either if it's wrong, complete the form and save.
-3. A **Fail** confirms *Inspection recorded · on NCR-…*, with **Open NCR** to go
+   either if it's wrong.
+3. Under **Defects found**, **+ Add defect** for each one: error type, severity,
+   location (*e.g. near bore #3*), count and notes. *"A Fail with a defect says
+   what's wrong, for the NCR and defect analysis."* Complete the form and save.
+4. A **Fail** confirms *Inspection recorded · on NCR-…*, with **Open NCR** to go
    straight to it. A Pass confirms *Inspection recorded*.
 
 An operator's Home offers the same form: beside the step they last finished,
@@ -75,11 +78,13 @@ An operator's Home offers the same form: beside the step they last finished,
     notes. One record can carry several defects at different severities, and the
     worst of them sets the severity of a new NCR.
 
-    Today defects can only be entered through a work instruction's defect field,
-    as the inspection is done. The **Record Inspection** form, **Raise NCR** and
-    **Add parts** don't record defects yet. A failure recorded that way has none:
-    it doesn't appear in defect analysis, and its NCR opens at **Major** until a
-    lead or QA sets the right severity on the NCR.
+    Defects are entered wherever a failed record is made, with the same fields
+    every time: a work instruction's defect field during the inspection, the
+    **Record Inspection** form, and **Raise NCR** / **Add parts**. They're
+    recorded with the result: once a record is saved as Pass or Fail, its
+    defects are read-only (*"Recorded with the result; a later finding goes on
+    its NCR."*). A finding made later, at MRB review say, is added on the
+    NCR with **Add a defect**: see [NCRs](ncrs.md#inspection-records).
 
 !!! note "Not on the form"
     There is no quantity-affected, customer-reference, immediate-action, or

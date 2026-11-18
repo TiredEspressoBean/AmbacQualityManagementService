@@ -153,6 +153,8 @@ Based on lot size and AQL level:
 - Accept number (Ac) and Reject number (Re) shown
 - If defects ≤ Ac: Accept lot
 - If defects ≥ Re: Reject lot
+- A defect recorded on the lot's inspection counts as at least one defective,
+  even when the readings are in spec: *Total defective: 1 (a recorded defect: …)*
 - If the sample can't be finished: **Accept unfinished…** with a reason, which waits
   for QA to approve. See [Accepting before the sample is
   finished](../workflows/supply/overview.md#accepting-before-the-sample-is-finished).
@@ -197,9 +199,10 @@ Based on lot size and AQL level:
 3. Attach evidence (photos, data)
 4. Submit
 
-This form doesn't record defects yet; only a work instruction's defect field does,
-during the inspection. A failure recorded here has none, so it doesn't appear in
-defect analysis, and its NCR opens at Major: set the right severity on the NCR.
+Record what you found under **Defects found** (**+ Add defect**: error type,
+severity, location, count, notes). The worst defect sets the NCR's severity, and
+the defects put the failure in defect analysis. Once saved as Pass or Fail, the
+defects are read-only; a later finding goes on the NCR (**Add a defect**).
 
 A **Fail** holds the part and puts it on an NCR: its open one, or a new one.
 See [Inspection Records](../workflows/quality/quality-reports.md).
