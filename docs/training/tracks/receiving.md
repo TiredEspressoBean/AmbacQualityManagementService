@@ -163,11 +163,16 @@ the only thing that tells the planner the shortage has an end.
 
 **You will:** move a lot into stores and run a blind count.
 
-1. **Supply** > **Locations** > **Main Stores**. Scan or type `LOT-2026-00001` into
-   *Scan a lot or unit to put it in Main Stores…* and **Put here**: *Lot
-   LOT-2026-00001 → Main Stores*. Each location keeps who moved what in and out.
-2. Turn on **Blind** and **Count this location**. The count sheet lists the lots
-   without their quantities.
+**Supply** > **Locations** shows the shop's storage: **Main Stores** holds racks
+**A** to **D**, each with three shelves (`A-1` … `D-3`), and **Finished Goods** holds
+racks **F1** and **F2**. Each rack and building counts what its shelves hold.
+
+1. Open **Main Stores** > **Rack A** > **A-3**, an empty shelf. Scan or type
+   `LOT-2026-00001` into *Scan a lot or unit to put it in A-3…* and **Put here**:
+   *Lot LOT-2026-00001 → A-3*. Each location keeps who moved what in and out.
+2. Open shelf **A-1**, turn on **Blind** and **Count this location**. A count covers
+   exactly the location you start it on, so count the shelf the stock sits on. The
+   count sheet lists the lots without their quantities.
 3. Count each one: everything as expected except **Seal & O-Ring Kit**, where you
    find **396**. **Submit count**.
 4. **Differences**: `STOCK-CRI-SEAL` 400 expected, 396 counted, −4, *Short*. *A lead
@@ -197,7 +202,7 @@ what each job consumes, from which lot and where it is.
 1. If `WO-TRAIN-BOTTLE` isn't listed, widen it to **next 24h**: the staging list only
    shows work scheduled inside its window, and a job just outside it isn't missing.
 2. **Assembly Cell** > `WO-TRAIN-BOTTLE` · Assembly: five lines, from the
-   `STOCK-CRI-*` lots in Main Stores. **Confirm** the Control Valve Assembly line: it
+   `STOCK-CRI-*` lots, each with the shelf it's on (`A-1`, `A-2`, `B-1`, `B-3`). **Confirm** the Control Valve Assembly line: it
    reads *took 2*.
 3. When you picked a different lot from the one suggested, **Took another** records
    the lot you actually took. That keeps the trace honest.

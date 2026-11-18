@@ -311,6 +311,41 @@ Order**.
     See [Receiving Cores](../../workflows/reman/receiving.md) for what those
     fields mean.
 
+### Stock that isn't cleared to use
+
+**Stock on Hand** loads each lot as accepted stock, ready to use, unless its
+**Needs Inspection** column says **Yes**. A lot marked Yes arrives as a fresh
+delivery and goes through its item's inspection plan, exactly as if it had just
+come off the truck. Mark anything not yet inspected, and anything set aside
+waiting for a decision: the inspection is where that decision is recorded.
+
+A lot marked Yes picks up whatever holds the item calls for, and can carry several:
+
+| Hold | When |
+|------|------|
+| **Awaiting CoC** | The item requires a certificate of conformance. Always, for a loaded lot, since nothing is attached yet; it clears when the CoC is uploaded |
+| **Awaiting heat number** | The item requires one and the row's **Heat Number** is blank; it clears when entered |
+| **Unqualified supplier** | The item requires a qualified supplier and this one isn't |
+| **Unapproved part** | A bought part needing part approval, with none active for this supplier |
+| **Shelf life expired** | Its **Expiration Date** has already passed |
+
+With no hold it waits in **Awaiting inspection**.
+
+- **Yes** needs the item to have an inspection plan. Without one the row is
+  refused: *"&lt;item&gt; has no inspection plan, so it would go straight to stock.
+  Give it a plan, or leave Needs inspection blank"*.
+- Inspection is decided at the first load. A **Yes** on a lot already loaded as
+  accepted is refused: *"Already loaded as accepted stock; to stop it being used,
+  place a hold on the lot's page"*.
+- **Rejected stock waiting to go back to its supplier isn't loaded.** Its return
+  is already under way outside UQMES.
+
+!!! important "A column a sheet doesn't read stops the load"
+    Every sheet refuses a column it doesn't recognise, so nothing typed into the
+    workbook is quietly dropped. A *Status* column on Stock on Hand fails the
+    check: *"Stock on Hand: column 'Status' isn't one this sheet reads. Remove
+    it, or see the sheet's columns."*
+
 ### Two ways to start
 
 | Button | Gives you |

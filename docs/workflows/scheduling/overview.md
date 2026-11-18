@@ -60,7 +60,7 @@ jobs](../supply/overview.md#picking-material-for-jobs).
 
 Each station shows its jobs with a staged count (*2 jobs · 0/2 staged*), and
 each job lists its materials with quantity, **source lot** and **location** —
-*Injector Spring ×4 · STOCK-CRI-SPR · Main Stores*. Optional lines are marked
+*Injector Spring ×4 · &lt;lot&gt; · A-2*. Optional lines are marked
 **(optional)**. A step that consumes nothing says so rather than showing an
 empty table.
 
