@@ -314,6 +314,7 @@ export const useAcceptLot = () => {
     return useMutation({
         mutationFn: (vars: { id: string }) =>
             api.api_MaterialLots_accept_create(undefined, { params: { id: vars.id }, headers: csrf() }),
+        meta: { errorMessage: "Couldn't accept the lot" },
         onSuccess: () => invalidateReceiving(queryClient),
     });
 };

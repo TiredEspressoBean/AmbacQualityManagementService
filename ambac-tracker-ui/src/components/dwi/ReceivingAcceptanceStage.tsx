@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { recordedDefectReason, withRecordedDefects } from "@/lib/receiving-tally";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -79,7 +79,7 @@ export function ReceivingAcceptanceStage({
     const lotQuery = useQuery(materialLotOptions(lotId));
     const lot = lotQuery.data;
 
-    const { data: samplePlan } = useSamplePlan(lotId);
+    const { data: samplePlan, refetch: refetchPlan } = useSamplePlan(lotId);
     const characteristics = samplePlan?.characteristics ?? [];
     const n = samplePlan?.sample_size ?? 0;
     const ac = samplePlan?.accept_number ?? 0;
@@ -120,6 +120,18 @@ export function ReceivingAcceptanceStage({
         if (ok) setFlushed(true);
         return ok;
     }
+
+    // The run's captures (a recorded defect among them) go to the report as the review
+    // opens, then the plan is read again: the preview, the buttons and the server judge
+    // the same sample before the first click. Read from the report alone, a defect
+    // captured in this run showed "will ACCEPT" until Accept was refused (walk 11/18).
+    const flushedOnOpen = useRef(false);
+    useEffect(() => {
+        if (flushedOnOpen.current) return;
+        flushedOnOpen.current = true;
+        void ensureFlushed().then((ok) => { if (ok) void refetchPlan(); });
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the review opens
+    }, []);
 
     // Unit-by-unit: flush the final reading, then ask the server for the
     // family-correct verdict over all recorded units (attribute defective-unit
