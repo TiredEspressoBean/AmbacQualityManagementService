@@ -56,6 +56,8 @@ export type CompletionContext = {
     unit: number;
     unitCount: number;
     capturedMeasurements: CapturedMeasurement[];
+    /** Defects captured in this run, not yet saved (error type ids). */
+    capturedDefectTypeIds: string[];
     /** Current URL search, spread when navigating within the same run. */
     search: Record<string, unknown>;
     navigate: ReturnType<typeof useNavigate>;
@@ -432,6 +434,7 @@ function ReceivingCompletionFooter({ ctx }: { ctx: CompletionContext }) {
         <ReceivingAcceptanceStage
             lotId={ctx.materialLotId as string}
             capturedMeasurements={ctx.capturedMeasurements}
+            capturedDefectTypeIds={ctx.capturedDefectTypeIds}
             flushCaptures={() => flush(ctx.unitMode ? ctx.unit : undefined)}
             unitMode={ctx.unitMode}
         />

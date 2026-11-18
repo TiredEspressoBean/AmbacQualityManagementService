@@ -205,6 +205,21 @@ export function OperatorSubstepRuntimePage() {
         return out;
     }, [sortedForBind, responsesBySubstepId]);
 
+    // The defects captured in this run (error type ids), not yet saved: the receiving
+    // review counts them before anything is recorded — a preview, not a commit.
+    const capturedDefectTypeIds = useMemo<string[]>(() => {
+        const out: string[] = [];
+        for (const s of sortedForBind) {
+            for (const c of buildCaptures(s.body_blocks, responsesBySubstepId[s.id] ?? {})) {
+                if (c.kind !== "defects") continue;
+                for (const r of ((c.rows as { error_type_id?: string }[] | undefined) ?? [])) {
+                    if (r.error_type_id) out.push(String(r.error_type_id));
+                }
+            }
+        }
+        return out;
+    }, [sortedForBind, responsesBySubstepId]);
+
     // Receiving unit-by-unit cadence. Variables (Z1.9) needs n individual
     // readings, so the operator walks the substeps once per sampled unit and
     // each pass stamps its sample_number. Attribute plans stay single-pass
@@ -539,6 +554,7 @@ export function OperatorSubstepRuntimePage() {
         unit: currentUnit,
         unitCount,
         capturedMeasurements,
+        capturedDefectTypeIds,
         search,
         navigate,
         submit,

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import { useRetrieveErrorTypes } from "@/hooks/useRetrieveErrorTypes";
 import { recordedDefectReason, withRecordedDefects } from "@/lib/receiving-tally";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -63,11 +64,15 @@ type ServerVerdict = {
 export function ReceivingAcceptanceStage({
     lotId,
     capturedMeasurements,
+    capturedDefectTypeIds = [],
     flushCaptures,
     unitMode = false,
 }: {
     lotId: string;
     capturedMeasurements: CapturedMeasurement[];
+    /** Defects captured in this run, not yet saved: counted in the preview, saved at
+     *  Accept / Reject — the review is a preview, not a commit. */
+    capturedDefectTypeIds?: string[];
     /** Persist the DWI captures to the QR. Returns false if the flush failed. */
     flushCaptures: () => Promise<boolean>;
     /** Unit-by-unit (Z1.9): the sample's readings are on the server, so the
@@ -79,7 +84,7 @@ export function ReceivingAcceptanceStage({
     const lotQuery = useQuery(materialLotOptions(lotId));
     const lot = lotQuery.data;
 
-    const { data: samplePlan, refetch: refetchPlan } = useSamplePlan(lotId);
+    const { data: samplePlan } = useSamplePlan(lotId);
     const characteristics = samplePlan?.characteristics ?? [];
     const n = samplePlan?.sample_size ?? 0;
     const ac = samplePlan?.accept_number ?? 0;
@@ -120,18 +125,6 @@ export function ReceivingAcceptanceStage({
         if (ok) setFlushed(true);
         return ok;
     }
-
-    // The run's captures (a recorded defect among them) go to the report as the review
-    // opens, then the plan is read again: the preview, the buttons and the server judge
-    // the same sample before the first click. Read from the report alone, a defect
-    // captured in this run showed "will ACCEPT" until Accept was refused (walk 11/18).
-    const flushedOnOpen = useRef(false);
-    useEffect(() => {
-        if (flushedOnOpen.current) return;
-        flushedOnOpen.current = true;
-        void ensureFlushed().then((ok) => { if (ok) void refetchPlan(); });
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the review opens
-    }, []);
 
     // Unit-by-unit: flush the final reading, then ask the server for the
     // family-correct verdict over all recorded units (attribute defective-unit
@@ -196,7 +189,11 @@ export function ReceivingAcceptanceStage({
     }, [capturedMeasurements, samplePlan]);
     const capturedFailures = Object.values(failedByChar).reduce((a, b) => a + b, 0);
     const countFor = (id: string) => Math.max(parseInt(defectByChar[id]) || 0, failedByChar[id] ?? 0);
-    const recordedDefects = samplePlan?.recorded_defects ?? [];
+    // Recorded on the report already, plus captured in this run (saved at Accept / Reject).
+    const { data: errorTypesResp } = useRetrieveErrorTypes();
+    const typeName = (id: string) =>
+        ((errorTypesResp?.results ?? []) as { id: string; error_name: string }[]).find((t) => String(t.id) === id)?.error_name ?? "a defect";
+    const recordedDefects = [...new Set([...(samplePlan?.recorded_defects ?? []), ...capturedDefectTypeIds.map(typeName)])];
     const counted = useByChar
         ? characteristics.reduce((sum, c) => sum + countFor(String(c.id)), 0)
         : Math.max(parseInt(defectTotal) || 0, capturedFailures);
