@@ -525,3 +525,61 @@ class S15RequisitionPicksLatestReleasedAssemblyBomTests(TenantContextMixin, Test
         from Tracker.reports.adapters.pick_list import PickListAdapter
         ctx = PickListAdapter().build_context({"id": self.wo.id}, user=None, tenant=self.tenant)
         self.assertEqual([i.component_name for i in ctx.items], ["Current seal"])
+
+
+class StockNeedsInspectionTests(_SupplyFixture):
+    """Stock on Hand "Needs Inspection" (user ruling 2026-11-18)."""
+
+    def _plan(self):
+        from Tracker.services.qms.receiving_inspection import create_standalone_receiving_plan
+        return create_standalone_receiving_plan(self.bar)
+
+    def test_blank_is_accepted_stock_as_before(self):
+        from Tracker.models import MaterialLot
+        from Tracker.services.mes.stock_import import import_stock_rows
+        out = import_stock_rows(tenant=self.tenant, user=self.user, rows=[
+            {"lot_number": "NI-0", "item": "Bar stock 4140", "quantity": "10", "needs_inspection": ""}])
+        self.assertEqual(out["created"], 1, out)
+        self.assertEqual(MaterialLot.objects.get(lot_number="NI-0").status, "ACCEPTED")
+
+    def test_yes_routes_it_as_a_fresh_receipt_with_the_items_holds(self):
+        from Tracker.models import Material, MaterialLot
+        from Tracker.services.mes.stock_import import import_stock_rows
+        from Tracker.services.qms import lot_holds
+        self._plan()
+        out = import_stock_rows(tenant=self.tenant, user=self.user, rows=[
+            {"lot_number": "NI-1", "item": "Bar stock 4140", "quantity": "10", "needs_inspection": "Yes"}])
+        self.assertEqual(out["created"], 1, out)
+        self.assertEqual(MaterialLot.objects.get(lot_number="NI-1").status, "AWAITING_INSPECTION")
+        # An item that wants a heat number: held for it, not inspected yet.
+        Material.objects.filter(pk=self.bar.pk).update(requires_heat_number=True)
+        import_stock_rows(tenant=self.tenant, user=self.user, rows=[
+            {"lot_number": "NI-2", "item": "Bar stock 4140", "quantity": "10", "needs_inspection": "y"}])
+        held = MaterialLot.objects.get(lot_number="NI-2")
+        self.assertEqual(held.status, "QUARANTINE")
+        self.assertIn("AWAITING_HEAT_NUMBER", lot_holds.holds(held))
+
+    def test_yes_without_a_plan_is_refused_and_a_reupload_leaves_a_routed_lot_alone(self):
+        from Tracker.services.mes.stock_import import import_stock_rows
+        out = import_stock_rows(tenant=self.tenant, user=self.user, rows=[
+            {"lot_number": "NI-3", "item": "Bar stock 4140", "quantity": "10", "needs_inspection": "Yes"}])
+        self.assertEqual(out["errors"], 1, out)
+        self.assertIn("has no inspection plan, so it would go straight to stock", out["rows"][0]["detail"])
+        self._plan()
+        import_stock_rows(tenant=self.tenant, user=self.user, rows=[
+            {"lot_number": "NI-3", "item": "Bar stock 4140", "quantity": "10", "needs_inspection": "Yes"}])
+        again = import_stock_rows(tenant=self.tenant, user=self.user, rows=[
+            {"lot_number": "NI-3", "item": "Bar stock 4140", "quantity": "12", "needs_inspection": "Yes"}])
+        self.assertEqual(again["in_use"], 1, again)
+
+    def test_a_status_column_is_refused_on_the_workbook(self):
+        from types import SimpleNamespace
+        from Tracker.services.core.master_workbook import SHEET_BY_TITLE, _run_service_sheet
+        sheet = SHEET_BY_TITLE["Stock on Hand"]
+        res = _run_service_sheet(sheet, [{"lot_number": "NI-4", "item": "Bar stock 4140", "quantity": "1",
+                                          "status": "Quarantine"}],
+                                 SimpleNamespace(tenant=self.tenant, user=self.user))
+        self.assertEqual(res["errors"], 1, res)
+        self.assertEqual(res["rows"][0]["detail"],
+                         "Stock on Hand: column 'Status' isn't one this sheet reads. "
+                         "Remove it, or see the sheet's columns.")

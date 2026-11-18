@@ -1,9 +1,15 @@
 """Stock on hand — the opening balance of each lot, typed up at go-live.
 
-Current balances only, no history: each row is a lot that is on the shelf today,
-already accepted. It is created ACCEPTED directly, not routed through receiving
-(`route_received_lot`), whose inspection plans would put holds on stock that was
-inspected long before UQMES existed.
+Current balances only, no history: each row is a lot that is on the shelf today.
+By default it is already accepted, so it is created ACCEPTED directly, not routed
+through receiving (`route_received_lot`), whose inspection plans would put holds on
+stock that was inspected long before UQMES existed.
+
+**Needs inspection: Yes** is stock that isn't cleared to use (held for a decision at
+go-live): it is created as a fresh receipt and routed as if it had just come off the
+truck — its inspection plan, and any paperwork or supplier hold the item's settings
+give (user ruling 2026-11-18). A Yes row for an item with no plan is refused: it would
+go straight to stock. Rejected stock waiting to go back isn't loaded.
 
 - **Matched on lot number.** Re-uploading the sheet updates a lot it created, as
   long as nothing has been drawn from it yet. A lot already in use is left alone —
@@ -25,7 +31,7 @@ CREATED, UPDATED, UNCHANGED, IN_USE, ERROR = "CREATED", "UPDATED", "UNCHANGED", 
 # Template columns, in order. `*` marks the required ones (stripped when matching).
 TEMPLATE_COLUMNS = ["Lot Number*", "Item*", "Quantity*", "Unit", "Location", "Received Date",
                     "Supplier", "Supplier Lot Number", "Heat Number", "Manufacture Date",
-                    "Expiration Date", "Owner"]
+                    "Expiration Date", "Owner", "Needs Inspection"]
 COLUMN_HELP = {
     "Lot Number*": "The number on the lot's label. Unique: one row per lot.",
     "Item*": "A material's part number, or a buyable part type's ERP id (or exact name).",
@@ -36,6 +42,9 @@ COLUMN_HELP = {
     "Supplier": "The company it was bought from, by exact name.",
     "Expiration Date": "Use-by date from the supplier, if any. Starts the lot's shelf-life clock.",
     "Owner": "Only for customer property (a customer's free-issue stock): the customer's name.",
+    "Needs Inspection": ("Yes for stock that isn't cleared to use: it arrives as a fresh receipt "
+                         "and goes through the item's inspection plan, with any CoC, heat-number "
+                         "or supplier hold the item requires. Blank means on the shelf, accepted."),
 }
 
 # Normalized header -> row key.
@@ -52,7 +61,12 @@ FIELD_MAP = {
     "manufacture_date": "manufacture_date",
     "expiration_date": "expiration_date", "expiry": "expiration_date", "use_by": "expiration_date",
     "owner": "owner",
+    "needs_inspection": "needs_inspection", "inspect": "needs_inspection",
+    "needs_inspection?": "needs_inspection",
 }
+
+_YES = {"yes", "y", "true", "1", "x"}
+_NO = {"", "no", "n", "false", "0"}
 
 
 def _date(row, key, what):
@@ -86,7 +100,17 @@ def _read(tenant, row) -> dict:
         raise ValueError(f"Quantity '{_text(row.get('quantity'))}' isn't a number")
     if quantity <= 0:
         raise ValueError("Quantity must be more than zero — leave a used-up lot off the sheet")
+    flag = _text(row.get("needs_inspection")).lower()
+    if flag not in _YES | _NO:
+        raise ValueError(f"Needs inspection is Yes or blank, not '{_text(row.get('needs_inspection'))}'")
+    needs_inspection = flag in _YES
+    if needs_inspection:
+        from Tracker.services.qms.receiving_inspection import resolve_receiving_step
+        if resolve_receiving_step(material or part_type) is None:
+            raise ValueError(f"{_text(row.get('item'))} has no inspection plan, so it would go "
+                             "straight to stock. Give it a plan, or leave Needs inspection blank")
     return {
+        "needs_inspection": needs_inspection,
         "lot_number": lot_number,
         "material": material,
         "material_type": part_type,
@@ -114,11 +138,12 @@ def _resolve_location(tenant, name: str):
     return resolve_location(tenant, name, create=True)
 
 
-def _apply(tenant, fields: dict) -> str:
+def _apply(tenant, fields: dict, user=None) -> str:
     from django.db import IntegrityError, transaction
     from Tracker.models import MaterialLot
     from Tracker.services.life_tracking.shelf_life import attach_shelf_life
 
+    needs_inspection = fields.pop("needs_inspection", False)
     existing = MaterialLot.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, lot_number__iexact=fields["lot_number"]).first()
     if fields.get("received_date") is None:
@@ -130,18 +155,32 @@ def _apply(tenant, fields: dict) -> str:
     if existing is None:
         try:
             with transaction.atomic():
-                lot = MaterialLot.objects.create(
-                    tenant=tenant, status="ACCEPTED",
-                    quantity_remaining=fields["quantity"], **fields)
-                attach_shelf_life(lot)
+                if needs_inspection:
+                    # A fresh receipt, routed as one off the truck: its inspection plan,
+                    # and any hold the item's settings give (shelf life attached there).
+                    from Tracker.services.qms.receiving_inspection import route_received_lot
+                    lot = MaterialLot.objects.create(
+                        tenant=tenant, status="RECEIVED",
+                        quantity_remaining=fields["quantity"], **fields)
+                    route_received_lot(lot, user)
+                else:
+                    lot = MaterialLot.objects.create(
+                        tenant=tenant, status="ACCEPTED",
+                        quantity_remaining=fields["quantity"], **fields)
+                    attach_shelf_life(lot)
         except IntegrityError:
             raise ValueError(f"Lot number '{fields['lot_number']}' is already taken")
         return CREATED
 
     # An opening lot this sheet made, still untouched, follows the sheet. Anything
-    # else — drawn from, received, on order — is UQMES's record now.
+    # else — drawn from, received (a Needs inspection lot is), on order — is UQMES's
+    # record now.
     untouched = (existing.status == "ACCEPTED" and not existing.erp_po_number
                  and existing.quantity_remaining == existing.quantity)
+    if needs_inspection and existing.status == "ACCEPTED":
+        # Inspection is decided when the lot is first loaded, not by a re-upload.
+        raise ValueError("Already loaded as accepted stock; to stop it being used, "
+                         "place a hold on the lot's page")
     changes = {k: v for k, v in fields.items()
                if k != "lot_number" and getattr(existing, k) != v}
     if not changes:
@@ -158,7 +197,7 @@ def _apply(tenant, fields: dict) -> str:
     return UPDATED
 
 
-def import_stock_rows(*, tenant, rows: list[dict]) -> dict:
+def import_stock_rows(*, tenant, rows: list[dict], user=None) -> dict:
     """Apply parsed rows (keys as `FIELD_MAP` maps them) as opening-balance lots. A bad
     row is reported and skipped. Returns counts plus a per-row report."""
     counts = {CREATED: 0, UPDATED: 0, UNCHANGED: 0, IN_USE: 0, ERROR: 0}
@@ -168,7 +207,7 @@ def import_stock_rows(*, tenant, rows: list[dict]) -> dict:
             continue  # a blank line in the sheet
         entry = {"row": n, "lot_number": _text(row.get("lot_number")), "detail": ""}
         try:
-            entry["outcome"] = _apply(tenant, _read(tenant, row))
+            entry["outcome"] = _apply(tenant, _read(tenant, row), user)
             if entry["outcome"] == IN_USE:
                 entry["detail"] = "Already in use in UQMES — left alone"
             else:

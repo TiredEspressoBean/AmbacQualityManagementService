@@ -101,7 +101,8 @@ SHEETS: tuple[Sheet, ...] = (
     Sheet("Parts", "Parts in work, with the step each is at now.", _VS + "mes_lite.PartsViewSet"),
     Sheet("Cores", "Reman cores in the building today, each with its customer. They load "
           "as Received.", _VS + "reman.CoreViewSet"),
-    Sheet("Stock on Hand", "Lots on the shelf today, already accepted.",
+    Sheet("Stock on Hand", "Lots on the shelf today: accepted, or (Needs inspection: Yes) "
+          "held for their inspection plan as a fresh receipt.",
           service="stock", perms=("add_materiallot", "change_materiallot")),
     Sheet("On Order", "Open purchase-order lines, expected in.",
           service="on_order", perms=("add_materiallot", "change_materiallot")),
@@ -427,8 +428,28 @@ def _run_viewset_sheet(sheet, rows, request):
                          summary.get("unchanged", 0), summary.get("errors", 0), problems)
 
 
+# What the Users sheet reads (services/core/user_reconcile.reconcile_user_row).
+_USER_ROW_KEYS = frozenset({"email", "first_name", "last_name", "group", "groups", "status", "message"})
+
+
+def _unknown_service_columns(sheet, rows) -> list[str]:
+    """Columns a service sheet doesn't read. Kept, they did nothing and said nothing — a
+    Status column on Stock on Hand loaded every lot as accepted (user ruling 2026-11-18)."""
+    known = _USER_ROW_KEYS if sheet.service == "users" else set(_service_columns(sheet)[2].values())
+    seen = {k for r in rows for k in r}
+    return sorted(k for k in seen if k not in known)
+
+
 def _run_service_sheet(sheet, rows, request):
     tenant, user = request.tenant, request.user
+    unknown = _unknown_service_columns(sheet, rows)
+    if unknown:
+        # Refused before any row is read: the check names each one.
+        return _sheet_result(sheet.title, errors=len(unknown), rows=[
+            {"row": 1, "outcome": "error",
+             "detail": (f"{sheet.title}: column '{k.replace('_', ' ').capitalize()}' isn't one this "
+                        "sheet reads. Remove it, or see the sheet's columns.")}
+            for k in unknown])
     if sheet.service == "users":
         from Tracker.services.core.user_reconcile import reconcile_user_row
         counts = {"created": 0, "updated": 0, "unchanged": 0, "error": 0}
@@ -446,10 +467,12 @@ def _run_service_sheet(sheet, rows, request):
                              counts["unchanged"], counts["error"], problems)
 
     if sheet.service == "stock":
-        from Tracker.services.mes.stock_import import import_stock_rows as run
+        from Tracker.services.mes.stock_import import import_stock_rows
+        # The user routes a Needs inspection lot (its inspection is theirs to open).
+        body = import_stock_rows(tenant=tenant, rows=rows, user=user)
     else:
-        from Tracker.services.mes.expected_receipt_import import import_expected_rows as run
-    body = run(tenant=tenant, rows=rows)
+        from Tracker.services.mes.expected_receipt_import import import_expected_rows
+        body = import_expected_rows(tenant=tenant, rows=rows)
     problems = []
     for r in body["rows"]:
         if r["outcome"] == "ERROR":
