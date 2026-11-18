@@ -74,6 +74,17 @@ def _open_disposition(lot, *, user, disposition_type, quantity, description, rep
             write_header(ncr, {"description": (description or "").strip(), "severity": severity}, user)
         except (HeaderRefused, ValueError):
             reject_note = (description or "").strip()
+    # The reject IS the containment: the lot is held at receiving, by whoever rejected it,
+    # now (user ruling 2026-11-18). Recorded on the NCR unless it already has one — the
+    # one containment rule then holds for shipping it back like any completion.
+    if not (ncr.containment_action or "").strip():
+        reason = (description or "").strip()
+        ncr.containment_action = ("Lot rejected and held at receiving"
+                                  + (f": {reason}" if reason and len(reason) <= 120 else "."))
+        ncr.containment_completed_by = _authority(user)
+        ncr.containment_completed_at = timezone.now()
+        ncr.save(update_fields=["containment_action", "containment_completed_by",
+                                "containment_completed_at", "updated_at"])
     disposition = QuarantineDisposition.objects.create(
         tenant=lot.tenant,
         ncr=ncr,

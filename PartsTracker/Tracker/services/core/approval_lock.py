@@ -166,6 +166,10 @@ def edit_refusal(instance, data) -> str | None:
                        if _changed(instance, f, data[f])
                        and not (f in keeps and data[f] in (None, ''))
                        and not (f in rising and _rises(rising[f], getattr(instance, f), data[f])))
+        if moved == ['severity']:
+            # Worded as the NCR header rule words it (services/qms/ncr.write_header): one message.
+            return (f"{_label(instance)} is {instance.get_severity_display()}; "
+                    "its severity may only be raised.")
         if moved:
             return (f"{_label(instance)} is {phrase}; {', '.join(moved)} can't change after "
                     "the decision" + (" (severity may only be raised)." if 'severity' in moved else "."))

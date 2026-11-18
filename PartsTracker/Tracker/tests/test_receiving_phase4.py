@@ -218,13 +218,11 @@ class DispositionOutcomeTests(_Fixture):
         self.client.post(f"/api/MaterialLots/{lot.id}/reject/", {"whole_lot": True}, format="json")
         row = self.client.get(f"/api/MaterialLots/{lot.id}/").json()
         self.assertTrue(row["awaiting_return"])
-        # Shipping it back completes the decision, so its Major NCR's containment comes
-        # first (merged review P1#4).
-        resp = self.client.post(f"/api/MaterialLots/{lot.id}/ship-back/", {"note": "UPS 1Z999"}, format="json")
-        self.assertEqual(resp.status_code, 400, resp.content)
-        self.assertIn("Containment action required", resp.json()["detail"])
-        from Tracker.services.qms.ncr import record_containment
-        record_containment(lot.dispositions.get().ncr, action="Lot tagged and caged.", user=self.qa)
+        # The reject IS the containment (ruling 2026-11-18): recorded on its NCR by the
+        # rejecter, so shipping it back meets the completion check like any decision.
+        ncr = lot.dispositions.get().ncr
+        self.assertTrue(ncr.containment_action.startswith("Lot rejected and held at receiving"))
+        self.assertEqual(ncr.containment_completed_by_id, self.qa.id)
         resp = self.client.post(f"/api/MaterialLots/{lot.id}/ship-back/", {"note": "UPS 1Z999"}, format="json")
         self.assertEqual(resp.status_code, 200, resp.content)
         lot.refresh_from_db()

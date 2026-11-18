@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, FileText, Loader2, Plus } from "lucide-react";
 import { api } from "@/lib/api/generated";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
-import { invalidateAfterNcrChange, useNcr } from "@/hooks/ncrs";
+import { invalidateAfterNcrChange, partPickerDescription, useNcr, useOpenNcrByPart } from "@/hooks/ncrs";
 import { useRetrieveParts } from "@/hooks/parts";
+import { useEmployeeSearch } from "@/hooks/employee-search";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiPicker } from "@/components/ui/multi-picker";
 import { Combobox } from "@/components/ui/combobox";
-import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader";
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,10 +37,12 @@ const DECISIONS: { value: DispositionType; label: string }[] = [
     { value: "SCRAP", label: "Scrap" },
     { value: "USE_AS_IS", label: "Use As Is" },
     { value: "RETURN_TO_SUPPLIER", label: "Return to Supplier" },
+    // Only for a withdrawn finding (its capture voided and re-inspected PASS); closes the
+    // decision — the same rule as on a single disposition.
+    { value: "NOT_NONCONFORMANCE", label: "Not a nonconformance (result voided)" },
 ];
 const decisionLabel = (t: string | null | undefined) =>
-    t ? (DECISIONS.find((d) => d.value === t)?.label
-        ?? (t === "NOT_NONCONFORMANCE" ? "Not a nonconformance" : t)) : null;
+    t ? (DECISIONS.find((d) => d.value === t)?.label ?? t) : null;
 
 const SEVERITIES = [
     { value: "CRITICAL", label: "Critical - Safety/Regulatory Impact" },
@@ -120,13 +122,14 @@ function NcrDetail({ ncr }: { ncr: Ncr }) {
 // ---- What it covers, and the decisions ------------------------------------------
 
 function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => void; canAdd: boolean }) {
-    const waiting = ncr.members.filter((m) => m.awaiting_decision && m.part_id);
+    // Parts and rejected lot quantities alike; a row is chosen by its decision.
+    const waiting = ncr.members.filter((m) => m.awaiting_decision && m.disposition_id);
     const [chosen, setChosen] = useState<string[]>([]);
     const [decideOpen, setDecideOpen] = useState(false);
     const [addOpen, setAddOpen] = useState(false);
     const canDecide = ncr.state === "OPEN" && waiting.length > 0;
-    // Only parts still waiting can be chosen — drop any decided since they were ticked.
-    const chosenWaiting = chosen.filter((id) => waiting.some((m) => String(m.part_id) === id));
+    // Only rows still waiting can be chosen — drop any decided since they were ticked.
+    const chosenWaiting = chosen.filter((id) => waiting.some((m) => String(m.disposition_id) === id));
     const toggle = (id: string, on: boolean) =>
         setChosen((prev) => on ? [...prev, id] : prev.filter((x) => x !== id));
 
@@ -157,7 +160,15 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
             </CardHeader>
             <CardContent>
                 {ncr.members.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nothing has been put up for a decision yet.</p>
+                    ncr.combined_into ? (
+                        <p className="text-sm text-muted-foreground">
+                            Its parts and decisions moved to{" "}
+                            <Link to="/quality/ncrs/$ncrId" params={{ ncrId: String(ncr.combined_into) }}
+                                  className="text-primary underline-offset-2 hover:underline">{ncr.combined_into_number}</Link>.
+                        </p>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Nothing has been put up for a decision yet.</p>
+                    )
                 ) : (
                     <table className="w-full text-sm">
                         <thead>
@@ -172,14 +183,14 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
                         </thead>
                         <tbody>
                             {ncr.members.map((m) => {
-                                const id = m.part_id ? String(m.part_id) : null;
+                                const id = m.disposition_id ? String(m.disposition_id) : null;
                                 const choosable = m.awaiting_decision && !!id && ncr.state === "OPEN";
                                 return (
                                     <tr key={String(m.disposition_id ?? m.part_id ?? m.material_lot_id)} className="border-b last:border-0">
                                         <td className="py-2">
                                             {choosable && (
                                                 <Checkbox
-                                                    aria-label={`Choose ${m.erp_id}`}
+                                                    aria-label={`Choose ${m.erp_id ?? `lot ${m.lot_number}`}`}
                                                     checked={chosenWaiting.includes(id!)}
                                                     onCheckedChange={(on) => toggle(id!, on === true)}
                                                 />
@@ -187,10 +198,12 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
                                         </td>
                                         <td className="py-2">
                                             <span className="font-mono">{m.erp_id ?? (m.lot_number ? `Lot ${m.lot_number}` : "—")}</span>
-                                            {/* A failed load's part that had left the step: not held,
-                                                and any decision on it is for the record. */}
+                                            {/* Not held — a part already shipped, or past the step when its
+                                                load failed: its decision is for the record. */}
                                             {!m.held && (
-                                                <span className="block text-xs text-muted-foreground">Already past the step</span>
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {m.part_status === "SHIPPED" ? "Already shipped" : "Already past the step"}
+                                                </span>
                                             )}
                                         </td>
                                         <td className="py-2">
@@ -233,7 +246,7 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
                 ncr={ncr}
                 open={decideOpen}
                 onOpenChange={setDecideOpen}
-                parts={chosenWaiting.length ? chosenWaiting : null}
+                dispositions={chosenWaiting.length ? chosenWaiting : null}
                 count={chosenWaiting.length || waiting.length}
                 onDone={() => { setChosen([]); onChanged(); }}
             />
@@ -243,9 +256,9 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
     );
 }
 
-function DecideDialog({ ncr, open, onOpenChange, parts, count, onDone }: {
+function DecideDialog({ ncr, open, onOpenChange, dispositions, count, onDone }: {
     ncr: Ncr; open: boolean; onOpenChange: (o: boolean) => void;
-    parts: string[] | null; count: number; onDone: () => void;
+    dispositions: string[] | null; count: number; onDone: () => void;
 }) {
     const canApprove = usePermissionSet().has("approve_disposition");
     const [type, setType] = useState<DispositionType | "">("");
@@ -265,7 +278,8 @@ function DecideDialog({ ncr, open, onOpenChange, parts, count, onDone }: {
             disposition_type: type as DispositionType,
             ...(notes.trim() ? { notes: notes.trim() } : {}),
             ...(concession && reference.trim() ? { customer_approval_reference: reference.trim() } : {}),
-            ...(parts ? { parts } : {}),
+            // The chosen rows, or everything by name — the server refuses a request with neither.
+            ...(dispositions ? { dispositions } : { all: true }),
             ...(cosign ? { cosign_email: cosign.email, cosign_password: cosign.password } : {}),
         }, { params: { id: String(ncr.id) } }),
         // Refusals show in the dialog that asked, where the person can fix them.
@@ -273,12 +287,19 @@ function DecideDialog({ ncr, open, onOpenChange, parts, count, onDone }: {
         onSuccess: () => { setCosignOpen(false); onOpenChange(false); onDone(); },
         onError: (err) => {
             const msg = apiErrorMessage(err) ?? "Couldn't record the decision";
-            if (cosignOpen) setCosignError(msg); else setError(msg);
+            // A co-signer's own failure (wrong password, not permitted, throttled) stays
+            // with the co-sign; any other refusal is about the decision itself, so it goes
+            // back to the decide dialog where it can be fixed.
+            const code = String((err as { response?: { data?: { code?: string } } })?.response?.data?.code ?? "");
+            if (cosignOpen && code.startsWith("cosign")) { setCosignError(msg); return; }
+            setCosignOpen(false);
+            setError(msg);
         },
     });
 
+    const needsReference = concession && !reference.trim();
     const submit = () => {
-        if (!type) return;
+        if (!type || needsReference) return;
         if (!canApprove) { setCosignError(null); setCosignOpen(true); return; }
         decide.mutate(undefined);
     };
@@ -288,7 +309,7 @@ function DecideDialog({ ncr, open, onOpenChange, parts, count, onDone }: {
             <Dialog open={open && !cosignOpen} onOpenChange={onOpenChange}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Decide {parts ? `${count} chosen part${count === 1 ? "" : "s"}` : `all ${count} waiting`}</DialogTitle>
+                        <DialogTitle>Decide {dispositions ? `${count} chosen` : `all ${count} waiting`}</DialogTitle>
                         <DialogDescription>
                             Each part's decision goes on its own disposition under {ncr.ncr_number}, with you
                             (or a co-signer) as who authorized it.
@@ -306,13 +327,21 @@ function DecideDialog({ ncr, open, onOpenChange, parts, count, onDone }: {
                         </div>
                         {concession && (
                             <div className="space-y-2">
-                                <Label htmlFor="ncr-concession">Concession reference</Label>
+                                <Label htmlFor="ncr-concession">
+                                    Concession reference <span className="text-destructive" aria-hidden>*</span>
+                                </Label>
                                 <Input id="ncr-concession" value={reference} onChange={(e) => setReference(e.target.value)}
                                        placeholder="Customer or design approval: PO#, email reference, document number" />
                                 <p className="text-xs text-muted-foreground">
                                     {type === "REPAIR" ? "Repair" : "Use As Is"} accepts nonconforming product and needs one.
                                 </p>
                             </div>
+                        )}
+                        {type === "NOT_NONCONFORMANCE" && (
+                            <p className="text-xs text-muted-foreground">
+                                For a finding withdrawn in error: each inspection result must be voided and
+                                re-inspected with a PASS, and someone other than who recorded or voided it closes it.
+                            </p>
                         )}
                         <div className="space-y-2">
                             <Label htmlFor="ncr-notes">Notes</Label>
@@ -329,7 +358,7 @@ function DecideDialog({ ncr, open, onOpenChange, parts, count, onDone }: {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                        <Button disabled={!type || decide.isPending} onClick={submit}
+                        <Button disabled={!type || needsReference || decide.isPending} onClick={submit}
                                 variant={type === "SCRAP" ? "destructive" : "default"}>
                             {decide.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {canApprove ? "Record decision" : "Co-sign and record"}
@@ -341,7 +370,7 @@ function DecideDialog({ ncr, open, onOpenChange, parts, count, onDone }: {
                 open={cosignOpen}
                 onOpenChange={(v) => { setCosignOpen(v); if (!v) setCosignError(null); }}
                 title="Authorize disposition decision"
-                description={`Recording "${decisionLabel(type) ?? type}" for ${count} part${count === 1 ? "" : "s"} needs approval authority. An authorized colleague can co-sign here; the decision is recorded under their name.`}
+                description={`Recording "${decisionLabel(type) ?? type}" for ${count} needs approval authority. An authorized colleague can co-sign here; the decision is recorded under their name.`}
                 emailLabel="Approver email"
                 confirmationText="I authorize this disposition decision."
                 confirmLabel="Authorize"
@@ -361,6 +390,7 @@ function AddPartsDialog({ ncr, open, onOpenChange, onDone }: {
     const [search, setSearch] = useState("");
     const { data } = useRetrieveParts({ limit: 100, search });
     const on = new Set(ncr.members.map((m) => String(m.part_id)));
+    const elsewhere = useOpenNcrByPart(open);
 
     useEffect(() => { if (open) { setParts([]); setReason(""); } }, [open]);
 
@@ -386,7 +416,7 @@ function AddPartsDialog({ ncr, open, onOpenChange, onDone }: {
                         label="Parts"
                         items={(data?.results ?? []).filter((p) => !on.has(String(p.id))).map((p) => ({
                             id: p.id, label: p.ERP_id,
-                            ...(p.part_type_name ? { description: p.part_type_name } : {}),
+                            description: partPickerDescription(p, elsewhere.get(String(p.id))),
                         }))}
                         selected={parts}
                         onChange={setParts}
@@ -481,11 +511,7 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
     // 2026-10-07: the record says who vouched for it as well as who did it).
     const [performedBy, setPerformedBy] = useState<number | null>(ncr.containment_performed_by ?? null);
     const done = !!ncr.containment_completed_at;
-    const { data: employees } = useQuery({
-        queryKey: ["employee-options", 0],
-        queryFn: () => api.api_Employees_Options_list({ queries: { offset: 0 } }),
-        enabled: canEdit && !done,
-    });
+    const employees = useEmployeeSearch(canEdit && !done);
 
     const record = useMutation({
         mutationFn: async () => {
@@ -520,10 +546,10 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
                             <Combobox
                                 value={performedBy == null ? null : String(performedBy)}
                                 onChange={(v) => setPerformedBy(v ? Number(v) : null)}
-                                options={(employees?.results ?? []).map((e) => ({
-                                    value: String(e.id),
-                                    label: e.full_name?.trim() || e.email || e.username || "Unknown",
-                                }))}
+                                options={employees.options}
+                                onSearch={employees.onSearch}
+                                loading={employees.loading}
+                                selectedLabel={ncr.containment_performed_by_name ?? undefined}
                                 placeholder="Select employee"
                                 searchPlaceholder="Search..."
                                 emptyText="No employees found."
@@ -550,12 +576,11 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
                         )}
                     </>
                 )}
-                {/* Evidence of the containment: photos, segregation tags. */}
+                {/* Evidence goes where every NCR document goes — one place to add and find it. */}
                 {canEdit && (
-                    <div className="border-t pt-3">
-                        <DocumentUploader objectId={String(ncr.id)} contentType="ncr" documentTypeCode="CONT_EVD"
-                                          title="Attach Containment Evidence" compact />
-                    </div>
+                    <p className="border-t pt-3 text-xs text-muted-foreground">
+                        Photos or segregation tags as evidence: add them in the Documents card.
+                    </p>
                 )}
             </CardContent>
         </Card>
@@ -622,7 +647,15 @@ function CapaCard({ ncr, onChanged }: { ncr: Ncr; onChanged: () => void }) {
                 <CardDescription>Whether this nonconformance needs corrective action — decided, not assumed.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-                {decision ? (
+                {ncr.combined_into ? (
+                    // Its records and decisions moved; the CAPA call is the kept NCR's.
+                    <p className="text-muted-foreground">
+                        Combined into{" "}
+                        <Link to="/quality/ncrs/$ncrId" params={{ ncrId: String(ncr.combined_into) }}
+                              className="text-primary underline-offset-2 hover:underline">{ncr.combined_into_number}</Link>
+                        {" "}— its CAPA decision is made there.
+                    </p>
+                ) : decision ? (
                     <div className="space-y-1">
                         <Badge variant="outline">{CAPA_LABEL[decision] ?? decision}</Badge>
                         {ncr.capa_decision_note && <p className="whitespace-pre-wrap">{ncr.capa_decision_note}</p>}
@@ -636,11 +669,12 @@ function CapaCard({ ncr, onChanged }: { ncr: Ncr; onChanged: () => void }) {
                 ) : (
                     <p className="text-amber-600 dark:text-amber-400">Not decided yet.</p>
                 )}
-                {canDecide && decision !== "PROMOTED" && (
+                {canDecide && decision !== "PROMOTED" && !ncr.combined_into && (
                     <div className="flex flex-wrap gap-2">
                         <Button size="sm" asChild>
                             <Link to="/quality/capas/new"
-                                  search={{ quality_reports: ncr.report_ids.map(String).join(",") || undefined }}>
+                                  search={{ ncrs: String(ncr.id),
+                                            quality_reports: ncr.report_ids.map(String).join(",") || undefined }}>
                                 Raise CAPA
                             </Link>
                         </Button>

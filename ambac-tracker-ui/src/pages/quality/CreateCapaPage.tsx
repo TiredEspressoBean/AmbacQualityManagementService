@@ -97,6 +97,7 @@ const formSchema = z.object({
     work_order: z.string().nullish(),
     quality_reports: z.array(z.string()).optional(),
     dispositions: z.array(z.string()).optional(),
+    ncrs: z.array(z.string()).optional(),
     // RCA fields
     rca_method: rcaMethodEnum.nullish(),
     rca_problem_description: z.string().nullish(),
@@ -134,6 +135,8 @@ const required = {
 // Search params type for URL query parameters
 type CreateCapaSearchParams = {
     quality_reports?: string
+    /** NCR ids (comma-separated) this CAPA is raised for. */
+    ncrs?: string
     /** A drafted problem statement (Defect Records' Create CAPA). */
     problem?: string
 }
@@ -270,6 +273,7 @@ function CreateCapaForm() {
             work_order: null,
             quality_reports: initialQualityReports,
             dispositions: [],
+            ncrs: (searchParams.ncrs ?? "").split(",").map((id) => id.trim()).filter(Boolean),
             // RCA defaults
             rca_method: null,
             rca_problem_description: null,
@@ -696,6 +700,15 @@ function CreateCapaForm() {
                             </div>
 
                             <Separator />
+
+                            {/* Raised from an NCR: it's linked, and its CAPA decision becomes "CAPA raised". */}
+                            {(form.watch("ncrs") ?? []).length > 0 && (
+                                <p className="text-sm text-muted-foreground">
+                                    {(form.watch("ncrs") ?? []).length === 1
+                                        ? "Raised for an NCR: it's linked to the CAPA when you create it."
+                                        : `Raised for ${(form.watch("ncrs") ?? []).length} NCRs: they're linked to the CAPA when you create it.`}
+                                </p>
+                            )}
 
                             {/* Inspection records section */}
                             <FormField

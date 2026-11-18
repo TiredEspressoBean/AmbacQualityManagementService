@@ -175,6 +175,11 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         'state': ['exact'], 'severity': ['exact'], 'step': ['exact'], 'work_order': ['exact'],
         'batch_execution': ['exact'], 'capa_decision': ['exact', 'isnull'],
         'dispositions__part': ['exact'],
+        # A combined NCR's CAPA call is the one it was combined into: "awaiting a CAPA
+        # decision" asks combined_into__isnull=true as well.
+        'combined_into': ['isnull'],
+        # "Open longer than N days" (the dashboard's attention link).
+        'created_at': ['lt'],
     }
     search_fields = ['ncr_number', 'description', 'dispositions__part__ERP_id']
     ordering_fields = ['ncr_number', 'state', 'severity', 'created_at', 'updated_at', 'closed_at']
@@ -230,8 +235,13 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
                     "customer/design-approval reference.",
         request={"application/json": {"type": "object", "properties": {
             **_DECIDE_PROPERTIES,
+            "all": {"type": "boolean",
+                    "description": "Decide everything still waiting. Required instead of parts / dispositions; "
+                                   "a request with neither is refused."},
             "parts": {"type": "array", "items": {"type": "string", "format": "uuid"},
-                      "description": "The parts this decision is for. Omit to decide every part still waiting."},
+                      "description": "The parts this decision is for."},
+            "dispositions": {"type": "array", "items": {"type": "string", "format": "uuid"},
+                             "description": "The decisions this is for — how a rejected lot quantity, which has no part, is chosen."},
         }, "required": ["disposition_type"]}},
         responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
     )
@@ -244,14 +254,24 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
             return Response({'detail': "disposition_type is required.", 'code': 'decide_type_required'},
                             status=status.HTTP_400_BAD_REQUEST)
         parts = request.data.get('parts')
-        if parts is not None and not isinstance(parts, list):
-            return Response({'detail': "parts must be a list of part ids.", 'code': 'decide_invalid'},
+        dispositions = request.data.get('dispositions')
+        if any(v is not None and not isinstance(v, list) for v in (parts, dispositions)):
+            return Response({'detail': "parts and dispositions must be lists of ids.", 'code': 'decide_invalid'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        # Everything is decided only when asked for by name: a request that lost its
+        # chosen parts must not scrap the rest (walk 2026-11-18).
+        everything = request.data.get('all') is True
+        if everything == bool(parts or dispositions):
+            return Response({'detail': "Choose the parts to decide, or decide everything still waiting — "
+                                       "not both, and not neither.", 'code': 'decide_invalid'},
                             status=status.HTTP_400_BAD_REQUEST)
         signer, err_response = _resolve_disposition_signer(self, request)
         if err_response is not None:
             return err_response
         try:
-            decide_ncr(ncr, disposition_type=disposition_type, authorized_by=signer, part_ids=parts,
+            decide_ncr(ncr, disposition_type=disposition_type, authorized_by=signer,
+                       part_ids=None if everything else (parts or []),
+                       disposition_ids=None if everything else (dispositions or []),
                        notes=request.data.get('notes', ''),
                        customer_approval={'reference': request.data.get('customer_approval_reference'),
                                           'date': request.data.get('customer_approval_date') or None})
@@ -371,8 +391,13 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
         qs = super().get_queryset()
         # distinct(): the quality_reports__material_lot filters join the M2M, which
         # can otherwise yield a disposition once per matching quality report.
+        # The NCR's parts (affected_parts), its containment name and the work order are
+        # read per row: fetched once for the page.
         return qs.select_related('assigned_to', 'resolution_completed_by', 'part__part_type',
-                                 'ncr').prefetch_related('quality_reports', 'documents').distinct()
+                                 'part__work_order', 'ncr__containment_completed_by', 'ncr__work_order',
+                                 ).prefetch_related(
+            'quality_reports', 'documents', 'ncr__dispositions__part', 'ncr__dispositions__material_lot',
+            'ncr__batch_execution__parts').distinct()
 
     @extend_schema(
         request=None,
@@ -1040,7 +1065,9 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         ).prefetch_related(
             # Deleted (archived) tasks aren't the CAPA's: the nested `tasks` listed them.
             models.Prefetch('tasks', queryset=CapaTasks.objects.filter(archived=False)),  # tenant-safe: FK to scoped CAPAs
-            'rca_records', 'verifications'
+            'rca_records', 'verifications',
+            # Affected parts, work orders and NCR refs are read off these per row.
+            'ncrs__dispositions', 'ncrs__reports', 'dispositions', 'quality_reports',
         )
 
         # Filter for overdue CAPAs if requested

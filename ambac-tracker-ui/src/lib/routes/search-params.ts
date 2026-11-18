@@ -31,6 +31,8 @@ export type DispositionSearchParams = z.infer<typeof DispositionSearch>;
  *  list shouldn't block raising the CAPA. */
 export const CreateCapaSearch = z.object({
     quality_reports: z.string().optional(),
+    /** Comma-separated NCR ids the CAPA is raised for — an NCR's Raise CAPA links it. */
+    ncrs: z.string().optional().catch(undefined),
     /** A drafted problem statement — Defect Records fills it from the view it was opened on. */
     problem: z.string().optional().catch(undefined),
 });
@@ -69,8 +71,17 @@ export type ProcessFlowSearchParams = z.infer<typeof ProcessFlowSearch>;
  *  "Raise NCR" passes the parts it has selected). */
 export const CreateNcrSearch = z.object({
     parts: z.string().optional().catch(undefined),
+    /** Where Cancel goes back to — an in-app path (WO control passes its own). */
+    from: z.string().regex(/^\/(?!\/)/).optional().catch(undefined),
 });
 export type CreateNcrSearchParams = z.infer<typeof CreateNcrSearch>;
+
+/** `/quality/ncrs` — the view (Open / Awaiting CAPA decision / All); any other key is a
+ *  list filter the editor seeds from the URL (`state`, `created_at__lt`, …), kept as is. */
+export const NcrListSearch = z.object({
+    view: z.enum(["open", "capa", "all"]).optional().catch(undefined),
+}).passthrough();
+export type NcrListSearchParams = z.infer<typeof NcrListSearch>;
 
 /** `/quality/capas` — list filters arriving from a supplier or dashboard link.
  *

@@ -311,7 +311,8 @@ class DemoScenario(BaseSeeder):
             record_decision(ncr, decision='NOT_REQUIRED', user=qa,
                             note="One-off: the disposition covered it; no systemic cause found.")
             declined += 1
-        waiting = NCR.objects.filter(tenant=self.tenant, capa_decision__isnull=True).count()
+        waiting = NCR.objects.filter(tenant=self.tenant, capa_decision__isnull=True,
+                                     combined_into__isnull=True).count()
         self.log(f"  {promoted} NCR(s) CAPA raised, {declined} closed one-off(s) need none, "
                  f"{waiting} awaiting a decision")
         return {'promoted': promoted, 'declined': declined, 'waiting': waiting}

@@ -187,6 +187,9 @@ class NcrHeaderTests(_Shop):
         self.assertEqual(r.status_code, 200, r.content)
         r = self.client.patch(f"/api/NCRs/{ncr.id}/", {"severity": "MINOR"}, format="json")
         self.assertEqual(r.status_code, 400, r.content)
+        # Worded as every other refusal of a lower severity.
+        self.assertIn(f"{ncr.ncr_number} is Critical", str(r.content.decode()))
+        self.assertIn("its severity may only be raised.", r.content.decode())
 
     def test_the_disposition_form_writes_the_ncrs_header(self):
         ncr = self._ncr_of(self._fail(self.parts[0]))
@@ -565,3 +568,72 @@ class CombineNcrsTests(_Shop):
         r = self.client.post(f"/api/NCRs/{a.id}/add-parts/", {"parts": [str(self.parts[1].id)]}, format="json")
         self.assertEqual(r.status_code, 400)
         self.assertEqual(r.json()["detail"], f"B-1 is on {b.ncr_number}: combine instead.")
+
+    def test_appended_containment_says_whose_it_was(self):
+        from django.utils import timezone
+        a = self._ncr_of(self._fail(self.parts[0]))
+        b = self._ncr_of(self._fail(self.parts[1]))
+        NCR.objects.filter(pk=a.pk).update(containment_action="Segregated A",
+                                           containment_completed_at=timezone.now(),
+                                           containment_completed_by=self.superuser)
+        NCR.objects.filter(pk=b.pk).update(containment_action="Segregated B",
+                                           containment_completed_at=timezone.now(),
+                                           containment_completed_by=self.user_a)
+        r = self.client.post("/api/NCRs/combine/", {"into": str(a.id), "ncrs": [str(b.id)]}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        a.refresh_from_db()
+        first, appended = a.containment_action.split("\n")
+        self.assertEqual(first, "Segregated A")
+        self.assertTrue(appended.startswith(f"From {b.ncr_number} ({self.user_a.display_name}, "), appended)
+        self.assertTrue(appended.endswith("): Segregated B"), appended)
+        self.assertEqual(a.containment_completed_by_id, self.superuser.id)
+
+    def test_a_combined_ncr_has_no_capa_decision_of_its_own(self):
+        a = self._ncr_of(self._fail(self.parts[0]))
+        b = self._ncr_of(self._fail(self.parts[1]))
+        self.client.post("/api/NCRs/combine/", {"into": str(a.id), "ncrs": [str(b.id)]}, format="json")
+        r = self.client.get("/api/NCRs/", {"capa_decision__isnull": "true", "combined_into__isnull": "true"})
+        self.assertEqual([n["id"] for n in r.json()["results"]], [str(a.id)])
+        r = self.client.post(f"/api/NCRs/{b.id}/capa-decision/", {"decision": "NOT_REQUIRED", "note": "x"},
+                             format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("its CAPA decision is made there", r.json()["detail"])
+
+
+class P2FixesTests(_Shop):
+    """NCR fix batch, P2 (2026-11-18)."""
+
+    def test_a_refusal_while_deciding_several_names_the_part(self):
+        # Not a nonconformance needs each finding voided first: none was, so the
+        # first part refuses, by name, and nothing is recorded.
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        self.client.post(f"/api/NCRs/{ncr.id}/add-parts/", {"parts": [str(self.parts[1].id)]}, format="json")
+        r = self.client.post(f"/api/NCRs/{ncr.id}/decide/",
+                             {"disposition_type": "NOT_NONCONFORMANCE", "all": True}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertRegex(r.json()["detail"], r"^B-[01]: The finding still stands")
+        self.assertFalse(ncr.dispositions.exclude(disposition_type="").exists())
+
+    def test_parts_load_by_id_in_one_request(self):
+        r = self.client.get("/api/Parts/", {"id__in": [str(self.parts[0].id), str(self.parts[2].id)]})
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(sorted(p["ERP_id"] for p in r.json()["results"]), ["B-0", "B-2"])
+
+    def test_the_employee_picker_searches_the_server(self):
+        from django.contrib.auth import get_user_model
+        get_user_model().objects.filter(pk=self.user_a.pk).update(first_name="Zelda", user_type="INTERNAL")
+        r = self.client.get("/api/Employees-Options/", {"search": "zeld"})
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIn(self.user_a.id, [u["id"] for u in r.json()["results"]])
+
+    def test_the_dashboards_old_ncr_link_lists_what_it_counted(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        NCR.objects.filter(pk=ncr.pk).update(created_at=timezone.now() - timedelta(days=10))
+        self._ncr_of(self._fail(self.parts[1]))  # new: not counted
+        r = self.client.get("/api/dashboard/needs-attention/")
+        item = next(i for i in r.json()["data"] if i["type"] == "ncr")
+        self.assertEqual(item["count"], 1)
+        listed = self.client.get("/api/NCRs/", item["linkParams"]).json()["results"]
+        self.assertEqual([n["id"] for n in listed], [str(ncr.id)])

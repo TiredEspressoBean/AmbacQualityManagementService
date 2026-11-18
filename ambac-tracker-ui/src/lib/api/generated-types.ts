@@ -28605,6 +28605,7 @@ export interface components {
             readonly containment_completed_by_name: string | null;
             /** @description Who carried out the containment, if not the person recording it. */
             containment_performed_by?: number | null;
+            readonly containment_performed_by_name: string | null;
             readonly capa_decision: (components["schemas"]["CapaDecisionEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly capa_decision_note: string;
             readonly capa_decided_by: number | null;
@@ -49981,6 +49982,8 @@ export interface operations {
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
+                /** @description A search term. */
+                search?: string;
             };
             header?: never;
             path?: never;
@@ -57015,6 +57018,8 @@ export interface operations {
                  */
                 capa_decision?: "DEFERRED" | "NOT_REQUIRED" | "PROMOTED" | null;
                 capa_decision__isnull?: boolean;
+                combined_into__isnull?: boolean;
+                created_at__lt?: string;
                 dispositions__part?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
@@ -57301,8 +57306,12 @@ export interface operations {
                     cosign_email?: string;
                     /** @description That person's password. Verified inline; they are never logged in, and the decision is attributed to them. */
                     cosign_password?: string;
-                    /** @description The parts this decision is for. Omit to decide every part still waiting. */
+                    /** @description Decide everything still waiting. Required instead of parts / dispositions; a request with neither is refused. */
+                    all?: boolean;
+                    /** @description The parts this decision is for. */
                     parts?: string[];
+                    /** @description The decisions this is for — how a rejected lot quantity, which has no part, is chosen. */
+                    dispositions?: string[];
                 };
             };
         };
@@ -60136,6 +60145,8 @@ export interface operations {
                 created_at__gte?: string;
                 created_at__lte?: string;
                 exclude_terminal?: boolean;
+                /** @description Multiple values may be separated by commas. */
+                id__in?: string[];
                 /** @description Number of results to return per page. */
                 limit?: number;
                 needs_qa?: boolean;
@@ -61062,6 +61073,8 @@ export interface operations {
                 created_at__gte?: string;
                 created_at__lte?: string;
                 exclude_terminal?: boolean;
+                /** @description Multiple values may be separated by commas. */
+                id__in?: string[];
                 needs_qa?: boolean;
                 order?: string;
                 /** @description Which field to use when ordering the results. */

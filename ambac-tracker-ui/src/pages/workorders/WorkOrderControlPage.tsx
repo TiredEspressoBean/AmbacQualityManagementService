@@ -1392,7 +1392,12 @@ export function WorkOrderControlPage() {
     // Without clear_workorder_hold, a supervisor who holds it signs in on this screen
     // (user ruling 2026-11-16).
     const mayClearHold = usePermissionSet().has("clear_workorder_hold");
-    const mayRaiseNcr = usePermissionSet().has("add_ncr");
+    const perms = usePermissionSet();
+    const mayRaiseNcr = perms.has("add_ncr");
+    // Scrapping from the toolbar is a lead's or QA's call — the same people who write an
+    // NCR's header (change_ncr). An operator stops a part (Quarantine) or raises an NCR
+    // (user ruling 2026-11-18, R4).
+    const mayScrap = perms.has("change_ncr");
     function clearHold(notes: string, supervisor?: HoldSupervisor) {
         clearHoldMutation.mutate({ id: workOrderId, notes, supervisor }, {
             onSuccess: () => setClearHoldOpen(false),
@@ -2267,7 +2272,8 @@ export function WorkOrderControlPage() {
                                     variant="outline"
                                     onClick={() => navigate({
                                         to: "/quality/ncrs/new",
-                                        search: { parts: Array.from(selected).join(",") },
+                                        // Cancel comes back here.
+                                        search: { parts: Array.from(selected).join(","), from: `/workorder/${workOrderId}/control` },
                                     })}
                                 >
                                     <FileWarning className="mr-1 h-4 w-4" />
@@ -2282,10 +2288,12 @@ export function WorkOrderControlPage() {
                                 <AlertTriangle className="mr-1 h-4 w-4" />
                                 Quarantine
                             </Button>
-                            <Button size="sm" variant="destructive" onClick={() => setScrapDialogOpen(true)}>
-                                <XCircle className="mr-1 h-4 w-4" />
-                                Scrap
-                            </Button>
+                            {mayScrap && (
+                                <Button size="sm" variant="destructive" onClick={() => setScrapDialogOpen(true)}>
+                                    <XCircle className="mr-1 h-4 w-4" />
+                                    Scrap
+                                </Button>
+                            )}
                             <Button
                                 size="sm"
                                 variant="outline"

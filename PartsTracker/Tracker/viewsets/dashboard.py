@@ -971,9 +971,9 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         data = []
 
         # 1. NCRs open > 7 days
+        ncr_cutoff = _day_start(today - timedelta(days=7), tz)
         old_ncrs = self.qs_for_user(NCR).filter(
-            archived=False, state='OPEN',
-            created_at__lt=_day_start(today - timedelta(days=7), tz),
+            archived=False, state='OPEN', created_at__lt=ncr_cutoff,
         ).count()
 
         if old_ncrs > 0:
@@ -983,7 +983,8 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'count': old_ncrs,
                 'severity': 'high' if old_ncrs > 5 else 'medium',
                 'link': '/quality/ncrs',
-                'linkParams': {'status': 'overdue'},
+                # The same filter the count used: the list shows exactly these.
+                'linkParams': {'state': 'OPEN', 'created_at__lt': ncr_cutoff.isoformat()},
             })
 
         # 2. Overdue CAPAs

@@ -63,7 +63,8 @@ def announce(ncr_id) -> None:
 
 def _announce(ncr, emit, NCROpenedPayload) -> None:
     rows = members(ncr)
-    parts = [m for m in rows if m['part_id'] and m['held']]
+    parts = ([m for m in rows if m['part_id'] and m['held']]
+             or [m for m in rows if m['part_id']])
     if not parts:
         parts = [{'part_id': r.part_id, 'erp_id': r.part.ERP_id}
                  for r in ncr.reports.select_related('part').filter(part__isnull=False)]
@@ -398,9 +399,12 @@ def undecided(ncr):
 
 
 @transaction.atomic
-def decide_ncr(ncr, *, disposition_type: str, authorized_by, part_ids=None, notes: str = '',
-               customer_approval: dict | None = None) -> list:
-    """Decide the NCR for everything still waiting, or for the parts in `part_ids`.
+def decide_ncr(ncr, *, disposition_type: str, authorized_by, part_ids=None, disposition_ids=None,
+               notes: str = '', customer_approval: dict | None = None) -> list:
+    """Decide the NCR for everything still waiting — parts and rejected lot quantities —
+    or for the parts in `part_ids` / the decisions in `disposition_ids` (a lot has no
+    part, so it's chosen by its decision). A part with two decisions waiting (failed at
+    two visits) has both decided.
 
     Each part's decision is its own disposition's, made through decide_disposition — the
     status mapping, the shipped and terminal guards, rework routing with its visit cap and
@@ -415,24 +419,37 @@ def decide_ncr(ncr, *, disposition_type: str, authorized_by, part_ids=None, note
 
     if ncr.state == 'CLOSED':
         raise ValueError(f"{ncr.ncr_number} is closed; its decisions can no longer be changed.")
-    waiting = [d for d in undecided(ncr) if d.part_id]
+    waiting = undecided(ncr)
     if not waiting:
         raise ValueError(f"Everything on {ncr.ncr_number} already has a decision; change a "
                          "part's decision on its own disposition.")
-    by_part = {str(d.part_id): d for d in waiting}
-    if part_ids is None:
+    if part_ids is None and disposition_ids is None:
         chosen = waiting
     else:
-        wanted = list(dict.fromkeys(str(i) for i in part_ids))
-        if not wanted:
+        by_part, by_id = {}, {str(d.pk): d for d in waiting}
+        for d in waiting:
+            if d.part_id:
+                by_part.setdefault(str(d.part_id), []).append(d)
+        wanted_parts = list(dict.fromkeys(str(i) for i in (part_ids or [])))
+        wanted_ids = list(dict.fromkeys(str(i) for i in (disposition_ids or [])))
+        if not wanted_parts and not wanted_ids:
             raise ValueError("Choose at least one part, or decide them all.")
-        if any(i not in by_part for i in wanted):
+        if any(i not in by_part for i in wanted_parts) or any(i not in by_id for i in wanted_ids):
             raise ValueError(f"Only parts on {ncr.ncr_number} still waiting for a decision "
                              "can be chosen.")
-        chosen = [by_part[i] for i in wanted]
+        chosen = list({d.pk: d for d in [*(d for i in wanted_parts for d in by_part[i]),
+                                         *(by_id[i] for i in wanted_ids)]}.values())
     for d in chosen:
-        decide_disposition(d, disposition_type=disposition_type, authorized_by=authorized_by,
-                           notes=notes, customer_approval=customer_approval)
+        try:
+            decide_disposition(d, disposition_type=disposition_type, authorized_by=authorized_by,
+                               notes=notes, customer_approval=customer_approval)
+        except ValueError as e:
+            if len(chosen) == 1:
+                raise
+            # Several decided at once: say which one refused (nothing is recorded).
+            what = d.part.ERP_id if d.part_id else (
+                f"lot {d.material_lot.lot_number}" if d.material_lot_id else d.disposition_number)
+            raise ValueError(f"{what}: {e}") from e
     for d in chosen:
         route_after_decision(d, authorized_by)
     return chosen
@@ -446,6 +463,9 @@ def _common(values):
 
 
 def _file_failure(ncr, part, user, description: str):
+    # A part no longer here (shipped, completed, scrapped) is an escape: recorded on the
+    # NCR with a decision for the record, not held (ruling R6, 2026-11-18). The save
+    # signal opens its decision; `held` comes from the part's status there.
     """A failed record on `part`, on `ncr`, with the FAIL consequences any failure gets:
     the part held, its decision opened under the NCR (the report's save), sampling and
     the notices (record_quality_report_side_effects)."""
@@ -595,7 +615,16 @@ def combine_ncrs(target, others, *, user) -> NCR:
                 target.containment_completed_by = other.containment_completed_by
                 target.containment_performed_by = other.containment_performed_by
             else:
-                target.containment_action = f"{target.containment_action}\nFrom {other.ncr_number}: {text}"
+                # The kept stamp is the first recorder's; each appended block says whose it was.
+                who = []
+                if other.containment_completed_by_id:
+                    who.append(other.containment_completed_by.display_name)
+                if other.containment_completed_at:
+                    from Tracker.services.core.clock import plant_tz
+                    who.append(other.containment_completed_at.astimezone(plant_tz(target.tenant))
+                               .strftime('%m/%d %H:%M'))
+                by = f" ({', '.join(who)})" if who else ""
+                target.containment_action = f"{target.containment_action}\nFrom {other.ncr_number}{by}: {text}"
         capas = list(other.capas.all())
         if capas:
             target.capas.add(*capas)

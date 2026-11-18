@@ -24,24 +24,54 @@ export function useListNcrs(queries?: NcrListQueries) {
     return useQuery(listNcrsOptions(queries));
 }
 
+/** Part id → the number of the open NCR it's on (its decision there still open), for
+ *  pickers to say so before the server refuses ("X is on NCR-…: combine instead"). */
+export function useOpenNcrByPart(enabled = true) {
+    const { data } = useQuery({ ...listNcrsOptions({ state: "OPEN", limit: 500 }), enabled });
+    const byPart = new Map<string, string>();
+    for (const n of data?.results ?? []) {
+        for (const m of n.members) {
+            if (m.part_id && m.disposition_id && m.current_state !== "CLOSED") byPart.set(String(m.part_id), n.ncr_number);
+        }
+    }
+    return byPart;
+}
+
 export const ncrOptions = (id: string) => queryOptions({
     queryKey: ncrKeys.detail(id),
     queryFn: () => api.api_NCRs_retrieve({ params: { id } }),
 });
 
 export function useNcr(id: string | undefined) {
-    return useQuery({ ...ncrOptions(id ?? ""), enabled: !!id });
+    // The page shows its own "couldn't load" state; a toast on top says it twice.
+    return useQuery({ ...ncrOptions(id ?? ""), enabled: !!id, meta: { suppressGlobalError: true } });
 }
 
 /** What a change to an NCR touches: the NCR and its lists, every disposition key (a
- *  decision is a disposition's), and the parts and work orders whose status it moves —
- *  raising one holds its parts, deciding scraps or routes them. */
+ *  decision is a disposition's), the parts and work orders whose status it moves —
+ *  raising one holds its parts, deciding scraps or routes them — the inspection records
+ *  on it, and the home / dashboard counts that tally all of these. */
+const NCR_TOUCHES = ["ncr", "disposition", "part", "work-order", "workorder", "work_order",
+    "quality-report", "failed-inspection", "dashboard", "home"];
 export function invalidateAfterNcrChange(queryClient: QueryClient) {
     return queryClient.invalidateQueries({
         predicate: (q) => {
             const head = String(q.queryKey[0] ?? "").toLowerCase();
-            return ["ncr", "disposition", "part", "work-order", "workorder", "work_order"]
-                .some((k) => head.includes(k));
+            return NCR_TOUCHES.some((k) => head.includes(k));
         },
     });
+}
+
+/** A part's line in an NCR part picker: its type, status and work order — a shipped or
+ *  completed part is recorded, not held — and the open NCR it's already on. */
+export function partPickerDescription(
+    p: { part_type_name?: string | null; part_status?: string | null; work_order_erp_id?: string | null },
+    onNcr?: string,
+) {
+    return [
+        p.part_type_name,
+        p.part_status ? p.part_status.charAt(0) + p.part_status.slice(1).toLowerCase().replace(/_/g, " ") : null,
+        p.work_order_erp_id,
+        onNcr ? `on ${onNcr}` : null,
+    ].filter(Boolean).join(" · ") || undefined;
 }

@@ -1,7 +1,7 @@
 import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link, redirect} from "@tanstack/react-router"
 import { OperatorRuntimeSearch } from "@/lib/routes/operator-runtime-search"
 import {
-    ApprovalsHistorySearch, CapaListSearch, CreateCapaSearch, CreateNcrSearch, DispositionSearch,
+    ApprovalsHistorySearch, CapaListSearch, CreateCapaSearch, CreateNcrSearch, DispositionSearch, NcrListSearch,
     ProcessFlowSearch, SignupSearch, WorkOrderControlSearch, AnnotatorSearch, WorkOrderDetailSearch, CalibrationRecordNewSearch, CapacitySearch,
     DocumentsListSearch, QualityReportNewSearch,
 } from "@/lib/routes/search-params"
@@ -815,6 +815,7 @@ export const ncrAnalysisRoute = createRoute({
 // NCRs: the nonconformance, with the decision on each part under it.
 export const ncrListRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/quality/ncrs',
+    validateSearch: NcrListSearch,
     component: lazyRouteComponent(() => import("@/pages/quality/NcrListPage"), "NcrListPage"),
 });
 
@@ -985,10 +986,14 @@ export const dispositionsRoute = createRoute({
 });
 
 // Disposition Form Routes
+// One way to open a nonconformance by hand: Raise NCR (user ruling 2026-11-18, R3). A
+// decision is opened under an NCR, never on its own; old links land on Raise NCR.
 export const dispositionCreateRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/production/dispositions/new',
     validateSearch: DispositionSearch,
-    component: lazyRouteComponent(() => import("@/pages/editors/forms/EditDispositionFormPage")),
+    beforeLoad: ({ search }) => {
+        throw redirect({ to: '/quality/ncrs/new', search: search.partId ? { parts: search.partId } : {} });
+    },
 });
 
 export const dispositionEditRoute = createRoute({

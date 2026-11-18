@@ -42,6 +42,10 @@ class PartFilter(TenantFilterMixin, django_filters.FilterSet):
 
     archived = django_filters.BooleanFilter()
 
+    # Several parts by id — a page handed a list of parts loads them in one request.
+    # Repeated keys (?id__in=a&id__in=b), as the generated client sends an array.
+    id__in = CharInFilter(field_name="id", lookup_expr="in", widget=QueryArrayWidget())
+
     # Module-level ModelChoiceFilter querysets use `unscoped` so import
     # doesn't trip SecureManager (no tenant context at import time). The
     # runtime queryset is set per-request in __init__ via filter_by_tenant,

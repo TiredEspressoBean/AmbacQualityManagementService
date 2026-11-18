@@ -504,11 +504,14 @@ export default function EditDispositionFormPage() {
                     </div>
                     {mode === "edit" && dispositionId && (
                         <div className="ml-auto flex items-center gap-2">
-                            <ReportButton
-                                reportType="ncr_report"
-                                label="NCR Report"
-                                params={{ id: String(disposition?.ncr ?? dispositionId) }}
-                            />
+                            {/* The report is the NCR's; a decision on no NCR has none to print. */}
+                            {disposition?.ncr && (
+                                <ReportButton
+                                    reportType="ncr_report"
+                                    label="NCR Report"
+                                    params={{ id: String(disposition.ncr) }}
+                                />
+                            )}
                             {/* The removable tag for the held part itself (ISO 9001 8.7.1);
                                 its permanent label carries no status. */}
                             {ownPart && ["QUARANTINED", "ON_HOLD", "REWORK_NEEDED", "SCRAPPED"]

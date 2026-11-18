@@ -37,7 +37,7 @@ type DispositionRow = {
     status: string;
 };
 
-type UndecidedRow = { id: string; ncr: string; item: string; description: string; created: string };
+type UndecidedRow = { id: string; ncr: string; item: string; description: string; created: string; createdIso: string };
 
 // NCRs nobody has decided on — raise a CAPA, or record why not
 // (services/qms/capa_decision). The decision itself is made on the NCR's page.
@@ -47,7 +47,8 @@ const undecidedColumns: AnalyticsColumnDef<UndecidedRow>[] = [
     { key: "item", header: "Covers", accessor: (r) => r.item },
     { key: "description", header: "Finding",
       accessor: (r) => <span className="truncate max-w-[260px] block" title={r.description}>{r.description}</span> },
-    { key: "created", header: "Opened", accessor: (r) => r.created, sortable: true, sortValue: (r) => r.created },
+    // Sorted by the date itself, not its display text.
+    { key: "created", header: "Opened", accessor: (r) => r.created, sortable: true, sortValue: (r) => r.createdIso },
 ];
 
 const repeatDefectsOptions = (days: number) =>
@@ -68,7 +69,7 @@ export function NcrAnalysisPage() {
     const { data: undecided, isLoading: isLoadingUndecided } = useQuery({
         queryKey: ["ncrs", "awaiting-capa-decision"],
         queryFn: () => api.api_NCRs_list({ queries: {
-            capa_decision__isnull: true, ordering: "created_at", limit: 50 } }),
+            capa_decision__isnull: true, combined_into__isnull: true, ordering: "created_at", limit: 50 } }),
     });
     const undecidedRows: UndecidedRow[] = useMemo(() => (undecided?.results ?? []).map((n) => {
         const parts = n.members.filter((m) => m.part_id && m.held);
@@ -81,6 +82,7 @@ export function NcrAnalysisPage() {
                 : lot ? `Lot ${lot.lot_number}` : "—",
             description: n.description || (n.step_name ? `Failed ${n.step_name}` : ""),
             created: new Date(n.created_at).toLocaleDateString(),
+            createdIso: n.created_at,
         };
     }), [undecided]);
 
@@ -353,17 +355,17 @@ export function NcrAnalysisPage() {
                 isLoading={isLoadingTable}
                 controls={
                     <Button variant="outline" size="sm" asChild>
-                        <Link to="/production/dispositions">View All</Link>
+                        <Link to="/quality/ncrs">View All</Link>
                     </Button>
                 }
             >
                 <AnalyticsTable
                     data={tableData}
                     columns={columns}
-                    rowLink={(row) => row.part_id ? `/editors/parts/${row.part_id}` : "/production/dispositions"}
+                    rowLink={(row) => `/production/dispositions/${row.id}/edit`}
                     maxRows={10}
                     showViewAll
-                    viewAllLink="/production/dispositions"
+                    viewAllLink="/quality/ncrs"
                     emptyMessage="No open dispositions"
                     compact
                 />

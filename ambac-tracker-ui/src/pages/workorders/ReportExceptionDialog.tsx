@@ -262,8 +262,8 @@ export function ReportExceptionDialog({
                     ) : kind === "QUARANTINE" ? (
                         <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
                             A quarantine holds a specific part and needs its own record.{" "}
-                            <Link to="/production/dispositions/new" className="text-primary hover:underline">
-                                Open the disposition form
+                            <Link to="/quality/ncrs/new" className="text-primary hover:underline">
+                                Raise an NCR
                             </Link>
                             .
                         </p>

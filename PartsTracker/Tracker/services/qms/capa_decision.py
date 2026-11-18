@@ -32,6 +32,9 @@ def record_decision(ncr, *, decision: str, note: str, user):
         raise ValueError("Choose No CAPA needed or Deferred.")
     if not note:
         raise ValueError("Say why — the reason is what an auditor reads.")
+    if ncr.combined_into_id:
+        raise ValueError(f"{ncr.ncr_number} was combined into {ncr.combined_into.ncr_number}; "
+                         "its CAPA decision is made there.")
     with transaction.atomic():
         locked = NCR.objects.select_for_update(of=("self",)).get(pk=ncr.pk)  # tenant-safe: pk of a scoped NCR
         if locked.capa_decision == "PROMOTED" and locked.capas.exists():

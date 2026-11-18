@@ -5689,6 +5689,7 @@ export type NCR = {
      */
     (number | null)
     | undefined;
+  containment_performed_by_name: string | null;
   capa_decision: CapaDecisionEnum | NullEnum | null;
   capa_decision_note: string;
   capa_decided_by: number | null;
@@ -23979,6 +23980,7 @@ const NCR = z.object({
   containment_completed_by: z.number().int().nullable(),
   containment_completed_by_name: z.string().nullable(),
   containment_performed_by: z.number().int().nullish(),
+  containment_performed_by_name: z.string().nullable(),
   capa_decision: z.union([CapaDecisionEnum, NullEnum]).nullable(),
   capa_decision_note: z.string(),
   capa_decided_by: z.number().int().nullable(),
@@ -24046,7 +24048,9 @@ const api_NCRs_decide_create_Body = z.object({
   customer_approval_date: z.string().optional(),
   cosign_email: z.string().optional(),
   cosign_password: z.string().optional(),
+  all: z.boolean().optional(),
   parts: z.array(z.string().uuid()).optional(),
+  dispositions: z.array(z.string().uuid()).optional(),
 });
 const CombineNCRsRequest = z.object({
   into: z.string().uuid(),
@@ -39813,6 +39817,11 @@ Returns documents where review_date &lt;&#x3D; today.`,
         type: "Query",
         schema: z.string().optional(),
       },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
     ],
     response: PaginatedUserSelectList,
   },
@@ -46250,6 +46259,16 @@ Not deleted: an NCR is closed by its decisions.`,
         schema: z.boolean().optional(),
       },
       {
+        name: "combined_into__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "created_at__lt",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
         name: "dispositions__part",
         type: "Query",
         schema: z.string().uuid().optional(),
@@ -49388,6 +49407,11 @@ Import/Export endpoints (auto-configured from model):
         schema: z.boolean().optional(),
       },
       {
+        name: "id__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -50238,6 +50262,11 @@ Import/Export endpoints (auto-configured from model):
         name: "exclude_terminal",
         type: "Query",
         schema: z.boolean().optional(),
+      },
+      {
+        name: "id__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
       },
       {
         name: "needs_qa",

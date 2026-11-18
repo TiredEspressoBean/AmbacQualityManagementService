@@ -53,6 +53,8 @@ class LoadDispositionTests(TenantTestCase):
         body = {"disposition_type": disposition_type, **extra}
         if parts is not None:
             body["parts"] = [str(p.id) for p in parts]
+        else:
+            body["all"] = True
         return self.client.post(f"/api/NCRs/{self.ncr.id}/decide/", body, format="json")
 
     def _status(self, part):
@@ -77,6 +79,24 @@ class LoadDispositionTests(TenantTestCase):
         own = QuarantineDisposition.objects.filter(ncr=self.ncr)
         self.assertTrue(all(d.disposition_type == "SCRAP" and d.decision_authorized_by_id
                             for d in own))
+
+    def test_deciding_everything_must_be_asked_for_by_name(self):
+        # A request that lost its chosen parts decides nothing (walk 2026-11-18).
+        bare = self.client.post(f"/api/NCRs/{self.ncr.id}/decide/", {"disposition_type": "SCRAP"}, format="json")
+        self.assertEqual(bare.status_code, 400, bare.content)
+        both = self._decide("SCRAP", parts=[self.parts[0]], all=True)
+        self.assertEqual(both.status_code, 400, both.content)
+        empty = self._decide("SCRAP", parts=[])
+        self.assertEqual(empty.status_code, 400, empty.content)
+        self.assertEqual([self._status(p) for p in self.parts], [PartsStatus.QUARANTINED] * 3)
+
+    def test_chosen_decisions_are_decided_and_the_rest_stay_held(self):
+        # A row is chosen by its decision (how a lot, which has no part, is chosen).
+        first = QuarantineDisposition.objects.get(ncr=self.ncr, part=self.parts[0])
+        r = self._decide("SCRAP", dispositions=[str(first.id)])
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(self._status(self.parts[0]), PartsStatus.SCRAPPED)
+        self.assertEqual([self._status(p) for p in self.parts[1:]], [PartsStatus.QUARANTINED] * 2)
 
     def test_chosen_parts_are_decided_and_the_rest_stay_held(self):
         r = self._decide("SCRAP", parts=[self.parts[0]])

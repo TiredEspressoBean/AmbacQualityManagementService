@@ -9848,6 +9848,12 @@ paths:
         description: Which field to use when ordering the results.
         schema:
           type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
       tags:
       - api
       security:
@@ -19279,6 +19285,15 @@ paths:
         schema:
           type: boolean
       - in: query
+        name: combined_into__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: created_at__lt
+        schema:
+          type: string
+          format: date-time
+      - in: query
         name: dispositions__part
         schema:
           type: string
@@ -19668,13 +19683,23 @@ paths:
                   type: string
                   description: That person's password. Verified inline; they are never
                     logged in, and the decision is attributed to them.
+                all:
+                  type: boolean
+                  description: Decide everything still waiting. Required instead of
+                    parts / dispositions; a request with neither is refused.
                 parts:
                   type: array
                   items:
                     type: string
                     format: uuid
-                  description: The parts this decision is for. Omit to decide every
-                    part still waiting.
+                  description: The parts this decision is for.
+                dispositions:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: The decisions this is for — how a rejected lot quantity,
+                    which has no part, is chosen.
               required:
               - disposition_type
       security:
@@ -23404,6 +23429,15 @@ paths:
         name: exclude_terminal
         schema:
           type: boolean
+      - in: query
+        name: id__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       - name: limit
         required: false
         in: query
@@ -24784,6 +24818,15 @@ paths:
         name: exclude_terminal
         schema:
           type: boolean
+      - in: query
+        name: id__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       - in: query
         name: needs_qa
         schema:
@@ -66314,6 +66357,10 @@ components:
           nullable: true
           description: Who carried out the containment, if not the person recording
             it.
+        containment_performed_by_name:
+          type: string
+          nullable: true
+          readOnly: true
         capa_decision:
           readOnly: true
           nullable: true
@@ -66402,6 +66449,7 @@ components:
       - containment_completed_at
       - containment_completed_by
       - containment_completed_by_name
+      - containment_performed_by_name
       - created_at
       - header_by_hand
       - id

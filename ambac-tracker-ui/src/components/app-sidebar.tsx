@@ -128,7 +128,7 @@ const qualityPages = [
     { name: "CAPAs", url: "/quality/capas", icon: ClipboardList },
     { name: "Inspection Records", url: "/editor/quality-reports", icon: ClipboardCheck },
     { name: "Change Control", url: "/quality/change-control", icon: FileSignature },
-    { name: "Dispositions", url: "/production/dispositions", icon: PackageSearch },
+    { name: "Quarantined Parts", url: "/production/dispositions", icon: PackageSearch },
     { name: "Training", url: "/quality/training", icon: GraduationCap },
     { name: "Calibrations", url: "/quality/calibrations", icon: Gauge },
     { name: "Heat Map", url: "/heatmap", icon: Flame },

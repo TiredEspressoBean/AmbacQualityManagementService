@@ -40,7 +40,7 @@ from Tracker.models import (
     ProcessStep, StepEdge,
     # Quality models
     QualityErrorsList, QualityReports, QualityReportDefect, MeasurementDefinition, MeasurementResult,
-    QuarantineDisposition, QaApproval, StepTransitionLog,
+    QuarantineDisposition, NCR, QaApproval, StepTransitionLog,
     # Sampling models
     SamplingRuleSet, SamplingRule, SamplingTriggerState, SamplingAuditLog, SamplingAnalytics,
     # Workflow execution models
@@ -307,6 +307,9 @@ class Command(BaseCommand):
             (QuarantineDisposition, "Quarantine dispositions (by part)", {'part__tenant': tenant}),
             (QuarantineDisposition, "Quarantine dispositions (by step)", {'step__tenant': tenant}),
             (QualityReports, "Quality reports", {'tenant': tenant}),
+            # After the decisions and records under them; before the steps and work
+            # orders they point at (PROTECT).
+            (NCR, "NCRs", {'tenant': tenant}),
             (QualityErrorsList, "Quality errors", {'tenant': tenant}),
             # 3D Models: HeatMapAnnotations before ThreeDModel (has FK)
             (HeatMapAnnotations, "Heatmap annotations", {'tenant': tenant}),

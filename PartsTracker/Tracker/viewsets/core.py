@@ -214,6 +214,9 @@ class EmployeeSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     """Select list for employees (the tenant's internal workforce)."""
     queryset = User.objects.all()
     serializer_class = UserSelectSerializer
+    # A picker searches the server: a workforce past one page of names isn't all loaded.
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['first_name', 'last_name', 'email', 'username']
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):

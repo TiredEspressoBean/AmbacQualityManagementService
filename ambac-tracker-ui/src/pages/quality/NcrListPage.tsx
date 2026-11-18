@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Combine, ListChecks, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditor
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import type { Schema } from "@/lib/api/types";
+import type { NcrListSearchParams } from "@/lib/routes/search-params";
 
 const col = createColumnHelper<Schema<"NCR">>();
 
@@ -26,8 +27,10 @@ function useNcrList(view: View) {
         const queries: Parameters<typeof useListNcrs>[0] = { offset, limit, ...filters };
         if (ordering !== undefined) queries.ordering = ordering;
         if (search !== undefined) queries.search = search;
-        if (view === "open") queries.state = "OPEN";
-        if (view === "capa") queries.capa_decision__isnull = true;
+        // A view narrows; it doesn't override what the sidebar (or a link) chose.
+        if (view === "open" && queries.state === undefined) queries.state = "OPEN";
+        // A combined NCR's CAPA call is made on the one it went into.
+        if (view === "capa") { queries.capa_decision__isnull = true; queries.combined_into__isnull = true; }
         return useListNcrs(queries);
     };
 }
@@ -42,7 +45,12 @@ const covers = (n: Schema<"NCR">) => {
 
 export function NcrListPage() {
     const navigate = useNavigate();
-    const [view, setView] = useState<View>("open");
+    // The view is in the URL, so a link or a reload lands on it.
+    const urlSearch = useSearch({ strict: false }) as NcrListSearchParams;
+    const view: View = urlSearch.view ?? "open";
+    const setView = (v: View) => navigate({
+        to: "/quality/ncrs", search: (prev: Record<string, unknown>) => ({ ...prev, view: v }), replace: true,
+    });
     const perms = usePermissionSet();
     const canRaise = perms.has("add_ncr");
     // Combine: open NCRs chosen here, kept across pages (change_ncr).
@@ -67,7 +75,7 @@ export function NcrListPage() {
         <>
         <ModelEditorPage
             // A view is a different list: start it from its first page.
-            key={view}
+            resetKey={view}
             title="NCRs"
             modelName="NCRs"
             listQueryKey={["ncrs"]}
@@ -157,6 +165,9 @@ export function NcrListPage() {
                             <Combine className="mr-1 h-4 w-4" />
                             Combine into one NCR
                         </Button>
+                        {chosen.size < 2 && (
+                            <span className="text-xs text-muted-foreground">Select at least two NCRs to combine.</span>
+                        )}
                         <Button size="sm" variant="ghost" onClick={() => setChosen(new Map())} aria-label="Clear selection">
                             <X className="h-4 w-4" />
                         </Button>

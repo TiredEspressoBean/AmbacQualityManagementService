@@ -61,12 +61,15 @@ def open_disposition_for_failed_report(report) -> QuarantineDisposition:
     if part is not None and step is not None:
         existing_rework_count = QuarantineDisposition.objects.filter(  # tenant-safe: part FK
             part=part, step=step, disposition_type='REWORK').count()
+    from Tracker.services.qms.quality_report import _NOT_QUARANTINED_ON_FAIL
     disposition = QuarantineDisposition.objects.create(
         assigned_to=None,
         ncr=ncr,
         part=part,
         step=step,
         rework_attempt_at_step=existing_rework_count + 1,
+        # A part already gone (shipped, completed) isn't held: its decision is a record.
+        held=part is None or part.part_status not in _NOT_QUARANTINED_ON_FAIL,
     )
     disposition.quality_reports.add(report)
     return disposition

@@ -906,10 +906,11 @@ class NCRSerializer(SecureModelMixin):
     work_order_erp_id = serializers.CharField(source='work_order.ERP_id', read_only=True, allow_null=True)
     raised_by_name = serializers.SerializerMethodField()
     containment_completed_by_name = serializers.SerializerMethodField()
+    containment_performed_by_name = serializers.SerializerMethodField()
     capa_decided_by_name = serializers.SerializerMethodField()
     members = serializers.SerializerMethodField()
     reports = serializers.SerializerMethodField()
-    report_ids = serializers.PrimaryKeyRelatedField(source='reports', many=True, read_only=True)
+    report_ids = serializers.SerializerMethodField()
     capa_ids = serializers.PrimaryKeyRelatedField(source='capas', many=True, read_only=True)
     combined_into_number = serializers.CharField(source='combined_into.ncr_number', read_only=True,
                                                  allow_null=True)
@@ -923,7 +924,7 @@ class NCRSerializer(SecureModelMixin):
             'step', 'step_name', 'work_order', 'work_order_erp_id', 'batch_execution',
             'raised_by', 'raised_by_name',
             'containment_action', 'containment_completed_at', 'containment_completed_by',
-            'containment_completed_by_name', 'containment_performed_by',
+            'containment_completed_by_name', 'containment_performed_by', 'containment_performed_by_name',
             'capa_decision', 'capa_decision_note', 'capa_decided_by', 'capa_decided_by_name',
             'capa_decided_at',
             'members', 'reports', 'report_ids', 'capa_ids',
@@ -957,6 +958,10 @@ class NCRSerializer(SecureModelMixin):
         return self._name(obj.containment_completed_by)
 
     @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_containment_performed_by_name(self, obj):
+        return self._name(obj.containment_performed_by)
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_capa_decided_by_name(self, obj):
         return self._name(obj.capa_decided_by)
 
@@ -964,6 +969,11 @@ class NCRSerializer(SecureModelMixin):
     def get_members(self, obj):
         from Tracker.services.qms.ncr import members
         return members(obj)
+
+    @extend_schema_field(serializers.ListField(child=serializers.UUIDField()))
+    def get_report_ids(self, obj):
+        """The records' ids — the same ones `reports` lists (archived left out of both)."""
+        return [r.id for r in obj.reports.all() if not r.archived]
 
     @extend_schema_field(NCRRefSerializer(many=True))
     def get_combined_from(self, obj):
@@ -1990,11 +2000,11 @@ class CAPASerializer(SecureModelMixin):
         """The parts the CAPA acts on: its NCRs' members, plus any part linked directly
         (its own part, a linked disposition's or report's)."""
         from Tracker.models import Parts
+        # Off the prefetched links (CAPAViewSet), not a query per NCR.
         ids = set()
         for ncr in obj.ncrs.all():
-            ids |= {p for p in ncr.dispositions.filter(archived=False, part__isnull=False)
-                    .values_list('part_id', flat=True)}
-            ids |= {p for p in ncr.reports.filter(part__isnull=False).values_list('part_id', flat=True)}
+            ids |= {d.part_id for d in ncr.dispositions.all() if not d.archived and d.part_id}
+            ids |= {r.part_id for r in ncr.reports.all() if r.part_id}
         if obj.part_id:
             ids.add(obj.part_id)
         ids |= {d.part_id for d in obj.dispositions.all() if d.part_id}
@@ -2005,7 +2015,7 @@ class CAPASerializer(SecureModelMixin):
     def get_ncr_refs(self, obj):
         """The NCRs it acts on, by number, for the CAPA page."""
         return [{'id': n.id, 'ncr_number': n.ncr_number, 'state': n.state, 'description': n.description}
-                for n in obj.ncrs.order_by('created_at')]
+                for n in sorted(obj.ncrs.all(), key=lambda n: n.created_at)]
 
     @extend_schema_field(serializers.ListField(child=serializers.UUIDField()))
     def get_affected_part_ids(self, obj):

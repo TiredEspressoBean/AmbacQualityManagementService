@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useParams, useSearch } from "@tanstack/react-router"
-import { useInfiniteQuery, infiniteQueryOptions, useQuery } from "@tanstack/react-query"
+import { useInfiniteQuery, infiniteQueryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
+import { invalidateAfterNcrChange } from "@/hooks/ncrs"
 
 import { api, schemas, type PaginatedUserSelectList } from "@/lib/api/generated"
 import { useRetrieveQualityReport } from "@/hooks/useRetrieveQualityReport"
@@ -81,6 +82,7 @@ const employeeOptionsInfinite = () =>
     });
 
 export default function EditQualityReportFormPage() {
+    const queryClient = useQueryClient()
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
     // `?part=&step=` prefill a new report (the operator home's "Flag").
@@ -191,6 +193,8 @@ export default function EditQualityReportFormPage() {
                 {
                     onSuccess: () => {
                         toast.success("Inspection record updated");
+                        // A Fail puts the part on an NCR and holds it: those screens too.
+                        if (values.status === "FAIL") void invalidateAfterNcrChange(queryClient);
                     },
                     onError: (error) => {
                         console.error("Failed to update quality report:", error);
@@ -202,6 +206,7 @@ export default function EditQualityReportFormPage() {
             createQualityReport.mutate(submitData, {
                 onSuccess: () => {
                     toast.success("Inspection recorded");
+                    if (values.status === "FAIL") void invalidateAfterNcrChange(queryClient);
                     form.reset();
                 },
                 onError: (error) => {

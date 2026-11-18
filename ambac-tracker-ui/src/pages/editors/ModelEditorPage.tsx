@@ -298,6 +298,9 @@ export interface ModelEditorProps<T> {
      * state. Fires once per query result.
      */
     onDataChange?: (items: T[]) => void;
+    /** A change to this starts the list from its first page — a page's own view switch
+     *  (NCRs' Open / Awaiting CAPA) without remounting and losing the sidebar's filters. */
+    resetKey?: string;
 }
 
 export function ModelEditorPage<T extends { id: string | number }>({
@@ -318,6 +321,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                                               disableExport = false,
                                                               listQueryKey,
                                                               onDataChange,
+                                                              resetKey,
                                                           }: ModelEditorProps<T>) {
     // Deep-linkable list filters. Any `?key=value` query string on the URL
     // seeds `activeFilters`, so links like `/editor/quality-reports?part=<uuid>`
@@ -329,7 +333,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
         const params = new URLSearchParams(window.location.search);
         const filters: Record<string, string> = {};
         params.forEach((value, key) => {
-            if (["offset", "limit", "ordering", "search", "new"].includes(key)) return;
+            if (["offset", "limit", "ordering", "search", "new", "view"].includes(key)) return;
             // A router <Link search={{ x: "true" }}> writes the string JSON-quoted
             // (`x=%22true%22`) so it reads back as a string; unwrap it to the value.
             if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
@@ -423,7 +427,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
 
     useEffect(() => {
         setOffset(0);
-    }, [debouncedSearch, ordering, activeFilters, showArchived]);
+    }, [debouncedSearch, ordering, activeFilters, showArchived, resetKey]);
 
     // A table listed in Data Management links back to it.
     const inDataManagement = !!apiEndpoint && ALL_TABLES.some((t) => t.endpoint === apiEndpoint);

@@ -111,7 +111,7 @@ class Command(BaseCommand):
         from Tracker.models import (
             Orders, WorkOrder, Parts, PartTypes,
             Processes, Steps, StepExecution, StepTransitionLog,
-            QualityReports, QuarantineDisposition, QualityErrorsList,
+            QualityReports, QuarantineDisposition, QualityErrorsList, NCR,
             Documents, DocumentType,
             Equipments, EquipmentType, CalibrationRecord,
             Companies,
@@ -151,6 +151,9 @@ class Command(BaseCommand):
             ('Sampling Rule Sets', SamplingRuleSet),
             ('Quarantine Dispositions', QuarantineDisposition),
             ('Quality Reports', QualityReports),
+            # After the decisions and records under them, before the steps and work
+            # orders they point at (PROTECT).
+            ('NCRs', NCR),
             ('Quality Errors List', QualityErrorsList),
             ('Step Executions', StepExecution),
             # Reman - HarvestedComponents before Parts (FK), Parts before Cores

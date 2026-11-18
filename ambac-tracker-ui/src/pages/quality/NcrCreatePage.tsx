@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { api } from "@/lib/api/generated";
 import { useRetrieveParts } from "@/hooks/parts";
-import { invalidateAfterNcrChange } from "@/hooks/ncrs";
+import { invalidateAfterNcrChange, partPickerDescription, useOpenNcrByPart } from "@/hooks/ncrs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -35,15 +35,16 @@ export function NcrCreatePage() {
     const [partSearch, setPartSearch] = useState("");
 
     const { data: partsData } = useRetrieveParts({ limit: 100, search: partSearch });
-    // Parts handed over from another page may not be in the first 100: label them anyway.
-    const presetParts = useQueries({
-        queries: preset.map((id) => ({
-            queryKey: ["parts", "detail", id] as const,
-            queryFn: () => api.api_Parts_retrieve({ params: { id } }),
-        })),
-        combine: (rs) => rs.map((r) => r.data).filter((p): p is NonNullable<typeof p> => !!p),
+    // Parts handed over from another page may not be in the first 100: label them anyway,
+    // in one request.
+    const { data: presetData } = useQuery({
+        queryKey: ["parts", "list", { id__in: preset }],
+        queryFn: () => api.api_Parts_list({ queries: { id__in: preset, limit: preset.length } }),
+        enabled: preset.length > 0,
     });
-    const labels = Object.fromEntries(presetParts.map((p) => [p.id, p.ERP_id]));
+    const labels = Object.fromEntries((presetData?.results ?? []).map((p) => [p.id, p.ERP_id]));
+    const elsewhere = useOpenNcrByPart();
+    const back = () => navigate({ to: search.from ?? "/quality/ncrs" });
 
     const raise = useMutation({
         mutationFn: () => api.api_NCRs_create({ parts, description: description.trim(), severity }),
@@ -58,17 +59,17 @@ export function NcrCreatePage() {
 
     return (
         <div className="container max-w-3xl space-y-6 py-8 px-4 md:px-6">
-            <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/quality/ncrs" })}>
+            <Button variant="ghost" size="sm" onClick={back}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                NCRs
+                {search.from ? "Back" : "NCRs"}
             </Button>
             <Card>
                 <CardHeader>
                     <CardTitle>Raise NCR</CardTitle>
                     <CardDescription>
-                        One nonconformance over the parts it covers. Each part is held, gets a
-                        failed inspection record saying what's wrong, and waits for its own
-                        decision under this NCR.
+                        One nonconformance over the parts it covers. Each part gets a failed
+                        inspection record saying what's wrong and waits for its own decision
+                        under this NCR. Parts still here are held; shipped/completed ones are recorded.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
@@ -76,7 +77,7 @@ export function NcrCreatePage() {
                         label="Parts"
                         items={(partsData?.results ?? []).map((p) => ({
                             id: p.id, label: p.ERP_id,
-                            ...(p.part_type_name ? { description: p.part_type_name } : {}),
+                            description: partPickerDescription(p, elsewhere.get(String(p.id))),
                         }))}
                         selected={parts}
                         onChange={setParts}
@@ -103,7 +104,7 @@ export function NcrCreatePage() {
                         </Select>
                     </div>
                     <div className="flex justify-end gap-2 border-t pt-4">
-                        <Button variant="outline" onClick={() => navigate({ to: "/quality/ncrs" })}>Cancel</Button>
+                        <Button variant="outline" onClick={back}>Cancel</Button>
                         <Button disabled={!ready || raise.isPending} onClick={() => raise.mutate()}>
                             {raise.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Raise NCR{parts.length > 1 ? ` over ${parts.length} parts` : ""}
