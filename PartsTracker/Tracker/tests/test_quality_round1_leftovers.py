@@ -13,6 +13,7 @@ from Tracker.models import (
 from Tracker.services.core.clock import tenant_today
 from Tracker.tests.base import TenantTestCase
 from Tracker.tests.test_quality_hunt_1110 import _PartFixture
+from Tracker.tests.base import make_disposition
 
 
 class FpiReleasePerContextTests(_PartFixture):
@@ -73,7 +74,7 @@ class GateCapaTypeTests(_PartFixture):
                          (self.step.id, part.id, self.wo.id))
         self.assertIn(report, capa.quality_reports.all())
         report.refresh_from_db()
-        self.assertEqual(report.capa_decision, "PROMOTED")
+        self.assertEqual(report.ncr.capa_decision, "PROMOTED")
 
 
 class _GaugeFixture(TenantTestCase):
@@ -142,11 +143,11 @@ class OpenNcrCountTests(TenantTestCase):
     window and still open wasn't counted."""
 
     def test_open_count_is_every_open_one(self):
-        old = QuarantineDisposition.objects.create(tenant=self.tenant_a, description="Old, still open")
+        old = make_disposition(tenant=self.tenant_a, description="Old, still open")
         QuarantineDisposition.objects.filter(pk=old.pk).update(  # tenant-safe: fixture, scoped by pk
             created_at=timezone.now() - timedelta(days=90))
-        QuarantineDisposition.objects.create(tenant=self.tenant_a, description="New")
-        QuarantineDisposition.objects.create(tenant=self.tenant_a, description="Closed",
+        make_disposition(tenant=self.tenant_a, description="New")
+        make_disposition(tenant=self.tenant_a, description="Closed",
                                              current_state="CLOSED")
         self.authenticate_as(self.superuser, self.tenant_a)
         body = self.client.get("/api/dashboard/ncr-aging/").json()

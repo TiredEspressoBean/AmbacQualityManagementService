@@ -20,6 +20,7 @@ from Tracker.models import (
 from Tracker.models.mes_lite import EdgeType
 from Tracker.services.mes.lifecycle import start_execution
 from Tracker.tests.base import TenantTestCase
+from Tracker.tests.base import make_disposition
 
 
 class _Fixture(TenantTestCase):
@@ -82,7 +83,7 @@ class DecidingADispositionTests(_Fixture):
     """QA Manager module 2 walk (2026-10-20)."""
 
     def _disposition(self, step=None):
-        return QuarantineDisposition.objects.create(
+        return make_disposition(
             tenant=self.tenant_a, part=self.part, step=step or self.step, assigned_to=self.user_a)
 
     def test_releasing_waits_for_every_open_decision_on_the_part(self):
@@ -128,7 +129,7 @@ class DecidingADispositionTests(_Fixture):
         qr.status = "FAIL"
         qr.save()
         disp = QuarantineDisposition.objects.get(quality_reports=qr)
-        self.assertEqual(disp.description, "Failed Assemble: Bore Diameter 4.007 mm (limits 3.995–4.005)")
+        self.assertEqual(disp.ncr.description, "Failed Assemble: Bore Diameter 4.007 mm (limits 3.995–4.005)")
 
 
 class QuarantinedPartIsNotStartedTests(_Fixture):
@@ -283,7 +284,7 @@ class CompletedByIsWhoDidTheWorkTests(_Fixture):
         self.part.refresh_from_db()
         Parts.objects.filter(pk=self.part.pk).update(part_status="QUARANTINED")
         self.part.refresh_from_db()
-        disp = QuarantineDisposition.objects.create(tenant=self.tenant_a, part=self.part,
+        disp = make_disposition(tenant=self.tenant_a, part=self.part,
                                                     step=self.part.step, description="Burr")
         rollback_part_step(self.part, self.user_a, reason="Advanced it by mistake")
         self.part.refresh_from_db()

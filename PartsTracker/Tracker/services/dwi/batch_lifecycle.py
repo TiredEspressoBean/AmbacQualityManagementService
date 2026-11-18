@@ -415,7 +415,7 @@ def add_parts_to_batch(*, batch: "BatchExecution", parts, user: "User", reason: 
     Returns the parts added. Raises ValidationError / StartRefused naming why not, or a
     lifecycle.StartGateError for a supervisor.
     """
-    from Tracker.models import BatchExecution, PartsStatus, QuarantineDisposition, StepExecution
+    from Tracker.models import BatchExecution, StepExecution
     from Tracker.services.mes.lifecycle import start_execution
     from Tracker.services.mes.parts import TERMINAL_PART_STATUSES, _stamp_production_equipment
 
@@ -471,14 +471,10 @@ def add_parts_to_batch(*, batch: "BatchExecution", parts, user: "User", reason: 
         for p in new:
             _record_membership(batch, user, added=p, reason=reason)
 
-        # A load already contained by its failed cycle holds the newcomer too.
-        if QuarantineDisposition.objects.filter(archived=False, batch_execution=batch,
-                                                current_state__in=["OPEN", "IN_PROGRESS"]).exists():
-            from Tracker.services.qms.batch_disposition import _QUARANTINABLE
-            for p in new:
-                if p.part_status in _QUARANTINABLE:
-                    p.part_status = PartsStatus.QUARANTINED
-                    p.save(update_fields=["part_status"])
+        # A load already contained by its failed cycle holds the newcomer too: it joins
+        # the load's NCR with its own decision to make.
+        from Tracker.services.qms.batch_disposition import join_failed_load
+        join_failed_load(batch, new)
     return new
 
 
@@ -548,7 +544,7 @@ def discard_batch(*, batch: "BatchExecution", user: "User", reason: str = "",
         ValidationError: the load is sealed (the cycle has run: correct it instead), or
             a failed check has already contained it (its disposition decides).
     """
-    from Tracker.models import BatchExecution, QuarantineDisposition, SubstepCompletion
+    from Tracker.models import NCR, BatchExecution, SubstepCompletion
     from Tracker.services.qms.report_supersede import void_completion
 
     with transaction.atomic():
@@ -557,9 +553,8 @@ def discard_batch(*, batch: "BatchExecution", user: "User", reason: str = "",
             return
         if batch.sealed_at is not None:
             raise ValidationError("This load is sealed; the cycle has run. Correct its parts instead.")
-        if QuarantineDisposition.objects.filter(archived=False, batch_execution=batch,  # tenant-safe: keyed to a scoped batch
-                                                current_state__in=["OPEN", "IN_PROGRESS"]).exists():
-            raise ValidationError("A failed check has contained this load; its disposition decides "
+        if NCR.objects.filter(archived=False, batch_execution=batch, state="OPEN").exists():  # tenant-safe: keyed to a scoped batch
+            raise ValidationError("A failed check has contained this load; its NCR decides "
                                   "what happens to it.")
         why = (reason or "").strip() or LOAD_DISCARDED
         for c in SubstepCompletion.objects.filter(batch_execution=batch, is_voided=False):  # tenant-safe: keyed to a scoped batch

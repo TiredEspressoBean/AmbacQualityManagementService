@@ -119,7 +119,7 @@ class DispositionDescriptionTests(TenantTestCase):
         """A step's captures land after its report first goes FAIL, so the description
         written then said only the step; a joining report never made it in."""
         from Tracker.models import MeasurementDefinition, MeasurementResult, Parts
-        from Tracker.services.qms.disposition import refresh_disposition_description
+        from Tracker.services.qms.ncr import refresh_description
         pt = PartTypes.objects.create(tenant=self.tenant_a, name="Body")
         step = Steps.objects.create(tenant=self.tenant_a, name="Body Inspection", part_type=pt)
         part = Parts.objects.create(tenant=self.tenant_a, ERP_id="B-1", part_type=pt, step=step)
@@ -132,12 +132,14 @@ class DispositionDescriptionTests(TenantTestCase):
         measured = QualityReports.objects.create(tenant=self.tenant_a, part=part, step=step, status="PENDING")
         MeasurementResult.objects.create(tenant=self.tenant_a, report=measured, definition=bore,
                                          value_numeric=4.007)
-        disp.quality_reports.add(measured)
-        disp.description = "Failed Body Inspection"
-        disp.save(update_fields=["description"])
-        refresh_disposition_description(disp)
-        disp.refresh_from_db()
-        self.assertEqual(disp.description,
+        # The second report joins the same NCR (as its own FAIL save does).
+        ncr = disp.ncr
+        QualityReports.objects.filter(pk=measured.pk).update(ncr=ncr)  # tenant-safe: fixture
+        ncr.description = "Failed Body Inspection"
+        ncr.save(update_fields=["description"])
+        refresh_description(ncr)
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.description,
                          "Failed Body Inspection: Burr on the seat, Bore 4.007 mm (limits 3.995–4.005)")
 
 

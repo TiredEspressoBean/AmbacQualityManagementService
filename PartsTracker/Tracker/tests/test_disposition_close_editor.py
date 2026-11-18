@@ -18,6 +18,7 @@ from Tracker.models import (
     WorkOrder, WorkOrderStatus,
 )
 from Tracker.tests.base import TenantTestCase
+from Tracker.tests.base import make_disposition
 
 
 class DispositionEditorCloseTests(TenantTestCase):
@@ -28,7 +29,8 @@ class DispositionEditorCloseTests(TenantTestCase):
         self.grant_tenant_permissions(
             self.user, self.tenant,
             ['full_tenant_access', 'view_quarantinedisposition',
-             'change_quarantinedisposition', 'close_disposition'],
+             'change_quarantinedisposition', 'close_disposition',
+             'change_ncr'],  # its NCR's header and containment
         )
         self.pt = PartTypes.objects.create(tenant=self.tenant, name="Widget")
         self.process = Processes.objects.create(
@@ -52,7 +54,7 @@ class DispositionEditorCloseTests(TenantTestCase):
             description="editor close test",
         )
         defaults.update(overrides)
-        return QuarantineDisposition.objects.create(**defaults)
+        return make_disposition(**defaults)
 
     def _url(self, d):
         return f"/api/QuarantineDispositions/{d.id}/"
@@ -110,6 +112,6 @@ class DispositionEditorCloseTests(TenantTestCase):
         resp = self._patch(d, description="updated description")
         self.assertEqual(resp.status_code, 200, resp.content)
         d.refresh_from_db()
-        self.assertEqual(d.description, "updated description")
+        self.assertEqual(d.ncr.description, "updated description")  # the NCR's
         self.assertEqual(d.current_state, "IN_PROGRESS")
         self.assertFalse(d.resolution_completed)

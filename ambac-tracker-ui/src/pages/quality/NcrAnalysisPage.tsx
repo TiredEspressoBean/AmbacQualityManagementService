@@ -37,17 +37,17 @@ type DispositionRow = {
     status: string;
 };
 
-type UndecidedRow = { id: string; report: string; item: string; description: string; created: string };
+type UndecidedRow = { id: string; ncr: string; item: string; description: string; created: string };
 
-// Failed reports nobody has decided on — raise a CAPA, or record why not
-// (services/qms/capa_decision). The decision itself lives on the report's page.
+// NCRs nobody has decided on — raise a CAPA, or record why not
+// (services/qms/capa_decision). The decision itself is made on the NCR's page.
 const undecidedColumns: AnalyticsColumnDef<UndecidedRow>[] = [
-    { key: "report", header: "Report", accessor: (r) => <span className="font-mono text-xs text-primary">{r.report}</span>,
-      sortable: true, sortValue: (r) => r.report },
-    { key: "item", header: "Part / lot", accessor: (r) => r.item },
+    { key: "ncr", header: "NCR", accessor: (r) => <span className="font-mono text-xs text-primary">{r.ncr}</span>,
+      sortable: true, sortValue: (r) => r.ncr },
+    { key: "item", header: "Covers", accessor: (r) => r.item },
     { key: "description", header: "Finding",
       accessor: (r) => <span className="truncate max-w-[260px] block" title={r.description}>{r.description}</span> },
-    { key: "created", header: "Reported", accessor: (r) => r.created, sortable: true, sortValue: (r) => r.created },
+    { key: "created", header: "Opened", accessor: (r) => r.created, sortable: true, sortValue: (r) => r.created },
 ];
 
 const repeatDefectsOptions = (days: number) =>
@@ -66,21 +66,23 @@ export function NcrAnalysisPage() {
     const { data: agingData, isLoading: isLoadingAging } = useNcrAging();
     const { data: dispositionsResponse, isLoading: isLoadingTable } = useOpenDispositions(20);
     const { data: undecided, isLoading: isLoadingUndecided } = useQuery({
-        queryKey: ["ncr-awaiting-decision"],
-        queryFn: () => api.api_QualityReports_list({ queries: {
-            status: "FAIL", capa_decision__isnull: true, ordering: "created_at", limit: 50 } }),
+        queryKey: ["ncrs", "awaiting-capa-decision"],
+        queryFn: () => api.api_NCRs_list({ queries: {
+            capa_decision__isnull: true, ordering: "created_at", limit: 50 } }),
     });
-    const undecidedRows: UndecidedRow[] = useMemo(() => (undecided?.results ?? []).map((q) => ({
-        id: String(q.id),
-        report: q.report_number || "—",
-        item: q.part_display || "—",
-        // A report captured at a step usually has no description of its own: say what
-        // failed — its defects, else the step — rather than leave the Finding blank.
-        description: q.description
-            || ((q.errors_info ?? []) as Array<{ name?: string }>).map((e) => e.name).filter(Boolean).join(", ")
-            || (q.step_info?.name ? `Failed ${q.step_info.name}` : ""),
-        created: q.created_at ? new Date(q.created_at).toLocaleDateString() : "",
-    })), [undecided]);
+    const undecidedRows: UndecidedRow[] = useMemo(() => (undecided?.results ?? []).map((n) => {
+        const parts = n.members.filter((m) => m.part_id && m.held);
+        const lot = n.members.find((m) => m.lot_number);
+        return {
+            id: String(n.id),
+            ncr: n.ncr_number,
+            item: parts.length === 1 ? (parts[0]!.erp_id ?? "—")
+                : parts.length > 1 ? `${parts.length} parts`
+                : lot ? `Lot ${lot.lot_number}` : "—",
+            description: n.description || (n.step_name ? `Failed ${n.step_name}` : ""),
+            created: new Date(n.created_at).toLocaleDateString(),
+        };
+    }), [undecided]);
 
     // Transform NCR trend data for chart
     const ncrChartData = useMemo(() => {
@@ -299,18 +301,18 @@ export function NcrAnalysisPage() {
                 </ChartCard>
             </div>
 
-            {/* Failed reports with no CAPA decision yet (ISO 9001 10.2.1: evaluate the need for action) */}
+            {/* NCRs with no CAPA decision yet (ISO 9001 10.2.1: evaluate the need for action) */}
             <ChartCard
                 title={`Awaiting a CAPA decision${undecided?.count ? ` (${undecided.count})` : ""}`}
-                description="Failed reports nobody has decided on yet: raise a CAPA, or record why one isn't needed"
+                description="NCRs nobody has decided on yet: raise a CAPA, or record why one isn't needed"
                 isLoading={isLoadingUndecided}
             >
                 <AnalyticsTable
                     data={undecidedRows}
                     columns={undecidedColumns}
-                    rowLink={(row) => `/details/QualityReports/${row.id}`}
+                    rowLink={(row) => `/quality/ncrs/${row.id}`}
                     maxRows={10}
-                    emptyMessage="Every failed report has a CAPA decision"
+                    emptyMessage="Every NCR has a CAPA decision"
                     compact
                 />
             </ChartCard>

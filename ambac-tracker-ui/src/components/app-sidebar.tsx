@@ -8,6 +8,7 @@ import {
     CalendarRange,
     CheckSquare,
     ClipboardList,
+    FileWarning,
     ListOrdered,
     ClipboardCheck,
     Clock,
@@ -123,8 +124,9 @@ const remanPages = [
 // Quality - QMS (staff only, collapsible)
 const qualityPages = [
     { name: "Dashboard", url: "/quality", icon: ShieldCheck },
+    { name: "NCRs", url: "/quality/ncrs", icon: FileWarning },
     { name: "CAPAs", url: "/quality/capas", icon: ClipboardList },
-    { name: "Quality Reports", url: "/editor/quality-reports", icon: ClipboardCheck },
+    { name: "Inspection Records", url: "/editor/quality-reports", icon: ClipboardCheck },
     { name: "Change Control", url: "/quality/change-control", icon: FileSignature },
     { name: "Dispositions", url: "/production/dispositions", icon: PackageSearch },
     { name: "Training", url: "/quality/training", icon: GraduationCap },

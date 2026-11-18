@@ -16,6 +16,7 @@ from Tracker.models import (
 )
 from Tracker.services.qms.quality_report import on_report_failed
 from Tracker.tests.base import TenantTestCase
+from Tracker.tests.base import make_disposition
 
 
 class _Fixture(TenantTestCase):
@@ -67,7 +68,7 @@ class DispositionTypeOnEditTests(_Fixture):
 
     def setUp(self):
         super().setUp()
-        self.disp = QuarantineDisposition.objects.create(
+        self.disp = make_disposition(
             tenant=self.tenant_a, part=self.part, step=self.step, assigned_to=self.user_a)
         self.grant_tenant_permissions(self.user_a, self.tenant_a, [
             'view_quarantinedisposition', 'change_quarantinedisposition', 'full_tenant_access'])

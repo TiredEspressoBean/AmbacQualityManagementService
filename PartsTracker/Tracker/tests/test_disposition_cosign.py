@@ -28,6 +28,7 @@ from django.urls import reverse
 
 from Tracker.models import QuarantineDisposition, Tenant
 from Tracker.tests.base import TenantContextMixin
+from Tracker.tests.base import make_disposition
 
 User = get_user_model()
 
@@ -62,7 +63,7 @@ class DispositionDecideCosignTests(TenantContextMixin, TestCase):
                     group="dc-bys")
 
         # OPEN, no disposition_type yet — the auto-created-then-decided flow.
-        self.disp = QuarantineDisposition.unscoped.create(
+        self.disp = make_disposition(
             tenant=self.tenant, severity="MINOR", description="decide test",
         )
         self.assertEqual(self.disp.current_state, "OPEN")

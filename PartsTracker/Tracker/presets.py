@@ -99,7 +99,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_lifelimitdefinition', 'view_parttypelifelimit', 'view_lifetracking',
     # Quality
     'view_qualityreports', 'view_qualityerrorslist', 'view_qualityreportdefect',
-    'view_qaapproval', 'view_quarantinedisposition',
+    'view_qaapproval', 'view_quarantinedisposition', 'view_ncr',
     'view_qualityreportequipment', 'view_qualityreportpersonnel',
     'view_stepexecutionequipment',
     # Supplier quality / part approval / quality gates
@@ -265,6 +265,9 @@ STAFF_OPERATIONAL_WRITE = [
     'add_qualityreports', 'change_qualityreports',
     'add_qualityreportdefect', 'change_qualityreportdefect',
     'add_quarantinedisposition', 'change_quarantinedisposition',
+    # Raising an NCR over parts, and adding parts to one: anyone who can flag a
+    # problem (user ruling 2026-11-17). Its header is NCR_HEADER_WRITE.
+    'add_ncr',
     # Supplier quality / part approval (records managed by QA; delete is opted
     # out — retired via status, not destroyed. `approve_*` live in SOD below.)
     'add_supplierqualification', 'change_supplierqualification',
@@ -708,6 +711,10 @@ SCHEDULING_PLANNER_PERMISSIONS = [
 # Clearing a work order hold (any kind): leads and up (user ruling 2026-11-16).
 # Placing a hold is unchanged.
 WORK_ORDER_HOLD_CLEAR = ['clear_workorder_hold']
+
+# An NCR's header — what's wrong, its severity, where found — and its containment are
+# the leads' and QA's, not operators' (user ruling 2026-11-17). Raising one is add_ncr.
+NCR_HEADER_WRITE = ['change_ncr']
 # Releasing work to the floor and un-releasing it (user ruling 2026-11-16): planners,
 # production, leads and engineering — everyone who could release before, but operators.
 WORK_ORDER_RELEASE = ['release_workorder']
@@ -717,7 +724,17 @@ WORK_ORDER_RELEASE = ['release_workorder']
 # when it is here — a permission moved out of a role still leaves it on existing
 # tenants — and keeps anything else a tenant admin added (user ruling 2026-11-17). When
 # a permission leaves a preset, add it here in the same change.
-RETIRED_PRESET_PERMISSIONS: dict[str, list[str]] = {}
+RETIRED_PRESET_PERMISSIONS: dict[str, list[str]] = {
+    # Editing an NCR's header and containment went to leads and QA only (user ruling
+    # 2026-11-17); it was briefly every staff role's.
+    'Operator': ['change_ncr'],
+    'Document Controller': ['change_ncr'],
+    'Engineering': ['change_ncr'],
+    'Purchasing': ['change_ncr'],
+    'Planner': ['change_ncr'],
+    'Receiving': ['change_ncr'],
+    'Shipping': ['change_ncr'],
+}
 
 GROUP_PRESETS = {
     # -------------------------------------------------------------------------
@@ -738,6 +755,7 @@ GROUP_PRESETS = {
         'permissions': [
             *WORK_ORDER_RELEASE,
             *WORK_ORDER_HOLD_CLEAR,
+            *NCR_HEADER_WRITE,
             'apply_cyclecount',
             'cancel_workorder',
             'change_workorder_priority',
@@ -800,6 +818,7 @@ GROUP_PRESETS = {
         'description': 'Quality management, approvals, CAPA control',
         'permissions': [
             *WORK_ORDER_HOLD_CLEAR,
+            *NCR_HEADER_WRITE,
             'apply_cyclecount',
             *SAMPLING_RULE_DELETE,
             *LOT_HOLD,
@@ -853,6 +872,7 @@ GROUP_PRESETS = {
         'description': 'Perform inspections, create quality reports, initiate CAPAs',
         'permissions': [
             *WORK_ORDER_HOLD_CLEAR,
+            *NCR_HEADER_WRITE,
             *LOT_HOLD,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
@@ -891,6 +911,7 @@ GROUP_PRESETS = {
         'permissions': [
             *WORK_ORDER_RELEASE,
             *WORK_ORDER_HOLD_CLEAR,
+            *NCR_HEADER_WRITE,
             'apply_cyclecount',
             'cancel_workorder',
             # Reprioritising is a planning call (user ruling 2026-11-12).
@@ -957,6 +978,7 @@ GROUP_PRESETS = {
         'permissions': [
             *WORK_ORDER_RELEASE,
             *WORK_ORDER_HOLD_CLEAR,
+            *NCR_HEADER_WRITE,
             'apply_cyclecount',
             *CORE_DECISION_PERMISSIONS,
             *GATE_SIGNATURE_CLEAR_PERMISSIONS,

@@ -307,14 +307,14 @@ export default function AnalysisPage() {
                     value={`${scrapRate.toFixed(1)}%`}
                     subtext="Parts scrapped"
                     status={scrapStatus}
-                    link="/quality/ncrs"
+                    link="/quality/ncr-analysis"
                 />
                 <MetricCard
                     label="Rework Rate"
                     value={`${reworkRate.toFixed(1)}%`}
                     subtext="Parts reworked"
                     status={reworkStatus}
-                    link="/quality/ncrs"
+                    link="/quality/ncr-analysis"
                 />
                 <MetricCard
                     label="Open Issues"
@@ -522,7 +522,7 @@ export default function AnalysisPage() {
             <div className="flex flex-wrap gap-2 pt-2">
                 <span className="text-xs text-muted-foreground self-center mr-2">Explore:</span>
                 <Button variant="ghost" size="sm" asChild>
-                    <Link to="/quality/ncrs">
+                    <Link to="/quality/ncr-analysis">
                         <Package className="h-4 w-4 mr-1" />
                         NCR Analysis
                     </Link>

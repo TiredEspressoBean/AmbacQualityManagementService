@@ -8,9 +8,8 @@ Imported at app startup via `Tracker.apps.TrackerConfig.ready()` so the
 registry is populated before any rule fires.
 
 Currently registered:
-- ``ncr.opened`` — acknowledged when a closed `QuarantineDisposition`
-  exists for the QualityReport. Cancelled when the source QR is archived
-  (covers `void()` via SecureModel).
+- ``ncr.opened`` — acknowledged when the NCR is closed (every decision under it
+  closed). Cancelled when the NCR is archived.
 
 Future registrations (when their events get emitted from domain code):
 - ``capa.opened`` — acknowledged when any `CapaVerification` has a final
@@ -23,25 +22,18 @@ from __future__ import annotations
 from Tracker.services.core.notifications.escalation import register_ack
 
 
-def _ncr_is_acknowledged(quality_report) -> bool:
-    """An NCR is acked when at least one QuarantineDisposition for it has
-    reached `current_state='CLOSED'`. A merely-OPEN disposition isn't ack —
-    QA staff is still working it; the chain should continue.
+def _ncr_is_acknowledged(ncr) -> bool:
+    """An NCR is acked once it is closed — every decision under it made and carried
+    out. While anything under it is open, QA is still working it; the chain continues.
     """
-    # Late import to avoid the model-layer dependency cycle at app load.
-    from Tracker.models import QuarantineDisposition
-    # tenant-safe: predicate is invoked from `fire_one` inside `tenant_context(...)`;
-    # the implicit tenant ContextVar already scopes the QuerySet.
-    return QuarantineDisposition.objects.filter(archived=False,
-        quality_reports=quality_report,
-        current_state='CLOSED',
-    ).exists()
+    ncr.refresh_from_db(fields=['state'])
+    return ncr.state == 'CLOSED'
 
 
 def _resolve_source_model():
-    """Late-bind the QualityReports model to avoid app-load ordering issues."""
-    from Tracker.models import QualityReports
-    return QualityReports
+    """Late-bind the NCR model to avoid app-load ordering issues."""
+    from Tracker.models import NCR
+    return NCR
 
 
 # Registered at module-import time. The source_model is resolved eagerly
@@ -50,5 +42,5 @@ register_ack(
     event_code='ncr.opened',
     source_model=_resolve_source_model(),
     is_acknowledged=_ncr_is_acknowledged,
-    # Default cancel predicate handles `quality_report.archived` (SecureModel).
+    # Default cancel predicate handles `ncr.archived` (SecureModel).
 )

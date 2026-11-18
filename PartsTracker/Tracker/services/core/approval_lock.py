@@ -33,9 +33,11 @@ FINAL_WHEN = {
     # and is frozen once recorded. The QA Manager's JUDGEMENT about it (does this
     # need a CAPA?) is not: it's revised as evidence accumulates (Deferred ->
     # promoted when it recurs), so it moves through the `capa-decision` action and
-    # capa_decision.py, which this lock deliberately doesn't cover.
+    # capa_decision.py, which this lock deliberately doesn't cover. (The decision is
+    # the NCR's now.)
     'QualityReports': (lambda o: o.status != 'PENDING', "recorded as a result"),
     'QuarantineDisposition': (lambda o: o.current_state == 'CLOSED', "closed"),
+    'NCR': (lambda o: o.state == 'CLOSED', "closed"),
     'PartApproval': (lambda o: o.status != 'PENDING', "decided"),
     'Documents': (lambda o: o.status in ('APPROVED', 'RELEASED', 'OBSOLETE'), "approved"),
     'Processes': (lambda o: o.status not in ('DRAFT',), "out of draft"),
@@ -53,6 +55,9 @@ DECISION_FIELDS = {
                   "Submit for review / Approve"),
     'QuarantineDisposition': ({'disposition_type', 'current_state', 'decision_authorized_by'},
                               "Decide / Close"),
+    # Open and closed follow its decisions; the CAPA call is the capa-decision action's.
+    'NCR': ({'state', 'closed_at', 'capa_decision', 'capa_decided_by'},
+            "its decisions, and the CAPA decision"),
     'CapaVerification': ({'effectiveness_result', 'verified_by'}, "Verify"),
     'TimeEntry': ({'approved'}, "a supervisor's approval"),
 }
@@ -61,14 +66,19 @@ DECISION_FIELDS = {
 #                {field: scale, lowest first, that it may still rise on}, phrase)
 # Fields an edit may set before the decision and not after it. A concession's
 # customer reference is the evidence a Use-as-is or Repair decision is refused
-# without; a new decision brings its own through Decide. A disposition's severity
-# decides what its close demands (containment for Major/Critical): raising it only
-# asks more, lowering it dodged the containment check.
+# without; a new decision brings its own through Decide. An NCR's severity decides
+# what closing a decision under it demands (containment for Major/Critical): raising it
+# only asks more, lowering it once anything is decided dodged the containment check.
 DECIDED_FIELDS = {
     'QuarantineDisposition': (
         lambda o: bool(o.disposition_type),
-        {'severity', 'requires_customer_approval', 'customer_approval_received',
+        {'requires_customer_approval', 'customer_approval_received',
          'customer_approval_reference', 'customer_approval_date'},
+        {},
+        "decided"),
+    'NCR': (
+        lambda o: o.dispositions.exclude(disposition_type='').exists(),
+        {'severity'},
         {'severity': ('MINOR', 'MAJOR', 'CRITICAL')},
         "decided"),
 }
@@ -91,7 +101,7 @@ GO_AHEAD_APPROVALS = {'CAPA'}
 
 def _label(instance) -> str:
     for attr in ('artifact_number', 'approval_number', 'capa_number', 'report_number',
-                 'disposition_number', 'document_number', 'name', 'file_name'):
+                 'disposition_number', 'ncr_number', 'document_number', 'name', 'file_name'):
         v = getattr(instance, attr, None)
         if v:
             return str(v)

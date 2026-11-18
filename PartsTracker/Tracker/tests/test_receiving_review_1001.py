@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
 from Tracker.utils.tenant_context import reset_current_tenant, set_current_tenant_id
+from Tracker.tests.base import make_disposition
 
 User = get_user_model()
 
@@ -150,7 +151,7 @@ class SplitTests(_Fixture):
 class DispositionTests(_Fixture):
     def _disposition(self, lot, kind):
         from Tracker.models import QuarantineDisposition
-        return QuarantineDisposition.objects.create(
+        return make_disposition(
             tenant=self.tenant, material_lot=lot, disposition_type=kind, quantity=lot.quantity,
             current_state="IN_PROGRESS", severity="MINOR")
 
@@ -181,9 +182,9 @@ class NumbersTests(_Fixture):
         theirs = self._lot("P-2", qty="1000", owner=self.fleet)
         kilos = self._lot("P-3", qty="500", material=self.bar)
         for lot, qty in ((ours, 10), (theirs, 10), (kilos, 100)):
-            QuarantineDisposition.objects.create(tenant=self.tenant, material_lot=lot,
+            make_disposition(tenant=self.tenant, material_lot=lot,
                                                  disposition_type="SCRAP", quantity=qty)
-        QuarantineDisposition.objects.create(
+        make_disposition(
             tenant=self.tenant, material_lot=ours, disposition_type="RETURN_TO_SUPPLIER",
             quantity=1000, current_state="CLOSED", resolution_notes="Whole-lot reject declined: fine")
         m = dock_metrics(self.tenant)

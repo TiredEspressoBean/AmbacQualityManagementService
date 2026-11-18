@@ -17,6 +17,7 @@ from Tracker.models import (
 )
 from Tracker.services.core.clock import tenant_today
 from Tracker.tests.base import TenantTestCase
+from Tracker.tests.base import make_disposition
 
 
 # ---------------------------------------------------------------------------
@@ -370,21 +371,23 @@ class FailedBatchContainedOnceTests(_PartFixture):
         qr = QualityReports.objects.create(tenant=self.tenant_a, batch_execution=batch, step=self.step,
                                            status="FAIL", description="cycle fail",
                                            detected_by=self.user_a)
-        disp = QuarantineDisposition.objects.get(batch_execution=batch)
+        from Tracker.models import NCR
+        ncr = NCR.objects.get(batch_execution=batch)
         for p in parts:
             p.refresh_from_db()
             self.assertEqual(p.part_status, "QUARANTINED")
-        # The disposition is decided and closed; the load released.
-        QuarantineDisposition.objects.filter(pk=disp.pk).update(  # tenant-safe: fixture, scoped by pk
+        # The decisions are made and closed; the load released.
+        QuarantineDisposition.objects.filter(ncr=ncr).update(  # tenant-safe: fixture
             current_state="CLOSED")
         Parts.objects.filter(pk__in=[p.pk for p in parts]).update(  # tenant-safe: fixture
             part_status="IN_PROGRESS")
 
         qr.refresh_from_db()
-        qr.capa_decision_note = "No CAPA needed"
+        qr.description = "cycle fail — re-saved"
         qr.save()
 
-        self.assertEqual(QuarantineDisposition.objects.filter(batch_execution=batch).count(), 1)
+        self.assertEqual(NCR.objects.filter(batch_execution=batch).count(), 1)
+        self.assertEqual(QuarantineDisposition.objects.filter(ncr=ncr).count(), len(parts))
         for p in parts:
             p.refresh_from_db()
             self.assertEqual(p.part_status, "IN_PROGRESS")
@@ -504,8 +507,8 @@ class ScarStampsTheReportTests(TenantTestCase):
         capa = open_scar(supplier=supplier, problem_statement="Seals torn on receipt",
                          severity="MINOR", quality_report=qr, user=self.user_a)
         qr.refresh_from_db()
-        self.assertEqual(qr.capa_decision, "PROMOTED")
-        self.assertIn(capa.capa_number, qr.capa_decision_note)
+        self.assertEqual(qr.ncr.capa_decision, "PROMOTED")  # the report's NCR
+        self.assertIn(capa.capa_number, qr.ncr.capa_decision_note)
 
 
 # ---------------------------------------------------------------------------
@@ -522,14 +525,15 @@ class NcrDecisionAndLotTests(TenantTestCase):
             tenant=self.tenant_a, lot_number="LOT-NCR-7", material_description="Nozzle blanks",
             quantity=Decimal(5), quantity_remaining=Decimal(5), unit_of_measure="EA")
         at = timezone.now()
-        qd = QuarantineDisposition.objects.create(
+        qd = make_disposition(
             tenant=self.tenant_a, material_lot=lot, severity="MAJOR",
             disposition_type="RETURN_TO_SUPPLIER", description="Blanks out of spec",
             decision_authorized_by=self.user_a, decision_authorized_at=at)
-        ctx = NcrAdapter().build_context({"id": qd.id}, self.user_a, self.tenant_a)
-        self.assertEqual(ctx.lot_number, "LOT-NCR-7")
-        self.assertEqual(ctx.decision_authorized_by, self.user_a.email)
-        self.assertEqual(ctx.decision_authorized_at, at)
+        ctx = NcrAdapter().build_context({"id": qd.ncr_id}, self.user_a, self.tenant_a)
+        [decision] = ctx.decisions
+        self.assertEqual(decision.subject, "Lot LOT-NCR-7")
+        self.assertEqual(decision.decision_authorized_by, self.user_a.email)
+        self.assertEqual(decision.decision_authorized_at, at)
         self.assertIsNone(ctx.batch_load)
 
 

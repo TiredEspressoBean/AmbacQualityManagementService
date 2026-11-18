@@ -5,6 +5,7 @@ from Tracker.models import (
 )
 from Tracker.reports.adapters.work_order_traveler import WorkOrderTravelerAdapter
 from Tracker.tests.base import TenantTestCase
+from Tracker.tests.base import make_disposition
 
 
 class TravelerTraceabilityTests(TenantTestCase):
@@ -27,7 +28,7 @@ class TravelerTraceabilityTests(TenantTestCase):
         return WorkOrderTravelerAdapter().build_context(params, self.user_a, self.tenant_a)
 
     def test_a_line_per_serial_with_open_nonconformances(self):
-        QuarantineDisposition.objects.create(tenant=self.tenant_a, part=self.b,
+        make_disposition(tenant=self.tenant_a, part=self.b,
                                              description="Leak at seat")
         ctx = self._ctx()
         self.assertEqual([(s.serial, s.open_ncrs) for s in ctx.serials], [("SN-A", 0), ("SN-B", 1)])
@@ -36,7 +37,7 @@ class TravelerTraceabilityTests(TenantTestCase):
         for visit in (1, 2):
             StepExecution.objects.create(tenant=self.tenant_a, part=self.a, step=self.assembly,
                                          visit_number=visit, status="COMPLETED")
-        QuarantineDisposition.objects.create(tenant=self.tenant_a, part=self.a,
+        make_disposition(tenant=self.tenant_a, part=self.a,
                                              description="Torque low")
         ctx = self._ctx(self.a)
         self.assertEqual(ctx.serial, "SN-A")

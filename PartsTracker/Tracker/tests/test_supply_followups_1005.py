@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
 from Tracker.utils.tenant_context import reset_current_tenant, set_current_tenant_id
+from Tracker.tests.base import make_disposition
 
 User = get_user_model()
 
@@ -51,7 +52,7 @@ class RmaTests(_Fixture):
     def test_ship_back_keeps_the_rma_and_expects_the_replacement(self):
         from Tracker.models import MaterialLot, QuarantineDisposition
         bad = self._lot("RTV-1", qty="40", status="REJECTED", erp_po_number="4500", erp_po_line="3")
-        QuarantineDisposition.objects.create(tenant=self.tenant, material_lot=bad,
+        make_disposition(tenant=self.tenant, material_lot=bad,
                                              disposition_type="RETURN_TO_SUPPLIER", quantity=Decimal(40))
         due = date.today() + timedelta(days=10)
         resp = self.client.post(f"/api/MaterialLots/{bad.id}/ship-back/",

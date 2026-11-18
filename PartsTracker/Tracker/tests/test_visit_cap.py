@@ -13,6 +13,7 @@ from Tracker.models import (
 )
 from Tracker.services.mes.parts import advance_part_step
 from Tracker.tests.base import TenantContextMixin, VectorTestCase
+from Tracker.tests.base import make_disposition
 
 
 class VisitCapTests(TenantContextMixin, VectorTestCase):
@@ -92,7 +93,7 @@ class VisitCapTests(TenantContextMixin, VectorTestCase):
         self.assertEqual(self.part.step, self.mrb)
         self.assertEqual(self.part.part_status, PartsStatus.QUARANTINED)
         self.assertEqual((d.current_state, d.assigned_to_id), ("OPEN", None))
-        self.assertIn("Inspect", d.description)
+        self.assertIn("Inspect", d.resolution_notes)  # why this decision is owed
 
     def test_rework_from_mrb_buys_exactly_one_more_visit(self):
         from Tracker.models import Parts
@@ -130,7 +131,7 @@ class VisitCapTests(TenantContextMixin, VectorTestCase):
         self.assertEqual((self.part.step, self.part.part_status), (self.mrb, PartsStatus.QUARANTINED))
         d = QuarantineDisposition.objects.get(part=self.part)
         self.assertEqual(d.escalated_from_step, self.work)
-        self.assertIn("Failed Work", d.description)
+        self.assertIn("Failed Work", d.resolution_notes)
         # Use as is continues on the check's pass edge.
         self._decide(d, "USE_AS_IS", customer_approval={"reference": "CONC-2"})
         self.assertEqual(self.part.step, self.inspect)
@@ -190,7 +191,7 @@ class RepeatFailureReachesMrbTests(TenantContextMixin, VectorTestCase):
         self.part.refresh_from_db()
         self.part.part_status = PartsStatus.QUARANTINED
         self.part.save(update_fields=["part_status"])
-        d = QuarantineDisposition.objects.create(tenant=self.tenant, part=self.part,
+        d = make_disposition(tenant=self.tenant, part=self.part,
                                                  step=self.part.step)
         decide_disposition(d, disposition_type="REWORK", authorized_by=self.user)
         route_part_to_rework_if_needed(d, self.user)

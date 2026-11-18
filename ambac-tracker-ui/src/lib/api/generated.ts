@@ -1088,6 +1088,8 @@ export type CAPA = {
   work_order_erp_id: string | null;
   quality_reports?: Array<string> | undefined;
   dispositions?: Array<string> | undefined;
+  ncrs?: Array<string> | undefined;
+  affected_part_ids: Array<string>;
   tasks: Array<CapaTasks>;
   rca_records: Array<RcaRecord>;
   verifications: Array<CapaVerification>;
@@ -1446,6 +1448,7 @@ export type CAPARequest = {
   work_order?: (string | null) | undefined;
   quality_reports?: Array<string> | undefined;
   dispositions?: Array<string> | undefined;
+  ncrs?: Array<string> | undefined;
 };
 export type CalibrationExposure = {
   calibration_id: string;
@@ -5650,6 +5653,97 @@ export type MyLastFinished = {
   undoable: boolean;
   undo_needs_approval: boolean;
 };
+export type NCR = {
+  id: string;
+  ncr_number: string;
+  state: NCRStateEnum;
+  state_display: string;
+  closed_at: string | null;
+  description?: string | undefined;
+  severity?: SeverityEnum | undefined;
+  severity_display: string;
+  step: string | null;
+  step_name: string | null;
+  work_order: string | null;
+  work_order_erp_id: string | null;
+  batch_execution: string | null;
+  raised_by: number | null;
+  raised_by_name: string | null;
+  containment_action?: /**
+   * Immediate action taken to prevent escape
+   */
+  string | undefined;
+  containment_completed_at: string | null;
+  containment_completed_by: number | null;
+  containment_completed_by_name: string | null;
+  containment_performed_by?:
+    | /**
+     * Who carried out the containment, if not the person recording it.
+     */
+    (number | null)
+    | undefined;
+  capa_decision: CapaDecisionEnum | NullEnum | null;
+  capa_decision_note: string;
+  capa_decided_by: number | null;
+  capa_decided_by_name: string | null;
+  capa_decided_at: string | null;
+  members: Array<NCRMember>;
+  reports: Array<NCRReportRef>;
+  report_ids: Array<string>;
+  capa_ids: Array<string>;
+  created_at: string;
+  updated_at: string;
+  archived: boolean;
+};
+export type NCRStateEnum =
+  /**
+   * * `OPEN` - Open
+   * `CLOSED` - Closed
+   *
+   * @enum OPEN, CLOSED
+   */
+  "OPEN" | "CLOSED";
+export type CapaDecisionEnum =
+  /**
+   * * `PROMOTED` - CAPA raised
+   * `NOT_REQUIRED` - No CAPA needed
+   * `DEFERRED` - Deferred
+   *
+   * @enum PROMOTED, NOT_REQUIRED, DEFERRED
+   */
+  "PROMOTED" | "NOT_REQUIRED" | "DEFERRED";
+export type NCRMember = {
+  part_id: string | null;
+  erp_id: string | null;
+  part_status: string | null;
+  material_lot_id: string | null;
+  lot_number: string | null;
+  disposition_id: string | null;
+  disposition_number: string | null;
+  disposition_type: string | null;
+  current_state: string | null;
+  awaiting_decision: boolean;
+  held: boolean;
+};
+export type NCRReportRef = {
+  id: string;
+  report_number: string;
+  status: string;
+  part_erp_id: string | null;
+  created_at: string;
+};
+export type NCRRequest = Partial<{
+  description: string;
+  severity: SeverityEnum;
+  /**
+   * Immediate action taken to prevent escape
+   */
+  containment_action: string;
+  /**
+   * Who carried out the containment, if not the person recording it.
+   */
+  containment_performed_by: number | null;
+}>;
 export type OperatorHoursReport = {
   rows: Array<OperatorHoursRow>;
 };
@@ -7481,6 +7575,25 @@ export type PaginatedMeasurementDefinitionList = {
     | undefined;
   results: Array<MeasurementDefinition>;
 };
+export type PaginatedNCRList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<NCR>;
+};
 export type PaginatedNotificationFeedItemList = {
   /**
    * @example 123
@@ -9161,8 +9274,10 @@ export type QualityReports = {
   errors_info: Array<unknown>;
   file_info: {};
   archived?: boolean | undefined;
+  ncr: string | null;
+  ncr_number: string | null;
   capa_decision: CapaDecisionEnum | NullEnum | null;
-  capa_decision_note: string;
+  capa_decision_note: string | null;
   capa_decided_by: number | null;
   capa_decided_by_name: string | null;
   capa_decided_at: string | null;
@@ -9260,15 +9375,6 @@ export type QualityReportPersonnelRoleEnum =
   | "WITNESS"
   | "TRAINER"
   | "TRAINEE";
-export type CapaDecisionEnum =
-  /**
-   * * `PROMOTED` - CAPA raised
-   * `NOT_REQUIRED` - No CAPA needed
-   * `DEFERRED` - Deferred
-   *
-   * @enum PROMOTED, NOT_REQUIRED, DEFERRED
-   */
-  "PROMOTED" | "NOT_REQUIRED" | "DEFERRED";
 export type PaginatedQuarantineDispositionList = {
   /**
    * @example 123
@@ -9291,6 +9397,8 @@ export type PaginatedQuarantineDispositionList = {
 export type QuarantineDisposition = {
   id: string;
   disposition_number: string;
+  ncr: string | null;
+  ncr_number: string | null;
   current_state?: CurrentStateEnum | undefined;
   disposition_type?: (DispositionTypeEnum | BlankEnum) | undefined;
   severity?: SeverityEnum | undefined;
@@ -9311,19 +9419,11 @@ export type QuarantineDisposition = {
   decision_authorized_by: number | null;
   decision_authorized_at: string | null;
   decision_authorized_by_name: string;
-  containment_action?: /**
-   * Immediate action taken to prevent escape
-   */
-  string | undefined;
+  containment_action?: string | undefined;
   containment_completed_at: string | null;
   containment_completed_by: number | null;
   containment_completed_by_name: string;
-  containment_performed_by?:
-    | /**
-     * Who carried out the containment, if not the person recording it.
-     */
-    (number | null)
-    | undefined;
+  containment_performed_by?: (number | null) | undefined;
   resolution_performed_by?:
     | /**
      * Who carried out the resolution (rework, repair, scrap), if not the person closing it.
@@ -9365,12 +9465,7 @@ export type QuarantineDisposition = {
      */
     (string | null)
     | undefined;
-  batch_execution?:
-    | /**
-     * Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
-     */
-    (string | null)
-    | undefined;
+  batch_execution: string | null;
   step?: (string | null) | undefined;
   step_info: {};
   rework_attempt_at_step?: /**
@@ -13486,6 +13581,7 @@ export type PatchedCAPARequest = Partial<{
   work_order: string | null;
   quality_reports: Array<string>;
   dispositions: Array<string>;
+  ncrs: Array<string>;
 }>;
 export type PatchedCalibrationRecordRequest = Partial<{
   equipment: string;
@@ -14281,6 +14377,18 @@ export type PatchedMeasurementDefinitionRequest = Partial<{
    */
   backup_equipment: string | null;
 }>;
+export type PatchedNCRRequest = Partial<{
+  description: string;
+  severity: SeverityEnum;
+  /**
+   * Immediate action taken to prevent escape
+   */
+  containment_action: string;
+  /**
+   * Who carried out the containment, if not the person recording it.
+   */
+  containment_performed_by: number | null;
+}>;
 export type PatchedOptimizationConfigRequest = Partial<{
   /**
    * CP-SAT wall-clock cap per solve (seconds); best-so-far is returned when it elapses. With match_operators on it's split across the machine (~40%) and operator (~60%) phases.
@@ -14989,14 +15097,8 @@ export type PatchedQuarantineDispositionRequest = Partial<{
   due_date: string | null;
   description: string;
   resolution_notes: string;
-  /**
-   * Immediate action taken to prevent escape
-   */
   containment_action: string;
   containment_completed: boolean;
-  /**
-   * Who carried out the containment, if not the person recording it.
-   */
   containment_performed_by: number | null;
   /**
    * Who carried out the resolution (rework, repair, scrap), if not the person closing it.
@@ -15029,10 +15131,6 @@ export type PatchedQuarantineDispositionRequest = Partial<{
    * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
    */
   quantity: string | null;
-  /**
-   * Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
-   */
-  batch_execution: string | null;
   step: string | null;
   /**
    * @minimum -2147483648
@@ -16660,17 +16758,9 @@ export type QuarantineDispositionRequest = {
     | undefined;
   description?: string | undefined;
   resolution_notes?: string | undefined;
-  containment_action?: /**
-   * Immediate action taken to prevent escape
-   */
-  string | undefined;
+  containment_action?: string | undefined;
   containment_completed?: boolean | undefined;
-  containment_performed_by?:
-    | /**
-     * Who carried out the containment, if not the person recording it.
-     */
-    (number | null)
-    | undefined;
+  containment_performed_by?: (number | null) | undefined;
   resolution_performed_by?:
     | /**
      * Who carried out the resolution (rework, repair, scrap), if not the person closing it.
@@ -16708,12 +16798,6 @@ export type QuarantineDispositionRequest = {
      */
     (string | null)
     | undefined;
-  batch_execution?:
-    | /**
-     * Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
-     */
-    (string | null)
-    | undefined;
   step?: (string | null) | undefined;
   rework_attempt_at_step?: /**
    * @minimum -2147483648
@@ -16722,6 +16806,19 @@ export type QuarantineDispositionRequest = {
   number | undefined;
   quality_reports: Array<string>;
   archived?: boolean | undefined;
+};
+export type RaiseNCRRequest = {
+  parts: Array<string>;
+  /**
+   * What is wrong — the NCR's description.
+   *
+   * @minLength 1
+   */
+  description: string;
+  severity?: /**
+   * @default "MAJOR"
+   */
+  SeverityEnum | undefined;
 };
 export type RcaRecordRequest = {
   capa: string;
@@ -20502,6 +20599,8 @@ const CAPA = z.object({
   work_order_erp_id: z.string().nullable(),
   quality_reports: z.array(z.string().uuid()).optional(),
   dispositions: z.array(z.string().uuid()).optional(),
+  ncrs: z.array(z.string().uuid()).optional(),
+  affected_part_ids: z.array(z.string().uuid()),
   tasks: z.array(CapaTasks),
   rca_records: z.array(RcaRecord),
   verifications: z.array(CapaVerification),
@@ -20535,6 +20634,7 @@ const CAPARequest = z.object({
   work_order: z.string().uuid().nullish(),
   quality_reports: z.array(z.string().uuid()).optional(),
   dispositions: z.array(z.string().uuid()).optional(),
+  ncrs: z.array(z.string().uuid()).optional(),
 });
 const PatchedCAPARequest = z
   .object({
@@ -20553,6 +20653,7 @@ const PatchedCAPARequest = z
     work_order: z.string().uuid().nullable(),
     quality_reports: z.array(z.string().uuid()),
     dispositions: z.array(z.string().uuid()),
+    ncrs: z.array(z.string().uuid()),
   })
   .partial();
 const CalibrationRecordResultEnum = z.enum(["PASS", "FAIL", "LIMITED"]);
@@ -23208,8 +23309,10 @@ const QualityReports = z.object({
   errors_info: z.array(z.unknown()),
   file_info: z.object({}).partial().passthrough().nullable(),
   archived: z.boolean().optional(),
+  ncr: z.string().uuid().nullable(),
+  ncr_number: z.string().nullable(),
   capa_decision: z.union([CapaDecisionEnum, NullEnum]).nullable(),
-  capa_decision_note: z.string(),
+  capa_decision_note: z.string().nullable(),
   capa_decided_by: z.number().int().nullable(),
   capa_decided_by_name: z.string().nullable(),
   capa_decided_at: z.string().datetime({ offset: true }).nullable(),
@@ -23811,6 +23914,113 @@ const PatchedMilestoneRequest = z
     is_active: z.boolean(),
   })
   .partial();
+const NCRStateEnum = z.enum(["OPEN", "CLOSED"]);
+const NCRMember = z.object({
+  part_id: z.string().uuid().nullable(),
+  erp_id: z.string().nullable(),
+  part_status: z.string().nullable(),
+  material_lot_id: z.string().uuid().nullable(),
+  lot_number: z.string().nullable(),
+  disposition_id: z.string().uuid().nullable(),
+  disposition_number: z.string().nullable(),
+  disposition_type: z.string().nullable(),
+  current_state: z.string().nullable(),
+  awaiting_decision: z.boolean(),
+  held: z.boolean(),
+});
+const NCRReportRef = z.object({
+  id: z.string().uuid(),
+  report_number: z.string(),
+  status: z.string(),
+  part_erp_id: z.string().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+});
+const NCR = z.object({
+  id: z.string().uuid(),
+  ncr_number: z.string(),
+  state: NCRStateEnum,
+  state_display: z.string(),
+  closed_at: z.string().datetime({ offset: true }).nullable(),
+  description: z.string().optional(),
+  severity: SeverityEnum.optional(),
+  severity_display: z.string(),
+  step: z.string().uuid().nullable(),
+  step_name: z.string().nullable(),
+  work_order: z.string().uuid().nullable(),
+  work_order_erp_id: z.string().nullable(),
+  batch_execution: z.string().uuid().nullable(),
+  raised_by: z.number().int().nullable(),
+  raised_by_name: z.string().nullable(),
+  containment_action: z.string().optional(),
+  containment_completed_at: z.string().datetime({ offset: true }).nullable(),
+  containment_completed_by: z.number().int().nullable(),
+  containment_completed_by_name: z.string().nullable(),
+  containment_performed_by: z.number().int().nullish(),
+  capa_decision: z.union([CapaDecisionEnum, NullEnum]).nullable(),
+  capa_decision_note: z.string(),
+  capa_decided_by: z.number().int().nullable(),
+  capa_decided_by_name: z.string().nullable(),
+  capa_decided_at: z.string().datetime({ offset: true }).nullable(),
+  members: z.array(NCRMember),
+  reports: z.array(NCRReportRef),
+  report_ids: z.array(z.string().uuid()),
+  capa_ids: z.array(z.string().uuid()),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean(),
+});
+const PaginatedNCRList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(NCR),
+});
+const RaiseNCRRequest = z.object({
+  parts: z.array(z.string().uuid()),
+  description: z.string().min(1),
+  severity: SeverityEnum.optional().default("MAJOR"),
+});
+const NCRRequest = z
+  .object({
+    description: z.string(),
+    severity: SeverityEnum,
+    containment_action: z.string(),
+    containment_performed_by: z.number().int().nullable(),
+  })
+  .partial();
+const PatchedNCRRequest = z
+  .object({
+    description: z.string(),
+    severity: SeverityEnum,
+    containment_action: z.string(),
+    containment_performed_by: z.number().int().nullable(),
+  })
+  .partial();
+const AddPartsToNCRRequest = z.object({
+  parts: z.array(z.string().uuid()),
+  reason: z.string().optional(),
+});
+const CapaDecisionRequestDecisionEnum = z.enum(["NOT_REQUIRED", "DEFERRED"]);
+const CapaDecisionRequestRequest = z.object({
+  decision: CapaDecisionRequestDecisionEnum,
+  note: z.string().min(1),
+});
+const api_NCRs_decide_create_Body = z.object({
+  disposition_type: z.enum([
+    "REWORK",
+    "REPAIR",
+    "SCRAP",
+    "USE_AS_IS",
+    "RETURN_TO_SUPPLIER",
+    "NOT_NONCONFORMANCE",
+  ]),
+  notes: z.string().optional(),
+  customer_approval_reference: z.string().optional(),
+  customer_approval_date: z.string().optional(),
+  cosign_email: z.string().optional(),
+  cosign_password: z.string().optional(),
+  parts: z.array(z.string().uuid()).optional(),
+});
 const NotificationEventTypeCatalog = z.object({
   code: z.string(),
   label: z.string(),
@@ -25236,11 +25446,6 @@ const PatchedQualityReportsRequest = z
     archived: z.boolean(),
   })
   .partial();
-const CapaDecisionRequestDecisionEnum = z.enum(["NOT_REQUIRED", "DEFERRED"]);
-const CapaDecisionRequestRequest = z.object({
-  decision: CapaDecisionRequestDecisionEnum,
-  note: z.string().min(1),
-});
 const CurrentStateEnum = z.enum(["OPEN", "IN_PROGRESS", "CLOSED"]);
 const DispositionTypeEnum = z.enum([
   "REWORK",
@@ -25262,6 +25467,8 @@ const DispositionAffectedPart = z.object({
 const QuarantineDisposition = z.object({
   id: z.string().uuid(),
   disposition_number: z.string(),
+  ncr: z.string().uuid().nullable(),
+  ncr_number: z.string().nullable(),
   current_state: CurrentStateEnum.optional(),
   disposition_type: z.union([DispositionTypeEnum, BlankEnum]).optional(),
   severity: SeverityEnum.optional(),
@@ -25299,7 +25506,7 @@ const QuarantineDisposition = z.object({
     .string()
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
-  batch_execution: z.string().uuid().nullish(),
+  batch_execution: z.string().uuid().nullable(),
   step: z.string().uuid().nullish(),
   step_info: z.object({}).partial().passthrough().nullable(),
   rework_attempt_at_step: z
@@ -25354,7 +25561,6 @@ const QuarantineDispositionRequest = z.object({
     .string()
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
-  batch_execution: z.string().uuid().nullish(),
   step: z.string().uuid().nullish(),
   rework_attempt_at_step: z
     .number()
@@ -25390,7 +25596,6 @@ const PatchedQuarantineDispositionRequest = z
       .string()
       .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
       .nullable(),
-    batch_execution: z.string().uuid().nullable(),
     step: z.string().uuid().nullable(),
     rework_attempt_at_step: z.number().int().gte(-2147483648).lte(2147483647),
     quality_reports: z.array(z.string().uuid()),
@@ -25411,7 +25616,6 @@ const api_QuarantineDispositions_decide_create_Body = z.object({
   customer_approval_date: z.string().optional(),
   cosign_email: z.string().optional(),
   cosign_password: z.string().optional(),
-  parts: z.array(z.string().uuid()).optional(),
 });
 const ReopenDispositionRequestRequest = z.object({ reason: z.string().min(1) });
 const PaginatedRcaRecordList = z.object({
@@ -31502,6 +31706,18 @@ export const schemas = {
   CreateMilestoneTemplateRevisionInputRequest,
   MilestoneRequest,
   PatchedMilestoneRequest,
+  NCRStateEnum,
+  NCRMember,
+  NCRReportRef,
+  NCR,
+  PaginatedNCRList,
+  RaiseNCRRequest,
+  NCRRequest,
+  PatchedNCRRequest,
+  AddPartsToNCRRequest,
+  CapaDecisionRequestDecisionEnum,
+  CapaDecisionRequestRequest,
+  api_NCRs_decide_create_Body,
   NotificationEventTypeCatalog,
   OrderProjectionStateEnum,
   OrderProjection,
@@ -31660,8 +31876,6 @@ export const schemas = {
   MeasurementResultRequest,
   QualityReportsRequest,
   PatchedQualityReportsRequest,
-  CapaDecisionRequestDecisionEnum,
-  CapaDecisionRequestRequest,
   CurrentStateEnum,
   DispositionTypeEnum,
   DispositionAffectedPart,
@@ -38236,7 +38450,8 @@ Response:
     method: "get",
     path: "/api/dashboard/ncr-trend/",
     alias: "api_dashboard_ncr_trend_retrieve",
-    description: `Get NCR (failed inspections) created/closed trend over time.
+    description: `NCRs opened and closed per day. Both sides count NCRs — a failed load or a
+multi-part NCR is one, however many reports or decisions it holds.
 
 Query params:
     days (optional): Number of days to include (default: 30)
@@ -45974,6 +46189,319 @@ import/export, one sheet of milestones.`,
   },
   {
     method: "get",
+    path: "/api/NCRs/",
+    alias: "api_NCRs_list",
+    description: `NCRs — the nonconformance, apart from the decisions under it.
+
+Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+the product raises the rest from failed inspections. PATCH edits the header
+(description, severity, containment). Its decisions are made per part through
+&#x60;decide&#x60; (all still waiting, or the parts named), co-signable as a disposition&#x27;s is.
+Not deleted: an NCR is closed by its decisions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "batch_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "capa_decision",
+        type: "Query",
+        schema: z.enum(["DEFERRED", "NOT_REQUIRED", "PROMOTED"]).nullish(),
+      },
+      {
+        name: "capa_decision__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "dispositions__part",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "severity",
+        type: "Query",
+        schema: z.enum(["CRITICAL", "MAJOR", "MINOR"]).optional(),
+      },
+      {
+        name: "state",
+        type: "Query",
+        schema: z.enum(["CLOSED", "OPEN"]).optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+    ],
+    response: PaginatedNCRList,
+  },
+  {
+    method: "post",
+    path: "/api/NCRs/",
+    alias: "api_NCRs_create",
+    description: `NCRs — the nonconformance, apart from the decisions under it.
+
+Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+the product raises the rest from failed inspections. PATCH edits the header
+(description, severity, containment). Its decisions are made per part through
+&#x60;decide&#x60; (all still waiting, or the parts named), co-signable as a disposition&#x27;s is.
+Not deleted: an NCR is closed by its decisions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RaiseNCRRequest,
+      },
+    ],
+    response: NCR,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/NCRs/:id/",
+    alias: "api_NCRs_retrieve",
+    description: `NCRs — the nonconformance, apart from the decisions under it.
+
+Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+the product raises the rest from failed inspections. PATCH edits the header
+(description, severity, containment). Its decisions are made per part through
+&#x60;decide&#x60; (all still waiting, or the parts named), co-signable as a disposition&#x27;s is.
+Not deleted: an NCR is closed by its decisions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+  },
+  {
+    method: "put",
+    path: "/api/NCRs/:id/",
+    alias: "api_NCRs_update",
+    description: `NCRs — the nonconformance, apart from the decisions under it.
+
+Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+the product raises the rest from failed inspections. PATCH edits the header
+(description, severity, containment). Its decisions are made per part through
+&#x60;decide&#x60; (all still waiting, or the parts named), co-signable as a disposition&#x27;s is.
+Not deleted: an NCR is closed by its decisions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: NCRRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+  },
+  {
+    method: "patch",
+    path: "/api/NCRs/:id/",
+    alias: "api_NCRs_partial_update",
+    description: `NCRs — the nonconformance, apart from the decisions under it.
+
+Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+the product raises the rest from failed inspections. PATCH edits the header
+(description, severity, containment). Its decisions are made per part through
+&#x60;decide&#x60; (all still waiting, or the parts named), co-signable as a disposition&#x27;s is.
+Not deleted: an NCR is closed by its decisions.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedNCRRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+  },
+  {
+    method: "post",
+    path: "/api/NCRs/:id/add-parts/",
+    alias: "api_NCRs_add_parts_create",
+    description: `Put more parts on an open NCR: each gets a failed record and a decision under it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: AddPartsToNCRRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/NCRs/:id/capa-decision/",
+    alias: "api_NCRs_capa_decision_create",
+    description: `Record that the NCR needs no CAPA, or that the decision is deferred, with the reason. (CAPA raised is set by the CAPA.)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CapaDecisionRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/NCRs/:id/containment-complete/",
+    alias: "api_NCRs_containment_complete_create",
+    description: `Containment is done: stamps who recorded it and when.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/NCRs/:id/decide/",
+    alias: "api_NCRs_decide_create",
+    description: `Decide the NCR: every part still waiting for a decision, or the parts named. Each part&#x27;s decision is its own disposition&#x27;s. Gated by approve_disposition, co-signable. USE_AS_IS / REPAIR require a customer/design-approval reference.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_NCRs_decide_create_Body,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/NCRs/export/:export_format/",
+    alias: "api_NCRs_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/NCRs/metadata/",
+    alias: "api_NCRs_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
     path: "/api/NotificationEventTypes/",
     alias: "api_NotificationEventTypes_list",
     description: `Returns the EVENT_REGISTRY catalog (event_code, label, description,
@@ -46579,7 +47107,10 @@ personal rules.`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/notifications/rules/tenant/",
@@ -46821,10 +47352,7 @@ Supports &#x60;?customer&#x3D;&lt;uuid&gt;&#x60; to filter to one customer&#x27;
       },
     ],
     response: CustomerSchedule,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/notifications/schedules/customer/:id/",
@@ -51620,7 +52148,10 @@ Lifecycle endpoints:
       },
     ],
     response: ProcessChangeRequest,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/process-change-requests/propose/",
@@ -51984,10 +52515,7 @@ Usage:
       },
     ],
     response: ProcessWithSteps,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Processes_with_steps/:id/submit_for_approval/",
@@ -52456,19 +52984,24 @@ Usage:
         schema: z.array(z.string().uuid()).optional(),
       },
       {
-        name: "capa_decision",
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ncr",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "ncr__capa_decision",
         type: "Query",
         schema: z.enum(["DEFERRED", "NOT_REQUIRED", "PROMOTED"]).nullish(),
       },
       {
-        name: "capa_decision__isnull",
+        name: "ncr__capa_decision__isnull",
         type: "Query",
         schema: z.boolean().optional(),
-      },
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
       },
       {
         name: "offset",
@@ -52714,26 +53247,6 @@ Usage:
     response: z.void(),
   },
   {
-    method: "post",
-    path: "/api/QualityReports/:id/capa-decision/",
-    alias: "api_QualityReports_capa_decision_create",
-    description: `Record that a failed report needs no CAPA, or that the decision is deferred, with the reason. (CAPA raised is set by the CAPA.)`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: CapaDecisionRequestRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: QualityReports,
-  },
-  {
     method: "get",
     path: "/api/QualityReports/export/:export_format/",
     alias: "api_QualityReports_export_retrieve",
@@ -52813,11 +53326,6 @@ Usage:
         schema: z.boolean().optional(),
       },
       {
-        name: "batch_execution",
-        type: "Query",
-        schema: z.string().uuid().optional(),
-      },
-      {
         name: "current_state",
         type: "Query",
         schema: z.enum(["CLOSED", "IN_PROGRESS", "OPEN"]).optional(),
@@ -52850,6 +53358,16 @@ Usage:
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
+      },
+      {
+        name: "ncr",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "ncr__batch_execution",
+        type: "Query",
+        schema: z.string().uuid().optional(),
       },
       {
         name: "offset",
@@ -57031,7 +57549,10 @@ Response:
       },
     ],
     response: StepEquipmentAffinity,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepEquipmentAffinities/:id/",
@@ -57215,10 +57736,7 @@ Response:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutionMeasurements/",
@@ -62716,7 +63234,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: PaginatedTrainingRecordList,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/TrainingRecords/",
@@ -62976,10 +63497,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: ImportStatusResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingRecords/import-template/:template_format/",

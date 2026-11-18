@@ -84,11 +84,11 @@ class DispatcherEscalationTests(TenantContextMixin, TestCase):
         # next_fire_at ≈ now + 900s
         self.assertGreaterEqual(inst.next_fire_at, before + timedelta(seconds=895))
         self.assertLessEqual(inst.next_fire_at, before + timedelta(seconds=910))
-        # source_content_type points at QualityReports
-        from Tracker.models import QualityReports
+        # source_content_type points at the NCR (ncr.opened's source record)
+        from Tracker.models import NCR
         self.assertEqual(
             inst.source_content_type,
-            ContentType.objects.get_for_model(QualityReports),
+            ContentType.objects.get_for_model(NCR),
         )
 
     def test_refire_is_idempotent(self):

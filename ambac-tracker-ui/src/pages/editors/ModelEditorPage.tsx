@@ -114,6 +114,7 @@ const MODEL_API_ENDPOINTS: Record<string, string> = {
     "Error-types": "Error-types",
     ErrorTypes: "Error-types",
     QuarantineDispositions: "QuarantineDispositions",
+    NCRs: "NCRs",
     "Sampling-rules": "Sampling-rules",
     SamplingRules: "Sampling-rules",
     "Sampling-rule-sets": "Sampling-rule-sets",
@@ -270,6 +271,8 @@ export interface ModelEditorProps<T> {
     columns: ColumnDef<T>[];
     renderActions?: (item: T) => React.ReactNode;
     onCreate?: () => void;
+    /** The create button's label, when "New {title}" reads wrong ("Raise NCR"). */
+    createLabel?: string;
     /** Optional injected toolbar content, e.g. file upload form */
     extraToolbarContent?: React.ReactNode;
     /** Optional custom link generator, defaults to `/details/${modelName}/${id}` */
@@ -306,6 +309,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                                               columns,
                                                               renderActions,
                                                               onCreate,
+                                                              createLabel,
                                                               extraToolbarContent,
                                                               generateDetailLink,
                                                               showDetailsLink = true,
@@ -738,7 +742,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                     {extraToolbarContent}
                     {onCreate && canCreate && (
                         <Button onClick={onCreate}>
-                            <Plus className="mr-1 h-4 w-4" /> New {title}
+                            <Plus className="mr-1 h-4 w-4" /> {createLabel ?? `New ${title}`}
                         </Button>
                     )}
                 </div>
@@ -916,7 +920,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                             const options = [{ value: "__all__", label: "All" }, ...(filter.choices ?? [])];
                             return (
                                 <div key={filter.name} className="space-y-1">
-                                    <h3 className="text-xs font-semibold text-muted-foreground">By {filter.display.toLowerCase()}</h3>
+                                    <h3 className="text-xs font-semibold text-muted-foreground">By {filter.display.replace(/\b([A-Z])([a-z])/g, (_m, a: string, b: string) => a.toLowerCase() + b)}</h3>
                                     <ul className="space-y-0.5">
                                         {options.map((o) => {
                                             const on = (current ?? "__all__") === o.value;

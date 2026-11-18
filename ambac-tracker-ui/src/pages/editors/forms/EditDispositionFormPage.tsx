@@ -4,7 +4,7 @@ import { ReasonActionButton } from "@/components/common/ReasonActionButton";
 import { parseDateOnly } from "@/lib/date-only";
 import { MultiPicker } from "@/components/ui/multi-picker";
 import { Combobox } from "@/components/ui/combobox";
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -27,17 +27,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Calendar as CalendarIcon, ChevronDown, Loader2, AlertTriangle, ExternalLink, CheckCircle, FileText, Boxes } from "lucide-react"
+import { ArrowLeft, Calendar as CalendarIcon, Loader2, AlertTriangle, ExternalLink, CheckCircle, FileText, Boxes } from "lucide-react"
 
 import { ReportButton } from "@/components/reports/ReportButton"
 import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog"
@@ -226,8 +223,6 @@ export default function EditDispositionFormPage() {
 
     // Search states for employee filtering
 
-    // Collapsible states
-    const [containmentOpen, setContainmentOpen] = useState(false)
 
     // Values derived from loaded disposition (edit mode). Feeding these to
     // useForm via the `values` prop is what makes shadcn/Radix <Select>s
@@ -281,29 +276,14 @@ export default function EditDispositionFormPage() {
         values: editValues,
     })
 
-    // Expand containment section for CRITICAL severity once disposition loads
-    useEffect(() => {
-        if (mode === "edit" && disposition?.severity === "CRITICAL") {
-            setContainmentOpen(true)
-        }
-    }, [mode, disposition])
-
     const { control, handleSubmit, formState: { isSubmitting }, watch } = form
     const watchDispositionType = watch("disposition_type")
-    const watchSeverity = watch("severity")
     const showCustomerApproval = watchDispositionType === "USE_AS_IS" || watchDispositionType === "REPAIR"
     // What a decision rests on doesn't change after it (the server refuses it): the
     // severity, and the concession unless a new decision is being made with its own.
     const isDecided = mode === "edit" && !!disposition?.disposition_type
     const SEVERITY_RANK = ["MINOR", "MAJOR", "CRITICAL"]
     const concessionLocked = isDecided && watchDispositionType === disposition?.disposition_type
-
-    // Auto-expand containment section when severity changes to CRITICAL
-    useEffect(() => {
-        if (watchSeverity === "CRITICAL") {
-            setContainmentOpen(true)
-        }
-    }, [watchSeverity])
 
     // Display label for an employee. Prefer the server-computed full_name
     // (which already falls back to username/email), so users without a
@@ -336,7 +316,12 @@ export default function EditDispositionFormPage() {
     // Once decided, the concession is Decide's (it records the reference with the
     // decision) and isn't echoed back either.
     const savePatch = async (values: FormValues) => {
-        const { disposition_type, current_state, ...all } = values
+        // What is wrong — description, severity, containment — is the NCR's, edited on
+        // its page; an edit here sends only the disposition's own fields.
+        const {
+            disposition_type, current_state, description: _desc, severity: _sev,
+            containment_action: _ca, containment_completed: _cc, containment_performed_by: _cp, ...all
+        } = values
         const {
             requires_customer_approval: _r, customer_approval_received: _c,
             customer_approval_reference: _ref, customer_approval_date: _d, ...undecided
@@ -354,17 +339,8 @@ export default function EditDispositionFormPage() {
         }
     }
 
-    // A failed batch load's disposition (no part of its own): the decision applies to
-    // the whole load, or to the held parts chosen here (user decision 2026-11-05). Each
-    // chosen part gets its own disposition; the rest stay held until decided.
-    const isLoad = mode === "edit" && !!disposition?.batch_execution && !disposition?.part
-    const waitingParts = (disposition?.affected_parts ?? []).filter((p) => p.awaiting_decision)
-    const [loadScope, setLoadScope] = useState<"whole" | "choose">("whole")
-    const [chosenParts, setChosenParts] = useState<string[]>([])
-    const toggleChosen = (id: string, on: boolean) =>
-        setChosenParts((prev) => on ? [...prev, id] : prev.filter((x) => x !== id))
-    // Only parts still waiting can be chosen — drop any decided since they were ticked.
-    const chosenWaiting = chosenParts.filter((id) => waitingParts.some((p) => String(p.id) === id))
+    // The NCR's other parts — this disposition's own part is the page itself.
+    const alsoOnNcr = (disposition?.affected_parts ?? []).filter((p) => String(p.id) !== String(disposition?.part ?? ""))
 
     // Authorize the disposition_type decision via the co-signable `decide` action.
     const authorizeDecision = async (values: FormValues, cosign?: { email: string; password: string }, note?: string) => {
@@ -377,21 +353,12 @@ export default function EditDispositionFormPage() {
         if (!dispositionType) {
             throw new Error("authorizeDecision called without a disposition_type")
         }
-        // A severity chosen with the first decision is saved before it: once decided,
-        // severity may only rise.
-        if (!disposition?.disposition_type && values.severity && values.severity !== disposition?.severity) {
-            await api.api_QuarantineDispositions_partial_update({ severity: values.severity }, {
-                params: { id: dispositionId! },
-                headers: csrf(),
-            })
-        }
         return api.api_QuarantineDispositions_decide_create({
             disposition_type: dispositionType,
             customer_approval_reference: values.customer_approval_reference || undefined,
             customer_approval_date: values.customer_approval_date || undefined,
             ...(note ? { notes: note } : {}),
             ...(cosign ? { cosign_email: cosign.email, cosign_password: cosign.password } : {}),
-            ...(isLoad && loadScope === "choose" ? { parts: chosenWaiting } : {}),
         }, { params: { id: dispositionId! }, headers: csrf() })
     }
 
@@ -403,10 +370,6 @@ export default function EditDispositionFormPage() {
     const onSubmit = async (values: FormValues) => {
         const changing = mode === "edit" && !!values.disposition_type
             && values.disposition_type !== disposition?.disposition_type
-        if (changing && isLoad && loadScope === "choose" && chosenWaiting.length === 0) {
-            toast.error("Choose the parts this decision is for, or decide the whole load.")
-            return
-        }
         if (changing && values.disposition_type === "SCRAP") {
             setDecisionGate({ values, kind: "scrap" })
             return
@@ -545,7 +508,7 @@ export default function EditDispositionFormPage() {
                             <ReportButton
                                 reportType="ncr_report"
                                 label="NCR Report"
-                                params={{ id: dispositionId }}
+                                params={{ id: String(disposition?.ncr ?? dispositionId) }}
                             />
                             {/* The removable tag for the held part itself (ISO 9001 8.7.1);
                                 its permanent label carries no status. */}
@@ -590,7 +553,7 @@ export default function EditDispositionFormPage() {
                                                 <AlertTitle>3D Annotations Required</AlertTitle>
                                                 <AlertDescription className="space-y-2">
                                                     <p>
-                                                        {disposition.annotation_status.pending_count} quality report(s) require 3D annotations
+                                                        {disposition.annotation_status.pending_count} inspection record(s) require 3D annotations
                                                         before this disposition can be closed.
                                                     </p>
                                                     <Link to="/annotator" search={{ reports: (disposition.quality_reports ?? []).map(String).join(",") || undefined }}>
@@ -656,62 +619,31 @@ export default function EditDispositionFormPage() {
                                             />
                                         </div>
 
-                                        {/* A failed load: the decision is for the whole load or the parts
-                                            chosen here; each gets its own disposition, and parts not
-                                            chosen stay held until decided. */}
-                                        {isLoad && (
-                                            <div className="space-y-2 rounded-md border p-3">
-                                                <p className="text-sm font-medium">Applies to</p>
-                                                {waitingParts.length === 0 ? (
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Every held part in this load has a decision. Change a part's
-                                                        decision on its own disposition (listed under Affected Load).
-                                                    </p>
-                                                ) : (
-                                                    <>
-                                                        <RadioGroup
-                                                            value={loadScope}
-                                                            onValueChange={(v) => setLoadScope(v as "whole" | "choose")}
-                                                            className="flex gap-6"
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <RadioGroupItem value="whole" id="load-scope-whole" />
-                                                                <Label htmlFor="load-scope-whole">
-                                                                    Whole load ({waitingParts.length} held part{waitingParts.length === 1 ? "" : "s"})
-                                                                </Label>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <RadioGroupItem value="choose" id="load-scope-choose" />
-                                                                <Label htmlFor="load-scope-choose">Choose parts</Label>
-                                                            </div>
-                                                        </RadioGroup>
-                                                        {loadScope === "choose" && (
-                                                            <div className="grid gap-1.5 pt-1 sm:grid-cols-2">
-                                                                {waitingParts.map((p) => (
-                                                                    <div key={p.id} className="flex items-center gap-2">
-                                                                        <Checkbox
-                                                                            id={`load-part-${p.id}`}
-                                                                            checked={chosenWaiting.includes(String(p.id))}
-                                                                            onCheckedChange={(on) => toggleChosen(String(p.id), on === true)}
-                                                                        />
-                                                                        <Label htmlFor={`load-part-${p.id}`} className="font-mono text-xs">
-                                                                            {p.erp_id}
-                                                                        </Label>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Each part gets its own disposition with this decision.
-                                                            {loadScope === "choose" && " Parts not chosen stay held until they're decided."}
-                                                        </p>
-                                                    </>
+                                        {/* The NCR this decides part of: what's wrong is said there. */}
+                                        {mode === "edit" && disposition?.ncr && (
+                                            <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium">Decides part of</span>
+                                                    <Link to="/quality/ncrs/$ncrId" params={{ ncrId: String(disposition.ncr) }}
+                                                          className="font-mono text-primary underline-offset-2 hover:underline">
+                                                        {disposition.ncr_number}
+                                                    </Link>
+                                                    <Badge variant="outline">{disposition.severity_display}</Badge>
+                                                </div>
+                                                {disposition.description && (
+                                                    <p className="whitespace-pre-wrap text-muted-foreground">{disposition.description}</p>
                                                 )}
+                                                <p className="text-xs text-muted-foreground">
+                                                    {disposition.containment_completed_at
+                                                        ? `Containment recorded by ${disposition.containment_completed_by_name || "—"}.`
+                                                        : "Containment not recorded yet."}
+                                                    {" "}What's wrong, its severity and containment are edited on the NCR.
+                                                </p>
                                             </div>
                                         )}
 
-                                        {/* Severity */}
-                                        <FormField
+                                        {/* Severity — heads a new NCR when this opens one */}
+                                        {mode === "create" && (<FormField
                                             control={control}
                                             name="severity"
                                             render={({ field }) => (
@@ -737,14 +669,13 @@ export default function EditDispositionFormPage() {
                                                         </SelectContent>
                                                     </Select>
                                                     <FormDescription>
-                                                        {isDecided
-                                                            ? "Decided at this severity: it can be raised, not lowered."
-                                                            : "Severity classification of the nonconformance"}
+                                                        For a new NCR. A part or report already on an open NCR goes under it,
+                                                        and its NCR's severity stands.
                                                     </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
-                                        />
+                                        />)}
 
                                         {/* Assigned To */}
                                         <FormField
@@ -768,109 +699,21 @@ export default function EditDispositionFormPage() {
                                             )}
                                         />
 
-                                        {/* Description */}
-                                        <FormField
+                                        {/* Description — heads a new NCR when this opens one */}
+                                        {mode === "create" && (<FormField
                                             control={control}
                                             name="description"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel required={required.description}>Description</FormLabel>
+                                                    <FormLabel required={required.description}>What's wrong</FormLabel>
                                                     <FormControl>
                                                         <Textarea placeholder="Describe the nonconformance..." className="resize-none" {...field} />
                                                     </FormControl>
+                                                    <FormDescription>For a new NCR, as severity is.</FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
-                                        />
-
-                                        {/* Containment Section */}
-                                        <Collapsible open={containmentOpen} onOpenChange={setContainmentOpen}>
-                                            <CollapsibleTrigger asChild>
-                                                <Button variant="ghost" className="w-full justify-between p-2 h-auto">
-                                                    <span className="font-medium">Containment Action</span>
-                                                    <ChevronDown className={cn("h-4 w-4 transition-transform", containmentOpen && "rotate-180")} />
-                                                </Button>
-                                            </CollapsibleTrigger>
-                                            <CollapsibleContent className="space-y-4 pt-2">
-                                                <FormField
-                                                    control={control}
-                                                    name="containment_action"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Containment Action Taken</FormLabel>
-                                                            <FormControl>
-                                                                <Textarea
-                                                                    placeholder="Describe immediate containment action (e.g., segregated parts, stopped production)..."
-                                                                    className="resize-none"
-                                                                    {...field}
-                                                                />
-                                                            </FormControl>
-                                                            <FormDescription>
-                                                                Immediate action taken to prevent defect escape (IATF 16949 requirement)
-                                                            </FormDescription>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <FormField
-                                                        control={control}
-                                                        name="containment_performed_by"
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex flex-col">
-                                                                <FormLabel>Performed by <span className="text-muted-foreground">(if not you)</span></FormLabel>
-                                                                <FormControl>
-                                                                    <Combobox
-                                                                        value={field.value == null ? null : String(field.value)}
-                                                                        onChange={(v) => field.onChange(v ? Number(v) : null)}
-                                                                        options={employees.map((emp) => ({ value: String(emp.id), label: empLabel(emp) }))}
-                                                                        placeholder="Select employee"
-                                                                        searchPlaceholder="Search..."
-                                                                        emptyText="No employees found."
-                                                                        clearLabel="Nobody else"
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    {disposition?.containment_completed_at ? (
-                                                        <div className="flex flex-col justify-end text-sm text-muted-foreground">
-                                                            Containment recorded by {disposition.containment_completed_by_name ?? "—"} on{" "}
-                                                            {format(new Date(disposition.containment_completed_at), "PPP")}
-                                                        </div>
-                                                    ) : (
-                                                        <FormField
-                                                            control={control}
-                                                            name="containment_completed"
-                                                            render={({ field }) => (
-                                                                <FormItem className="flex flex-row items-end space-x-3 space-y-0 pb-2">
-                                                                    <FormControl>
-                                                                        <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} />
-                                                                    </FormControl>
-                                                                    <div className="space-y-1 leading-none">
-                                                                        <FormLabel>Containment complete</FormLabel>
-                                                                        <FormDescription>Records you, and now, as having recorded it.</FormDescription>
-                                                                    </div>
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                    )}
-                                                </div>
-                                                {/* Document upload for containment evidence */}
-                                                {mode === "edit" && dispositionId && dispositionContentType && (
-                                                    <div className="pt-2 border-t">
-                                                        <DocumentUploader
-                                                            objectId={dispositionId}
-                                                            contentType={String(dispositionContentType.id)}
-                                                            documentTypeCode="CONT_EVD"
-                                                            title="Attach Containment Evidence"
-                                                            compact
-                                                        />
-                                                    </div>
-                                                )}
-                                            </CollapsibleContent>
-                                        </Collapsible>
+                                        />)}
 
                                         {/* Customer Approval Section */}
                                         {showCustomerApproval && (
@@ -1043,9 +886,9 @@ export default function EditDispositionFormPage() {
                                             name="quality_reports"
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-col">
-                                                    <FormLabel required={required.quality_reports}>Quality Reports</FormLabel>
+                                                    <FormLabel required={required.quality_reports}>Inspection Records</FormLabel>
                                                     <MultiPicker
-                                                        label="Quality reports"
+                                                        label="Inspection records"
                                                         hideLabel
                                                         items={qualityReports.map((qr) => ({
                                                             id: qr.id,
@@ -1059,9 +902,9 @@ export default function EditDispositionFormPage() {
                                                         selected={field.value ?? []}
                                                         onChange={field.onChange}
                                                         onSearch={setQualityReportSearch}
-                                                        placeholder="Select quality reports"
-                                                        searchPlaceholder="Search quality reports..."
-                                                        emptyHint="No quality reports found."
+                                                        placeholder="Select inspection records"
+                                                        searchPlaceholder="Search inspection records..."
+                                                        emptyHint="No inspection records found."
                                                     />
                                                     <FormMessage />
                                                 </FormItem>
@@ -1121,51 +964,39 @@ export default function EditDispositionFormPage() {
                             </Card>
                         )}
 
-                        {/* Affected Load Card — a batch disposition covers a whole
-                            cycle's load, not one part; show the members and which are held. */}
-                        {mode === "edit" && disposition?.batch_execution && (
+                        {/* The other parts on this disposition's NCR, each with its own decision. */}
+                        {mode === "edit" && alsoOnNcr.length > 0 && (
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm flex items-center gap-2">
                                         <Boxes className="h-4 w-4" />
-                                        Affected Load
+                                        Also on {disposition?.ncr_number}
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Cycle step:</span>
-                                        <span>{(disposition.step_info as { name?: string } | null)?.name ?? "—"}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Parts in load:</span>
-                                        <span>{disposition.affected_parts?.length ?? 0}</span>
-                                    </div>
-                                    <div className="space-y-1 pt-1">
-                                        {(disposition.affected_parts ?? []).map((p) => (
-                                            <div key={p.id} className="flex justify-between items-center gap-2 rounded bg-muted/40 px-2 py-1">
-                                                <span className="font-mono text-xs">{p.erp_id}</span>
-                                                <div className="flex items-center gap-1.5">
-                                                    {/* The part's own disposition, once the load's decision reached it. */}
-                                                    {p.disposition_id && (
-                                                        <Link
-                                                            to="/production/dispositions/$id/edit"
-                                                            params={{ id: String(p.disposition_id) }}
-                                                            className="text-xs underline-offset-2 hover:underline"
-                                                        >
-                                                            {p.disposition_number}
-                                                            {p.disposition_type ? ` · ${dispositionTypeLabels[p.disposition_type] ?? p.disposition_type}` : ""}
-                                                        </Link>
-                                                    )}
-                                                    <Badge
-                                                        variant={p.part_status === "QUARANTINED" ? "destructive" : "outline"}
-                                                        className="text-xs"
+                                <CardContent className="space-y-1 text-sm">
+                                    {alsoOnNcr.map((p) => (
+                                        <div key={p.id} className="flex justify-between items-center gap-2 rounded bg-muted/40 px-2 py-1">
+                                            <span className="font-mono text-xs">{p.erp_id}</span>
+                                            <div className="flex items-center gap-1.5">
+                                                {p.disposition_id && (
+                                                    <Link
+                                                        to="/production/dispositions/$id/edit"
+                                                        params={{ id: String(p.disposition_id) }}
+                                                        className="text-xs underline-offset-2 hover:underline"
                                                     >
-                                                        {p.awaiting_decision ? "Held — awaiting decision" : p.part_status?.replace(/_/g, " ")}
-                                                    </Badge>
-                                                </div>
+                                                        {p.disposition_number}
+                                                        {p.disposition_type ? ` · ${dispositionTypeLabels[p.disposition_type] ?? p.disposition_type}` : ""}
+                                                    </Link>
+                                                )}
+                                                <Badge
+                                                    variant={p.part_status === "QUARANTINED" ? "destructive" : "outline"}
+                                                    className="text-xs"
+                                                >
+                                                    {p.awaiting_decision ? "Awaiting decision" : p.part_status?.replace(/_/g, " ")}
+                                                </Badge>
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    ))}
                                 </CardContent>
                             </Card>
                         )}
@@ -1174,7 +1005,7 @@ export default function EditDispositionFormPage() {
                         {mode === "edit" && disposition?.quality_reports && disposition.quality_reports.length > 0 && (
                             <Card>
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm">Quality Reports ({disposition.quality_reports.length})</CardTitle>
+                                    <CardTitle className="text-sm">Inspection Records ({disposition.quality_reports.length})</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
                                     {disposition.quality_reports.map((qrId: string) => {
@@ -1183,7 +1014,7 @@ export default function EditDispositionFormPage() {
                                         // UUID; the UUID is all we have if the QR isn't in the
                                         // currently-loaded (search-limited) list, but we can still
                                         // link by id.
-                                        const label = qr?.report_number ?? "Quality report"
+                                        const label = qr?.report_number ?? "Inspection record"
                                         return (
                                             <Link
                                                 key={qrId}

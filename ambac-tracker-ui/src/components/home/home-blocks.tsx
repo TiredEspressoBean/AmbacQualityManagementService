@@ -922,7 +922,7 @@ function NcrAgingBlock() {
                     NCR aging
                     <Badge variant="secondary" className="ml-1">{total}</Badge>
                     {overdue > 0 && <Badge variant="destructive">{overdue} overdue</Badge>}
-                    <Link to="/quality/ncrs" className="ml-auto">
+                    <Link to="/quality/ncr-analysis" className="ml-auto">
                         <Button size="sm" variant="ghost">Analyze <ArrowRight className="ml-1 h-4 w-4" /></Button>
                     </Link>
                 </CardTitle>

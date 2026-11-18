@@ -24,7 +24,9 @@ const SEVERITY_VALUES = ['minor', 'major', 'critical'] as const;
 
 export const PAYLOAD_SCHEMAS: Record<string, PayloadField[]> = {
     'ncr.opened': [
-        { name: 'part_number', type: 'string', description: 'Part affected', label: 'Part number' },
+        { name: 'ncr_number', type: 'string', description: 'NCR identifier', label: 'NCR number' },
+        { name: 'part_number', type: 'string', description: 'The part — or "3 parts", "Lot X" when it covers more', label: 'Part number' },
+        { name: 'part_count', type: 'number', description: 'How many parts the NCR covers', label: 'Part count' },
         { name: 'work_order_number', type: 'string', description: 'Work order number', label: 'Work order' },
         { name: 'step_name', type: 'string', description: 'Step where NCR opened', label: 'Step' },
         { name: 'severity', type: 'string', description: 'NCR severity', enum: SEVERITY_VALUES, label: 'Severity' },

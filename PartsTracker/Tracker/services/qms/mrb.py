@@ -76,17 +76,22 @@ def open_for_failure(part, *, failed_step):
 def _hold(part, from_step, description, *, supersede_rework=False):
     import logging
     from Tracker.models import PartsStatus, QualityReports, QuarantineDisposition
+    from Tracker.services.qms.ncr import open_ncr_for_part, raise_ncr
 
     part.part_status = PartsStatus.QUARANTINED
     part.save(update_fields=['part_status'])
-    disposition = QuarantineDisposition.objects.create(
-        tenant=part.tenant, part=part, step=part.step, assigned_to=None,
-        escalated_from_step=from_step, description=description)
     # The evidence: the last failed report on the part, which is what sent it round
     # the loop that ran out. A disposition is about a finding, and the edit form
     # rightly refuses one with none (MRB walk 2026-10-22).
     last_fail = (QualityReports.objects  # tenant-safe: scoped by the part FK
                  .filter(part=part, status='FAIL').order_by('-created_at').first())
+    # The same nonconformance, still open: the escalation is one more decision on it.
+    ncr = open_ncr_for_part(part) or raise_ncr(
+        tenant=part.tenant, description=description, step=from_step, work_order=part.work_order,
+        reports=[last_fail] if last_fail is not None else [])
+    disposition = QuarantineDisposition.objects.create(
+        tenant=part.tenant, part=part, step=part.step, assigned_to=None, ncr=ncr,
+        escalated_from_step=from_step, resolution_notes=description)
     if last_fail is not None:
         disposition.quality_reports.add(last_fail)
     # The rework decision this escalation ends: its part never returns to the check

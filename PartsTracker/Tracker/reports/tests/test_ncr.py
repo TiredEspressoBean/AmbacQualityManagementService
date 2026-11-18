@@ -17,6 +17,7 @@ from Tracker.reports.services.pdf_generator import (
     ReportParamError,
 )
 from Tracker.reports.tests.base import ReportAdapterTestMixin
+from Tracker.tests.base import make_disposition
 
 
 class TestNcrAdapter(ReportAdapterTestMixin, SimpleTestCase):
@@ -88,7 +89,7 @@ class NcrAdapterCrossTenantTests(TestCase):
         )
 
         # tenant-safe: tests deliberately create cross-tenant rows
-        cls.qd_in_b = QuarantineDisposition.unscoped.create(
+        cls.qd_in_b = make_disposition(
             tenant=cls.tenant_b,
             disposition_number="DISP-TEST-B-0001",
             current_state="OPEN",

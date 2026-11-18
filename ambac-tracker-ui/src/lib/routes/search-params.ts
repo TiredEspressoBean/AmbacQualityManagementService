@@ -78,6 +78,13 @@ export type ProcessFlowSearchParams = z.infer<typeof ProcessFlowSearch>;
  *  and nothing to go stale. A value outside it is dropped instead of forwarded
  *  into a 400 that renders as "Couldn't load capas" over a filter the user
  *  never typed. */
+/** `/quality/ncrs/new` — parts to raise it over, comma-separated ids (WO control's
+ *  "Raise NCR" passes the parts it has selected). */
+export const CreateNcrSearch = z.object({
+    parts: z.string().optional().catch(undefined),
+});
+export type CreateNcrSearchParams = z.infer<typeof CreateNcrSearch>;
+
 export const CapaListSearch = z.object({
     supplier: z.string().uuid().optional().catch(undefined),
     capa_type: schemas.CapaTypeEnum.optional().catch(undefined),

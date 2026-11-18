@@ -89,6 +89,7 @@ from .qms import (
     QualityReportViewSet,
     ErrorTypeViewSet,
     QuarantineDispositionViewSet,
+    NCRViewSet,
     SupplierQualificationViewSet,
     PartApprovalViewSet,
 
@@ -351,6 +352,7 @@ __all__ = [
     'QualityReportViewSet',
     'ErrorTypeViewSet',
     'QuarantineDispositionViewSet',
+    'NCRViewSet',
     'SupplierQualificationViewSet',
     'PartApprovalViewSet',
 

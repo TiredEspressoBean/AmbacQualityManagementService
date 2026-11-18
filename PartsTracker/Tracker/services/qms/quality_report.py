@@ -114,7 +114,7 @@ def record_quality_report_side_effects(report) -> None:
 def on_report_failed(report, prior_status) -> bool:
     """Run the FAIL consequences when `report` has just moved into FAIL from
     `prior_status` — the same ones a report created at FAIL gets: sampling state and
-    fallback, quarantine of the part, the step-failure notification, ncr.opened.
+    fallback, quarantine of the part, the step-failure notification.
     Returns True when it ran. No-op when the report was already FAIL or isn't now."""
     if prior_status == "FAIL" or report.status != "FAIL":
         return False
@@ -144,7 +144,7 @@ def _apply_fail_consequences(report) -> None:
             report.part.part_status = PartsStatus.QUARANTINED
             report.part.save(update_fields=["part_status"])
         _notify_step_failure(report)
-    _emit_ncr_opened(report)
+    # ncr.opened is the NCR's, sent once when it's raised (services/qms/ncr.announce).
 
 
 def _notify_step_failure(report) -> None:
@@ -199,55 +199,13 @@ _SEVERITY_RANK = {'MINOR': 1, 'MAJOR': 2, 'CRITICAL': 3}
 
 
 def report_severity(report) -> str:
-    """An NCR's severity: the worst defect recorded on the report, CRITICAL > MAJOR >
+    """A failure's severity: the worst defect recorded on the report, CRITICAL > MAJOR >
     MINOR. A failure with no defect recorded (an out-of-spec reading) is MAJOR — the
-    disposition's own default. Not the report's PASS/FAIL status, which the ncr.opened
-    payload used to carry as its severity (doc audit 2026-11-17)."""
+    NCR's own default. Not the report's PASS/FAIL status, which the ncr.opened payload
+    used to carry as its severity (doc audit 2026-11-17). An NCR raised from a report
+    starts at it."""
     found = list(report.defects.values_list('severity', flat=True)) if report.pk else []
     return max(found, key=lambda s: _SEVERITY_RANK.get(s, 0)) if found else 'MAJOR'
-
-
-def _emit_ncr_opened(report) -> None:
-    """Fire `ncr.opened` on the new unified notification path.
-
-    Parallels the legacy `_notify_step_failure` until Phase 5 removes that.
-    The new path is rule-resolution-free in Phase 1 (one ConsoleChannel row);
-    Phase 3 adds per-tenant/per-customer/per-user rules.
-    """
-    from Tracker.services.core.notifications import emit
-    from Tracker.services.qms.events import NCROpenedPayload
-
-    part = report.part
-    work_order = part.work_order if part else None
-    step = report.step
-    opener = report.primary_detector
-
-    payload = NCROpenedPayload(
-        id=str(report.id),
-        tenant_id=str(report.tenant_id) if report.tenant_id else '',
-        part_id=str(part.id) if part else None,
-        part_number=part.ERP_id if part else '',
-        work_order_id=str(work_order.id) if work_order else None,
-        work_order_number=work_order.ERP_id if work_order else '',
-        step_id=str(step.id) if step else None,
-        step_name=step.name if step else '',
-        severity=report_severity(report),
-        status=report.status,
-        description=report.description or '',
-        opened_by_id=opener.pk if opener else None,
-        opened_by_name=(opener.get_full_name() or opener.username) if opener else '',
-        opened_at=report.created_at,
-    )
-
-    # Use a stable idempotency key tied to the source record so retries of
-    # the create-side-effects flow (e.g. on partial commit) don't double-emit.
-    emit(
-        'ncr.opened',
-        tenant=report.tenant,
-        payload=payload,
-        correlation_id=f"qualityreport:{report.id}",
-        idempotency_key=f"ncr.opened:qualityreport:{report.id}",
-    )
 
 
 # ---------------------------------------------------------------------------

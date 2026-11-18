@@ -66,6 +66,7 @@ class Command(BaseCommand):
         'Tracker_qualityreports',
         'Tracker_qualityerrorslist',
         'Tracker_quarantinedisposition',
+        'Tracker_ncr',
         'Tracker_qaapproval',
 
         # QMS - Supplier quality / approvals / gates

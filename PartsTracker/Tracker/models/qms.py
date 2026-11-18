@@ -508,16 +508,9 @@ class QualityReports(SecureModel):
                   "never both.",
     )
 
-    # === CAPA DECISION ===
-    # The quality manager's call on a failed report: raise a CAPA, or not, and why.
-    # An NCR nobody promoted must be distinguishable from one nobody looked at, so
-    # null (undecided) is meaningful and nothing defaults it. Set only through
-    # services/qms/capa_decision.py; PROMOTED is stamped when a CAPA links the report.
-    capa_decision = models.CharField(max_length=20, choices=CAPA_DECISION_CHOICES, null=True, blank=True)
-    capa_decision_note = models.TextField(blank=True, default='')
-    capa_decided_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='capa_decisions')
-    capa_decided_at = models.DateTimeField(null=True, blank=True)
+    # The NCR a failed record belongs to (services/qms/ncr.py — every FAIL has one).
+    # Whether it needed a CAPA is decided on the NCR.
+    ncr = models.ForeignKey('NCR', on_delete=models.PROTECT, null=True, blank=True, related_name='reports')
 
     class Meta:
         # Was 'Error Report', a legacy name nothing else uses; it leaked into the
@@ -866,13 +859,102 @@ class QaApproval(SecureModel):
     """Where the signature came from."""
 
 
+class NCR(SecureModel):
+    """A nonconformance: what is wrong, where it was found, how it was contained and
+    whether it needs a CAPA. What is DECIDED about each thing it covers is a
+    QuarantineDisposition under it — one per part (or per rejected lot quantity).
+
+    Every failed inspection record belongs to one (services/qms/ncr.py): a single part's
+    failure is an NCR with one part, a failed batch load or first-piece run is one NCR
+    over its parts, and a person can raise one over parts they pick. A part that fails
+    again while its NCR is open joins it. Open while anything under it is undecided or
+    not yet done; closes when every disposition under it is closed.
+    """
+
+    STATE_CHOICES = [('OPEN', 'Open'), ('CLOSED', 'Closed')]
+    SEVERITY_CHOICES = [
+        ('CRITICAL', 'Critical'),   # Safety/regulatory, requires special handling
+        ('MAJOR', 'Major'),         # Affects function, correctable
+        ('MINOR', 'Minor'),         # Cosmetic, no function impact
+    ]
+
+    ncr_number = models.CharField(max_length=20, editable=False)
+    state = models.CharField(max_length=10, choices=STATE_CHOICES, default='OPEN')
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    description = models.TextField(blank=True)
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='MAJOR')
+
+    # Where it was found. The parts' own dispositions keep the step each part is held
+    # at, which routing reads; this is the header.
+    step = models.ForeignKey('Steps', on_delete=models.PROTECT, null=True, blank=True, related_name='ncrs')
+    work_order = models.ForeignKey('WorkOrder', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='ncrs')
+    # A failed batch cycle: the NCR covers the load.
+    batch_execution = models.ForeignKey(
+        'Tracker.BatchExecution', on_delete=models.PROTECT, null=True, blank=True, related_name='ncrs')
+    raised_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='ncrs_raised')
+
+    # Containment: the immediate action taken to prevent escape. Recorded once, for
+    # everything the nonconformance covers. *_completed_by / *_at are who RECORDED it
+    # (server-stamped); *_performed_by is who physically did it, when someone else
+    # (user decision 2026-10-07).
+    containment_action = models.TextField(blank=True, help_text="Immediate action taken to prevent escape")
+    containment_completed_at = models.DateTimeField(null=True, blank=True)
+    containment_completed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='ncr_containments')
+    containment_performed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        help_text="Who carried out the containment, if not the person recording it.")
+
+    # Whether it needed a CAPA (services/qms/capa_decision.py). Null = undecided, which
+    # nothing defaults: an NCR nobody promoted must be distinguishable from one nobody
+    # looked at. PROMOTED is stamped when a CAPA links it.
+    capa_decision = models.CharField(max_length=20, choices=CAPA_DECISION_CHOICES, null=True, blank=True,
+                                     verbose_name='CAPA decision')
+    capa_decision_note = models.TextField(blank=True, default='')
+    capa_decided_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='ncr_capa_decisions')
+    capa_decided_at = models.DateTimeField(null=True, blank=True)
+
+    documents = GenericRelation('Documents')
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'NCR'
+        verbose_name_plural = 'NCRs'
+        constraints = [
+            models.UniqueConstraint(fields=['tenant', 'ncr_number'], name='ncr_tenant_number_uniq'),
+        ]
+        indexes = [
+            models.Index(fields=['state', 'created_at'], name='ncr_state_created_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.ncr_number} - {self.get_state_display()}"
+
+    def save(self, *args, **kwargs):
+        if not self.ncr_number:
+            from Tracker.utils.sequences import generate_next_sequence
+            # Numbered within its own tenant: with the tenant known, scope by it rather
+            # than by the request's context (a beat task or fixture has none).
+            self.ncr_number = generate_next_sequence(
+                queryset=NCR.unscoped if self.tenant_id else NCR.objects,  # tenant-safe: filtered by tenant below
+                number_field='ncr_number',
+                prefix=f'NCR-{timezone.now().year}-', padding=6,
+                tenant=self.tenant if self.tenant_id else None)
+        super().save(*args, **kwargs)
+
+
 class QuarantineDisposition(SecureModel):
     """
-    Disposition workflow for failed quality reports.
+    The decision on one thing an NCR covers: a part, or a quantity of a rejected lot.
 
     Tracks the workflow for handling quarantined parts including rework, repair, scrap,
     use-as-is, and return-to-supplier decisions. Supports AS9100D and IATF 16949 requirements
-    for automotive, aerospace, and remanufacturing industries.
+    for automotive, aerospace, and remanufacturing industries. What is wrong — the
+    description, severity and containment — is the NCR's (`ncr`).
     """
 
     STATE_CHOICES = [('OPEN', 'Open'), ('IN_PROGRESS', 'In Progress'), ('CLOSED', 'Closed'), ]
@@ -888,43 +970,27 @@ class QuarantineDisposition(SecureModel):
         ('NOT_NONCONFORMANCE', 'Not a nonconformance'),
     ]
 
-    SEVERITY_CHOICES = [
-        ('CRITICAL', 'Critical'),   # Safety/regulatory, requires special handling
-        ('MAJOR', 'Major'),         # Affects function, correctable
-        ('MINOR', 'Minor'),         # Cosmetic, no function impact
-    ]
-
     # Basic fields
     disposition_number = models.CharField(max_length=20, editable=False)
     current_state = models.CharField(max_length=15, choices=STATE_CHOICES, default='OPEN')
     disposition_type = models.CharField(max_length=20, choices=DISPOSITION_TYPES, blank=True)
-    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='MAJOR')
 
-    # QA workflow
+    # The nonconformance this decides part of. Null only on rows made outside the
+    # product's paths (services/qms/ncr.py puts every disposition under one).
+    ncr = models.ForeignKey(NCR, on_delete=models.PROTECT, null=True, blank=True, related_name='dispositions')
+
+    # QA workflow: the decision is the work item QA takes.
     assigned_to = models.ForeignKey(User, on_delete=models.PROTECT, related_name='assigned_dispositions', null=True,
                                     blank=True)
     due_date = models.DateField(
         null=True, blank=True,
         help_text="Target resolution date - drives the due dot on quality inboxes")
-    description = models.TextField(blank=True)
-    resolution_notes = models.TextField(blank=True)
-
-    # Containment tracking (immediate action taken to prevent escape)
-    containment_action = models.TextField(blank=True, help_text="Immediate action taken to prevent escape")
-    containment_completed_at = models.DateTimeField(null=True, blank=True)
-    containment_completed_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='containment_actions'
-    )
     # *_completed_by / *_at record who RECORDED the step, stamped by the server (the
     # logged-in user, now). *_performed_by is who physically did it, when that was
     # someone else (a clerk entering work done on the floor). Kept apart on purpose:
     # the record must say who vouched for it as well as who did it (user decision
     # 2026-10-07).
-    containment_performed_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
-        help_text="Who carried out the containment, if not the person recording it.",
-    )
+    resolution_notes = models.TextField(blank=True)
 
     # Customer approval tracking (simple - airgapped LAN)
     requires_customer_approval = models.BooleanField(default=False)
@@ -979,20 +1045,7 @@ class QuarantineDisposition(SecureModel):
     quantity = models.DecimalField(
         max_digits=12, decimal_places=4, null=True, blank=True,
         help_text="How much is dispositioned, in the lot's stock unit.")
-    batch_execution = models.ForeignKey(
-        'Tracker.BatchExecution', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='dispositions',
-        help_text="Set when this disposition covers a failed batch cycle (the whole "
-                  "load), instead of a single part. Affected parts are the batch's "
-                  "members. Mutually exclusive with `part` in practice.",
-    )
-    load_disposition = models.ForeignKey(
-        'self', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='part_dispositions',
-        help_text="Set on a part's disposition made by deciding a failed load's "
-                  "disposition: the load's disposition it came from.",
-    )
-    step = models.ForeignKey('Steps', on_delete=models.PROTECT, null=True, blank=True, related_name='dispositions')
+    step =models.ForeignKey('Steps', on_delete=models.PROTECT, null=True, blank=True, related_name='dispositions')
     quality_reports = models.ManyToManyField('QualityReports', related_name='dispositions')
     documents = GenericRelation('Documents')
 
@@ -1016,12 +1069,6 @@ class QuarantineDisposition(SecureModel):
         ]
         constraints = [
             models.UniqueConstraint(fields=['tenant', 'disposition_number'], name='disposition_tenant_number_uniq'),
-            # A disposition is scoped to a single part OR a whole batch (the load),
-            # never both. Neither is also valid (lot-reject / general dispositions).
-            models.CheckConstraint(
-                check=~(models.Q(part__isnull=False) & models.Q(batch_execution__isnull=False)),
-                name='disposition_not_both_part_and_batch',
-            ),
         ]
         indexes = [
             models.Index(fields=['current_state', 'created_at'], name='disposition_state_created_idx'),
@@ -1136,31 +1183,22 @@ class QuarantineDisposition(SecureModel):
         if has_pending:
             return False
 
-        # Containment (AS9100, Level 1): a CRITICAL/MAJOR disposition must record a
-        # containment action before it can be completed.
-        # A withdrawn finding (NOT_NONCONFORMANCE) had nothing to contain (re-walk 2026-10-22).
-        if (self.severity in ('CRITICAL', 'MAJOR') and not (self.containment_action or '').strip()
-                and self.disposition_type != 'NOT_NONCONFORMANCE'):
-            return False
+        return not self._needs_containment()
 
-        return True
+    def _needs_containment(self) -> bool:
+        """Containment (AS9100, Level 1): a CRITICAL/MAJOR nonconformance must record a
+        containment action, on its NCR, before a decision under it is completed. A
+        withdrawn finding (NOT_NONCONFORMANCE) had nothing to contain (re-walk 2026-10-22)."""
+        ncr = self.ncr
+        return (ncr is not None and ncr.severity in ('CRITICAL', 'MAJOR')
+                and not (ncr.containment_action or '').strip()
+                and self.disposition_type != 'NOT_NONCONFORMANCE')
 
     def get_completion_blockers(self):
         """Get list of reasons why disposition cannot be completed"""
         blockers = []
 
-        if self.batch_execution_id and not self.part_id:
-            # A failed load's disposition: decided when every held part is, and done when
-            # each part's own disposition is (services/qms/disposition, load section).
-            from Tracker.services.qms.disposition import load_part_dispositions, undecided_load_parts
-            waiting = undecided_load_parts(self)
-            if waiting:
-                blockers.append(f"{len(waiting)} held part(s) in the load still need a decision")
-            still_open = [d for d in load_part_dispositions(self).values()
-                          if d.current_state in ('OPEN', 'IN_PROGRESS')]
-            if still_open:
-                blockers.append(f"{len(still_open)} part disposition(s) from this load are still open")
-        elif not self.disposition_type:
+        if not self.disposition_type:
             blockers.append("No disposition decision selected")
         if self.current_state not in ['OPEN', 'IN_PROGRESS']:
             blockers.append(f"Disposition is {self.get_current_state_display()}, not active")
@@ -1171,11 +1209,9 @@ class QuarantineDisposition(SecureModel):
         if has_pending:
             blockers.append(f"3D annotations required for {len(pending_reports)} quality report(s)")
 
-        # Containment (AS9100, Level 1): high-severity dispositions need containment.
-        # A withdrawn finding (NOT_NONCONFORMANCE) had nothing to contain (re-walk 2026-10-22).
-        if (self.severity in ('CRITICAL', 'MAJOR') and not (self.containment_action or '').strip()
-                and self.disposition_type != 'NOT_NONCONFORMANCE'):
-            blockers.append("Containment action required before closing a CRITICAL/MAJOR disposition")
+        if self._needs_containment():
+            blockers.append(f"Containment action required on {self.ncr.ncr_number} before closing "
+                            f"a decision on a CRITICAL/MAJOR nonconformance")
 
         return blockers
 
@@ -1497,6 +1533,9 @@ class CAPA(SecureModel):
     # Links to triggering issues
     quality_reports = models.ManyToManyField('QualityReports', blank=True, related_name='capas')
     dispositions = models.ManyToManyField('QuarantineDisposition', blank=True, related_name='capas')
+    # The nonconformances it acts on; its affected parts are theirs. Linking a report or
+    # a disposition links its NCR too (services/qms/ncr.link_capa_ncrs).
+    ncrs = models.ManyToManyField('NCR', blank=True, related_name='capas')
 
     # Documents
     documents = GenericRelation('Documents')
@@ -2044,6 +2083,7 @@ class RcaRecord(SecureModel):
     # Links to triggering issues
     quality_reports = models.ManyToManyField('QualityReports', blank=True, related_name='rca_records')
     dispositions = models.ManyToManyField('QuarantineDisposition', blank=True, related_name='rca_records')
+    ncrs = models.ManyToManyField('NCR', blank=True, related_name='rca_records')
 
     class Meta:
         ordering = ['-created_at']

@@ -16,6 +16,7 @@ from Tracker.models import (
     Tenant,
 )
 from Tracker.tests.base import TenantContextMixin, VectorTestCase
+from Tracker.tests.base import make_disposition
 
 
 class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
@@ -41,7 +42,7 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
     def _disposition(self, part, disposition_type):
         # Creating with a disposition_type set auto-transitions OPEN ->
         # IN_PROGRESS in save(), which is what applies the decision to the part.
-        return QuarantineDisposition.objects.create(
+        return make_disposition(
             tenant=self.tenant,
             part=part,
             disposition_type=disposition_type,
@@ -110,7 +111,7 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
     def test_open_disposition_without_type_does_not_change_part(self):
         """Guard: an OPEN disposition with no type set must not touch the part."""
         part = self._make_part("P-OPEN")
-        QuarantineDisposition.objects.create(
+        make_disposition(
             tenant=self.tenant,
             part=part,
             description="open, no disposition type yet",
@@ -158,7 +159,7 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
 
         # Paper backfill: a REWORK NCR is opened after the fact and closed
         # once the rework has already been done and re-inspected.
-        QuarantineDisposition.objects.create(
+        make_disposition(
             tenant=self.tenant, part=part,
             disposition_type="REWORK", current_state="CLOSED",
             description="paper record of already-completed rework arc",
@@ -174,7 +175,7 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
         part.part_status = PartsStatus.IN_PROGRESS
         part.save(update_fields=["part_status"])
 
-        QuarantineDisposition.objects.create(
+        make_disposition(
             tenant=self.tenant, part=part,
             disposition_type="REPAIR", current_state="CLOSED",
             description="repair authorized and completed",
@@ -192,7 +193,7 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
         part.part_status = PartsStatus.AWAITING_QA
         part.save(update_fields=["part_status"])
 
-        QuarantineDisposition.objects.create(
+        make_disposition(
             tenant=self.tenant, part=part,
             disposition_type="SCRAP", current_state="CLOSED",
             description="scrapped despite the part being on the bench",
@@ -237,7 +238,7 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
         part = self._make_part("P-COMPLETE")
         # MINOR severity → no containment requirement, so this stays focused on
         # the close service (containment gating is covered separately, 2f).
-        disp = QuarantineDisposition.objects.create(
+        disp = make_disposition(
             tenant=self.tenant, part=part, disposition_type="USE_AS_IS",
             severity="MINOR", description="close-service test",
         )
@@ -289,7 +290,7 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
         from Tracker.services.qms.disposition import complete_disposition_resolution
 
         part = self._make_part("P-CONTAIN")
-        disp = QuarantineDisposition.objects.create(
+        disp = make_disposition(
             tenant=self.tenant, part=part, disposition_type="USE_AS_IS",
             severity="MAJOR", description="major, no containment yet",
         )
@@ -303,8 +304,8 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
         disp.refresh_from_db()
         self.assertEqual(disp.current_state, "IN_PROGRESS")  # blocked, not closed
 
-        disp.containment_action = "Quarantined sibling lot LOT-42 and re-inspected the run."
-        disp.save(update_fields=["containment_action"])
+        disp.ncr.containment_action = "Quarantined sibling lot LOT-42 and re-inspected the run."
+        disp.ncr.save(update_fields=["containment_action"])
         complete_disposition_resolution(disp, user)
 
         disp.refresh_from_db()
@@ -334,7 +335,7 @@ class CorePartDispositionTests(TenantContextMixin, VectorTestCase):
         )
 
     def _disposition(self, disposition_type):
-        return QuarantineDisposition.objects.create(
+        return make_disposition(
             tenant=self.tenant, part=self.core.part,
             disposition_type=disposition_type, description="core fixture",
         )
@@ -375,14 +376,14 @@ class ShippedUnitDispositionTests(TenantContextMixin, VectorTestCase):
     def test_deciding_scrap_or_return_on_a_shipped_unit_is_refused(self):
         from Tracker.services.qms.disposition import decide_disposition
         for kind in ("SCRAP", "RETURN_TO_SUPPLIER"):
-            d = QuarantineDisposition.objects.create(tenant=self.tenant, part=self.part, description="field find")
+            d = make_disposition(tenant=self.tenant, part=self.part, description="field find")
             with self.assertRaisesRegex(ValueError, f"already shipped on {self.shipment.shipment_number}"):
                 decide_disposition(d, disposition_type=kind, authorized_by=None)
         self.part.refresh_from_db()
         self.assertEqual(self.part.part_status, PartsStatus.SHIPPED)
 
     def test_the_save_cascade_leaves_a_shipped_unit_shipped(self):
-        QuarantineDisposition.objects.create(tenant=self.tenant, part=self.part,
+        make_disposition(tenant=self.tenant, part=self.part,
                                              disposition_type="SCRAP", description="seeded")
         self.part.refresh_from_db()
         self.assertEqual(self.part.part_status, PartsStatus.SHIPPED)

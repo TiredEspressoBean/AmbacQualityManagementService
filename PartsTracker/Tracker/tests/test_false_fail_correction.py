@@ -16,6 +16,7 @@ from Tracker.models import (
     QuarantineDisposition, StepExecution, Steps, Tenant, WorkOrder, WorkOrderStatus,
 )
 from Tracker.tests.base import TenantContextMixin, VectorTestCase
+from Tracker.tests.base import make_disposition
 
 
 class FalseFailCorrectionTests(TenantContextMixin, VectorTestCase):
@@ -56,7 +57,7 @@ class FalseFailCorrectionTests(TenantContextMixin, VectorTestCase):
         # The FAIL opens its own NCR, as in the real flow; use that one.
         self.ncr = QuarantineDisposition.objects.filter(quality_reports=self.fail).first()
         if self.ncr is None:
-            self.ncr = QuarantineDisposition.objects.create(tenant=self.tenant, part=self.part,
+            self.ncr = make_disposition(tenant=self.tenant, part=self.part,
                                                             step=self.step)
             self.ncr.quality_reports.add(self.fail)
         self.assertEqual(QuarantineDisposition.objects.filter(part=self.part).count(), 1)
@@ -232,9 +233,9 @@ class NotNonconformanceCloseTests(FalseFailCorrectionTests):
         """Re-walk 2026-10-22: the close demanded a containment action for a
         nonconformance that never existed."""
         from Tracker.services.qms.disposition import decide_disposition
-        self.ncr.severity = "MAJOR"
-        self.ncr.containment_action = ""
-        self.ncr.save(update_fields=["severity", "containment_action"])
+        self.ncr.ncr.severity = "MAJOR"
+        self.ncr.ncr.containment_action = ""
+        self.ncr.ncr.save(update_fields=["severity", "containment_action"])
         self._void()
         self._recapture_pass()
         decide_disposition(self.ncr, disposition_type="NOT_NONCONFORMANCE",

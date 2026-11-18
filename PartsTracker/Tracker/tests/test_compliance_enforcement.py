@@ -30,6 +30,7 @@ from Tracker.models import (
     Steps, Substep, TenantGroup, WorkOrder, WorkOrderStatus,
 )
 from Tracker.tests.base import TenantTestCase
+from Tracker.tests.base import make_disposition
 
 User = get_user_model()
 
@@ -300,7 +301,7 @@ class OpenDispositionHoldsThePartTests(_QuarantineFixture):
 
     def setUp(self):
         super().setUp()
-        self.disp = QuarantineDisposition.objects.create(
+        self.disp = make_disposition(
             tenant=self.tenant_a, part=self.part, step=self.step, assigned_to=self.user_a)
         self.grant_tenant_permissions(self.user_a, self.tenant_a, [
             "view_parts", "change_parts", "full_tenant_access"])
@@ -333,11 +334,13 @@ class DecidedDispositionTests(_QuarantineFixture):
     def setUp(self):
         super().setUp()
         from Tracker.services.qms.disposition import decide_disposition
-        self.disp = QuarantineDisposition.objects.create(
+        self.disp = make_disposition(
             tenant=self.tenant_a, part=self.part, step=self.step, assigned_to=self.user_a,
             severity="MAJOR")
+        # change_ncr: the severity edited through the disposition is the NCR's (a lead's or QA's).
         self.grant_tenant_permissions(self.user_a, self.tenant_a, [
-            "view_quarantinedisposition", "change_quarantinedisposition", "full_tenant_access"])
+            "view_quarantinedisposition", "change_quarantinedisposition", "change_ncr",
+            "full_tenant_access"])
         self.authenticate_as(self.user_a, self.tenant_a)
         self._decide = lambda: decide_disposition(
             self.disp, disposition_type="USE_AS_IS", authorized_by=self.user_a,

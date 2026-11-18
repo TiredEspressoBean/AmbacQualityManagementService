@@ -1,23 +1,23 @@
-"""Containment + disposition for a failed batch cycle.
+"""Containment + decisions for a failed batch cycle.
 
 The batch analog of the per-part FAIL reaction in
 `quality_report.record_quality_report_side_effects`. When a batch-scope
 inspection report (a wash/heat-treat/plating cycle) goes FAIL, the whole load
-is suspect — not one part. So instead of quarantining a single part and opening
-a per-part disposition, we:
+is suspect — not one part. Its NCR covers the load (ncr.ncr_for_failed_report
+raised it, batch_execution set), and here we:
 
   1. Contain the load — quarantine the member parts still moving through
      production. Already-terminal parts (completed, scrapped, shipped) are left
-     as-is: we don't retroactively un-complete them, but the disposition (linked
-     to the batch) still names the full load for QA review, so nothing is
-     hidden.
-  2. Open ONE disposition for the load, linked to the BatchExecution. The cycle
-     failed once; one disposition covers it. Affected parts are the batch's
-     members (join through batch_execution.parts).
-  3. Emit `ncr.opened` at batch scope.
+     as-is: we don't retroactively un-complete them, but the NCR still lists the
+     full load for QA review, so nothing is hidden.
+  2. Open a decision (disposition) for each held part, under the NCR — the same
+     per-part decision any failure gets, so each part is held, decided, routed and
+     closed the way a single part is. QA decides them together or a few at a time
+     (ncr.decide_ncr).
+  3. `ncr.opened` goes out once for the NCR when it commits (ncr.announce).
 
-Idempotent: a no-op if an open disposition already covers the batch, so the
-signal firing on repeated FAIL saves doesn't pile up dispositions.
+Idempotent: a second failing report on the load joins its open NCR, and a report
+that already contained the load doesn't contain it again.
 """
 from __future__ import annotations
 
@@ -28,32 +28,32 @@ _QUARANTINABLE = {"IN_PROGRESS", "AWAITING_QA", "READY_FOR_NEXT_STEP", "AT_OUTSI
 
 
 def contain_failed_batch(report) -> None:
-    """Contain the load behind a failed batch cycle and open its disposition.
+    """Contain the load behind a failed batch cycle and open its parts' decisions.
 
     `report` is a FAIL QualityReports with `batch_execution` set. Safe to call
     from the auto_create_disposition signal on every FAIL save — idempotent.
     """
     from Tracker.models import PartsStatus, QuarantineDisposition
+    from Tracker.services.qms.ncr import ncr_for_failed_report
 
     batch = report.batch_execution
     if batch is None:
         return
 
-    # Once per report, as for a part's FAIL: a report that already produced its
-    # disposition (in any state) doesn't contain the load again. Any later save of the
-    # report — a "no CAPA needed", a claim — re-quarantined members already released
-    # by the closed disposition and opened a bare new one (hunt 2026-11-10, N10).
+    # Once per report, as for a part's FAIL: a report that already contained the load
+    # doesn't contain it again. Any later save of the report — a "no CAPA needed", a
+    # claim — re-quarantined members already released and opened a bare new decision
+    # (hunt 2026-11-10, N10).
     if report.dispositions.exists():
         return
 
-    # Idempotency: one open disposition per batch. A second failing report on the load
-    # joins it — left unlinked, it passed the once-per-report guard above after the
-    # disposition closed and re-contained the load (round-3 #8).
-    open_one = QuarantineDisposition.objects.filter(archived=False,
-        batch_execution=batch, current_state__in=["OPEN", "IN_PROGRESS"],
-    ).first()
-    if open_one is not None:
-        open_one.quality_reports.add(report)
+    # One open NCR per load: a second failing report joins it, as evidence on the
+    # decisions still open — left unlinked, it passed the once-per-report guard above
+    # after they closed and re-contained the load (round-3 #8).
+    ncr, raised = ncr_for_failed_report(report)
+    if not raised:
+        for d in ncr.dispositions.filter(archived=False).exclude(current_state='CLOSED'):
+            d.quality_reports.add(report)
         return
 
     members = list(batch.parts.all())
@@ -70,53 +70,37 @@ def contain_failed_batch(report) -> None:
         mark_active_schedule_stale(report.tenant_id)
 
     step_name = batch.step.name if batch.step else "cycle"
-    disposition = QuarantineDisposition.objects.create(
-        assigned_to=None,  # the QA queue, like every auto-opened disposition
-        batch_execution=batch,
-        step=batch.step,
-        description=(
-            f"Batch cycle failed at {step_name} - {len(members)} parts in the load"
-            f" ({len(held)} held, {len(members) - len(held)} already past this step)."
-        ),
+    ncr.description = (
+        f"Batch cycle failed at {step_name} - {len(members)} parts in the load"
+        f" ({len(held)} held, {len(members) - len(held)} already past this step)."
     )
-    disposition.quality_reports.add(report)
+    ncr.save(update_fields=["description", "updated_at"])
+    # A decision per held part. When every part had already moved past the step, there
+    # is nothing to hold, but the NCR still needs a decision on the load: one per part,
+    # as a record of what was decided about what had left.
+    for p in (held or members):
+        disposition = QuarantineDisposition.objects.create(
+            assigned_to=None,  # the QA queue, like every auto-opened disposition
+            ncr=ncr, part=p, step=batch.step,
+        )
+        disposition.quality_reports.add(report)
 
-    _emit_batch_ncr_opened(report, batch, held_count=len(held), load_size=len(members))
 
+def join_failed_load(batch, parts) -> None:
+    """Parts added to a load whose cycle has already failed join its open NCR: held, with
+    a decision of their own, as the parts there at the failure were."""
+    from Tracker.models import NCR, PartsStatus, QuarantineDisposition
 
-def _emit_batch_ncr_opened(report, batch, *, held_count: int, load_size: int) -> None:
-    """Fire `ncr.opened` for a batch cycle failure. Batch-scoped: no single
-    part, work order and step come from the batch."""
-    from Tracker.services.core.notifications import emit
-    from Tracker.services.qms.events import NCROpenedPayload
-
-    work_order = batch.work_order
-    step = batch.step
-    opener = report.primary_detector
-    from Tracker.services.qms.quality_report import report_severity
-    payload = NCROpenedPayload(
-        id=str(report.id),
-        tenant_id=str(report.tenant_id) if report.tenant_id else "",
-        part_id=None,
-        part_number="",
-        work_order_id=str(work_order.id) if work_order else None,
-        work_order_number=work_order.ERP_id if work_order else "",
-        step_id=str(step.id) if step else None,
-        step_name=step.name if step else "",
-        severity=report_severity(report),
-        status=report.status,
-        description=(
-            report.description
-            or f"Batch cycle failure - {held_count} of {load_size} parts held"
-        ),
-        opened_by_id=opener.pk if opener else None,
-        opened_by_name=(opener.get_full_name() or opener.username) if opener else "",
-        opened_at=report.created_at,
-    )
-    emit(
-        "ncr.opened",
-        tenant=report.tenant,
-        payload=payload,
-        correlation_id=f"batchexecution:{batch.id}",
-        idempotency_key=f"ncr.opened:batchexecution:{batch.id}",
-    )
+    ncr = NCR.objects.filter(archived=False, state='OPEN', batch_execution=batch).first()  # tenant-safe: scoped by the batch FK
+    if ncr is None:
+        return
+    report = ncr.reports.order_by('created_at').first()
+    for p in parts:
+        if p.part_status not in _QUARANTINABLE:
+            continue
+        p.part_status = PartsStatus.QUARANTINED
+        p.save(update_fields=["part_status"])
+        disposition = QuarantineDisposition.objects.create(
+            assigned_to=None, ncr=ncr, part=p, step=batch.step)
+        if report is not None:
+            disposition.quality_reports.add(report)

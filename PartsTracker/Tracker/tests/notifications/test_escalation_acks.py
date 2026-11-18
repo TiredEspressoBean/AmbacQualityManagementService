@@ -29,6 +29,7 @@ from Tracker.services.core.notifications.escalation import (
     register_ack,
 )
 from Tracker.tests.base import TenantContextMixin
+from Tracker.tests.base import make_disposition
 
 
 class _SourceModelStub:
@@ -167,33 +168,27 @@ class NCRAckPredicateTests(TenantContextMixin, TestCase):
         self.qr = QualityReports.objects.create(
             tenant=self.tenant, part=self.part, status='FAIL',
         )
+        # The failure raised its NCR, with the part's decision open under it.
+        self.qr.refresh_from_db()
+        self.ncr = self.qr.ncr
 
-    def test_no_disposition_is_not_acked(self):
-        self.assertFalse(is_acknowledged('ncr.opened', self.qr))
+    def test_an_open_ncr_is_not_acked(self):
+        self.assertFalse(is_acknowledged('ncr.opened', self.ncr))
 
-    def test_open_disposition_is_not_acked(self):
-        d = QuarantineDisposition.objects.create(
-            tenant=self.tenant,
-            disposition_type='REWORK',
-            severity='MAJOR',
-            current_state='OPEN',
-        )
-        d.quality_reports.add(self.qr)
-        self.assertFalse(is_acknowledged('ncr.opened', self.qr))
+    def test_an_ncr_with_a_decision_still_open_is_not_acked(self):
+        d = self.ncr.dispositions.get()
+        d.disposition_type = 'REWORK'
+        d.save()
+        self.assertFalse(is_acknowledged('ncr.opened', self.ncr))
 
-    def test_closed_disposition_is_acked(self):
-        d = QuarantineDisposition.objects.create(
-            tenant=self.tenant,
-            disposition_type='REWORK',
-            severity='MAJOR',
-            current_state='CLOSED',
-        )
-        d.quality_reports.add(self.qr)
-        self.assertTrue(is_acknowledged('ncr.opened', self.qr))
+    def test_a_closed_ncr_is_acked(self):
+        self.ncr.dispositions.update(current_state='CLOSED')
+        from Tracker.services.qms.ncr import sync_state
+        sync_state(self.ncr.id)
+        self.assertTrue(is_acknowledged('ncr.opened', self.ncr))
 
-    def test_archived_qr_is_cancelled_via_default_predicate(self):
-        # QualityReports inherits SecureModel; void()/archived flips
-        # the default cancel predicate.
-        self.qr.archived = True
-        self.qr.save(update_fields=['archived'])
-        self.assertTrue(is_cancelled('ncr.opened', self.qr))
+    def test_an_archived_ncr_is_cancelled_via_default_predicate(self):
+        # NCR inherits SecureModel; archived flips the default cancel predicate.
+        self.ncr.archived = True
+        self.ncr.save(update_fields=['archived'])
+        self.assertTrue(is_cancelled('ncr.opened', self.ncr))

@@ -97,7 +97,7 @@ def build_rtv_sheet_context(lot, tenant, user=None, rma_number: str = "") -> Rtv
         received_date=lot.received_date,
         disposition_number=disposition.disposition_number if disposition else None,
         rma_number=(rma_number or "").strip() or lot.rma_number or None,
-        reason=(disposition.description if disposition else "") or "",
+        reason=(disposition.ncr.description if disposition and disposition.ncr_id else "") or "",
         scar_numbers=sorted(scars),
         issued_by=name,
         issued_date=tenant_today(tenant),

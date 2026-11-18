@@ -53,14 +53,28 @@ def _open_disposition(lot, *, user, disposition_type, quantity, description, rep
     *request* only asks for an outcome; it's decided when confirmed."""
     from django.utils import timezone
     from Tracker.models import QuarantineDisposition
+    from Tracker.services.qms.ncr import raise_ncr
     authority = _authority(user) if decided else None
+    # The inspection's NCR (raised when its report failed), or a new one — a later reject
+    # of what's left is a new nonconformance. The reject says what's wrong and how bad;
+    # the first decision under the NCR sets its header.
+    ncr = report.ncr if report is not None and report.ncr_id and report.ncr.state == "OPEN" else None
+    if ncr is None:
+        ncr = raise_ncr(tenant=lot.tenant, step=report.step if report is not None else None,
+                        description=description or f"Lot {lot.lot_number} rejected at receiving inspection",
+                        severity=severity or "MAJOR", raised_by=user,
+                        reports=[report] if report is not None else [])
+    elif not ncr.dispositions.exists():
+        if (description or "").strip():
+            ncr.description = description
+        ncr.severity = severity or "MAJOR"
+        ncr.save(update_fields=["description", "severity", "updated_at"])
     disposition = QuarantineDisposition.objects.create(
         tenant=lot.tenant,
+        ncr=ncr,
         material_lot=lot,
         quantity=quantity,
         disposition_type=disposition_type,
-        description=description or "",
-        severity=severity or "MAJOR",
         # A request waits for whoever may decide it (it's on their home), so it's
         # unassigned — a queue QA takes from — not the requester's (decision 2026-10-20).
         assigned_to=_authority(user) if decided else None,

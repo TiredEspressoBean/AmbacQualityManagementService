@@ -14,10 +14,10 @@ from Tracker.services.core.notifications import EventType, register_event
 class NCROpenedPayload:
     """Payload for `ncr.opened`. IDs are UUID strings (SecureModel PK convention)."""
 
-    id: str                   # QualityReport id; satisfies correlation_id contract
+    id: str                   # NCR id; satisfies correlation_id contract
     tenant_id: str
-    part_id: str | None
-    part_number: str
+    part_id: str | None       # the part, when the NCR covers one
+    part_number: str          # its serial — or "3 parts", "Lot L-12" for the rest
     work_order_id: str | None
     work_order_number: str
     step_id: str | None
@@ -28,6 +28,8 @@ class NCROpenedPayload:
     opened_by_name: str
     opened_at: datetime
     status: str = 'FAIL'      # the report's PASS / FAIL (what `severity` used to carry)
+    ncr_number: str = ''
+    part_count: int = 0       # how many parts the NCR covers
 
     @classmethod
     def sample(cls) -> 'NCROpenedPayload':
@@ -45,6 +47,8 @@ class NCROpenedPayload:
             opened_by_id=1,
             opened_by_name='Jane Inspector',
             opened_at=datetime(2026, 5, 5, 14, 30),
+            ncr_number='NCR-2026-000007',
+            part_count=1,
         )
 
 
@@ -57,7 +61,7 @@ register_event(EventType(
     default_recipient_groups=['QA Manager', 'QA Inspector'],
     default_on=True,
     transactional=False,
-    description='A nonconformance report has been opened against a part or work order.',
+    description='An NCR has been opened: one or more parts (or a lot) found nonconforming.',
     external_routable=False,
 ))
 

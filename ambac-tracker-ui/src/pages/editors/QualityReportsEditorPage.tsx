@@ -56,7 +56,7 @@ export function QualityReportsEditorPage() {
     const navigate = useNavigate();
     return (
         <ModelEditorPage
-            title="Quality Reports"
+            title="Inspection Records"
             modelName="QualityReports"
             showDetailsLink={true}
             useList={useQualityReportsList}

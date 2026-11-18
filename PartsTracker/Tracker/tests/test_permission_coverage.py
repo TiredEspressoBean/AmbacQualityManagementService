@@ -156,6 +156,8 @@ SOFT_DELETE_MODELS = {
     # (SUSPENDED/DISQUALIFIED/EXPIRED), and re-qualification creates a new row —
     # history is preserved, never hard-deleted.
     'supplierqualification', 'partapproval',
+    # An NCR closes with its decisions; it has no delete endpoint.
+    'ncr',
     # Shift notes soft-delete via void (retract); retract is gated by
     # change_shiftnote, not delete_shiftnote.
     'shiftnote',

@@ -31,6 +31,7 @@ from Tracker.models import (
 from Tracker.services.dwi.batch_lifecycle import seal_batch
 from Tracker.services.dwi.operator_capture import submit_substep
 from Tracker.tests.base import TenantContextMixin, TenantTestCase, VectorTestCase
+from Tracker.tests.base import make_disposition
 
 
 class BatchCaptureWritePathTests(TenantContextMixin, VectorTestCase):
@@ -197,8 +198,8 @@ class BatchCaptureWritePathTests(TenantContextMixin, VectorTestCase):
                          [("P-BC-9", "added"), ("P-BC-1", "removed")])
 
         # A load contained by a failed cycle holds a newcomer too.
-        QuarantineDisposition.objects.create(tenant=self.tenant, batch_execution=self.batch,
-                                             step=self.step, current_state="OPEN")
+        from Tracker.models import NCR
+        NCR.objects.create(tenant=self.tenant, batch_execution=self.batch, step=self.step)
         late = Parts.objects.create(tenant=self.tenant, ERP_id="P-BC-8", part_type=self.part_type,
                                     work_order=self.wo, step=self.step, part_status="IN_PROGRESS")
         add_parts_to_batch(batch=self.batch, parts=[late], user=self.user)
@@ -380,9 +381,9 @@ class BatchInspectionRecordTests(TenantContextMixin, VectorTestCase):
 
     def test_failing_batch_cycle_contains_the_load(self):
         """A bad cycle marks the report FAIL and contains the whole load:
-        in-production member parts are quarantined and ONE batch-linked
-        disposition opens (not a per-part or orphaned part=None one)."""
-        from Tracker.models import QuarantineDisposition
+        in-production member parts are quarantined under ONE NCR for the load,
+        each with its own decision to make (no orphaned part=None one)."""
+        from Tracker.models import NCR, QuarantineDisposition
         # Members are actively in production at the cycle.
         for p in self.parts:
             p.part_status = PartsStatus.IN_PROGRESS
@@ -403,18 +404,16 @@ class BatchInspectionRecordTests(TenantContextMixin, VectorTestCase):
             p.refresh_from_db()
             self.assertEqual(p.part_status, PartsStatus.QUARANTINED)
 
-        # Exactly one disposition, linked to the batch, none orphaned to a part.
-        disps = QuarantineDisposition.objects.filter(batch_execution=self.batch)
-        self.assertEqual(disps.count(), 1)
-        self.assertIsNone(disps.first().part_id)
-        self.assertEqual(
-            QuarantineDisposition.objects.filter(part__in=self.parts).count(), 0,
-        )
+        # One NCR for the load; a decision per held part, none without a part.
+        ncr = NCR.objects.get(batch_execution=self.batch)
+        self.assertEqual(qr.ncr_id, ncr.id)
+        disps = QuarantineDisposition.objects.filter(ncr=ncr)
+        self.assertEqual(sorted(disps.values_list("part_id", flat=True)), sorted(p.id for p in self.parts))
 
     def test_failing_batch_cycle_leaves_terminal_parts_but_still_opens_disposition(self):
         """Parts already past the step (completed) aren't retroactively un-
-        completed, but the batch disposition still opens to cover the load."""
-        from Tracker.models import QuarantineDisposition
+        completed, but the load's NCR still opens, with a decision on each as a record."""
+        from Tracker.models import NCR
         for p in self.parts:
             p.part_status = PartsStatus.COMPLETED
             p.save(update_fields=["part_status"])
@@ -427,13 +426,12 @@ class BatchInspectionRecordTests(TenantContextMixin, VectorTestCase):
         for p in self.parts:
             p.refresh_from_db()
             self.assertEqual(p.part_status, PartsStatus.COMPLETED)  # not un-completed
-        self.assertEqual(
-            QuarantineDisposition.objects.filter(batch_execution=self.batch).count(), 1,
-        )
+        ncr = NCR.objects.get(batch_execution=self.batch)
+        self.assertEqual(ncr.dispositions.count(), len(self.parts))
 
     def test_failing_batch_cycle_disposition_is_idempotent(self):
-        """Re-capturing a still-failing cycle doesn't pile up dispositions."""
-        from Tracker.models import QuarantineDisposition
+        """Re-capturing a still-failing cycle doesn't pile up NCRs or decisions."""
+        from Tracker.models import NCR, QuarantineDisposition
         for p in self.parts:
             p.part_status = PartsStatus.IN_PROGRESS
             p.save(update_fields=["part_status"])
@@ -443,13 +441,13 @@ class BatchInspectionRecordTests(TenantContextMixin, VectorTestCase):
                 captures=[{"node_id": str(uuid4()), "kind": "measurement",
                            "measurement_definition_id": str(self.md.id), "value_numeric": 9.0}],
             )
-        self.assertEqual(
-            QuarantineDisposition.objects.filter(batch_execution=self.batch).count(), 1,
-        )
+        self.assertEqual(NCR.objects.filter(batch_execution=self.batch).count(), 1)
+        self.assertEqual(QuarantineDisposition.objects.filter(ncr__batch_execution=self.batch).count(),
+                         len(self.parts))
 
     def test_batch_disposition_serializes_affected_parts(self):
-        """The disposition serializer exposes the batch's member parts (with
-        status) so the form's affected-load panel can render them."""
+        """A part's disposition lists the rest of its NCR's parts (with status) so the
+        form can show what else the failed load covers."""
         from Tracker.models import QuarantineDisposition
         from Tracker.serializers.qms import QuarantineDispositionSerializer
         for p in self.parts:
@@ -460,30 +458,20 @@ class BatchInspectionRecordTests(TenantContextMixin, VectorTestCase):
             captures=[{"node_id": str(uuid4()), "kind": "measurement",
                        "measurement_definition_id": str(self.md.id), "value_numeric": 9.0}],
         )
-        disp = QuarantineDisposition.objects.get(batch_execution=self.batch)
+        disp = QuarantineDisposition.objects.filter(ncr__batch_execution=self.batch).first()
         affected = QuarantineDispositionSerializer(disp).data["affected_parts"]
         self.assertEqual({row["erp_id"] for row in affected}, {p.ERP_id for p in self.parts})
         # All held (were IN_PROGRESS) → QUARANTINED in the affected list.
         self.assertTrue(all(row["part_status"] == "QUARANTINED" for row in affected))
 
     def test_part_disposition_has_empty_affected_parts(self):
-        """A non-batch disposition reports no affected load."""
+        """A disposition alone on its NCR lists no other parts."""
         from Tracker.models import QuarantineDisposition
         from Tracker.serializers.qms import QuarantineDispositionSerializer
-        disp = QuarantineDisposition.objects.create(
+        disp = make_disposition(
             tenant=self.tenant, part=self.parts[0], step=self.step, assigned_to=self.user,
         )
         self.assertEqual(QuarantineDispositionSerializer(disp).data["affected_parts"], [])
-
-    def test_disposition_cannot_target_both_part_and_batch(self):
-        """A disposition is scoped to a part OR a batch, never both."""
-        from django.db import IntegrityError, transaction
-        from Tracker.models import QuarantineDisposition
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            QuarantineDisposition.objects.create(
-                tenant=self.tenant, part=self.parts[0], batch_execution=self.batch,
-                step=self.step, assigned_to=self.user,
-            )
 
     def _capture(self, ph):
         return submit_substep(

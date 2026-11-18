@@ -19244,6 +19244,513 @@ paths:
                 format: binary
                 description: Template file download
           description: ''
+  /api/NCRs/:
+    get:
+      operationId: api_NCRs_list
+      description: |-
+        NCRs — the nonconformance, apart from the decisions under it.
+
+        Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+        the product raises the rest from failed inspections. PATCH edits the header
+        (description, severity, containment). Its decisions are made per part through
+        `decide` (all still waiting, or the parts named), co-signable as a disposition's is.
+        Not deleted: an NCR is closed by its decisions.
+      parameters:
+      - in: query
+        name: batch_execution
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: capa_decision
+        schema:
+          type: string
+          nullable: true
+          enum:
+          - DEFERRED
+          - NOT_REQUIRED
+          - PROMOTED
+        description: |-
+          * `PROMOTED` - CAPA raised
+          * `NOT_REQUIRED` - No CAPA needed
+          * `DEFERRED` - Deferred
+      - in: query
+        name: capa_decision__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: dispositions__part
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: severity
+        schema:
+          type: string
+          enum:
+          - CRITICAL
+          - MAJOR
+          - MINOR
+        description: |-
+          * `CRITICAL` - Critical
+          * `MAJOR` - Major
+          * `MINOR` - Minor
+      - in: query
+        name: state
+        schema:
+          type: string
+          enum:
+          - CLOSED
+          - OPEN
+        description: |-
+          * `OPEN` - Open
+          * `CLOSED` - Closed
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: work_order
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNCRList'
+          description: ''
+    post:
+      operationId: api_NCRs_create
+      description: |-
+        NCRs — the nonconformance, apart from the decisions under it.
+
+        Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+        the product raises the rest from failed inspections. PATCH edits the header
+        (description, severity, containment). Its decisions are made per part through
+        `decide` (all still waiting, or the parts named), co-signable as a disposition's is.
+        Not deleted: an NCR is closed by its decisions.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RaiseNCRRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RaiseNCRRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RaiseNCRRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/NCRs/{id}/:
+    get:
+      operationId: api_NCRs_retrieve
+      description: |-
+        NCRs — the nonconformance, apart from the decisions under it.
+
+        Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+        the product raises the rest from failed inspections. PATCH edits the header
+        (description, severity, containment). Its decisions are made per part through
+        `decide` (all still waiting, or the parts named), co-signable as a disposition's is.
+        Not deleted: an NCR is closed by its decisions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+    put:
+      operationId: api_NCRs_update
+      description: |-
+        NCRs — the nonconformance, apart from the decisions under it.
+
+        Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+        the product raises the rest from failed inspections. PATCH edits the header
+        (description, severity, containment). Its decisions are made per part through
+        `decide` (all still waiting, or the parts named), co-signable as a disposition's is.
+        Not deleted: an NCR is closed by its decisions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NCRRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NCRRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NCRRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+    patch:
+      operationId: api_NCRs_partial_update
+      description: |-
+        NCRs — the nonconformance, apart from the decisions under it.
+
+        Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+        the product raises the rest from failed inspections. PATCH edits the header
+        (description, severity, containment). Its decisions are made per part through
+        `decide` (all still waiting, or the parts named), co-signable as a disposition's is.
+        Not deleted: an NCR is closed by its decisions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNCRRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNCRRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNCRRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+  /api/NCRs/{id}/add-parts/:
+    post:
+      operationId: api_NCRs_add_parts_create
+      description: 'Put more parts on an open NCR: each gets a failed record and a
+        decision under it.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPartsToNCRRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AddPartsToNCRRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AddPartsToNCRRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/NCRs/{id}/capa-decision/:
+    post:
+      operationId: api_NCRs_capa_decision_create
+      description: Record that the NCR needs no CAPA, or that the decision is deferred,
+        with the reason. (CAPA raised is set by the CAPA.)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CapaDecisionRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/NCRs/{id}/containment-complete/:
+    post:
+      operationId: api_NCRs_containment_complete_create
+      description: 'Containment is done: stamps who recorded it and when.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/NCRs/{id}/decide/:
+    post:
+      operationId: api_NCRs_decide_create
+      description: 'Decide the NCR: every part still waiting for a decision, or the
+        parts named. Each part''s decision is its own disposition''s. Gated by approve_disposition,
+        co-signable. USE_AS_IS / REPAIR require a customer/design-approval reference.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                disposition_type:
+                  type: string
+                  enum:
+                  - REWORK
+                  - REPAIR
+                  - SCRAP
+                  - USE_AS_IS
+                  - RETURN_TO_SUPPLIER
+                  - NOT_NONCONFORMANCE
+                notes:
+                  type: string
+                  description: Optional decision rationale
+                customer_approval_reference:
+                  type: string
+                  description: Required for USE_AS_IS / REPAIR — the concession/deviation
+                    reference
+                customer_approval_date:
+                  type: string
+                  format: date
+                  description: Optional approval date (defaults to today)
+                cosign_email:
+                  type: string
+                  description: Email of an authorized approver co-signing (when the
+                    caller lacks approve_disposition)
+                cosign_password:
+                  type: string
+                  description: That person's password. Verified inline; they are never
+                    logged in, and the decision is attributed to them.
+                parts:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: The parts this decision is for. Omit to decide every
+                    part still waiting.
+              required:
+              - disposition_type
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/NCRs/export/{export_format}/:
+    get:
+      operationId: api_NCRs_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
+  /api/NCRs/metadata/:
+    get:
+      operationId: api_NCRs_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/NotificationEventTypes/:
     get:
       operationId: api_NotificationEventTypes_list
@@ -25813,8 +26320,19 @@ paths:
             format: uuid
         explode: true
         style: form
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
       - in: query
-        name: capa_decision
+        name: ncr
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: ncr__capa_decision
         schema:
           type: string
           nullable: true
@@ -25827,15 +26345,9 @@ paths:
           * `NOT_REQUIRED` - No CAPA needed
           * `DEFERRED` - Deferred
       - in: query
-        name: capa_decision__isnull
+        name: ncr__capa_decision__isnull
         schema:
           type: boolean
-      - name: limit
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
       - name: offset
         required: false
         in: query
@@ -26159,37 +26671,6 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/QualityReports/{id}/capa-decision/:
-    post:
-      operationId: api_QualityReports_capa_decision_create
-      description: Record that a failed report needs no CAPA, or that the decision
-        is deferred, with the reason. (CAPA raised is set by the CAPA.)
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Quality Report.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CapaDecisionRequestRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QualityReports'
-          description: ''
   /api/QualityReports/export/{export_format}/:
     get:
       operationId: api_QualityReports_export_retrieve
@@ -26286,11 +26767,6 @@ paths:
         schema:
           type: boolean
       - in: query
-        name: batch_execution
-        schema:
-          type: string
-          format: uuid
-      - in: query
         name: current_state
         schema:
           type: string
@@ -26339,6 +26815,16 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: ncr
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: ncr__batch_execution
+        schema:
+          type: string
+          format: uuid
       - name: offset
         required: false
         in: query
@@ -26748,13 +27234,6 @@ paths:
                   type: string
                   description: That person's password. Verified inline; they are never
                     logged in, and the decision is attributed to them.
-                parts:
-                  type: array
-                  items:
-                    type: string
-                    format: uuid
-                  description: 'A failed load''s disposition only: the held parts
-                    this decision is for. Omit to decide the whole load.'
               required:
               - disposition_type
       security:
@@ -45969,7 +46448,8 @@ paths:
     get:
       operationId: api_dashboard_ncr_trend_retrieve
       description: |-
-        Get NCR (failed inspections) created/closed trend over time.
+        NCRs opened and closed per day. Both sides count NCRs — a failed load or a
+        multi-part NCR is one, however many reports or decisions it holds.
 
         Query params:
             days (optional): Number of days to include (default: 30)
@@ -51580,6 +52060,20 @@ components:
           default: VISIBLE
       required:
       - message
+    AddPartsToNCRRequest:
+      type: object
+      description: Put more parts on an open NCR.
+      properties:
+        parts:
+          type: array
+          items:
+            type: string
+            format: uuid
+        reason:
+          type: string
+          description: Why these parts — written on each part's failed record.
+      required:
+      - parts
     AdherenceOp:
       type: object
       properties:
@@ -53911,6 +54405,17 @@ components:
           items:
             type: string
             format: uuid
+        ncrs:
+          type: array
+          items:
+            type: string
+            format: uuid
+        affected_part_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          readOnly: true
         tasks:
           type: array
           items:
@@ -53955,6 +54460,7 @@ components:
           type: boolean
           readOnly: true
       required:
+      - affected_part_ids
       - approval_required
       - approval_status_display
       - approved_at
@@ -54051,6 +54557,11 @@ components:
             type: string
             format: uuid
         dispositions:
+          type: array
+          items:
+            type: string
+            format: uuid
+        ncrs:
           type: array
           items:
             type: string
@@ -57873,9 +58384,8 @@ components:
     DispositionAffectedPart:
       type: object
       description: |-
-        A member part of a batch disposition's load — shown in the form's
-        affected-load panel so QA can see which parts the failed cycle covers and
-        which were held.
+        A part the disposition's NCR covers — shown in the form's affected-parts panel so
+        QA can see what else the nonconformance covers and where each stands.
       properties:
         id:
           type: string
@@ -65644,6 +66154,277 @@ components:
       - undo_needs_approval
       - undoable
       - work_order_id
+    NCR:
+      type: object
+      description: |-
+        An NCR: what is wrong, its containment and CAPA decision, and what it covers.
+        The header (description, severity, containment) is editable while it is open;
+        severity may only rise once anything under it is decided (approval_lock).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        ncr_number:
+          type: string
+          readOnly: true
+        state:
+          allOf:
+          - $ref: '#/components/schemas/NCRStateEnum'
+          readOnly: true
+        state_display:
+          type: string
+          readOnly: true
+        closed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        description:
+          type: string
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        severity_display:
+          type: string
+          readOnly: true
+        step:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        step_name:
+          type: string
+          readOnly: true
+          nullable: true
+        work_order:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        work_order_erp_id:
+          type: string
+          readOnly: true
+          nullable: true
+        batch_execution:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        raised_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        raised_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        containment_action:
+          type: string
+          description: Immediate action taken to prevent escape
+        containment_completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        containment_completed_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        containment_completed_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        containment_performed_by:
+          type: integer
+          nullable: true
+          description: Who carried out the containment, if not the person recording
+            it.
+        capa_decision:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/CapaDecisionEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        capa_decision_note:
+          type: string
+          readOnly: true
+        capa_decided_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        capa_decided_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        capa_decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/NCRMember'
+          readOnly: true
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/NCRReportRef'
+          readOnly: true
+        report_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          readOnly: true
+        capa_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+          readOnly: true
+      required:
+      - archived
+      - batch_execution
+      - capa_decided_at
+      - capa_decided_by
+      - capa_decided_by_name
+      - capa_decision
+      - capa_decision_note
+      - capa_ids
+      - closed_at
+      - containment_completed_at
+      - containment_completed_by
+      - containment_completed_by_name
+      - created_at
+      - id
+      - members
+      - ncr_number
+      - raised_by
+      - raised_by_name
+      - report_ids
+      - reports
+      - severity_display
+      - state
+      - state_display
+      - step
+      - step_name
+      - updated_at
+      - work_order
+      - work_order_erp_id
+    NCRMember:
+      type: object
+      description: |-
+        One thing an NCR covers — a part, or a rejected lot quantity — and its latest
+        decision.
+      properties:
+        part_id:
+          type: string
+          format: uuid
+          nullable: true
+        erp_id:
+          type: string
+          nullable: true
+        part_status:
+          type: string
+          nullable: true
+        material_lot_id:
+          type: string
+          format: uuid
+          nullable: true
+        lot_number:
+          type: string
+          nullable: true
+        disposition_id:
+          type: string
+          format: uuid
+          nullable: true
+        disposition_number:
+          type: string
+          nullable: true
+        disposition_type:
+          type: string
+          nullable: true
+        current_state:
+          type: string
+          nullable: true
+        awaiting_decision:
+          type: boolean
+        held:
+          type: boolean
+      required:
+      - awaiting_decision
+      - current_state
+      - disposition_id
+      - disposition_number
+      - disposition_type
+      - erp_id
+      - held
+      - lot_number
+      - material_lot_id
+      - part_id
+      - part_status
+    NCRReportRef:
+      type: object
+      description: A failed inspection record on the NCR.
+      properties:
+        id:
+          type: string
+          format: uuid
+        report_number:
+          type: string
+        status:
+          type: string
+        part_erp_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - id
+      - part_erp_id
+      - report_number
+      - status
+    NCRRequest:
+      type: object
+      description: |-
+        An NCR: what is wrong, its containment and CAPA decision, and what it covers.
+        The header (description, severity, containment) is editable while it is open;
+        severity may only rise once anything under it is decided (approval_lock).
+      properties:
+        description:
+          type: string
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        containment_action:
+          type: string
+          description: Immediate action taken to prevent escape
+        containment_performed_by:
+          type: integer
+          nullable: true
+          description: Who carried out the containment, if not the person recording
+            it.
+    NCRStateEnum:
+      enum:
+      - OPEN
+      - CLOSED
+      type: string
+      description: |-
+        * `OPEN` - Open
+        * `CLOSED` - Closed
     NcrAgingResponse:
       type: object
       properties:
@@ -68062,6 +68843,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MeasurementDefinition'
+    PaginatedNCRList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NCR'
     PaginatedNotificationFeedItemList:
       type: object
       required:
@@ -71329,6 +72133,11 @@ components:
           items:
             type: string
             format: uuid
+        ncrs:
+          type: array
+          items:
+            type: string
+            format: uuid
     PatchedCalibrationRecordRequest:
       type: object
       description: |-
@@ -72766,6 +73575,25 @@ components:
           type: string
           writeOnly: true
           description: Reason for this revision, recorded on the new version.
+    PatchedNCRRequest:
+      type: object
+      description: |-
+        An NCR: what is wrong, its containment and CAPA decision, and what it covers.
+        The header (description, severity, containment) is editable while it is open;
+        severity may only rise once anything under it is decided (approval_lock).
+      properties:
+        description:
+          type: string
+        severity:
+          $ref: '#/components/schemas/SeverityEnum'
+        containment_action:
+          type: string
+          description: Immediate action taken to prevent escape
+        containment_performed_by:
+          type: integer
+          nullable: true
+          description: Who carried out the containment, if not the person recording
+            it.
     PatchedOptimizationConfigRequest:
       type: object
       description: |-
@@ -73840,15 +74668,12 @@ components:
           type: string
         containment_action:
           type: string
-          description: Immediate action taken to prevent escape
         containment_completed:
           type: boolean
           writeOnly: true
         containment_performed_by:
           type: integer
           nullable: true
-          description: Who carried out the containment, if not the person recording
-            it.
         resolution_performed_by:
           type: integer
           nullable: true
@@ -73887,13 +74712,6 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
           nullable: true
           description: How much is dispositioned, in the lot's stock unit.
-        batch_execution:
-          type: string
-          format: uuid
-          nullable: true
-          description: Set when this disposition covers a failed batch cycle (the
-            whole load), instead of a single part. Affected parts are the batch's
-            members. Mutually exclusive with `part` in practice.
         step:
           type: string
           format: uuid
@@ -78047,6 +78865,15 @@ components:
           readOnly: true
         archived:
           type: boolean
+        ncr:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        ncr_number:
+          type: string
+          readOnly: true
+          nullable: true
         capa_decision:
           readOnly: true
           nullable: true
@@ -78056,6 +78883,7 @@ components:
         capa_decision_note:
           type: string
           readOnly: true
+          nullable: true
         capa_decided_by:
           type: integer
           readOnly: true
@@ -78103,6 +78931,8 @@ components:
       - id
       - machine_info
       - material_lot
+      - ncr
+      - ncr_number
       - operators_info
       - osp_shipment
       - part_display
@@ -78209,6 +79039,15 @@ components:
         disposition_number:
           type: string
           readOnly: true
+        ncr:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        ncr_number:
+          type: string
+          readOnly: true
+          nullable: true
         current_state:
           $ref: '#/components/schemas/CurrentStateEnum'
         disposition_type:
@@ -78261,7 +79100,6 @@ components:
           readOnly: true
         containment_action:
           type: string
-          description: Immediate action taken to prevent escape
         containment_completed_at:
           type: string
           format: date-time
@@ -78277,8 +79115,6 @@ components:
         containment_performed_by:
           type: integer
           nullable: true
-          description: Who carried out the containment, if not the person recording
-            it.
         resolution_performed_by:
           type: integer
           nullable: true
@@ -78336,10 +79172,8 @@ components:
         batch_execution:
           type: string
           format: uuid
+          readOnly: true
           nullable: true
-          description: Set when this disposition covers a failed batch cycle (the
-            whole load), instead of a single part. Affected parts are the batch's
-            members. Mutually exclusive with `part` in practice.
         step:
           type: string
           format: uuid
@@ -78418,6 +79252,7 @@ components:
       - affected_parts
       - annotation_status
       - assignee_name
+      - batch_execution
       - can_be_completed
       - choices_data
       - completion_blockers
@@ -78432,6 +79267,8 @@ components:
       - escalated_from_step
       - id
       - material_lot_number
+      - ncr
+      - ncr_number
       - part_erp_id
       - quality_reports
       - resolution_completed
@@ -78489,15 +79326,12 @@ components:
           type: string
         containment_action:
           type: string
-          description: Immediate action taken to prevent escape
         containment_completed:
           type: boolean
           writeOnly: true
         containment_performed_by:
           type: integer
           nullable: true
-          description: Who carried out the containment, if not the person recording
-            it.
         resolution_performed_by:
           type: integer
           nullable: true
@@ -78536,13 +79370,6 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
           nullable: true
           description: How much is dispositioned, in the lot's stock unit.
-        batch_execution:
-          type: string
-          format: uuid
-          nullable: true
-          description: Set when this disposition covers a failed batch cycle (the
-            whole load), instead of a single part. Affected parts are the batch's
-            members. Mutually exclusive with `part` in practice.
         step:
           type: string
           format: uuid
@@ -78603,6 +79430,26 @@ components:
       required:
       - code
       - detail
+    RaiseNCRRequest:
+      type: object
+      description: Raise one NCR over parts a person picks.
+      properties:
+        parts:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description:
+          type: string
+          minLength: 1
+          description: What is wrong — the NCR's description.
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/SeverityEnum'
+          default: MAJOR
+      required:
+      - description
+      - parts
     RaiseScarResponse:
       type: object
       properties:

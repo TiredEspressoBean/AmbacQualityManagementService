@@ -1,13 +1,13 @@
-"""A failed batch load's disposition reaches the load's parts.
+"""A failed batch load is one NCR over its parts, each with its own decision.
 
-A failed batch cycle quarantines the load's members and opens ONE disposition for the
-load (part null). Deciding it did nothing to the members — every one stayed held until
-changed by hand. Now the decision applies to the whole load, or to the held parts QA
-chooses in the decide dialog (user decision 2026-11-05); each chosen part gets its own
-disposition, decided like any part's, and the parts not chosen stay held.
+A failed batch cycle quarantines the load's members and raises ONE NCR for the load
+(batch_execution set), with a disposition for each held part (user ruling 2026-11-17:
+the load-parent disposition went away). QA decides the NCR for every part still waiting,
+or for the parts chosen in the decide dialog (user decision 2026-11-05); each part's
+decision is its own disposition's, and the parts not chosen stay held.
 """
 from Tracker.models import (
-    BatchExecution, Parts, PartsStatus, PartTypes, Processes, ProcessStep,
+    NCR, BatchExecution, Parts, PartsStatus, PartTypes, Processes, ProcessStep,
     QualityReports, QuarantineDisposition, Steps, Substep, WorkOrder, WorkOrderStatus,
 )
 from Tracker.tests.base import TenantTestCase
@@ -43,38 +43,38 @@ class LoadDispositionTests(TenantTestCase):
         self.batch = BatchExecution.objects.create(tenant=t, work_order=self.wo, step=self.wash,
                                                    started_by=self.user_a)
         self.batch.parts.set(self.parts + [self.done])
-        QualityReports.objects.create(tenant=t, batch_execution=self.batch, step=self.wash,
-                                      status="FAIL", description="cycle fail",
-                                      detected_by=self.user_a)
-        self.load = QuarantineDisposition.objects.get(batch_execution=self.batch, part__isnull=True)
+        self.report = QualityReports.objects.create(
+            tenant=t, batch_execution=self.batch, step=self.wash, status="FAIL",
+            description="cycle fail", detected_by=self.user_a)
+        self.ncr = NCR.objects.get(batch_execution=self.batch)
         self.authenticate_superuser(self.tenant_a)
 
     def _decide(self, disposition_type, parts=None, **extra):
         body = {"disposition_type": disposition_type, **extra}
         if parts is not None:
             body["parts"] = [str(p.id) for p in parts]
-        return self.client.post(f"/api/QuarantineDispositions/{self.load.id}/decide/", body,
-                                format="json")
+        return self.client.post(f"/api/NCRs/{self.ncr.id}/decide/", body, format="json")
 
     def _status(self, part):
         part.refresh_from_db()
         return part.part_status
 
-    def test_the_failed_cycle_holds_the_load(self):
+    def test_the_failed_cycle_holds_the_load_under_one_ncr(self):
         self.assertEqual([self._status(p) for p in self.parts], [PartsStatus.QUARANTINED] * 3)
         self.assertEqual(self._status(self.done), PartsStatus.COMPLETED)
+        self.report.refresh_from_db()
+        self.assertEqual(self.report.ncr_id, self.ncr.id)
+        own = QuarantineDisposition.objects.filter(ncr=self.ncr)
+        self.assertEqual(sorted(own.values_list("part__ERP_id", flat=True)), ["P-0", "P-1", "P-2"])
+        self.assertTrue(all(not d.disposition_type for d in own))
+        self.assertIn("3 held, 1 already past this step", self.ncr.description)
 
-    def test_a_whole_load_decision_reaches_every_held_part(self):
+    def test_a_decision_for_all_reaches_every_held_part(self):
         r = self._decide("SCRAP")
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual([self._status(p) for p in self.parts], [PartsStatus.SCRAPPED] * 3)
         self.assertEqual(self._status(self.done), PartsStatus.COMPLETED)  # not touched
-        self.load.refresh_from_db()
-        self.assertEqual(self.load.disposition_type, "SCRAP")
-        self.assertEqual(self.load.decision_authorized_by_id, self.superuser.id)
-        own = QuarantineDisposition.objects.filter(load_disposition=self.load)
-        self.assertFalse(own.filter(batch_execution__isnull=False).exists())  # a part's, not a load's
-        self.assertEqual(sorted(own.values_list("part__ERP_id", flat=True)), ["P-0", "P-1", "P-2"])
+        own = QuarantineDisposition.objects.filter(ncr=self.ncr)
         self.assertTrue(all(d.disposition_type == "SCRAP" and d.decision_authorized_by_id
                             for d in own))
 
@@ -83,25 +83,39 @@ class LoadDispositionTests(TenantTestCase):
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(self._status(self.parts[0]), PartsStatus.SCRAPPED)
         self.assertEqual([self._status(p) for p in self.parts[1:]], [PartsStatus.QUARANTINED] * 2)
-        self.load.refresh_from_db()
-        self.assertEqual((self.load.disposition_type or "", self.load.current_state), ("", "IN_PROGRESS"))
-        self.assertIn("Scrap for P-0", self.load.resolution_notes)
-        members = {m["erp_id"]: m for m in r.json()["affected_parts"]}
+        members = {m["erp_id"]: m for m in r.json()["members"]}
         self.assertFalse(members["P-0"]["awaiting_decision"])
         self.assertEqual(members["P-0"]["disposition_type"], "SCRAP")
         self.assertTrue(members["P-1"]["awaiting_decision"])
+        self.assertFalse(members["P-DONE"]["held"])
         self.assertFalse(members["P-DONE"]["awaiting_decision"])
-        self.assertIn("2 held part(s) in the load still need a decision",
-                      self.load.get_completion_blockers())
 
         # The rest, with a different decision — a load decided in parts.
         r = self._decide("USE_AS_IS", parts=self.parts[1:], customer_approval_reference="DEV-7")
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual([self._status(p) for p in self.parts[1:]], [PartsStatus.IN_PROGRESS] * 2)
-        self.load.refresh_from_db()
-        blockers = self.load.get_completion_blockers()
-        self.assertFalse(any("still need a decision" in b for b in blockers))
-        self.assertTrue(any("part disposition(s) from this load are still open" in b for b in blockers))
+
+    def test_the_ncr_closes_with_its_last_decision(self):
+        from Tracker.services.qms.disposition import complete_disposition_resolution
+        from Tracker.services.qms.ncr import record_containment
+        record_containment(self.ncr, action="Load held on the rack.", user=self.superuser)
+        self._decide("SCRAP")
+        own = list(QuarantineDisposition.objects.filter(ncr=self.ncr))
+        for d in own[:-1]:
+            complete_disposition_resolution(d, self.superuser)
+            self.ncr.refresh_from_db()
+            self.assertEqual(self.ncr.state, "OPEN")
+        complete_disposition_resolution(own[-1], self.superuser)
+        self.ncr.refresh_from_db()
+        self.assertEqual(self.ncr.state, "CLOSED")
+        self.assertIsNotNone(self.ncr.closed_at)
+
+    def test_containment_is_the_ncrs_and_blocks_closing_a_decision(self):
+        from Tracker.services.qms.disposition import complete_disposition_resolution
+        self._decide("SCRAP")
+        d = QuarantineDisposition.objects.filter(ncr=self.ncr).first()
+        with self.assertRaisesMessage(ValueError, f"Containment action required on {self.ncr.ncr_number}"):
+            complete_disposition_resolution(d, self.superuser)
 
     def test_rework_sends_each_chosen_part_to_the_rework_step(self):
         r = self._decide("REWORK", parts=self.parts[:2])
@@ -111,9 +125,10 @@ class LoadDispositionTests(TenantTestCase):
             self.assertEqual(p.step_id, self.rework.id)
         self.assertEqual(self._status(self.parts[2]), PartsStatus.QUARANTINED)
 
-    def test_only_parts_waiting_for_the_decision_can_be_chosen(self):
+    def test_only_parts_waiting_for_a_decision_can_be_chosen(self):
         r = self._decide("SCRAP", parts=[self.done])  # never held
         self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("still waiting for a decision", r.json()["detail"])
         self._decide("SCRAP", parts=[self.parts[0]])
         r = self._decide("SCRAP", parts=[self.parts[0]])  # already decided
         self.assertEqual(r.status_code, 400, r.content)
@@ -123,3 +138,13 @@ class LoadDispositionTests(TenantTestCase):
         self._decide("SCRAP")
         r = self._decide("SCRAP")
         self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("already has a decision", r.json()["detail"])
+
+    def test_a_second_failing_report_joins_the_load_ncr(self):
+        second = QualityReports.objects.create(
+            tenant=self.tenant_a, batch_execution=self.batch, step=self.wash, status="FAIL",
+            description="second check", detected_by=self.user_a)
+        second.refresh_from_db()
+        self.assertEqual(second.ncr_id, self.ncr.id)
+        self.assertEqual(NCR.objects.filter(batch_execution=self.batch).count(), 1)
+        self.assertEqual(QuarantineDisposition.objects.filter(ncr=self.ncr).count(), 3)

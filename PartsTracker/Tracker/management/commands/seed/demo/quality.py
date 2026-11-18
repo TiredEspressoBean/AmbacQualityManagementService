@@ -13,7 +13,7 @@ IMPORTANT: All enum values must be UPPERCASE to match model choices:
 - QualityReports.status: 'PASS', 'FAIL', 'PENDING'
 - QuarantineDisposition.current_state: 'OPEN', 'IN_PROGRESS', 'CLOSED'
 - QuarantineDisposition.disposition_type: 'REWORK', 'REPAIR', 'SCRAP', 'USE_AS_IS', 'RETURN_TO_SUPPLIER'
-- QuarantineDisposition.severity: 'CRITICAL', 'MAJOR', 'MINOR'
+- NCR.severity: 'CRITICAL', 'MAJOR', 'MINOR'
 - MeasurementResult.value_pass_fail: 'PASS', 'FAIL'
 """
 
@@ -595,11 +595,11 @@ class DemoQualitySeeder(BaseSeeder):
         - disposition_number: auto-generated
         - current_state: 'OPEN', 'IN_PROGRESS', or 'CLOSED' (UPPERCASE)
         - disposition_type: 'REWORK', 'REPAIR', 'SCRAP', 'USE_AS_IS', 'RETURN_TO_SUPPLIER' (UPPERCASE)
-        - severity: 'CRITICAL', 'MAJOR', or 'MINOR' (UPPERCASE)
         - resolution_notes: TextField
         - assigned_to: ForeignKey to User
         - quality_reports: ManyToManyField (not single FK)
-        - description: TextField
+        - ncr: the report's NCR, which carries the description, severity ('CRITICAL',
+          'MAJOR' or 'MINOR') and containment
         - requires_customer_approval: BooleanField
         - customer_approval_received: BooleanField
         - scrap_verified: BooleanField
@@ -653,22 +653,28 @@ class DemoQualitySeeder(BaseSeeder):
                              if scrap_verified else None)
         decided = bool(disposition_type) and current_state != 'OPEN'
 
+        # The FAIL report's NCR (raised by its save) carries what is wrong and its
+        # containment; the disposition is the decision under it.
+        ncr = self._ncr_for(quality_report)
+        ncr.severity = severity  # UPPERCASE enum - explicit, don't rely on default
+        ncr.description = disp_data.get('description', quality_report.description) or ''
+        ncr.containment_action = 'Part quarantined and segregated' if current_state != 'OPEN' else ''
+        ncr.containment_completed_at = containment_completed_at
+        ncr.containment_completed_by = approver if current_state != 'OPEN' else None
+        ncr.save(update_fields=['severity', 'description', 'containment_action',
+                                'containment_completed_at', 'containment_completed_by', 'updated_at'])
+
         disp, created = QuarantineDisposition.objects.update_or_create(
             tenant=self.tenant,
             disposition_number=disp_number,
             defaults={
+                'ncr': ncr,
                 'part': part,
                 'disposition_type': disposition_type,  # UPPERCASE enum
                 'current_state': current_state,  # UPPERCASE enum
-                'severity': severity,  # UPPERCASE enum - explicit, don't rely on default
                 'resolution_notes': disp_data.get('resolution_notes', ''),
-                'description': disp_data.get('description', quality_report.description),
                 'assigned_to': approver,
                 'step': rework_step,  # Step where rework will occur
-                # Containment tracking - immediate action taken
-                'containment_action': 'Part quarantined and segregated' if current_state != 'OPEN' else '',
-                'containment_completed_at': containment_completed_at,
-                'containment_completed_by': approver if current_state != 'OPEN' else None,
                 # Customer approval fields
                 'requires_customer_approval': requires_customer_approval,
                 'customer_approval_received': customer_approval_received,
@@ -733,9 +739,18 @@ class DemoQualitySeeder(BaseSeeder):
             .exclude(pk__in=explicit_ids)
             .filter(quality_reports__in=explicit_qr_ids).distinct()
         )
+        from Tracker.services.qms.ncr import sync_state
         for auto in autos:
             auto.delete()
+            sync_state(auto.ncr_id)
         return len(autos)
+
+    def _ncr_for(self, report):
+        """The NCR a seeded report is on: the one its FAIL save raised, else (a report
+        seeded without failing) one raised for it now, as the product would have."""
+        from Tracker.services.qms.ncr import ncr_for_failed_report
+        report.refresh_from_db(fields=['ncr'])
+        return report.ncr if report.ncr_id else ncr_for_failed_report(report)[0]
 
     def link_inspector_gauge(self):
         """Put an out-of-cal gauge on the inspector's home page.
@@ -879,7 +894,8 @@ class DemoQualitySeeder(BaseSeeder):
         Uses `.update()` (not save) so it doesn't cascade part-status changes
         onto parts already positioned elsewhere in the seed.
         """
-        from Tracker.models import QuarantineDisposition
+        from Tracker.models import NCR, QuarantineDisposition
+        from Tracker.services.qms.ncr import sync_state
 
         approver = qa_users[0] if qa_users else (operators[0] if operators else None)
         resolver = (qa_users[1] if len(qa_users) > 1 else None) or approver
@@ -922,16 +938,19 @@ class DemoQualitySeeder(BaseSeeder):
                 dtype, outcome = 'SCRAP', 2
             fields = {
                 'disposition_type': dtype,
-                'severity': sev,
                 'assigned_to': assignees[i % len(assignees)],
                 'created_at': created_at,
             }
+            # What is wrong, and its containment, are the NCR's.
+            ncr_fields = {'severity': sev}
 
             if outcome >= 1:
-                fields.update({
+                ncr_fields.update({
                     'containment_action': 'Part quarantined and segregated pending disposition',
                     'containment_completed_at': min(created_at + timedelta(hours=3), self.today),
                     'containment_completed_by': approver,
+                })
+                fields.update({
                     # A decided disposition carries who decided it, and when.
                     'decision_authorized_by': approver,
                     'decision_authorized_at': min(created_at + timedelta(hours=4), self.today),
@@ -964,6 +983,9 @@ class DemoQualitySeeder(BaseSeeder):
                     })
 
             QuarantineDisposition.objects.filter(pk=d.pk).update(**fields)
+            if d.ncr_id:
+                NCR.objects.filter(pk=d.ncr_id).update(**ncr_fields)
+                sync_state(d.ncr_id)
             enriched += 1
 
         return enriched

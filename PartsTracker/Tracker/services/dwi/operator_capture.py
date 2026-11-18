@@ -400,12 +400,13 @@ def submit_substep(
             report.save(update_fields=["status"])
             on_report_failed(report, "PENDING")
 
-        # The report's defects and readings are in now; its disposition was opened
-        # the moment it went FAIL, before them, and said only "Failed <step>".
+        # The report's defects and readings are in now; its NCR was opened the moment
+        # it went FAIL, before them, and said only "Failed <step>".
         if report is not None and report.status == "FAIL":
-            from Tracker.services.qms.disposition import refresh_disposition_description
-            for disp in report.dispositions.exclude(current_state="CLOSED"):
-                refresh_disposition_description(disp)
+            report.refresh_from_db(fields=["ncr"])
+            if report.ncr_id:
+                from Tracker.services.qms.ncr import refresh_description
+                refresh_description(report.ncr)
 
         completion = _record_completion(
             substep=substep,

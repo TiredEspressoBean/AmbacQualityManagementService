@@ -40,7 +40,7 @@ from django.utils import timezone
 
 from Tracker.models import (
     BatchExecution, Equipments, FPIRecord, FPIStatus, Orders, OrdersStatus, Parts,
-    PartsStatus, Processes, ProcessStep, QualityReports, QuarantineDisposition,
+    PartsStatus, Processes, ProcessStep, QualityReports, QuarantineDisposition, NCR,
     StepExecution, StepExecutionMeasurement, Substep, SubstepCompletion, SubstepResponse,
     WorkOrder, WorkOrderPriority, WorkOrderStatus,
 )
@@ -214,7 +214,7 @@ class DemoQaWalkSeeder(BaseSeeder):
         with transaction.atomic():
             wo = self._work_order(order, process, FAILED_LOAD_WO, len(FAILED_LOAD_PARTS))
             parts = self._parts(wo, part_type, FAILED_LOAD_PARTS)
-            result['failed_load_disposition'] = self._walk_failed_load(wo, parts, result)
+            result['failed_load_ncr'] = self._walk_failed_load(wo, parts, result)
         self._space_out(wo, self.today - timedelta(hours=1, minutes=40))
         self._date_failed_load(wo)
 
@@ -241,9 +241,9 @@ class DemoQaWalkSeeder(BaseSeeder):
                  f"there, {ff.disposition_number if ff else 'no disposition'} open")
         self.log(f"  {PAIR_WO}: {PAIR_PARTS[0]} started at Final Test (first piece 1 of 2), "
                  f"{PAIR_PARTS[1]} waiting")
-        fl = result.get('failed_load_disposition')
+        fl = result.get('failed_load_ncr')
         self.log(f"  {FAILED_LOAD_WO}: Wash load failed (bath {HOT_BATH:g} °C), "
-                 f"{fl.disposition_number if fl else 'no disposition'} holds "
+                 f"{fl.ncr_number if fl else 'no NCR'} holds "
                  f"{len(FAILED_LOAD_PARTS)} parts for Maria")
         self.log(f"  Training-gate overrides recorded: {result['override_count']}")
         return result
@@ -313,7 +313,7 @@ class DemoQaWalkSeeder(BaseSeeder):
         """The first piece bought off; the second body's bore measures oversize. The
         walk's operator fails it with the defect; Sarah contains it and assigns the
         decision to Maria."""
-        from Tracker.services.qms.disposition import record_containment_complete
+        from Tracker.services.qms.ncr import record_containment
         first, oversize = parts
         self._make_bodies(wo, parts, result)
         self._run_step_for([first], 'Body Inspection', result, advance=False)
@@ -331,11 +331,10 @@ class DemoQaWalkSeeder(BaseSeeder):
             self.log(f"  Warning: no disposition opened for {oversize.ERP_id}.", warning=True)
             return None
         disposition.assigned_to = self.maria
-        disposition.containment_action = (
+        disposition.save(update_fields=['assigned_to', 'updated_at'])
+        record_containment(disposition.ncr, user=self.sarah, action=(
             'Part tagged and moved to the hold rack. Bores of the other bodies from this '
-            'grinder setup re-checked on the CMM; all within 4.005.')
-        disposition.save(update_fields=['assigned_to', 'containment_action', 'updated_at'])
-        record_containment_complete(disposition, self.sarah)
+            'grinder setup re-checked on the CMM; all within 4.005.'))
         return disposition
 
     def _walk_false_fail(self, wo, parts, result):
@@ -380,10 +379,11 @@ class DemoQaWalkSeeder(BaseSeeder):
     def _walk_failed_load(self, wo, parts, result):
         """Machined and ground, then washed together: the load is sealed and its
         completion check reads the bath hot, which fails the cycle. The failed check
-        contains the load (batch_disposition): every part is held and one disposition
-        opens for the batch. Sarah records the containment; the decision is Maria's."""
+        contains the load (batch_disposition): every part is held under one NCR, each
+        with its decision to make. Sarah records the containment; the decisions are
+        Maria's."""
         from Tracker.services.dwi.batch_lifecycle import seal_batch
-        from Tracker.services.qms.disposition import record_containment_complete
+        from Tracker.services.qms.ncr import record_containment
         self._run_step_for(parts, 'Machining', result)
         self._run_step_for(parts, 'Precision Grinding', result)
         for part in parts:
@@ -406,21 +406,17 @@ class DemoQaWalkSeeder(BaseSeeder):
             else:
                 self._submit(ss, batch_execution=batch, out_of_spec='Bath Temperature',
                              reading=HOT_BATH)
-        disposition = (QuarantineDisposition.objects
-                       .filter(batch_execution=batch, current_state='OPEN').first())
-        if disposition is None:
-            self.log(f"  Warning: the failed load on {wo.ERP_id} opened no disposition.",
-                     warning=True)
+        ncr = NCR.objects.filter(batch_execution=batch, state='OPEN').first()
+        if ncr is None:
+            self.log(f"  Warning: the failed load on {wo.ERP_id} opened no NCR.", warning=True)
             return None
-        disposition.assigned_to = self.maria
-        disposition.containment_action = (
+        QuarantineDisposition.objects.filter(ncr=ncr).update(assigned_to=self.maria)
+        record_containment(ncr, user=self.sarah, action=(
             'Load held on the wash rack. Bath thermostat read 71 °C against the 65 °C '
-            'limit; heater relay replaced and the bath re-verified at 60 °C.')
-        disposition.save(update_fields=['assigned_to', 'containment_action', 'updated_at'])
-        record_containment_complete(disposition, self.sarah)
+            'limit; heater relay replaced and the bath re-verified at 60 °C.'))
         for part in parts:
             part.refresh_from_db()
-        return disposition
+        return ncr
 
     def _date_failed_load(self, wo):
         """_space_out re-dates part visits; the load, its readings, its report and its
@@ -445,7 +441,8 @@ class DemoQaWalkSeeder(BaseSeeder):
         SubstepCompletion.objects.filter(batch_execution=batch, substep__seals_load=False).update(
             completed_at=read)
         QualityReports.objects.filter(batch_execution=batch).update(created_at=read, updated_at=read)
-        QuarantineDisposition.objects.filter(batch_execution=batch).update(
+        QuarantineDisposition.objects.filter(ncr__batch_execution=batch).update(created_at=read)
+        NCR.objects.filter(batch_execution=batch).update(
             created_at=read, containment_completed_at=read + timedelta(minutes=15))
 
     def _make_bodies(self, wo, parts, result):
@@ -618,9 +615,8 @@ class DemoQaWalkSeeder(BaseSeeder):
     def _rework(self, part, report, *, containment=None, notes=None):
         """The FAIL opened a disposition. Maria decides REWORK, which splits the part
         to the Rework step for re-inspection."""
-        from Tracker.services.qms.disposition import (
-            decide_disposition, record_containment_complete, route_part_to_rework_if_needed,
-        )
+        from Tracker.services.qms.disposition import decide_disposition, route_part_to_rework_if_needed
+        from Tracker.services.qms.ncr import record_containment
         disposition = (QuarantineDisposition.objects
                        .filter(part=part, current_state__in=['OPEN', 'IN_PROGRESS'])
                        .order_by('-created_at').first())
@@ -628,11 +624,11 @@ class DemoQaWalkSeeder(BaseSeeder):
             self.log(f"  Warning: no disposition opened for {part.ERP_id}.", warning=True)
             return None
         disposition.assigned_to = self.sarah
-        disposition.containment_action = containment or (
-            'Remaining parts at Flow Calibration re-checked on the second flow bench; '
-            'none below the lower limit.')
-        disposition.save(update_fields=['assigned_to', 'containment_action', 'updated_at'])
-        record_containment_complete(disposition, self.sarah)
+        disposition.save(update_fields=['assigned_to', 'updated_at'])
+        if not disposition.ncr.containment_completed_at:
+            record_containment(disposition.ncr, user=self.sarah, action=containment or (
+                'Remaining parts at Flow Calibration re-checked on the second flow bench; '
+                'none below the lower limit.'))
         disposition = decide_disposition(
             disposition, disposition_type='REWORK', authorized_by=self.maria,
             notes=notes or 'Low flow traced to a partly blocked spray hole; clean and re-test.')
@@ -840,9 +836,12 @@ class DemoQaWalkSeeder(BaseSeeder):
                     continue
                 at = placed[idx][1]
                 fields = {'created_at': at}
-                for stamp in ('containment_completed_at', 'decision_authorized_at'):
-                    if getattr(d, stamp) is not None:
-                        fields[stamp] = at + timedelta(minutes=10)
+                if d.decision_authorized_at is not None:
+                    fields['decision_authorized_at'] = at + timedelta(minutes=10)
+                if d.ncr_id and d.ncr.containment_completed_at is not None:
+                    NCR.objects.filter(pk=d.ncr_id, created_at__gt=at).update(created_at=at)
+                    NCR.objects.filter(pk=d.ncr_id).update(
+                        containment_completed_at=at + timedelta(minutes=10))
                 # Resolved by the visit that carried it out (a rework), not at seed time.
                 done = placed[idx + 1][1] if idx + 1 < len(placed) else at + timedelta(minutes=30)
                 for stamp in ('resolution_completed_at', 'scrap_verified_at'):
@@ -865,10 +864,14 @@ class DemoQaWalkSeeder(BaseSeeder):
             created_at=F('created_at') - delta)
         # The decision too, or 013's REWORK reads as authorised a day after its
         # rework visit opened.
-        for stamp in ('decision_authorized_at', 'containment_completed_at',
-                      'scrap_verified_at', 'resolution_completed_at'):
+        for stamp in ('decision_authorized_at', 'scrap_verified_at', 'resolution_completed_at'):
             QuarantineDisposition.objects.filter(
                 part__work_order=wo, **{f'{stamp}__isnull': False}).update(
+                **{stamp: F(stamp) - delta})
+        ncrs = NCR.objects.filter(dispositions__part__work_order=wo).distinct().values_list('pk', flat=True)
+        NCR.objects.filter(pk__in=list(ncrs)).update(created_at=F('created_at') - delta)
+        for stamp in ('containment_completed_at', 'closed_at', 'capa_decided_at'):
+            NCR.objects.filter(pk__in=list(ncrs), **{f'{stamp}__isnull': False}).update(
                 **{stamp: F(stamp) - delta})
         FPIRecord.objects.filter(work_order=wo).update(created_at=F('created_at') - delta)
         FPIRecord.objects.filter(work_order=wo, inspected_at__isnull=False).update(

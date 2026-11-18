@@ -208,6 +208,7 @@ LINKS = {
     'QualityReports.step': STAYS,
     'QuarantineDisposition.step': STAYS,
     'QuarantineDisposition.escalated_from_step': STAYS,  # where it was escalated from: history
+    'NCR.step': STAYS,  # where the nonconformance was found: history
     'SamplingRuleSet.step': MANAGED,
     'SamplingSeverityState.step': STAYS,
     'SamplingTriggerState.step': STAYS,

@@ -55,8 +55,8 @@ def _html(title: str, body: str, action_label: str = "View") -> str:
 NCR_OPENED = {
     "event_code": "ncr.opened",
     "email": {
-        "subject": "[{{ payload.severity|upper }}] NCR on {{ payload.part_number }}",
-        "body_text": """A nonconformance has been opened.
+        "subject": "[{{ payload.severity|upper }}] {{ payload.ncr_number }} on {{ payload.part_number }}",
+        "body_text": """{{ payload.ncr_number }} has been opened.
 
 Part:       {{ payload.part_number }}
 Work order: {{ payload.work_order_number }}
@@ -71,7 +71,7 @@ View the NCR: {{ action_url }}
 - {{ branding.company_name|default:'UQMES' }}""",
         "body_html": _html(
             title="Nonconformance Opened",
-            body="""<p style="margin: 0 0 16px;">A nonconformance has been opened against part <strong>{{ payload.part_number }}</strong>.</p>
+            body="""<p style="margin: 0 0 16px;"><strong>{{ payload.ncr_number }}</strong> has been opened on <strong>{{ payload.part_number }}</strong>.</p>
       <table cellpadding="6" cellspacing="0" style="border-collapse: collapse; margin: 16px 0; width: 100%; font-size: 14px;">
         <tr><td style="color: #666; padding: 4px 12px 4px 0; white-space: nowrap;">Severity</td><td><strong>{{ payload.severity }}</strong></td></tr>
         <tr><td style="color: #666; padding: 4px 12px 4px 0;">Work order</td><td>{{ payload.work_order_number }}</td></tr>
@@ -85,8 +85,8 @@ View the NCR: {{ action_url }}
         "severity": "warn",
     },
     "in_app": {
-        "subject": "NCR opened on {{ payload.part_number }} ({{ payload.severity }})",
-        "body_text": "{{ payload.opened_by_name }} opened a {{ payload.severity }} NCR on {{ payload.part_number }} at step \"{{ payload.step_name }}\".",
+        "subject": "{{ payload.ncr_number }} opened on {{ payload.part_number }} ({{ payload.severity }})",
+        "body_text": "{{ payload.opened_by_name }} opened {{ payload.ncr_number }} ({{ payload.severity }}) on {{ payload.part_number }} at step \"{{ payload.step_name }}\".",
         "action_url_template": "/quality/ncrs/{{ payload.id }}",
         "severity": "warn",
         "icon": "alert-triangle",

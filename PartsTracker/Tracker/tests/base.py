@@ -304,3 +304,27 @@ class TenantTestCase(VectorTestCase):
             'view_workorder', 'add_workorder', 'change_workorder', 'delete_workorder',
         ]
         return self.grant_tenant_permissions(user, tenant, staff_permissions)
+
+
+# What a disposition fixture used to carry that is its NCR's now (the header: what is
+# wrong, how bad, the containment) — and the load it covered.
+_NCR_HEADER_FIELDS = ('severity', 'description', 'containment_action', 'containment_completed_at',
+                      'containment_completed_by', 'containment_performed_by', 'batch_execution')
+
+
+def make_disposition(**fields):
+    """A disposition fixture under an NCR, as the product makes every one: the NCR given
+    (`ncr=`), else a new one. Header kwargs (severity, description, containment_*,
+    batch_execution) go on the NCR."""
+    from Tracker.models import NCR, QuarantineDisposition
+    header = {k: fields.pop(k) for k in _NCR_HEADER_FIELDS if k in fields}
+    ncr = fields.pop('ncr', None)
+    if ncr is None:
+        tenant = fields.get('tenant')
+        ncr = (NCR.unscoped.create(tenant=tenant, step=fields.get('step'), **header) if tenant is not None
+               else NCR.objects.create(step=fields.get('step'), **header))
+    elif header:
+        for k, v in header.items():
+            setattr(ncr, k, v)
+        ncr.save()
+    return QuarantineDisposition.unscoped.create(ncr=ncr, **fields)

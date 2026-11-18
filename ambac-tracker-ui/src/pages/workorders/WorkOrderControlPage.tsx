@@ -63,6 +63,7 @@ import {
     ChevronLeft,
     ChevronRight,
     CircleAlert,
+    FileWarning,
     GitBranch,
     MoreHorizontal,
     PauseCircle,
@@ -1391,6 +1392,7 @@ export function WorkOrderControlPage() {
     // Without clear_workorder_hold, a supervisor who holds it signs in on this screen
     // (user ruling 2026-11-16).
     const mayClearHold = usePermissionSet().has("clear_workorder_hold");
+    const mayRaiseNcr = usePermissionSet().has("add_ncr");
     function clearHold(notes: string, supervisor?: HoldSupervisor) {
         clearHoldMutation.mutate({ id: workOrderId, notes, supervisor }, {
             onSuccess: () => setClearHoldOpen(false),
@@ -2257,6 +2259,21 @@ export function WorkOrderControlPage() {
                                 <Undo2 className="mr-1 h-4 w-4" />
                                 Rework
                             </Button>
+                            {/* One nonconformance over the chosen parts: each held, with its
+                                own decision under the NCR. */}
+                            {mayRaiseNcr && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => navigate({
+                                        to: "/quality/ncrs/new",
+                                        search: { parts: Array.from(selected).join(",") },
+                                    })}
+                                >
+                                    <FileWarning className="mr-1 h-4 w-4" />
+                                    Raise NCR
+                                </Button>
+                            )}
                             <Button
                                 size="sm"
                                 variant="outline"

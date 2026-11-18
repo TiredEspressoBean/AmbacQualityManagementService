@@ -199,12 +199,15 @@ class QualitySeeder(BaseSeeder):
 
         resolution_time = timestamp + timedelta(days=random.randint(1, 5)) if timestamp and target_state == 'CLOSED' else None
 
+        from Tracker.services.qms.ncr import ncr_for_failed_report, sync_state
+        quality_report.refresh_from_db(fields=['ncr'])
+        ncr = quality_report.ncr if quality_report.ncr_id else ncr_for_failed_report(quality_report)[0]
         disposition = QuarantineDisposition.objects.create(
             tenant=self.tenant,
+            ncr=ncr,
             current_state='IN_PROGRESS',
             disposition_type=disposition_type,
             assigned_to=self.get_weighted_employee(users),
-            description=f"Quality failure on {quality_report.part.ERP_id} at {quality_report.step.name}",
             resolution_notes=f"Disposition: {disposition_type}" if target_state == 'CLOSED' else "",
             resolution_completed=(target_state == 'CLOSED'),
             resolution_completed_by=self.get_weighted_employee(users) if target_state == 'CLOSED' else None,
@@ -217,6 +220,7 @@ class QualitySeeder(BaseSeeder):
 
         if target_state != 'IN_PROGRESS':
             QuarantineDisposition.objects.filter(pk=disposition.pk).update(current_state=target_state)
+            sync_state(ncr.pk)
 
         if timestamp:
             QuarantineDisposition.objects.filter(pk=disposition.pk).update(

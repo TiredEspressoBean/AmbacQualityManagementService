@@ -158,7 +158,11 @@ def _disposition_bits(disposition):
         return None, "", []
     reports = sorted(disposition.quality_reports.filter(status="FAIL")
                      .values_list("report_number", flat=True))
-    return disposition.disposition_number, (disposition.description or "").strip(), reports
+    # The nonconformance it is held under: the NCR's number and what is wrong.
+    ncr = disposition.ncr
+    if ncr is None:
+        return disposition.disposition_number, "", reports
+    return ncr.ncr_number, (ncr.description or "").strip(), reports
 
 
 def build_lot_tag(lot, tenant) -> HoldTagContext:

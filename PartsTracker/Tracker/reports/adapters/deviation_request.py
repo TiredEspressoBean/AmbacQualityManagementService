@@ -164,7 +164,7 @@ class DeviationRequestAdapter(ReportAdapter):
         return DeviationRequestContext(
             disposition_number=qd.disposition_number,
             current_state=qd.current_state,
-            severity=qd.severity,
+            severity=qd.ncr.severity if qd.ncr_id else "MAJOR",
             disposition_type=qd.disposition_type,
             created_at=qd.created_at,
 
@@ -173,7 +173,7 @@ class DeviationRequestAdapter(ReportAdapter):
             work_order_erp_id=work_order.ERP_id if work_order else None,
             step_name=qd.step.name if qd.step else None,
 
-            description=qd.description,
+            description=qd.ncr.description if qd.ncr_id else "",
 
             resolution_notes=qd.resolution_notes,
             assigned_to=_user_name(qd.assigned_to),

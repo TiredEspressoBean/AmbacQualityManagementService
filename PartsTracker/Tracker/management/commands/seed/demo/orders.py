@@ -1209,28 +1209,28 @@ class DemoOrdersSeeder(BaseSeeder):
         manager takes it, contains it, and accepts the load on an engineering
         concession — bath temperature is a cleaning-efficacy limit, not geometry.
         """
-        from Tracker.models import QuarantineDisposition
-        from Tracker.services.qms.disposition import (
-            complete_disposition_resolution, decide_disposition, record_containment_complete)
+        from Tracker.models import NCR, QuarantineDisposition
+        from Tracker.services.qms.disposition import complete_disposition_resolution
+        from Tracker.services.qms.ncr import decide_ncr, record_containment
 
         qa = users.get('qa_manager') or (users.get('qa_staff') or [None])[0]
-        disp = QuarantineDisposition.objects.filter(
-            quality_reports__batch_execution=be, current_state='OPEN').first()
-        if qa is None or disp is None:
+        ncr = NCR.objects.filter(batch_execution=be, state='OPEN').first()
+        if qa is None or ncr is None:
             return
-        disp.assigned_to = qa
-        disp.containment_action = "Load held at Wash; bodies checked for residue."
-        disp.save(update_fields=['assigned_to', 'containment_action'])
-        record_containment_complete(disp, qa)
-        decide_disposition(
-            disp, disposition_type='USE_AS_IS', authorized_by=qa,
+        QuarantineDisposition.objects.filter(ncr=ncr).update(assigned_to=qa)
+        record_containment(ncr, user=qa, action="Load held at Wash; bodies checked for residue.")
+        decided = decide_ncr(
+            ncr, disposition_type='USE_AS_IS', authorized_by=qa,
             notes="Bath ran 71 °C against a 65 °C limit. Residue check clean; load accepted.",
             customer_approval={'reference': 'ENG-CONC-0038'},
         )
-        complete_disposition_resolution(disp, qa)
-        QuarantineDisposition.objects.filter(pk=disp.pk).update(
+        for disp in decided:
+            complete_disposition_resolution(disp, qa)
+        QuarantineDisposition.objects.filter(ncr=ncr).update(
             created_at=when,
-            containment_completed_at=when + timedelta(minutes=40),
             decision_authorized_at=when + timedelta(hours=3),
             resolution_completed_at=when + timedelta(hours=3, minutes=10),
         )
+        NCR.objects.filter(pk=ncr.pk).update(
+            created_at=when, containment_completed_at=when + timedelta(minutes=40),
+            closed_at=when + timedelta(hours=3, minutes=10))

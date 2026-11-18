@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from Tracker.models import QuarantineDisposition
 from Tracker.tests.base import TenantTestCase
+from Tracker.tests.base import make_disposition
 
 
 class DispositionClosePermissionTests(TenantTestCase):
@@ -17,7 +18,7 @@ class DispositionClosePermissionTests(TenantTestCase):
         # pending annotations) disposition owned by tenant_a.
         # MINOR severity → no containment requirement, keeping this test focused
         # on the close *permission* (containment gating is covered in 2f tests).
-        self.disp = QuarantineDisposition.unscoped.create(
+        self.disp = make_disposition(
             tenant=self.tenant_a,
             disposition_type="USE_AS_IS",
             severity="MINOR",

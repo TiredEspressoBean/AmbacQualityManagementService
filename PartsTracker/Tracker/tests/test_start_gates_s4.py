@@ -23,6 +23,7 @@ from Tracker.models.life_tracking import LifeLimitDefinition, LifeTracking, Part
 from Tracker.services.mes.gates import GateCode, StartRefused
 from Tracker.services.mes.lifecycle import NotQualified, start_execution
 from Tracker.tests.base import TenantTestCase
+from Tracker.tests.base import make_disposition
 
 
 class StartGatesS4Tests(TenantTestCase):
@@ -529,7 +530,7 @@ class QuarantinedInProgressTests(TenantTestCase):
         self.visit = StepExecution.objects.create(
             tenant=t, part=self.part, step=self.step, visit_number=1, status="IN_PROGRESS",
             assigned_to=self.user_a, started_at=timezone.now() - timedelta(minutes=30))
-        self.disp = QuarantineDisposition.objects.create(tenant=t, part=self.part,
+        self.disp = make_disposition(tenant=t, part=self.part,
                                                          description="Torque out of spec")
         self.authenticate_superuser(self.tenant_a)
 

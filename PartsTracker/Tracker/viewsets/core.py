@@ -136,6 +136,10 @@ class ListMetadataMixin:
                     # Handle the base field name (strip lookup suffixes)
                     base_field_name = field_name.split('__')[0] if '__' in field_name else field_name
                     model_field = model._meta.get_field(base_field_name)
+                    # A field named for people ("CAPA decision") says so itself; the
+                    # field name title-cased lost acronyms ("Capa Decision").
+                    if '__' not in field_name and getattr(model_field, 'verbose_name', None)                             and str(model_field.verbose_name) != base_field_name.replace('_', ' '):
+                        filter_info['display'] = str(model_field.verbose_name)
 
                     # Check for choices
                     if hasattr(model_field, 'choices') and model_field.choices:

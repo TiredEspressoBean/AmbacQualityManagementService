@@ -180,9 +180,8 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
         lot moves without waiting on it. Low priority and a later date, so it doesn't
         change what the operator track has up next."""
         from Tracker.models import WorkOrderPriority
-        from Tracker.services.qms.disposition import (
-            decide_disposition, record_containment_complete, record_scrap_verification,
-        )
+        from Tracker.services.qms.disposition import decide_disposition, record_scrap_verification
+        from Tracker.services.qms.ncr import record_containment
         with transaction.atomic():
             wo = self._work_order(order, process, MAKEUP_WO, len(MAKEUP_PARTS))
             WorkOrder.objects.filter(pk=wo.pk).update(
@@ -200,10 +199,9 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
                          "make-up exhibit skipped.", warning=True)
                 return wo
             disposition.assigned_to = self.sarah
-            disposition.containment_action = (
-                'Bar stock lot checked: the other three bodies measure in spec.')
-            disposition.save(update_fields=['assigned_to', 'containment_action', 'updated_at'])
-            record_containment_complete(disposition, self.sarah)
+            disposition.save(update_fields=['assigned_to', 'updated_at'])
+            record_containment(disposition.ncr, user=self.sarah, action=(
+                'Bar stock lot checked: the other three bodies measure in spec.'))
             disposition = decide_disposition(
                 disposition, disposition_type='SCRAP', authorized_by=self.maria,
                 notes='Turned undersize; no material left to recover the diameter.')

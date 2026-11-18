@@ -6,6 +6,7 @@
 """
 from Tracker.models import PartTypes, Steps
 from Tracker.tests.base import TenantTestCase
+from Tracker.tests.base import make_disposition
 
 
 class StepSamplingGateTests(TenantTestCase):
@@ -208,7 +209,7 @@ class BlockOnOutOfSpecTests(TenantTestCase):
         the reading held it forever. The disposition decides it."""
         from Tracker.models import QuarantineDisposition
         self._record(10.5)
-        d = QuarantineDisposition.objects.create(tenant=self.tenant_a, part=self.se.part,
+        d = make_disposition(tenant=self.tenant_a, part=self.se.part,
                                                  description="OD 10.5 over")
         _, blockers = self.step.can_advance_from_step(self.se, self.wo)
         self.assertIn(f"B-1 is quarantined — {d.disposition_number} decides what happens to "

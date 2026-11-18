@@ -17,6 +17,7 @@ from Tracker.reports.services.pdf_generator import (
     ReportParamError,
 )
 from Tracker.reports.tests.base import ReportAdapterTestMixin
+from Tracker.tests.base import make_disposition
 
 
 class TestDeviationRequestAdapter(ReportAdapterTestMixin, SimpleTestCase):
@@ -109,7 +110,7 @@ class DeviationRequestAdapterCrossTenantTests(TestCase):
         )
 
         # USE_AS_IS disposition owned by Tenant B
-        cls.use_as_is_in_b = QuarantineDisposition.unscoped.create(
+        cls.use_as_is_in_b = make_disposition(
             tenant=cls.tenant_b,
             disposition_number="DISP-TEST-B-001",
             disposition_type="USE_AS_IS",
@@ -121,7 +122,7 @@ class DeviationRequestAdapterCrossTenantTests(TestCase):
         )
 
         # REWORK disposition owned by Tenant A (wrong type, right tenant)
-        cls.rework_in_a = QuarantineDisposition.unscoped.create(
+        cls.rework_in_a = make_disposition(
             tenant=cls.tenant_a,
             disposition_number="DISP-TEST-A-REWORK",
             disposition_type="REWORK",

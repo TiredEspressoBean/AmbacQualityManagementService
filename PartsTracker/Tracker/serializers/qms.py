@@ -10,7 +10,7 @@ from Tracker.models import (
     # QMS models
     QualityErrorsList, MeasurementResult, QualityReports,
     QualityReportEquipment, QualityReportPersonnel, EquipmentRole, Equipments,
-    QuarantineDisposition, SupplierQualification, PartApproval,
+    QuarantineDisposition, NCR, SupplierQualification, PartApproval, User,
     # CAPA models
     CAPA, CapaTasks, CapaTaskAssignee, RcaRecord, FiveWhys, Fishbone, RootCause, CapaVerification,
     # CAPA enums
@@ -22,7 +22,7 @@ from Tracker.models import (
     SamplingRule, SamplingRuleSet, SamplingRuleType, SamplingAnalytics,
     SamplingAuditLog, SamplingSeverityState, SamplingTriggerState,
     # Manufacturing / supplier
-    PartTypes, Companies,
+    PartTypes, Companies, Parts,
     # Core models
     NotificationTask,
 )
@@ -234,9 +234,15 @@ class QualityReportsSerializer(SecureModelMixin):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     detected_by_info = serializers.SerializerMethodField()
     verified_by_info = serializers.SerializerMethodField()
-    # Whether this failure needed a CAPA (services/qms/capa_decision.py). Read-only
-    # here: recorded through the `capa-decision` action, or stamped by a CAPA.
-    capa_decision = serializers.ChoiceField(choices=CAPA_DECISION_CHOICES, read_only=True, allow_null=True)
+    # The NCR this failure is on, and whether that needed a CAPA
+    # (services/qms/capa_decision.py). Read-only here: recorded through the
+    # `capa-decision` action, or stamped by a CAPA.
+    ncr_number = serializers.CharField(source='ncr.ncr_number', read_only=True, allow_null=True)
+    capa_decision = serializers.ChoiceField(source='ncr.capa_decision', choices=CAPA_DECISION_CHOICES,
+                                            read_only=True, allow_null=True)
+    capa_decision_note = serializers.CharField(source='ncr.capa_decision_note', read_only=True, allow_null=True)
+    capa_decided_by = serializers.PrimaryKeyRelatedField(source='ncr.capa_decided_by', read_only=True, allow_null=True)
+    capa_decided_at = serializers.DateTimeField(source='ncr.capa_decided_at', read_only=True, allow_null=True)
     capa_decided_by_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -249,15 +255,16 @@ class QualityReportsSerializer(SecureModelMixin):
                   "step_execution", "substep", "batch_execution",  # Inspection-event provenance (which visit/batch, which substep)
                   "equipment_links", "personnel_links",  # New role-tagged shape
                   "part_info", "part_display", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived",
+                  "ncr", "ncr_number",
                   "capa_decision", "capa_decision_note", "capa_decided_by", "capa_decided_by_name", "capa_decided_at",
                   # Withdrawn by a voided capture: kept as recorded, replaced by a new report.
                   "superseded_at", "superseded_by", "superseded_reason", "replaced_by"]
         # Provenance is written by the capture services (inline_capture /
-        # operator_capture), never by an API client hand-filing a report.
+        # operator_capture), never by an API client hand-filing a report. The NCR is
+        # services/qms/ncr.py's to set.
         read_only_fields = ("report_number", "created_at",
                             "material_lot", "osp_shipment", "sample_size", "accept_number", "reject_number",
-                            "step_execution", "substep", "batch_execution",
-                            "capa_decision_note", "capa_decided_by", "capa_decided_at",
+                            "step_execution", "substep", "batch_execution", "ncr",
                             "superseded_at", "superseded_by", "superseded_reason", "replaced_by")
         # DRF builds UniqueTogetherValidators for the two conditional
         # (execution, substep) constraints because these read-only nullable fields
@@ -268,7 +275,7 @@ class QualityReportsSerializer(SecureModelMixin):
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_capa_decided_by_name(self, obj):
-        u = obj.capa_decided_by
+        u = obj.ncr.capa_decided_by if obj.ncr_id else None
         return ((u.get_full_name() or "").strip() or u.email) if u is not None else None
 
     @extend_schema_field(serializers.DictField(allow_null=True))
@@ -857,16 +864,121 @@ class SamplingTriggerStateSerializer(SecureModelMixin):
 # `Tracker.serializers.notification_schedule`.
 
 
+class NCRMemberSerializer(serializers.Serializer):
+    """One thing an NCR covers — a part, or a rejected lot quantity — and its latest
+    decision."""
+    part_id = serializers.UUIDField(allow_null=True)
+    erp_id = serializers.CharField(allow_null=True)
+    part_status = serializers.CharField(allow_null=True)
+    material_lot_id = serializers.UUIDField(allow_null=True)
+    lot_number = serializers.CharField(allow_null=True)
+    disposition_id = serializers.UUIDField(allow_null=True)
+    disposition_number = serializers.CharField(allow_null=True)
+    disposition_type = serializers.CharField(allow_null=True)
+    current_state = serializers.CharField(allow_null=True)
+    # Still waiting for a decision — what `decide` offers.
+    awaiting_decision = serializers.BooleanField()
+    # A failed load's part that had already moved past the step: listed, not held.
+    held = serializers.BooleanField()
+
+
+class NCRReportRefSerializer(serializers.Serializer):
+    """A failed inspection record on the NCR."""
+    id = serializers.UUIDField()
+    report_number = serializers.CharField()
+    status = serializers.CharField()
+    part_erp_id = serializers.CharField(allow_null=True)
+    created_at = serializers.DateTimeField()
+
+
+class NCRSerializer(SecureModelMixin):
+    """An NCR: what is wrong, its containment and CAPA decision, and what it covers.
+    The header (description, severity, containment) is editable while it is open;
+    severity may only rise once anything under it is decided (approval_lock)."""
+    severity_display = serializers.CharField(source='get_severity_display', read_only=True)
+    state_display = serializers.CharField(source='get_state_display', read_only=True)
+    step_name = serializers.CharField(source='step.name', read_only=True, allow_null=True)
+    work_order_erp_id = serializers.CharField(source='work_order.ERP_id', read_only=True, allow_null=True)
+    raised_by_name = serializers.SerializerMethodField()
+    containment_completed_by_name = serializers.SerializerMethodField()
+    capa_decided_by_name = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()
+    reports = serializers.SerializerMethodField()
+    report_ids = serializers.PrimaryKeyRelatedField(source='reports', many=True, read_only=True)
+    capa_ids = serializers.PrimaryKeyRelatedField(source='capas', many=True, read_only=True)
+
+    class Meta:
+        model = NCR
+        fields = (
+            'id', 'ncr_number', 'state', 'state_display', 'closed_at',
+            'description', 'severity', 'severity_display',
+            'step', 'step_name', 'work_order', 'work_order_erp_id', 'batch_execution',
+            'raised_by', 'raised_by_name',
+            'containment_action', 'containment_completed_at', 'containment_completed_by',
+            'containment_completed_by_name', 'containment_performed_by',
+            'capa_decision', 'capa_decision_note', 'capa_decided_by', 'capa_decided_by_name',
+            'capa_decided_at',
+            'members', 'reports', 'report_ids', 'capa_ids',
+            'created_at', 'updated_at', 'archived',
+        )
+        read_only_fields = (
+            'ncr_number', 'state', 'closed_at', 'step', 'work_order', 'batch_execution', 'raised_by',
+            'containment_completed_at', 'containment_completed_by',
+            'capa_decision', 'capa_decision_note', 'capa_decided_by', 'capa_decided_at',
+            'created_at', 'updated_at', 'archived',
+        )
+
+    @staticmethod
+    def _name(u):
+        return u.display_name if u is not None else None
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_raised_by_name(self, obj):
+        return self._name(obj.raised_by)
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_containment_completed_by_name(self, obj):
+        return self._name(obj.containment_completed_by)
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_capa_decided_by_name(self, obj):
+        return self._name(obj.capa_decided_by)
+
+    @extend_schema_field(NCRMemberSerializer(many=True))
+    def get_members(self, obj):
+        from Tracker.services.qms.ncr import members
+        return members(obj)
+
+    @extend_schema_field(NCRReportRefSerializer(many=True))
+    def get_reports(self, obj):
+        return [{'id': r.id, 'report_number': r.report_number or '', 'status': r.status,
+                 'part_erp_id': r.part.ERP_id if r.part_id else None, 'created_at': r.created_at}
+                for r in obj.reports.filter(archived=False).select_related('part').order_by('created_at')]
+
+
+class RaiseNCRSerializer(serializers.Serializer):
+    """Raise one NCR over parts a person picks."""
+    parts = TenantScopedPrimaryKeyRelatedField(queryset=Parts.unscoped.all(), many=True)
+    description = serializers.CharField(help_text="What is wrong — the NCR's description.")
+    severity = serializers.ChoiceField(choices=NCR.SEVERITY_CHOICES, required=False, default='MAJOR')
+
+
+class AddPartsToNCRSerializer(serializers.Serializer):
+    """Put more parts on an open NCR."""
+    parts = TenantScopedPrimaryKeyRelatedField(queryset=Parts.unscoped.all(), many=True)
+    reason = serializers.CharField(required=False, allow_blank=True,
+                                   help_text="Why these parts — written on each part's failed record.")
+
+
 class DispositionAffectedPartSerializer(serializers.Serializer):
-    """A member part of a batch disposition's load — shown in the form's
-    affected-load panel so QA can see which parts the failed cycle covers and
-    which were held."""
+    """A part the disposition's NCR covers — shown in the form's affected-parts panel so
+    QA can see what else the nonconformance covers and where each stands."""
     id = serializers.UUIDField()
     erp_id = serializers.CharField()
     part_status = serializers.CharField()
-    # Held and still waiting for this load's decision — what the decide dialog offers.
+    # Still waiting for a decision — what the NCR's decide offers.
     awaiting_decision = serializers.BooleanField()
-    # The part's own disposition, once the load's decision reached it.
+    # The part's own (latest) disposition under the NCR.
     disposition_id = serializers.UUIDField(allow_null=True)
     disposition_number = serializers.CharField(allow_null=True)
     disposition_type = serializers.CharField(allow_null=True)
@@ -874,6 +986,21 @@ class DispositionAffectedPartSerializer(serializers.Serializer):
 
 class QuarantineDispositionSerializer(SecureModelMixin):
     disposition_number = serializers.CharField(read_only=True)
+    # The nonconformance this decides part of. What is wrong — description, severity,
+    # containment — is the NCR's; these fields read and write it there.
+    ncr_number = serializers.CharField(source='ncr.ncr_number', read_only=True, allow_null=True)
+    description = serializers.CharField(source='ncr.description', required=False, allow_blank=True)
+    severity = serializers.ChoiceField(source='ncr.severity', choices=NCR.SEVERITY_CHOICES, required=False)
+    containment_action = serializers.CharField(source='ncr.containment_action', required=False, allow_blank=True)
+    containment_completed_at = serializers.DateTimeField(source='ncr.containment_completed_at', read_only=True,
+                                                         allow_null=True)
+    containment_completed_by = serializers.PrimaryKeyRelatedField(source='ncr.containment_completed_by',
+                                                                  read_only=True, allow_null=True)
+    containment_performed_by = serializers.PrimaryKeyRelatedField(
+        source='ncr.containment_performed_by', queryset=User.objects.all(), required=False, allow_null=True)
+    # A failed load's NCR covers the load.
+    batch_execution = serializers.PrimaryKeyRelatedField(source='ncr.batch_execution', read_only=True,
+                                                         allow_null=True)
     part_erp_id = serializers.SerializerMethodField()
     assignee_name = serializers.SerializerMethodField()
     affected_parts = serializers.SerializerMethodField()
@@ -912,7 +1039,8 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         model = QuarantineDisposition
         fields = (
             # Core fields
-            'id', 'disposition_number', 'current_state', 'disposition_type', 'severity', 'severity_display',
+            'id', 'disposition_number', 'ncr', 'ncr_number',
+            'current_state', 'disposition_type', 'severity', 'severity_display',
             'assigned_to', 'due_date', 'description', 'resolution_notes',
             # Resolution tracking
             'resolution_completed', 'resolution_completed_by', 'resolution_completed_by_name',
@@ -935,7 +1063,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             'rework_limit_exceeded', 'quality_reports',
             # MRB: the step whose visit cap sent the part here (set by the engine)
             'escalated_from_step',
-            # Batch dispositions: the member parts of the affected load
+            # Everything the NCR covers, and where each part stands
             'affected_parts',
             # WO denormalization (for frontend exception → WO linking)
             'work_order_id', 'work_order_erp_id',
@@ -950,6 +1078,9 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         )
 
         read_only_fields = (
+            # The NCR is services/qms/ncr.py's to set (the report's, the part's open
+            # one, or a new one).
+            'ncr',
             'disposition_number', 'assignee_name', 'choices_data', 'step_info', 'rework_limit_exceeded',
             'annotation_status', 'can_be_completed', 'completion_blockers',
             'severity_display', 'containment_completed_by_name', 'scrap_verified_by_name',
@@ -961,7 +1092,6 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             # by the server (services.qms.disposition); the forms set the optional
             # *_performed_by instead (user decision 2026-10-07). Writable, anyone
             # could be named as having completed or verified a step.
-            'containment_completed_by', 'containment_completed_at',
             'scrap_verified_by', 'scrap_verified_at',
             'resolution_completed', 'resolution_completed_by', 'resolution_completed_at',
             'created_at', 'updated_at',
@@ -969,34 +1099,27 @@ class QuarantineDispositionSerializer(SecureModelMixin):
 
     @extend_schema_field(DispositionAffectedPartSerializer(many=True))
     def get_affected_parts(self, obj):
-        """Member parts of the batch this disposition covers (empty for part /
-        general dispositions). Lets the form show the affected load."""
-        if not obj.batch_execution_id:
+        """The parts the disposition's NCR covers, when it covers more than this one
+        (empty otherwise). Lets the form show the rest of the nonconformance."""
+        if not obj.ncr_id:
             return []
-        from Tracker.models import PartsStatus
-        from Tracker.services.qms.disposition import is_load_disposition, load_part_dispositions
-        own = load_part_dispositions(obj) if is_load_disposition(obj) else {}
-        out = []
-        for p in obj.batch_execution.parts.order_by('ERP_id'):
-            d = own.get(p.pk)
-            out.append({
-                'id': p.id, 'erp_id': p.ERP_id, 'part_status': p.part_status,
-                'awaiting_decision': (is_load_disposition(obj) and d is None
-                                      and p.part_status == PartsStatus.QUARANTINED),
-                'disposition_id': d.id if d else None,
-                'disposition_number': d.disposition_number if d else None,
-                'disposition_type': (d.disposition_type or None) if d else None,
-            })
-        return out
+        from Tracker.services.qms.ncr import members
+        rows = [m for m in members(obj.ncr) if m['part_id']]
+        if len(rows) < 2:
+            return []
+        return [{
+            'id': m['part_id'], 'erp_id': m['erp_id'], 'part_status': m['part_status'],
+            'awaiting_decision': m['awaiting_decision'], 'disposition_id': m['disposition_id'],
+            'disposition_number': m['disposition_number'], 'disposition_type': m['disposition_type'],
+        } for m in rows]
 
     def _work_order(self, obj):
-        # Part dispositions carry the WO through the part; batch dispositions
-        # (part is null) carry it through the batch execution. Both may be
-        # absent (general / lot-reject dispositions) → None.
+        # Part dispositions carry the WO through the part; anything else through its
+        # NCR (a failed load's). Both may be absent (lot-reject dispositions) → None.
         if obj.part_id and getattr(obj.part, 'work_order_id', None):
             return obj.part.work_order
-        if obj.batch_execution_id:
-            return obj.batch_execution.work_order
+        if obj.ncr_id and obj.ncr.work_order_id:
+            return obj.ncr.work_order
         return None
 
     @extend_schema_field(serializers.UUIDField(allow_null=True))
@@ -1025,6 +1148,12 @@ class QuarantineDispositionSerializer(SecureModelMixin):
                 "without a type, then decide it (a co-signer can authorize)."]})
         containment_done = validated_data.pop('containment_completed', False)
         scrap_verified = validated_data.pop('scrap_verified', None)
+        # Under the NCR its reports are on, else its part's open one, else a new one
+        # carrying the header given here.
+        from Tracker.services.qms.ncr import ncr_for_new_disposition
+        validated_data['ncr'] = ncr_for_new_disposition(
+            part=validated_data.get('part'), reports=validated_data.get('quality_reports') or [],
+            step=validated_data.get('step'), user=user, header=validated_data.pop('ncr', {}) or {})
         instance = super().create(validated_data)
         self._record_stamps(instance, user, containment_done, scrap_verified)
         if disposition_type:
@@ -1074,6 +1203,27 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             validated_data.pop('customer_approval_date')
         containment_done = validated_data.pop('containment_completed', False)
         scrap_verified = validated_data.pop('scrap_verified', None)
+        header = validated_data.pop('ncr', {}) or {}
+        if header and instance.ncr_id:
+            # The NCR's header is change_ncr's, here as on the NCR (user ruling 2026-11-17).
+            # Echoed unchanged by a form, it isn't an edit.
+            header = {k: v for k, v in header.items()
+                      if getattr(instance.ncr, f"{k}_id" if k == 'containment_performed_by' else k)
+                      != (getattr(v, 'pk', v))}
+            user = getattr(self.context.get('request'), 'user', None)
+            if header and not (user and user.has_tenant_perm('change_ncr')):
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied(f"What's wrong on {instance.ncr.ncr_number} — its description, "
+                                       "severity and containment — is edited by a lead or QA.")
+        if header and instance.ncr_id:
+            # The NCR's own lock: closed, or severity lowered once anything is decided.
+            from Tracker.services.core.approval_lock import edit_refusal
+            why = edit_refusal(instance.ncr, {k: getattr(v, 'pk', v) for k, v in header.items()})
+            if why:
+                raise serializers.ValidationError(why)
+            for k, v in header.items():
+                setattr(instance.ncr, k, v)
+            instance.ncr.save(update_fields=[*header, 'updated_at'])
         instance = super().update(instance, validated_data)
         user = getattr(self.context.get('request'), 'user', None)
         self._record_stamps(instance, user, containment_done, scrap_verified)
@@ -1081,10 +1231,15 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         return instance
 
     def _record_stamps(self, instance, user, containment_done, scrap_verified):
-        from Tracker.services.qms.disposition import record_containment_complete, record_scrap_verification
+        from Tracker.services.qms.disposition import record_scrap_verification
+        from Tracker.services.qms.ncr import record_containment_complete
+        if containment_done and instance.ncr_id and not instance.ncr.containment_completed_at \
+                and not (user and user.has_tenant_perm('change_ncr')):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied(f"Containment on {instance.ncr.ncr_number} is recorded by a lead or QA.")
         try:
-            if containment_done:
-                record_containment_complete(instance, user)
+            if containment_done and instance.ncr_id:
+                record_containment_complete(instance.ncr, user)
             if scrap_verified is not None and scrap_verified != instance.scrap_verified:
                 record_scrap_verification(instance, user, verified=scrap_verified)
         except ValueError as e:
@@ -1099,25 +1254,8 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         closes it then). Idempotent + best-effort: a routing failure (e.g. the
         rework step lacks an inspection substep, per 2d) must not fail the save —
         the part stays REWORK_NEEDED for manual routing via the control page."""
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        if user is None:
-            return
-        if instance.escalated_from_step_id:
-            # A part at MRB Review: the decision routes it out (rework or use as is).
-            from Tracker.services.qms.mrb import route_after_decision
-            try:
-                route_after_decision(instance, user)
-            except Exception:
-                logger.exception("MRB routing failed for disposition %s", instance.pk)
-            return
-        if instance.disposition_type not in ('REWORK', 'REPAIR'):
-            return
-        from Tracker.services.qms.disposition import route_part_to_rework_if_needed
-        try:
-            route_part_to_rework_if_needed(instance, user)
-        except Exception:
-            logger.exception("Rework routing failed for disposition %s", instance.pk)
+        from Tracker.services.qms.disposition import route_after_decision
+        route_after_decision(instance, getattr(self.context.get('request'), 'user', None))
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_part_erp_id(self, obj):
@@ -1145,18 +1283,19 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         return {
             'state_choices': QuarantineDisposition.STATE_CHOICES,
             'disposition_type_choices': QuarantineDisposition.DISPOSITION_TYPES,
-            'severity_choices': QuarantineDisposition.SEVERITY_CHOICES,
+            'severity_choices': NCR.SEVERITY_CHOICES,
         }
 
     @extend_schema_field(serializers.CharField())
     def get_severity_display(self, obj):
-        """Get human-readable severity label"""
-        return obj.get_severity_display() if obj.severity else ""
+        """The NCR's severity, in words"""
+        return obj.ncr.get_severity_display() if obj.ncr_id else ""
 
     @extend_schema_field(serializers.CharField())
     def get_containment_completed_by_name(self, obj):
-        """Get name of user who completed containment action"""
-        return obj.containment_completed_by.display_name if obj.containment_completed_by else ""
+        """Who recorded the NCR's containment"""
+        by = obj.ncr.containment_completed_by if obj.ncr_id else None
+        return by.display_name if by else ""
 
     @extend_schema_field(serializers.CharField())
     def get_scrap_verified_by_name(self, obj):
@@ -1769,6 +1908,7 @@ class CAPASerializer(SecureModelMixin):
     is_overdue = serializers.SerializerMethodField()
     blocking_items = serializers.SerializerMethodField()
     work_order_ids = serializers.SerializerMethodField()
+    affected_part_ids = serializers.SerializerMethodField()
     # Names for the related items, so the page doesn't show their ids.
     part_erp_id = serializers.CharField(source='part.ERP_id', read_only=True, allow_null=True)
     step_name = serializers.CharField(source='step.name', read_only=True, allow_null=True)
@@ -1789,7 +1929,7 @@ class CAPASerializer(SecureModelMixin):
             'allow_self_verification',
             'part', 'step', 'work_order',
             'part_erp_id', 'step_name', 'work_order_erp_id',
-            'quality_reports', 'dispositions',
+            'quality_reports', 'dispositions', 'ncrs', 'affected_part_ids',
             'tasks', 'rca_records', 'verifications',
             'completion_percentage', 'is_overdue', 'blocking_items',
             'work_order_ids',
@@ -1799,23 +1939,36 @@ class CAPASerializer(SecureModelMixin):
             'capa_number', 'status', 'status_display', 'completed_date',
             'approval_required', 'approved_by', 'approved_at', 'approval_status_display',
             'completion_percentage', 'is_overdue', 'blocking_items', 'work_order_ids',
+            'affected_part_ids',
             'created_at', 'updated_at', 'archived'
         )
 
+    def _affected_parts(self, obj):
+        """The parts the CAPA acts on: its NCRs' members, plus any part linked directly
+        (its own part, a linked disposition's or report's)."""
+        from Tracker.models import Parts
+        ids = set()
+        for ncr in obj.ncrs.all():
+            ids |= {p for p in ncr.dispositions.filter(archived=False, part__isnull=False)
+                    .values_list('part_id', flat=True)}
+            ids |= {p for p in ncr.reports.filter(part__isnull=False).values_list('part_id', flat=True)}
+        if obj.part_id:
+            ids.add(obj.part_id)
+        ids |= {d.part_id for d in obj.dispositions.all() if d.part_id}
+        ids |= {qr.part_id for qr in obj.quality_reports.all() if qr.part_id}
+        return Parts.objects.filter(pk__in=ids)  # tenant-safe: .objects auto-scopes
+
+    @extend_schema_field(serializers.ListField(child=serializers.UUIDField()))
+    def get_affected_part_ids(self, obj):
+        return [str(p) for p in self._affected_parts(obj).values_list('pk', flat=True)]
+
     @extend_schema_field(serializers.ListField(child=serializers.UUIDField()))
     def get_work_order_ids(self, obj):
-        """Collect all WO ids linked via capa.work_order, capa.part, dispositions.part, quality_reports.part."""
-        wo_ids: set = set()
+        """The work orders it touches: its own, and its affected parts'."""
+        wo_ids = set(self._affected_parts(obj).exclude(work_order__isnull=True)
+                     .values_list('work_order_id', flat=True))
         if obj.work_order_id:
             wo_ids.add(obj.work_order_id)
-        if obj.part_id and getattr(obj.part, 'work_order_id', None):
-            wo_ids.add(obj.part.work_order_id)
-        for d in obj.dispositions.all():
-            if d.part_id and getattr(d.part, 'work_order_id', None):
-                wo_ids.add(d.part.work_order_id)
-        for qr in obj.quality_reports.all():
-            if qr.part_id and getattr(qr.part, 'work_order_id', None):
-                wo_ids.add(qr.part.work_order_id)
         return list(wo_ids)
 
     @extend_schema_field(serializers.DictField(allow_null=True))

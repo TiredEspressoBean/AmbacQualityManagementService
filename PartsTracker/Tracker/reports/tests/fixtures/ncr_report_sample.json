@@ -1,16 +1,17 @@
 {
-  "disposition_number": "DISP-2026-000047",
-  "current_state": "IN_PROGRESS",
+  "ncr_number": "NCR-2026-000047",
+  "state": "OPEN",
   "severity": "MAJOR",
-  "disposition_type": "REWORK",
   "created_at": "2026-04-10T14:22:00",
+  "closed_at": null,
+  "raised_by": "Jane Alvarez",
 
-  "part_erp_id": "WO-2026-0123-INJ0042",
-  "part_type_name": "Fuel Injector Barrel",
   "work_order_erp_id": "WO-2026-0123",
   "step_name": "CMM Inspection",
+  "part_type_name": "Fuel Injector Barrel",
+  "batch_load": null,
 
-  "description": "Part INJ-2026-0042 failed dimensional inspection at final CMM step. Outer diameter at flange location measured 10.21 mm, exceeding upper specification limit of 10.05 mm by 0.16 mm. Root cause is suspected tool wear on CNC-02 following a 120-part production run without insert rotation.",
+  "description": "Two barrels failed dimensional inspection at final CMM step. Outer diameter at flange location measured 10.21 mm, exceeding upper specification limit of 10.05 mm by 0.16 mm. Root cause is suspected tool wear on CNC-02 following a 120-part production run without insert rotation.",
 
   "quality_reports": [
     {
@@ -35,30 +36,53 @@
           "notes": "Ra 1.1 μm measured vs spec ≤ 0.8 μm"
         }
       ]
+    },
+    {
+      "report_number": "QR-2026-000313",
+      "status": "FAIL",
+      "detected_by": "Jane Alvarez",
+      "detected_at": "2026-04-10T13:52:00",
+      "description": "Same run: OD at flange 10.09 mm.",
+      "defects": []
     }
   ],
 
-  "containment_action": "Quarantined part INJ-2026-0042 immediately. Halted CNC-02 for setup review. Re-inspected previous 5 parts from the same run; 2 additional parts found to be within spec but trending toward USL. Those parts flagged for engineering review.",
+  "containment_action": "Quarantined both parts immediately. Halted CNC-02 for setup review. Re-inspected previous 5 parts from the same run; all within spec but trending toward USL. Those parts flagged for engineering review.",
   "containment_completed_by": "Jane Alvarez",
   "containment_completed_at": "2026-04-10T15:00:00",
 
-  "rework_attempt_at_step": 1,
-  "resolution_notes": "Engineering decision: rework permitted on INJ-2026-0042 via finish grind operation to bring OD back within tolerance. Replace CNC-02 insert before resuming production. No customer notification required — this is an internal rework within manufacturing process tolerance.",
-  "assigned_to": "Marcus Chen",
-
-  "requires_customer_approval": false,
-  "customer_approval_received": false,
-  "customer_approval_reference": "",
-  "customer_approval_date": null,
-
-  "scrap_verified": false,
-  "scrap_verification_method": "",
-  "scrap_verified_by": null,
-  "scrap_verified_at": null,
-
-  "resolution_completed": false,
-  "resolution_completed_by": null,
-  "resolution_completed_at": null,
+  "decisions": [
+    {
+      "subject": "WO-2026-0123-INJ0042",
+      "part_status": "REWORK_NEEDED",
+      "disposition_number": "DISP-2026-000047",
+      "disposition_type": "REWORK",
+      "current_state": "IN_PROGRESS",
+      "decision_authorized_by": "Marcus Chen",
+      "decision_authorized_at": "2026-04-10T16:10:00",
+      "rework_attempt_at_step": 1,
+      "resolution_notes": "Rework permitted via finish grind to bring OD back within tolerance. Replace CNC-02 insert before resuming production.",
+      "assigned_to": "Marcus Chen",
+      "requires_customer_approval": false,
+      "customer_approval_received": false,
+      "customer_approval_reference": "",
+      "customer_approval_date": null,
+      "scrap_verified": false,
+      "scrap_verification_method": "",
+      "scrap_verified_by": null,
+      "scrap_verified_at": null,
+      "resolution_completed": false,
+      "resolution_completed_by": null,
+      "resolution_completed_at": null
+    },
+    {
+      "subject": "WO-2026-0123-INJ0043",
+      "part_status": "QUARANTINED",
+      "disposition_number": "DISP-2026-000048",
+      "disposition_type": null,
+      "current_state": "OPEN"
+    }
+  ],
 
   "tenant_name": "Ambac International"
 }

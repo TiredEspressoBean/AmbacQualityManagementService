@@ -39,6 +39,7 @@ from Tracker.models import (
 )
 from Tracker.services.core.notifications.escalation import fire_one, tick_due
 from Tracker.tests.base import TenantContextMixin
+from Tracker.tests.base import make_disposition
 from Tracker.tests.notifications.factories import (
     make_tenant_group,
     make_tenant_rule,
@@ -147,15 +148,13 @@ class FireOneStateTransitionTests(TenantContextMixin, TransactionTestCase):
 
     def test_ack_terminates_to_acknowledged(self):
         from Tracker.models import QuarantineDisposition
-        qr = _make_quality_report(self.tenant, self.company)
-        inst = _make_instance(tenant=self.tenant, rule=self.rule, source=qr)
+        from Tracker.models import NCR
+        ncr = NCR.objects.create(tenant=self.tenant, description='Burr')
+        inst = _make_instance(tenant=self.tenant, rule=self.rule, source=ncr)
 
-        # Close a disposition → ack predicate returns True.
-        d = QuarantineDisposition.objects.create(
-            tenant=self.tenant, disposition_type='REWORK',
-            severity='MAJOR', current_state='CLOSED',
-        )
-        d.quality_reports.add(qr)
+        # Every decision under it closed → the NCR closes → acknowledged.
+        make_disposition(tenant=self.tenant, ncr=ncr, disposition_type='REWORK',
+                         current_state='CLOSED')
 
         status = fire_one(str(inst.id))
         self.assertEqual(status, EscalationStatus.ACKNOWLEDGED)

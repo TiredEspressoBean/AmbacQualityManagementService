@@ -21,83 +21,21 @@ from Tracker.models import QuarantineDisposition
 logger = logging.getLogger(__name__)
 
 
-def _auto_disposition_description(report) -> str:
-    """What failed, in words. A report captured at a step usually has no description
-    of its own, which left every auto-opened disposition reading "No description"."""
-    if (report.description or "").strip():
-        return f"Failed quality report: {report.description.strip()}"
-    where = report.step.name if report.step_id else "inspection"
-    findings = []
-    if report.pk:
-        findings += [d for d in report.defects.select_related("error_type")
-                     .values_list("error_type__error_name", flat=True)[:3] if d]
-        # The readings that failed, with their limits, so QA can decide from the
-        # disposition without opening the report.
-        for m in report.measurements.select_related("definition").filter(is_within_spec=False)[:3]:
-            findings.append(_reading_text(m))
-    return f"Failed {where}" + (f": {', '.join(findings)}" if findings else "")
-
-
-def _findings(report) -> list[str]:
-    """A failed report's findings in words: its own description, else its defects and
-    out-of-spec readings."""
-    if (report.description or "").strip():
-        return [report.description.strip()]
-    out = [d for d in report.defects.select_related("error_type")
-           .values_list("error_type__error_name", flat=True)[:3] if d]
-    out += [_reading_text(m) for m in
-            report.measurements.select_related("definition").filter(is_within_spec=False)[:3]]
-    return out
-
-
-def refresh_disposition_description(disposition) -> None:
-    """Rewrite an auto-written description from every report the disposition now holds.
-
-    A step's captures land after its report is first saved FAIL (defects, a second
-    report joining), so the description written at that moment named only the step.
-    Only an auto-written one ("Failed …") is rewritten — never what a person typed."""
-    if not (disposition.description or "").startswith("Failed"):
-        return
-    findings = []
-    for r in disposition.quality_reports.order_by("created_at"):
-        for f in _findings(r):
-            if f not in findings:
-                findings.append(f)
-    where = disposition.step.name if disposition.step_id else "inspection"
-    text = f"Failed {where}" + (f": {', '.join(findings)}" if findings else "")
-    if text != disposition.description:
-        disposition.description = text
-        disposition.save(update_fields=["description"])
-
-
-def _reading_text(m) -> str:
-    """'Bore Diameter 4.007 mm (limits 3.995–4.005)' — or the pass/fail verdict."""
-    d = m.definition
-    if m.value_numeric is None:
-        return f"{d.label} {m.value_pass_fail or 'FAIL'}"
-    unit = f" {d.unit}" if d.unit else ""
-    value = f"{m.value_numeric:g}"
-    limits = ""
-    if d.nominal is not None and (d.upper_tol is not None or d.lower_tol is not None):
-        lo = f"{float(d.nominal - (d.lower_tol or 0)):g}"
-        hi = f"{float(d.nominal + (d.upper_tol or 0)):g}"
-        limits = f" (limits {lo}–{hi})"
-    return f"{d.label} {value}{unit}{limits}"
-
-
 def open_disposition_for_failed_report(report) -> QuarantineDisposition:
-    """The disposition a failed in-process report belongs to: the one already open for
-    this part at this step on this visit, or a new one.
+    """The decision a failed in-process report needs, under its NCR (report.ncr, set by
+    ncr.ncr_for_failed_report first): the one still undecided for this part at this step
+    on this visit, or a new one.
 
-    One nonconformance is one decision. A step can file several reports for a single
-    finding — a visual with a defect and a measurement that's out — and each opened
-    its own disposition, so QA owed two decisions and had to close both before the
-    part could move (walk 2026-10-20). A later visit, or another step, is a new
-    finding and opens its own. Auto-opened dispositions are unassigned: the QA queue
-    takes them (user decision 2026-10-20).
+    One finding is one decision. A step can file several reports for a single finding — a
+    visual with a defect and a measurement that's out — and each opened its own
+    disposition, so QA owed two decisions and had to close both before the part could
+    move (walk 2026-10-20). A later visit, or another step, needs its own decision. Auto-
+    opened dispositions are unassigned: the QA queue takes them (user decision 2026-10-20).
     """
     from Tracker.models import StepExecution
+    from Tracker.services.qms.ncr import ncr_for_failed_report, refresh_description
 
+    ncr, _ = ncr_for_failed_report(report)
     part, step = report.part, report.step
     if part is not None and step is not None:
         visit = (StepExecution.objects  # tenant-safe: scoped by the part FK
@@ -109,14 +47,14 @@ def open_disposition_for_failed_report(report) -> QuarantineDisposition:
             # decision — the part stayed quarantined (round-3 #7).
             from django.db.models import Q
             same_finding = (QuarantineDisposition.objects  # tenant-safe: scoped by the part FK
-                            .filter(archived=False, part=part, step=step,
+                            .filter(archived=False, part=part, step=step, ncr=ncr,
                                     current_state='OPEN',
                                     created_at__gte=visit.entered_at)
                             .filter(Q(disposition_type='') | Q(disposition_type__isnull=True))
                             .order_by('created_at').first())
             if same_finding is not None:
                 same_finding.quality_reports.add(report)
-                refresh_disposition_description(same_finding)
+                refresh_description(ncr)
                 return same_finding
 
     existing_rework_count = 0
@@ -125,10 +63,10 @@ def open_disposition_for_failed_report(report) -> QuarantineDisposition:
             part=part, step=step, disposition_type='REWORK').count()
     disposition = QuarantineDisposition.objects.create(
         assigned_to=None,
+        ncr=ncr,
         part=part,
         step=step,
         rework_attempt_at_step=existing_rework_count + 1,
-        description=_auto_disposition_description(report),
     )
     disposition.quality_reports.add(report)
     return disposition
@@ -141,27 +79,34 @@ def record_operator_rework(part, user, reason: str):
     Writes a FAIL report carrying the reason — who, when, at which step — and puts it on
     a disposition: the one already open on the part if QA got there first (their record
     stands; the operator's report joins it), else a new UNASSIGNED one of type Rework
-    for the QA queue. The part is not held: it goes straight to rework (the caller
-    splits it). Nothing here stops QA deciding the disposition differently, taking it,
-    or raising their own report. Returns the disposition.
+    for the QA queue, under the part's open NCR or a new one. The part is not held: it
+    goes straight to rework (the caller splits it). Nothing here stops QA deciding the
+    disposition differently, taking it, or raising their own report. Returns the
+    disposition.
     """
     from Tracker.models import QualityReports
+    from Tracker.services.qms.ncr import open_ncr_for_part, raise_ncr
 
     reason = (reason or "").strip()
     if not reason:
         raise ValueError("Say why the part is going to rework.")
+    where = part.step.name if part.step_id else 'its step'
     with transaction.atomic():
-        # PENDING first, linked, then FAIL: the post_save disposition signal sees it
-        # already on a disposition and opens no second one. A plain save, not
-        # on_report_failed — the part isn't quarantined; it's going to rework now.
-        report = QualityReports.objects.create(
-            tenant=part.tenant, part=part, step=part.step, status="PENDING",
-            description=f"Sent to rework: {reason}", detected_by=user)
-        from Tracker.services.qms.quality_report import sync_personnel
-        sync_personnel(report)
         existing = (QuarantineDisposition.objects  # tenant-safe: scoped by the part FK
                     .filter(part=part, archived=False, current_state__in=["OPEN", "IN_PROGRESS"])
                     .order_by("created_at").first())
+        ncr = (existing.ncr if existing is not None and existing.ncr_id else None) or open_ncr_for_part(part)
+        if ncr is None:
+            ncr = raise_ncr(tenant=part.tenant, description=f"Sent to rework at {where}: {reason}",
+                            step=part.step, work_order=part.work_order, raised_by=user)
+        # PENDING first, linked, then FAIL: the post_save disposition signal sees it
+        # already on its NCR and a disposition, and opens no second one. A plain save,
+        # not on_report_failed — the part isn't quarantined; it's going to rework now.
+        report = QualityReports.objects.create(
+            tenant=part.tenant, part=part, step=part.step, status="PENDING", ncr=ncr,
+            description=f"Sent to rework: {reason}", detected_by=user)
+        from Tracker.services.qms.quality_report import sync_personnel
+        sync_personnel(report)
         if existing is not None:
             existing.quality_reports.add(report)
             disposition = existing
@@ -171,8 +116,8 @@ def record_operator_rework(part, user, reason: str):
             # 8.7.2) — user decision 2026-11-04. Joining an open disposition above
             # leaves that one's decision to QA.
             disposition = QuarantineDisposition.objects.create(
-                tenant=part.tenant, assigned_to=None, part=part, step=part.step,
-                description=f"Sent to rework at {part.step.name if part.step_id else 'its step'}: {reason}",
+                tenant=part.tenant, assigned_to=None, part=part, step=part.step, ncr=ncr,
+                resolution_notes=f"Sent to rework at {where}: {reason}",
                 disposition_type="REWORK",
                 decision_authorized_by=user if getattr(user, "is_authenticated", False) else None,
                 decision_authorized_at=timezone.now() if getattr(user, "is_authenticated", False) else None)
@@ -697,19 +642,6 @@ def _move_split_part_to_rework(part, target, user, disposition) -> None:
                 part.id, dest.id, disposition.pk)
 
 
-def record_containment_complete(disposition, user) -> None:
-    """Containment is done: stamp who recorded it and when (the logged-in user, now).
-    Who physically did it, if someone else, is `containment_performed_by` — the
-    caller's to set. Idempotent: an already-recorded containment keeps its stamp."""
-    if disposition.containment_completed_at:
-        return
-    if not (disposition.containment_action or "").strip():
-        raise ValueError("Describe the containment action before marking it complete.")
-    disposition.containment_completed_by = user if getattr(user, "is_authenticated", False) else None
-    disposition.containment_completed_at = timezone.now()
-    disposition.save(update_fields=["containment_completed_by", "containment_completed_at", "updated_at"])
-
-
 def record_scrap_verification(disposition, user, *, verified: bool) -> None:
     """Scrap verified (or un-verified): the verifier is whoever records it — this is
     their own attestation that the product was rendered unusable, so there is no
@@ -727,143 +659,25 @@ def record_scrap_verification(disposition, user, *, verified: bool) -> None:
     disposition.save(update_fields=["scrap_verified", "scrap_verified_by", "scrap_verified_at", "updated_at"])
 
 
-# ---------------------------------------------------------------------------
-# A failed batch load: the decision reaches the parts
-# ---------------------------------------------------------------------------
-#
-# A failed batch cycle opens ONE disposition for the load (batch_disposition.
-# contain_failed_batch): part is null, batch_execution is set, and the members still in
-# production are held QUARANTINED. Deciding it used to do nothing to them — the save
-# cascade and apply_disposition_to_part act only on a disposition's own part — so every
-# member stayed held until changed by hand.
-#
-# Now a decision on the load applies to the WHOLE load or to the parts QA picks (user
-# decision 2026-11-05: chosen in the decide dialog). Each chosen part gets its own
-# disposition — part set, `load_disposition` pointing back at the load's — decided through decide_disposition, so
-# it takes the same path as any part's decision: the status mapping, the shipped and
-# terminal guards, rework routing with its visit cap and MRB escalation, and its own
-# close when the rework is re-inspected. Parts not chosen stay held under the load's
-# disposition until they're decided.
-
-
-def is_load_disposition(disposition) -> bool:
-    """The disposition a failed batch cycle opened for its whole load (no part)."""
-    return bool(disposition.batch_execution_id) and not disposition.part_id
-
-
-def load_part_dispositions(disposition):
-    """The per-part dispositions a load's decisions made, keyed by part id."""
-    return {
-        d.part_id: d for d in (QuarantineDisposition.objects  # tenant-safe: scoped by the parent FK
-                               .filter(load_disposition=disposition, archived=False)
-                               .order_by('created_at'))
-    }
-
-
-def undecided_load_parts(disposition) -> list:
-    """The load's parts still held and waiting for this disposition's decision: held
-    (QUARANTINED) and with no decision of their own yet."""
-    from Tracker.models import PartsStatus
-    decided = load_part_dispositions(disposition)
-    return [p for p in disposition.batch_execution.parts.order_by('ERP_id')
-            if p.part_status == PartsStatus.QUARANTINED and p.pk not in decided]
-
-
-@transaction.atomic
-def decide_load_disposition(
-    disposition: QuarantineDisposition,
-    *,
-    disposition_type: str,
-    authorized_by,
-    part_ids=None,
-    notes: str = '',
-    customer_approval: dict | None = None,
-) -> QuarantineDisposition:
-    """Decide a failed load's disposition for the whole load, or for the parts in
-    `part_ids` (None = every part still waiting for it).
-
-    Each chosen part gets its own disposition, decided as any part's would be (see the
-    section note above). The decision is recorded on the load's disposition too when it
-    covers the whole load at once; a load decided in parts keeps each part's decision
-    on that part's disposition and closes when every part is decided and done.
-
-    Raises:
-        ValueError: not a load's disposition; a part named that isn't waiting for this
-            decision; nothing left to decide; or any refusal decide_disposition makes
-            (unknown type, a concession missing for use-as-is / repair).
-    """
-    if not is_load_disposition(disposition):
-        raise ValueError("This disposition isn't a load's — decide it as a part's disposition.")
-    if disposition.current_state == 'CLOSED':
-        raise ValueError("This disposition is closed; its decision can no longer be changed.")
-
-    waiting = undecided_load_parts(disposition)
-    if not waiting:
-        raise ValueError("Every held part in this load already has a decision; change a "
-                         "part's decision on its own disposition.")
-    by_id = {str(p.pk): p for p in waiting}
-    if part_ids is None:
-        chosen = waiting
-    else:
-        wanted = [str(i) for i in part_ids]
-        unknown = [i for i in wanted if i not in by_id]
-        if unknown:
-            raise ValueError("Only parts held in this load and not yet decided can be chosen.")
-        if not wanted:
-            raise ValueError("Choose at least one part, or decide the whole load.")
-        chosen = [by_id[i] for i in dict.fromkeys(wanted)]
-
-    whole_load = (len(chosen) == len(waiting)
-                  and not load_part_dispositions(disposition))  # nothing decided before
-    reports = list(disposition.quality_reports.all())
-    containment = (disposition.containment_action or '').strip() or (
-        f"Held with its load under {disposition.disposition_number}.")
-
-    made = []
-    for part in chosen:
-        # A part's disposition, linked to the load's (a disposition is a part's or a
-        # load's, never both — disposition_not_both_part_and_batch).
-        child = QuarantineDisposition.objects.create(
-            tenant=disposition.tenant, part=part, load_disposition=disposition,
-            step=disposition.step, severity=disposition.severity,
-            assigned_to=disposition.assigned_to,
-            description=f"{part.ERP_id} from the load on {disposition.disposition_number}: "
-                        f"{disposition.description}",
-            containment_action=containment,
-        )
-        if reports:
-            child.quality_reports.add(*reports)
-        decide_disposition(child, disposition_type=disposition_type, authorized_by=authorized_by,
-                           notes=notes, customer_approval=customer_approval)
-        made.append(child)
-
-    # Rework / repair moves each part to the rework step now, as a part's decision does
-    # when its form saves (serializers.QuarantineDispositionSerializer._route_if_rework).
-    if disposition_type in ('REWORK', 'REPAIR'):
-        for child in made:
-            try:
-                route_part_to_rework_if_needed(child, authorized_by)
-            except Exception:
-                logger.exception("Rework routing failed for load disposition %s", child.pk)
-
-    valid = dict(QuarantineDisposition.DISPOSITION_TYPES)
-    if whole_load:
-        decide_disposition(disposition, disposition_type=disposition_type,
-                           authorized_by=authorized_by, notes=notes,
-                           customer_approval=customer_approval)
-    else:
-        who = (authorized_by.get_full_name() or authorized_by.get_username()) if authorized_by else 'someone'
-        line = (f"{timezone.now():%Y-%m-%d} {who}: {valid[disposition_type]} for "
-                f"{', '.join(p.ERP_id for p in chosen)}"
-                + (f" — {notes.strip()}" if (notes or '').strip() else ""))
-        disposition.refresh_from_db()
-        disposition.resolution_notes = (f"{disposition.resolution_notes}\n{line}".strip()
-                                        if disposition.resolution_notes else line)
-        update = ['resolution_notes', 'updated_at']
-        if disposition.current_state == 'OPEN':
-            disposition.current_state = 'IN_PROGRESS'  # decided in part
-            update.append('current_state')
-        disposition.save(update_fields=update)
-    disposition.refresh_from_db()
-    return disposition
-
+def route_after_decision(disposition: QuarantineDisposition, user) -> None:
+    """Carry a decision out on the floor: a part at MRB Review leaves it per the decision
+    (rework or use as is); a rework / repair decision moves the part to its rework step
+    now — split off the lot — and the disposition stays IN_PROGRESS until the rework is
+    re-inspected (2e closes it then). Idempotent and best-effort: a routing failure (the
+    rework step lacks an inspection substep, per 2d) must not undo the decision — the part
+    stays REWORK_NEEDED for manual routing via the control page."""
+    if user is None:
+        return
+    if disposition.escalated_from_step_id:
+        from Tracker.services.qms.mrb import route_after_decision as route_out_of_mrb
+        try:
+            route_out_of_mrb(disposition, user)
+        except Exception:
+            logger.exception("MRB routing failed for disposition %s", disposition.pk)
+        return
+    if disposition.disposition_type not in ('REWORK', 'REPAIR'):
+        return
+    try:
+        route_part_to_rework_if_needed(disposition, user)
+    except Exception:
+        logger.exception("Rework routing failed for disposition %s", disposition.pk)

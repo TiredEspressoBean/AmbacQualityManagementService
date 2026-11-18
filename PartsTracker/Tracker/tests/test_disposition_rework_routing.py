@@ -20,6 +20,7 @@ from Tracker.models import (
     WorkOrderStatus,
 )
 from Tracker.tests.base import TenantContextMixin, VectorTestCase
+from Tracker.tests.base import make_disposition
 
 
 class DispositionReworkRoutingTests(TenantContextMixin, VectorTestCase):
@@ -61,7 +62,7 @@ class DispositionReworkRoutingTests(TenantContextMixin, VectorTestCase):
 
     def _rework_disposition(self):
         # MINOR severity → no containment gate, so close succeeds and we test routing.
-        return QuarantineDisposition.objects.create(
+        return make_disposition(
             tenant=self.tenant, part=self.part, step=self.task_step,
             disposition_type="REWORK", severity="MINOR", description="rework route test",
         )

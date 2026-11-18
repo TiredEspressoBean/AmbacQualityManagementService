@@ -78,9 +78,10 @@ class SecondFailureNewDecisionTests(_PartFixture):
 
 class SecondBatchReportLinkedTests(_PartFixture):
     """#8: a second FAIL report on a load wasn't linked to its open disposition, so a
-    later save re-contained the load (gap in N10)."""
+    later save re-contained the load (gap in N10). It joins the load's NCR, and the
+    held parts' decisions carry it."""
 
-    def test_the_second_report_joins_the_load_disposition(self):
+    def test_the_second_report_joins_the_load_ncr(self):
         from Tracker.models import BatchExecution, Substep
         parts = [self._part("B8-1"), self._part("B8-2")]
         batch = BatchExecution.objects.create(tenant=self.tenant_a, work_order=self.wo,
@@ -93,15 +94,20 @@ class SecondBatchReportLinkedTests(_PartFixture):
         second = QualityReports.objects.create(tenant=self.tenant_a, batch_execution=batch,
                                                step=self.step, substep=s2, status="FAIL",
                                                detected_by=self.user_a)
-        disp = QuarantineDisposition.objects.get(batch_execution=batch)
-        self.assertIn(second, disp.quality_reports.all())
-        QuarantineDisposition.objects.filter(pk=disp.pk).update(  # tenant-safe: fixture
+        from Tracker.models import NCR
+        ncr = NCR.objects.get(batch_execution=batch)
+        second.refresh_from_db()
+        self.assertEqual(second.ncr_id, ncr.id)
+        for disp in ncr.dispositions.all():
+            self.assertIn(second, disp.quality_reports.all())
+        QuarantineDisposition.objects.filter(ncr=ncr).update(  # tenant-safe: fixture
             current_state="CLOSED")
         Parts.objects.filter(pk__in=[p.pk for p in parts]).update(  # tenant-safe: fixture
             part_status="IN_PROGRESS")
         second.refresh_from_db()
         second.save()
-        self.assertEqual(QuarantineDisposition.objects.filter(batch_execution=batch).count(), 1)
+        self.assertEqual(NCR.objects.filter(batch_execution=batch).count(), 1)
+        self.assertEqual(QuarantineDisposition.objects.filter(ncr=ncr).count(), len(parts))
         for p in parts:
             p.refresh_from_db()
             self.assertEqual(p.part_status, "IN_PROGRESS")

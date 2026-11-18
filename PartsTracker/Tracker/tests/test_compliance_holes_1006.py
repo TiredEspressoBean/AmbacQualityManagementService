@@ -126,8 +126,10 @@ class DispositionWhoRecordedTests(_Fixture):
         }, format="json")
         self.assertEqual(created.status_code, 201, created.content)
         d = QuarantineDisposition.objects.get(pk=created.json()["id"])
-        self.assertEqual((d.containment_completed_by_id, d.containment_performed_by_id), (self.boss.id, self.other.id))
-        self.assertGreater(d.containment_completed_at.year, 2020)
+        # Containment is the NCR's.
+        self.assertEqual((d.ncr.containment_completed_by_id, d.ncr.containment_performed_by_id),
+                         (self.boss.id, self.other.id))
+        self.assertGreater(d.ncr.containment_completed_at.year, 2020)
         self.assertEqual((d.scrap_verified, d.scrap_verified_by_id), (True, self.boss.id))
         patch = self.client.patch(f"/api/QuarantineDispositions/{d.id}/",
                                   {"resolution_completed_by": self.other.id,

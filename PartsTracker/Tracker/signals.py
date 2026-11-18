@@ -48,18 +48,24 @@ def ensure_membership_for_role(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=QualityReports)
 def auto_create_disposition(sender, instance, created, **kwargs):
-    """Create disposition when QualityReport fails"""
+    """A failed record belongs to an NCR, and needs a decision under it."""
     if instance.status == 'FAIL':
+        # Every FAIL is on an NCR: the one it's on, its part's or load's open one (a
+        # repeat failure joins), or a new one (services/qms/ncr.py). Each branch below
+        # finds it through ncr_for_failed_report.
+        from Tracker.services.qms.ncr import ncr_for_failed_report
         # Receiving-inspection failures (material_lot QRs) get a *populated* disposition
         # from the reject flow (RejectDispositionDialog → QuarantineDispositions create,
-        # with type/severity/qty). Auto-creating a bare one here just duplicates it — the
-        # confirmed §15 defect. So auto-create only for in-process (part) failures.
+        # with type/severity/qty), under this NCR. Auto-creating a bare one here just
+        # duplicates it — the confirmed §15 defect. So auto-create only for in-process
+        # (part) failures.
         if instance.material_lot_id:
+            ncr_for_failed_report(instance)
             return
         # Batch-cycle failures span the whole load, not one part. Contain the
-        # load and open a single batch-linked disposition via the service
-        # (cross-aggregate write → service, not this signal). Without this the
-        # part-branch below would mint an orphaned part=None disposition and
+        # load and open a decision per held part under the load's NCR, via the
+        # service (cross-aggregate write → service, not this signal). Without this
+        # the part-branch below would mint an orphaned part=None disposition and
         # leave the suspect load uncontained.
         if instance.batch_execution_id:
             from Tracker.services.qms.batch_disposition import contain_failed_batch
@@ -80,6 +86,15 @@ def auto_create_disposition(sender, instance, created, **kwargs):
             # or opens one (unassigned, for the QA queue) — one finding, one decision.
             from Tracker.services.qms.disposition import open_disposition_for_failed_report
             open_disposition_for_failed_report(instance)
+        else:
+            ncr_for_failed_report(instance)
+
+
+@receiver(post_save, sender=QuarantineDisposition)
+def sync_ncr_state(sender, instance, **kwargs):
+    """An NCR is open while a decision under it is; it closes with the last one."""
+    from Tracker.services.qms.ncr import sync_state
+    sync_state(instance.ncr_id)
 
 
 @receiver(post_save, sender=ThreeDModel)

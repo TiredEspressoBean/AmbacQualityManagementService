@@ -66,7 +66,7 @@ const required = {
 // Status labels for display
 const statusLabels: Record<string, string> = {
     PASS: "Pass",
-    FAIL: "Fail (NCR)",
+    FAIL: "Fail",
     PENDING: "Pending Review",
     // Refused by the server except for a core in rebuild at a check with planned repairs.
     REPAIR: "Needs repair (rebuild checks only)",
@@ -217,12 +217,12 @@ export default function EditQualityReportFormPage() {
             <Form {...form}>
                 <div className="max-w-3xl mx-auto py-6">
                     <h1 className="text-2xl font-semibold tracking-tight">
-                        {mode === "edit" ? "Edit Quality Report" : "Create Quality Report (NCR)"}
+                        {mode === "edit" ? "Edit Inspection Record" : "Record Inspection"}
                     </h1>
                     <p className="text-muted-foreground text-sm mt-1">
                         {mode === "edit"
-                            ? `Update details for Quality Report #${qualityReportId ?? ""}`
-                            : "Fill out the details below to create a new quality report / NCR."
+                            ? `Update details for inspection record #${qualityReportId ?? ""}`
+                            : "Record an inspection result. A Fail puts the part on an NCR — its open one, or a new one."
                         }
                     </p>
                 </div>
@@ -249,7 +249,7 @@ export default function EditQualityReportFormPage() {
                                     </SelectContent>
                                 </Select>
                                 <FormDescription>
-                                    FAIL status indicates a Non-Conformance Report (NCR)
+                                    A Fail holds the part and puts it on an NCR, where its decision is made.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

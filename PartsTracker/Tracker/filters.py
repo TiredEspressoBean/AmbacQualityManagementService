@@ -280,7 +280,7 @@ class QuarantineDispositionFilter(django_filters.FilterSet):
             **{k: ['exact'] for k in [
                 "disposition_number", "current_state", "disposition_type", "resolution_completed",
                 "resolution_completed_by", "part", "part__ERP_id", "part__part_type__name",
-                "batch_execution",
+                "ncr", "ncr__batch_execution",
                 "quality_reports__material_lot", "quality_reports__material_lot__supplier"]},
             'assigned_to': ['exact', 'isnull'],
         }

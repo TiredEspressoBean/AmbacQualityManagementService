@@ -17,7 +17,7 @@ from Tracker.filters import QuarantineDispositionFilter
 
 from Tracker.models import (
     # QMS models
-    QualityReports, QualityErrorsList, QuarantineDisposition, SupplierQualification,
+    QualityReports, QualityErrorsList, QuarantineDisposition, NCR, SupplierQualification,
     PartApproval,
     CAPA, CapaTasks, RcaRecord, CapaVerification, CapaStatus, CapaTaskStatus,
     FiveWhys, Fishbone,
@@ -36,6 +36,7 @@ from Tracker.serializers.qms import (
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
     FiveWhysSerializer, FishboneSerializer,
     FPIRecordSerializer, CapaDecisionRequestSerializer,
+    NCRSerializer, RaiseNCRSerializer, AddPartsToNCRSerializer,
 )
 from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSerializer
 # Module-level so `request_approval` can name it in @extend_schema; the
@@ -62,11 +63,10 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin
     filterset_fields = {
         'status': ['exact'], 'part': ['exact'], 'step': ['exact'], 'part__work_order': ['exact'],
         'batch_execution': ['exact'], 'batch_execution__parts': ['exact'],
-        # capa_decision__isnull=true + status=FAIL: failed reports nobody has decided on.
-        'capa_decision': ['exact', 'isnull'],
+        # The NCR's CAPA decision: ncr__capa_decision__isnull=true + status=FAIL are
+        # failures whose NCR nobody has decided on.
+        'ncr': ['exact'], 'ncr__capa_decision': ['exact', 'isnull'],
     }
-    action_permissions = {'capa_decision': ['initiate_capa']}
-    crud_exempt_actions = {'capa_decision'}
     ordering_fields = ['id', 'status', 'created_at']
     ordering = ['-created_at']
     search_fields = ['description', 'part__ERP_id']
@@ -80,24 +80,8 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin
         return qs.select_related(
             'part', 'part__part_type', 'part__work_order', 'part__work_order__process',
             'step', 'step__part_type',
-            'file', 'detected_by', 'verified_by',
+            'file', 'detected_by', 'verified_by', 'ncr',
         ).prefetch_related('operators', 'errors', 'equipment_links__equipment', 'personnel_links__user')
-
-    @extend_schema(request=CapaDecisionRequestSerializer, responses={200: QualityReportsSerializer},
-                   description="Record that a failed report needs no CAPA, or that the decision "
-                               "is deferred, with the reason. (CAPA raised is set by the CAPA.)")
-    @action(detail=True, methods=['post'], url_path='capa-decision', parser_classes=[parsers.JSONParser])
-    def capa_decision(self, request, pk=None):
-        from Tracker.services.qms.capa_decision import record_decision
-        report = self.get_object()
-        req = CapaDecisionRequestSerializer(data=request.data)
-        req.is_valid(raise_exception=True)
-        try:
-            report = record_decision(report, decision=req.validated_data['decision'],
-                                     note=req.validated_data['note'], user=request.user)
-        except ValueError as e:
-            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(QualityReportsSerializer(report, context={'request': request}).data)
 
 
 class ErrorTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
@@ -124,6 +108,199 @@ class ErrorTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin
         return qs
 
 
+def _resolve_disposition_signer(view, request):
+    """Who is authorizing a disposition decision — the caller, or a cosigner?
+
+    Returns ``(signer, error_response)``; exactly one is non-None. Mirrors
+    ``FPIRecordViewSet._resolve_signer``: the caller authorizes directly when
+    they hold ``approve_disposition`` (e.g. a QA Manager working the
+    Dispositions surface); otherwise an authorized colleague authenticates
+    inline with ``cosign_email`` / ``cosign_password`` (the standard
+    second-person path — the person at the keyboard need not hold the perm).
+    The returned signer is attributed as ``decision_authorized_by``.
+    """
+    if request.user.has_tenant_perm('approve_disposition'):
+        return request.user, None
+
+    cosigner, err = view.verify_second_person(
+        request,
+        permission='approve_disposition',
+        throttle_prefix='disposition_decide_fail',
+        code_prefix='cosign',
+        email_field='cosign_email',
+        password_field='cosign_password',
+        messages={
+            'auth_failed': 'Disposition authorization failed - check the email and password.',
+            'self': 'The person authorizing the disposition must be different from the '
+                    'person logged in.',
+            'not_permitted': 'That user is not authorized to approve disposition decisions.',
+        },
+    )
+    if err is not None:
+        return None, view.second_person_error_response(err)
+    if cosigner is None:
+        return None, Response(
+            {'detail': 'A disposition decision must be authorized. Ask someone with '
+                       'disposition-approval authority to co-sign.',
+             'code': 'cosign_required'},
+            status=status.HTTP_403_FORBIDDEN)
+    return cosigner, None
+
+
+_DECIDE_PROPERTIES = {
+    "disposition_type": {"type": "string", "enum": [c[0] for c in QuarantineDisposition.DISPOSITION_TYPES]},
+    "notes": {"type": "string", "description": "Optional decision rationale"},
+    "customer_approval_reference": {"type": "string", "description": "Required for USE_AS_IS / REPAIR — the concession/deviation reference"},
+    "customer_approval_date": {"type": "string", "format": "date", "description": "Optional approval date (defaults to today)"},
+    "cosign_email": {"type": "string", "description": "Email of an authorized approver co-signing (when the caller lacks approve_disposition)"},
+    "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the decision is attributed to them."},
+}
+
+
+class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPersonMixin,
+                 mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin,
+                 mixins.UpdateModelMixin, viewsets.GenericViewSet):
+    """NCRs — the nonconformance, apart from the decisions under it.
+
+    Create raises one over parts a person picks (services/qms/ncr.raise_ncr_for_parts);
+    the product raises the rest from failed inspections. PATCH edits the header
+    (description, severity, containment). Its decisions are made per part through
+    `decide` (all still waiting, or the parts named), co-signable as a disposition's is.
+    Not deleted: an NCR is closed by its decisions.
+    """
+    queryset = NCR.unscoped.all()
+    serializer_class = NCRSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+    filterset_fields = {
+        'state': ['exact'], 'severity': ['exact'], 'step': ['exact'], 'work_order': ['exact'],
+        'batch_execution': ['exact'], 'capa_decision': ['exact', 'isnull'],
+        'dispositions__part': ['exact'],
+    }
+    search_fields = ['ncr_number', 'description', 'dispositions__part__ERP_id']
+    ordering_fields = ['ncr_number', 'state', 'severity', 'created_at', 'updated_at', 'closed_at']
+    ordering = ['-created_at']
+
+    # Raising one, or adding parts to it, is anyone's who can flag a problem (add_ncr);
+    # its header and containment are the leads' and QA's (change_ncr, PATCH's CRUD gate)
+    # — user ruling 2026-11-17.
+    action_permissions = {
+        'add_parts': ['add_ncr'],
+        'containment_complete': ['change_ncr'],
+        'capa_decision': ['initiate_capa'],
+    }
+    crud_exempt_actions = {'decide', 'capa_decision', 'add_parts'}
+    cosign_actions = {'decide': 'approve_disposition'}
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return NCR.objects.none()
+        return (super().get_queryset()
+                .select_related('step', 'work_order', 'raised_by', 'containment_completed_by',
+                                'capa_decided_by', 'batch_execution')
+                .distinct())
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return RaiseNCRSerializer
+        return NCRSerializer
+
+    @extend_schema(request=RaiseNCRSerializer, responses={201: NCRSerializer, 400: OpenApiTypes.OBJECT})
+    def create(self, request, *args, **kwargs):
+        from Tracker.services.qms.ncr import raise_ncr_for_parts
+        req = RaiseNCRSerializer(data=request.data, context=self.get_serializer_context())
+        req.is_valid(raise_exception=True)
+        try:
+            ncr = raise_ncr_for_parts(req.validated_data['parts'], user=request.user,
+                                      description=req.validated_data['description'],
+                                      severity=req.validated_data.get('severity') or 'MAJOR')
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(NCRSerializer(ncr, context=self.get_serializer_context()).data,
+                        status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        description="Decide the NCR: every part still waiting for a decision, or the parts "
+                    "named. Each part's decision is its own disposition's. Gated by "
+                    "approve_disposition, co-signable. USE_AS_IS / REPAIR require a "
+                    "customer/design-approval reference.",
+        request={"application/json": {"type": "object", "properties": {
+            **_DECIDE_PROPERTIES,
+            "parts": {"type": "array", "items": {"type": "string", "format": "uuid"},
+                      "description": "The parts this decision is for. Omit to decide every part still waiting."},
+        }, "required": ["disposition_type"]}},
+        responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
+    )
+    @action(detail=True, methods=['post'], url_path='decide')
+    def decide(self, request, pk=None):
+        from Tracker.services.qms.ncr import decide_ncr
+        ncr = self.get_object()
+        disposition_type = request.data.get('disposition_type')
+        if not disposition_type:
+            return Response({'detail': "disposition_type is required.", 'code': 'decide_type_required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        parts = request.data.get('parts')
+        if parts is not None and not isinstance(parts, list):
+            return Response({'detail': "parts must be a list of part ids.", 'code': 'decide_invalid'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        signer, err_response = _resolve_disposition_signer(self, request)
+        if err_response is not None:
+            return err_response
+        try:
+            decide_ncr(ncr, disposition_type=disposition_type, authorized_by=signer, part_ids=parts,
+                       notes=request.data.get('notes', ''),
+                       customer_approval={'reference': request.data.get('customer_approval_reference'),
+                                          'date': request.data.get('customer_approval_date') or None})
+        except ValueError as e:
+            return Response({'detail': str(e), 'code': 'decide_invalid'}, status=status.HTTP_400_BAD_REQUEST)
+        ncr.refresh_from_db()
+        return Response(NCRSerializer(ncr, context=self.get_serializer_context()).data)
+
+    @extend_schema(request=AddPartsToNCRSerializer, responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
+                   description="Put more parts on an open NCR: each gets a failed record and a decision "
+                               "under it.")
+    @action(detail=True, methods=['post'], url_path='add-parts')
+    def add_parts(self, request, pk=None):
+        from Tracker.services.qms.ncr import add_parts
+        ncr = self.get_object()
+        req = AddPartsToNCRSerializer(data=request.data, context=self.get_serializer_context())
+        req.is_valid(raise_exception=True)
+        try:
+            add_parts(ncr, req.validated_data['parts'], user=request.user,
+                      reason=req.validated_data.get('reason', ''))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        ncr.refresh_from_db()
+        return Response(NCRSerializer(ncr, context=self.get_serializer_context()).data)
+
+    @extend_schema(request=None, responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
+                   description="Containment is done: stamps who recorded it and when.")
+    @action(detail=True, methods=['post'], url_path='containment-complete')
+    def containment_complete(self, request, pk=None):
+        from Tracker.services.qms.ncr import record_containment_complete
+        ncr = self.get_object()
+        try:
+            record_containment_complete(ncr, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(NCRSerializer(ncr, context=self.get_serializer_context()).data)
+
+    @extend_schema(request=CapaDecisionRequestSerializer, responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
+                   description="Record that the NCR needs no CAPA, or that the decision is deferred, "
+                               "with the reason. (CAPA raised is set by the CAPA.)")
+    @action(detail=True, methods=['post'], url_path='capa-decision', parser_classes=[parsers.JSONParser])
+    def capa_decision(self, request, pk=None):
+        from Tracker.services.qms.capa_decision import record_decision
+        ncr = self.get_object()
+        req = CapaDecisionRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        try:
+            ncr = record_decision(ncr, decision=req.validated_data['decision'],
+                                  note=req.validated_data['note'], user=request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(NCRSerializer(ncr, context=self.get_serializer_context()).data)
+
+
 class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin,
                                    SecondPersonMixin, viewsets.ModelViewSet):
     queryset = QuarantineDisposition.unscoped.all()
@@ -135,7 +312,8 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
     filterset_class = QuarantineDispositionFilter
 
     # Search fields should be actual model fields that can be searched
-    search_fields = ["disposition_number", "description", "resolution_notes", "assigned_to__first_name",
+    search_fields = ["disposition_number", "ncr__ncr_number", "ncr__description", "resolution_notes",
+                     "assigned_to__first_name",
                      "assigned_to__last_name", "assigned_to__username", "resolution_completed_by__first_name",
                      "resolution_completed_by__last_name", "part__ERP_id", "part__part_type__name"]
 
@@ -174,11 +352,8 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
         qs = super().get_queryset()
         # distinct(): the quality_reports__material_lot filters join the M2M, which
         # can otherwise yield a disposition once per matching quality report.
-        return qs.select_related('assigned_to',
-                                                             'resolution_completed_by',
-                                                             'part__part_type',
-                                                             'batch_execution').prefetch_related(
-            'quality_reports', 'documents', 'batch_execution__parts').distinct()
+        return qs.select_related('assigned_to', 'resolution_completed_by', 'part__part_type',
+                                 'ncr').prefetch_related('quality_reports', 'documents').distinct()
 
     @extend_schema(
         request=None,
@@ -213,57 +388,14 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
         return Response(self.get_serializer(disposition).data)
 
     def _resolve_signer(self, request):
-        """Who is authorizing this disposition decision — the caller, or a cosigner?
-
-        Returns ``(signer, error_response)``; exactly one is non-None. Mirrors
-        ``FPIRecordViewSet._resolve_signer``: the caller authorizes directly when
-        they hold ``approve_disposition`` (e.g. a QA Manager working the
-        Dispositions surface); otherwise an authorized colleague authenticates
-        inline with ``cosign_email`` / ``cosign_password`` (the standard
-        second-person path — the person at the keyboard need not hold the perm).
-        The returned signer is attributed as ``decision_authorized_by``.
-        """
-        if request.user.has_tenant_perm('approve_disposition'):
-            return request.user, None
-
-        cosigner, err = self.verify_second_person(
-            request,
-            permission='approve_disposition',
-            throttle_prefix='disposition_decide_fail',
-            code_prefix='cosign',
-            email_field='cosign_email',
-            password_field='cosign_password',
-            messages={
-                'auth_failed': 'Disposition authorization failed - check the email and password.',
-                'self': 'The person authorizing the disposition must be different from the '
-                        'person logged in.',
-                'not_permitted': 'That user is not authorized to approve disposition decisions.',
-            },
-        )
-        if err is not None:
-            return None, self.second_person_error_response(err)
-        if cosigner is None:
-            return None, Response(
-                {'detail': 'A disposition decision must be authorized. Ask someone with '
-                           'disposition-approval authority to co-sign.',
-                 'code': 'cosign_required'},
-                status=status.HTTP_403_FORBIDDEN)
-        return cosigner, None
+        return _resolve_disposition_signer(self, request)
 
     @extend_schema(
         description="Authorize a disposition decision (set the disposition_type). "
                     "Gated by approve_disposition, co-signable. USE_AS_IS / REPAIR "
                     "require a customer/design-approval reference.",
-        request={"application/json": {"type": "object", "properties": {
-            "disposition_type": {"type": "string", "enum": [c[0] for c in QuarantineDisposition.DISPOSITION_TYPES]},
-            "notes": {"type": "string", "description": "Optional decision rationale"},
-            "customer_approval_reference": {"type": "string", "description": "Required for USE_AS_IS / REPAIR — the concession/deviation reference"},
-            "customer_approval_date": {"type": "string", "format": "date", "description": "Optional approval date (defaults to today)"},
-            "cosign_email": {"type": "string", "description": "Email of an authorized approver co-signing (when the caller lacks approve_disposition)"},
-            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the decision is attributed to them."},
-            "parts": {"type": "array", "items": {"type": "string", "format": "uuid"},
-                      "description": "A failed load's disposition only: the held parts this decision is for. Omit to decide the whole load."},
-        }, "required": ["disposition_type"]}},
+        request={"application/json": {"type": "object", "properties": _DECIDE_PROPERTIES,
+                                      "required": ["disposition_type"]}},
         responses={200: dict},
     )
     @action(detail=True, methods=['post'], url_path='decide')
@@ -291,26 +423,13 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
             'date': request.data.get('customer_approval_date') or None,
         }
         try:
-            # A failed load's disposition decides for the whole load or the chosen parts.
-            from Tracker.services.qms.disposition import decide_load_disposition, is_load_disposition
-            if is_load_disposition(disposition):
-                parts = request.data.get('parts')
-                if parts is not None and not isinstance(parts, list):
-                    return Response({'detail': "parts must be a list of part ids.", 'code': 'decide_invalid'},
-                                    status=status.HTTP_400_BAD_REQUEST)
-                decide_load_disposition(
-                    disposition, disposition_type=disposition_type, authorized_by=signer,
-                    part_ids=parts, notes=request.data.get('notes', ''),
-                    customer_approval=customer_approval)
-                disposition.refresh_from_db()
-            else:
-                decide_disposition(
-                    disposition,
-                    disposition_type=disposition_type,
-                    authorized_by=signer,
-                    notes=request.data.get('notes', ''),
-                    customer_approval=customer_approval,
-                )
+            decide_disposition(
+                disposition,
+                disposition_type=disposition_type,
+                authorized_by=signer,
+                notes=request.data.get('notes', ''),
+                customer_approval=customer_approval,
+            )
         except ValueError as e:
             return Response({'detail': str(e), 'code': 'decide_invalid'},
                             status=status.HTTP_400_BAD_REQUEST)

@@ -68,7 +68,7 @@ class FailedFirstPieceTests(FirstPieceReadingsTests):
         self.assertEqual(self.fpi.quality_report.status, "FAIL")
         disp = QuarantineDisposition.objects.get(quality_reports=self.fpi.quality_report)
         self.assertIsNone(disp.assigned_to_id)
-        self.assertIn("Spray pattern skewed", disp.description)
+        self.assertIn("Spray pattern skewed", disp.ncr.description)
 
     def test_the_record_lists_who_signed_the_first_piece(self):
         from Tracker.models import StepExecution, SubstepCompletion, Substep

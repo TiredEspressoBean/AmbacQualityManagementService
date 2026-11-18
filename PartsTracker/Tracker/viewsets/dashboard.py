@@ -25,6 +25,7 @@ from rest_framework.permissions import IsAuthenticated
 from Tracker.permissions import TenantAccessPermission
 from Tracker.models import (
     CAPA,
+    NCR,
     QualityReports,
     QuarantineDisposition,
     MaterialLot,
@@ -35,6 +36,12 @@ from Tracker.models import (
 )
 from Tracker.services.core.clock import plant_tz, tenant_today
 from .base import TenantAwareMixin
+
+
+def _short(text, n=50):
+    """A reason trimmed for a table cell; 'N/A' when there is none."""
+    text = text or ''
+    return text[:n] + '...' if len(text) > n else (text or 'N/A')
 
 
 def _day_start(day, tz):
@@ -104,15 +111,9 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             status='CLOSED'
         ).count()
 
-        # Open NCRs: open dispositions — the same count NCR aging buckets and the
-        # needs-attention NCR item use. (It counted FAIL reports without a closed
-        # disposition, which disagreed with the aging card beside it: a report can
-        # carry several dispositions, and a disposition several reports.)
-        open_ncrs = self.qs_for_user(QuarantineDisposition).filter(
-            archived=False,
-        ).exclude(
-            current_state='CLOSED'
-        ).count()
+        # Open NCRs — the same count NCR aging buckets and the needs-attention NCR item
+        # use: NCRs, however many parts each covers.
+        open_ncrs = self.qs_for_user(NCR).filter(archived=False, state='OPEN').count()
 
         # Overdue CAPAs
         overdue_capas = self.qs_for_user(CAPA).filter(
@@ -559,6 +560,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             'part',
             'material_lot',
             'assigned_to',
+            'ncr',
         ).order_by('-created_at')[:limit]
 
         data = []
@@ -570,7 +572,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                          else f"Lot {disp.material_lot.lot_number}" if disp.material_lot_id else '—'),
                 'part_id': disp.part.id if disp.part else None,
                 'disposition': disp.disposition_type or 'PENDING',
-                'reason': disp.description[:50] + '...' if disp.description and len(disp.description) > 50 else (disp.description or 'N/A'),
+                'reason': _short(disp.ncr.description if disp.ncr_id else ''),
                 'assignee': disp.assigned_to.get_short_name() if disp.assigned_to else 'Unassigned',
                 'created': disp.created_at.strftime('%b %d'),
                 'status': disp.current_state,
@@ -715,7 +717,8 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
     @action(detail=False, methods=['get'], url_path='ncr-trend')
     def ncr_trend(self, request):
         """
-        Get NCR (failed inspections) created/closed trend over time.
+        NCRs opened and closed per day. Both sides count NCRs — a failed load or a
+        multi-part NCR is one, however many reports or decisions it holds.
 
         Query params:
             days (optional): Number of days to include (default: 30)
@@ -740,11 +743,10 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         range_start = _day_start(start_date, tz)
         range_end = _day_start(end_date + timedelta(days=1), tz)
 
-        # NCRs created per day (failed quality reports)
-        created_by_day = self.qs_for_user(QualityReports).filter(
+        # NCRs opened per day
+        created_by_day = self.qs_for_user(NCR).filter(
             created_at__gte=range_start,
             created_at__lt=range_end,
-            status='FAIL',
             archived=False,
         ).annotate(
             date=TruncDate('created_at', tzinfo=tz)
@@ -753,14 +755,14 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         )
         created_dict = {c['date']: c['count'] for c in created_by_day}
 
-        # NCRs closed per day (dispositions closed)
-        closed_by_day = self.qs_for_user(QuarantineDisposition).filter(
-            updated_at__gte=range_start,
-            updated_at__lt=range_end,
-            current_state='CLOSED',
+        # NCRs closed per day — when the last decision under each closed
+        closed_by_day = self.qs_for_user(NCR).filter(
+            closed_at__gte=range_start,
+            closed_at__lt=range_end,
+            state='CLOSED',
             archived=False,
         ).annotate(
-            date=TruncDate('updated_at', tzinfo=tz)
+            date=TruncDate('closed_at', tzinfo=tz)
         ).values('date').annotate(
             count=Count('id')
         )
@@ -837,13 +839,9 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             count=Count('id')
         ).order_by('-count')
 
-        type_labels = {
-            'scrap': 'Scrap',
-            'rework': 'Rework',
-            'use_as_is': 'Use As-Is',
-            'return_to_vendor': 'Return to Vendor',
-            None: 'Pending',
-        }
+        # The types are stored uppercase; these keys were lowercase, so every slice
+        # showed its raw code ("USE_AS_IS").
+        type_labels = {**dict(QuarantineDisposition.DISPOSITION_TYPES), '': 'Pending', None: 'Pending'}
 
         data = []
         total = 0
@@ -896,11 +894,9 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         tz = plant_tz(self.tenant)
         today = tenant_today(self.tenant)
 
-        # Get open dispositions (NCRs not yet closed)
-        open_dispositions = self.qs_for_user(QuarantineDisposition).filter(
-            archived=False,
-        ).exclude(
-            current_state='CLOSED'
+        # Open NCRs, by when each was opened
+        open_dispositions = self.qs_for_user(NCR).filter(
+            archived=False, state='OPEN',
         ).values_list('created_at', flat=True)
 
         # Calculate ages and bucket them
@@ -975,11 +971,9 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         data = []
 
         # 1. NCRs open > 7 days
-        old_ncrs = self.qs_for_user(QuarantineDisposition).filter(
-            archived=False,
+        old_ncrs = self.qs_for_user(NCR).filter(
+            archived=False, state='OPEN',
             created_at__lt=_day_start(today - timedelta(days=7), tz),
-        ).exclude(
-            current_state='CLOSED'
         ).count()
 
         if old_ncrs > 0:
@@ -988,7 +982,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'message': 'NCRs open > 7 days',
                 'count': old_ncrs,
                 'severity': 'high' if old_ncrs > 5 else 'medium',
-                'link': '/production/dispositions',
+                'link': '/quality/ncrs',
                 'linkParams': {'status': 'overdue'},
             })
 
@@ -1011,9 +1005,10 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             })
 
         # 3. Dispositions awaiting decision
+        # Undecided is a blank type (the column isn't null), so null alone counted none.
         pending_dispositions = self.qs_for_user(QuarantineDisposition).filter(
+            Q(disposition_type__isnull=True) | Q(disposition_type=''),
             archived=False,
-            disposition_type__isnull=True,
         ).exclude(
             current_state='CLOSED'
         ).count()
@@ -1410,6 +1405,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             'part__work_order',
             'step',
             'detected_by',
+            'ncr',
         ).prefetch_related(
             'errors',
             'personnel_links__user',
@@ -1458,6 +1454,8 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'work_order_id': report.part.work_order.id if report.part and report.part.work_order else None,
                 'disposition_status': disposition_status,
                 'disposition_type': disposition_type,
+                'ncr_id': report.ncr_id,
+                'ncr_number': report.ncr.ncr_number if report.ncr_id else None,
                 'description': report.description[:100] + '...' if report.description and len(report.description) > 100 else (report.description or ''),
         }
 
@@ -1496,12 +1494,13 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         out = io.StringIO()
         writer = csv.writer(out)
         writer.writerow(["Part", "Part Type", "Process", "Defect Types", "Date", "Inspector",
-                         "Order", "Work Order", "Disposition"])
+                         "Order", "Work Order", "NCR", "Disposition"])
         for report in queryset:
             r = self._defect_record_row(report)
             writer.writerow([csv_safe(v) for v in (
                 r['part_erp_id'], r['part_type'], r['step'], "; ".join(r['error_types']), r['date'],
-                r['inspector'], r['order'], r['work_order'], r['disposition_type'] or "Pending")])
+                r['inspector'], r['order'], r['work_order'], r['ncr_number'] or "",
+                r['disposition_type'] or "Pending")])
         from Tracker.services.core.clock import tenant_today
         filename = f"defects-{tenant_today(self.tenant).isoformat()}.csv"
         response = HttpResponse(out.getvalue().encode('utf-8-sig'), content_type='text/csv')

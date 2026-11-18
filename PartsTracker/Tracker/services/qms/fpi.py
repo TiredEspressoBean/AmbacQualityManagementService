@@ -208,12 +208,20 @@ def _record_first_piece_failure(fpi: FPIRecord, user) -> None:
         return  # no first piece to hold
     step_name = fpi.step.name if fpi.step_id else "the step"
     description = (fpi.notes or "").strip() or f"First piece failed at {step_name}"
+    # Several bad pieces from one run are one nonconformance: one NCR over them (user
+    # ruling 2026-11-17). One bad piece takes the usual path — its part's open NCR or a
+    # new one.
+    ncr = None
+    if len(bad) > 1:
+        from Tracker.services.qms.ncr import raise_ncr
+        ncr = raise_ncr(tenant=fpi.tenant, description=description, step=fpi.step,
+                        work_order=fpi.work_order, raised_by=user)
     for piece in bad:
         report = fpi.quality_report if (fpi.quality_report_id
                                         and fpi.quality_report.part_id == piece.id) else None
         if report is None:
             report = QualityReports.objects.create(  # tenant-safe: tenant set explicitly
-                tenant=fpi.tenant, part=piece, step=fpi.step,
+                tenant=fpi.tenant, part=piece, step=fpi.step, ncr=ncr,
                 status="FAIL", detected_by=user, description=description,
                 sampling_method="fpi_fail")
             sync_personnel(report)
@@ -228,7 +236,9 @@ def _record_first_piece_failure(fpi: FPIRecord, user) -> None:
             report.status = "FAIL"
             if not (report.description or "").strip():
                 report.description = description
-            report.save(update_fields=["status", "description"])
+            if ncr is not None and report.ncr_id is None:
+                report.ncr = ncr
+            report.save(update_fields=["status", "description", "ncr"])
         on_report_failed(report, prior)
 
 

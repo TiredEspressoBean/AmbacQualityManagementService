@@ -14,6 +14,7 @@ from Tracker.tests.base import TenantTestCase
 from Tracker.services.qms.acceptance_sampling import SamplePlan, compute_sample_plan
 from Tracker.services.mes import inventory
 from Tracker.services.qms import receiving_inspection
+from Tracker.tests.base import make_disposition
 
 
 class AcceptanceSamplingTests(SimpleTestCase):
@@ -573,7 +574,7 @@ class SupplierQualityTests(_ReceivingFixtureMixin, TenantTestCase):
         self._lot("C", "CONSUMED")
         self._lot("R", "RETURNED")
         scrapped = self._lot("S", "SCRAPPED")
-        QuarantineDisposition.objects.create(tenant=self.tenant_a, material_lot=scrapped,
+        make_disposition(tenant=self.tenant_a, material_lot=scrapped,
                                              quantity=Decimal("100"), disposition_type="SCRAP")
         sc = compute_supplier_scorecard(self.supplier)
         self.assertEqual((sc.lots_accepted, sc.lots_rejected, sc.lots_inspected), (2, 2, 4))
