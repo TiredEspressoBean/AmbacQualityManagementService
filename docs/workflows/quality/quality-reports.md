@@ -7,7 +7,23 @@ described and the part's decision is made.
 
 **Quality** > **Inspection Records**.
 
-## Recording an inspection
+## Where inspection records come from
+
+**Inspections are recorded in the work instructions.** A substep marked an
+**inspection point** writes the inspection record from what the operator
+captures as they work: the readings against their limits, the checks, the gauge
+used and who signed. That's the normal path, and the strongest evidence, because
+the record is tied to the step and its instruction. See [Authoring Work
+Instructions](../dwi/authoring.md) and [Running Work
+Instructions](../dwi/running.md).
+
+The **Record Inspection** form is the fallback, for a finding outside the
+instructions (damage noticed between steps, something seen during an audit) or a
+result recorded after the fact. It captures less: no readings against the spec.
+To put several parts on one NCR at once, [raise the NCR](ncrs.md#raising-an-ncr-by-hand)
+instead.
+
+### Recording one by hand
 
 1. **Quality** > **Inspection Records**, then **Record Inspection**. The form
    reads: *"Record an inspection result. A Fail puts the
@@ -18,17 +34,10 @@ described and the part's decision is made.
 3. A **Fail** confirms *Inspection recorded · on NCR-…*, with **Open NCR** to go
    straight to it. A Pass confirms *Inspection recorded*.
 
-An inspection substep in the step player also writes an inspection record: a
-substep marked an **inspection point** records one from what the operator
-captures. See [Authoring Work Instructions](../dwi/authoring.md).
-
-An operator's Home offers a third route: beside the step they last finished,
-**Flag** opens this form with the **Part** and **Process Step** filled in and
+An operator's Home offers the same form: beside the step they last finished,
+**Flag** opens it with the **Part** and **Process Step** filled in and
 **Detected By** set to them. A Fail saved there puts the part on an NCR. See
 [Operator](../../roles/operator.md).
-
-To put several parts on one NCR at once, raise the NCR instead: see [Raising
-an NCR by hand](ncrs.md#raising-an-ncr-by-hand).
 
 !!! note "No scan-to-report flow"
     Scanning a barcode does not open an inspection record. The pre-filled form
