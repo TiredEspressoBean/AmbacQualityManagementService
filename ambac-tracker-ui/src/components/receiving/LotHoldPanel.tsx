@@ -35,7 +35,7 @@ function WholeLotRequestDetail({ lotId }: { lotId: string }) {
         <div className="space-y-1 rounded border bg-background/60 p-2 text-sm">
             <div>
                 <span className="text-muted-foreground">Requested by </span>
-                <b>{req.assignee_name || "an inspector"}</b>
+                <b>{req.raised_by_name || "the inspector"}</b>
                 {req.created_at ? <span className="text-muted-foreground"> · {new Date(req.created_at).toLocaleString()}</span> : null}
             </div>
             {req.description && <div className="italic">“{req.description}”</div>}

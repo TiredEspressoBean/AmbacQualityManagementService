@@ -15,9 +15,12 @@
  *  - Personal gauge-calibration nag pre-empts the point-of-use gate.
  *  - Deliberately absent: batch-approve, throughput-vs-goal, MRU lists.
  */
+import { useQuery } from "@tanstack/react-query";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { BypassRequestsCard } from "@/components/quality/BypassRequestsCard";
-import { UnassignedDispositions } from "@/components/quality/UnassignedDispositions";
+import { UnassignedNcrs } from "@/components/quality/UnassignedDispositions";
+import { MyNcrsList } from "@/components/quality/MyNcrs";
+import { myNcrsOptions } from "@/hooks/ncrs";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -36,7 +39,6 @@ import { useGaugeNag } from "@/hooks/useGaugeNag";
 import { useInspectionInbox, type InspectionInboxRow } from "@/hooks/useInspectionInbox";
 import { QaSignOffDialog, type SignOffTarget } from "@/components/qa/QaSignOffDialog";
 import { useMyCapaTasks } from "@/hooks/useMyCapaTasks";
-import { useMyDispositions } from "@/hooks/useMyDispositions";
 import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals";
 import { usePendingFpis } from "@/hooks/usePendingFpis";
 import { ScanBox } from "@/components/home/home-blocks";
@@ -323,7 +325,7 @@ function MyActionsPanel({ user }: { user: AuthUser }) {
     const { data: tasks = [] } = useMyCapaTasks();
     const { data: claimable = [] } = useClaimableApprovals();
     const claim = useClaimApproval();
-    const { data: dispositions = [] } = useMyDispositions(user.pk);
+    const { data: myNcrs = [] } = useQuery(myNcrsOptions(user.pk));
 
     const openTasks = tasks.filter((t) => t.status !== "COMPLETED");
     const overdue = openTasks.filter((t) => t.due_date && parseDateOnly(t.due_date) < new Date()).length
@@ -346,13 +348,14 @@ function MyActionsPanel({ user }: { user: AuthUser }) {
                     </div>
                     <div className="text-xs text-muted-foreground">CAPA tasks</div>
                 </Link>
-                <Link to="/production/dispositions" className="rounded-md border p-2 transition-colors hover:bg-accent">
-                    <div className="text-xl font-semibold tabular-nums">{dispositions.length}</div>
-                    <div className="text-xs text-muted-foreground">My dispositions</div>
+                <Link to="/quality/ncrs" search={{ view: "mine" }} className="rounded-md border p-2 transition-colors hover:bg-accent">
+                    <div className="text-xl font-semibold tabular-nums">{myNcrs.length}</div>
+                    <div className="text-xs text-muted-foreground">My NCRs</div>
                 </Link>
             </div>
 
-            <UnassignedDispositions userPk={user.pk} />
+            <div className="mt-3"><MyNcrsList userPk={user.pk} /></div>
+            <UnassignedNcrs userPk={user.pk} />
 
             {claimable.length > 0 && (
                 <div className="mt-3">

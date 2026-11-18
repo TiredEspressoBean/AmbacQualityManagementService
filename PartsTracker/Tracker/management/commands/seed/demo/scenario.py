@@ -227,6 +227,9 @@ class DemoScenario(BaseSeeder):
         # An NCR the product raised is as old as the failure that raised it. The seed
         # backdates records after the fact, so the NCRs follow them (aging has data).
         result['ncr_dates'] = self._date_ncrs_by_their_records()
+        # The seed assigns decisions in bulk (no save signal): their NCRs follow, as a
+        # decision taken in the product takes its unowned NCR.
+        result['ncr_owners'] = self._adopt_ncr_owners()
 
         self.log("\n--- Phase 6d3: CAPA calls on NCRs ---")
         result['capa_calls'] = self._decide_capa_calls(result['users'])
@@ -359,6 +362,16 @@ class DemoScenario(BaseSeeder):
                             note="Cosmetic, within the functional envelope; no systemic cause.")
         self.log(f"  {ncr.ncr_number} over INJ-0042-020 reads Minor")
         return ncr.ncr_number
+
+    def _adopt_ncr_owners(self):
+        from Tracker.models import NCR
+        from Tracker.services.qms.ncr import adopt_owner
+        before = NCR.objects.filter(tenant=self.tenant, assigned_to__isnull=False).count()
+        for ncr in NCR.objects.filter(tenant=self.tenant, state='OPEN', assigned_to__isnull=True):
+            adopt_owner(ncr)
+        owned = NCR.objects.filter(tenant=self.tenant, assigned_to__isnull=False).count() - before
+        self.log(f"  {owned} NCR(s) owned by whoever holds their decisions")
+        return owned
 
     def _date_ncrs_by_their_records(self):
         """Each NCR the product raised from a failure, dated at its earliest record, never later

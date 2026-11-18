@@ -112,9 +112,11 @@ def auto_create_disposition(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=QuarantineDisposition)
 def sync_ncr_state(sender, instance, **kwargs):
-    """An NCR is open while a decision under it is; it closes with the last one."""
-    from Tracker.services.qms.ncr import sync_state
+    """An NCR is open while a decision under it is; it closes with the last one. And a
+    decision goes with its NCR's owner (services/qms/ncr.follow_owner)."""
+    from Tracker.services.qms.ncr import follow_owner, sync_state
     sync_state(instance.ncr_id)
+    follow_owner(instance)
 
 
 @receiver(post_save, sender=ThreeDModel)

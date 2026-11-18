@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { format } from "date-fns"
 import { useNavigate, useSearch } from "@tanstack/react-router"
+import { useNcr } from "@/hooks/ncrs"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -309,6 +310,25 @@ function CreateCapaForm() {
         }
     }, [searchParams.quality_reports, form, initialQualityReports])
 
+    // Raised from an NCR: start from what the NCR already says. Only empty fields are
+    // filled, once, so nothing typed is overwritten.
+    const ncrIds = (searchParams.ncrs ?? "").split(",").map((id) => id.trim()).filter(Boolean)
+    const { data: sourceNcr } = useNcr(ncrIds.length === 1 ? ncrIds[0] : undefined)
+    const ncrPart = sourceNcr?.members.filter((m) => m.part_id && m.held)
+    const ncrPartId = ncrPart?.length === 1 ? String(ncrPart[0]!.part_id) : null
+    useEffect(() => {
+        if (!sourceNcr) return
+        const empty = (k: "problem_statement" | "severity" | "immediate_action" | "work_order" | "step" | "part") =>
+            !form.getValues(k)
+        if (sourceNcr.description && empty("problem_statement")) form.setValue("problem_statement", sourceNcr.description)
+        if (sourceNcr.severity && empty("severity")) form.setValue("severity", sourceNcr.severity as FormValues["severity"])
+        if (sourceNcr.containment_action && empty("immediate_action")) form.setValue("immediate_action", sourceNcr.containment_action)
+        if (sourceNcr.work_order && empty("work_order")) form.setValue("work_order", String(sourceNcr.work_order))
+        if (sourceNcr.step && empty("step")) form.setValue("step", String(sourceNcr.step))
+        if (ncrPartId && empty("part")) form.setValue("part", ncrPartId)
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- once per NCR loaded
+    }, [sourceNcr?.id])
+
     // Check for pre-filled problem statement from SPC page — reads a one-time session value on mount
     useEffect(() => {
         const spcProblemStatement = sessionStorage.getItem('spc_capa_problem_statement')
@@ -423,6 +443,16 @@ function CreateCapaForm() {
             <Card>
                 <CardHeader>
                     <CardTitle>Create New CAPA</CardTitle>
+                    {sourceNcr && (
+                        <p className="text-sm font-medium">
+                            Raised for{" "}
+                            <Link to="/quality/ncrs/$ncrId" params={{ ncrId: String(sourceNcr.id) }}
+                                  className="font-mono text-primary underline-offset-2 hover:underline">
+                                {sourceNcr.ncr_number}
+                            </Link>
+                            {" "}— started from what it says; change anything that's wrong.
+                        </p>
+                    )}
                     <CardDescription>
                         Create a Corrective and Preventive Action to address quality issues.
                         Required fields are marked with *.
@@ -635,6 +665,8 @@ function CreateCapaForm() {
                                                             value={field.value || null}
                                                             onChange={(v) => v && form.setValue("part", v)}
                                                             options={(parts?.results ?? []).map((p) => ({ value: p.id, label: p.ERP_id }))}
+                                                            selectedLabel={field.value && field.value === ncrPartId
+                                                                ? (ncrPart?.[0]?.erp_id ?? undefined) : undefined}
                                                             onSearch={setPartSearch}
                                                             placeholder="Select part"
                                                             searchPlaceholder="Search parts by ERP ID..."
@@ -685,6 +717,8 @@ function CreateCapaForm() {
                                                             value={field.value || null}
                                                             onChange={(v) => v && form.setValue("work_order", v)}
                                                             options={(workOrders?.results ?? []).map((w) => ({ value: w.id, label: w.ERP_id }))}
+                                                            selectedLabel={field.value && sourceNcr && field.value === String(sourceNcr.work_order)
+                                                                ? (sourceNcr.work_order_erp_id ?? undefined) : undefined}
                                                             onSearch={setWorkOrderSearch}
                                                             placeholder="Select work order"
                                                             searchPlaceholder="Search work orders..."

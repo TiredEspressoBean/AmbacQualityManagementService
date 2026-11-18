@@ -301,6 +301,8 @@ export interface ModelEditorProps<T> {
     /** A change to this starts the list from its first page — a page's own view switch
      *  (NCRs' Open / Awaiting CAPA) without remounting and losing the sidebar's filters. */
     resetKey?: string;
+    /** The search box's hint, when the one built from the search fields reads wrong. */
+    searchPlaceholder?: string;
 }
 
 /** A list title as a noun in a sentence: lowercased, except an acronym ("NCRs", not "ncrs"). */
@@ -325,6 +327,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                                               listQueryKey,
                                                               onDataChange,
                                                               resetKey,
+                                                              searchPlaceholder: searchHint,
                                                           }: ModelEditorProps<T>) {
     // Deep-linkable list filters. Any `?key=value` query string on the URL
     // seeds `activeFilters`, so links like `/editor/quality-reports?part=<uuid>`
@@ -424,9 +427,9 @@ export function ModelEditorPage<T extends { id: string | number }>({
     });
 
     // Build search placeholder from metadata
-    const searchPlaceholder = metadata?.search_fields_display?.length
+    const searchPlaceholder = searchHint ?? (metadata?.search_fields_display?.length
         ? `Search by ${metadata.search_fields_display.join(", ")}...`
-        : `Search ${listNoun(title)}...`;
+        : `Search ${listNoun(title)}...`);
 
     useEffect(() => {
         setOffset(0);

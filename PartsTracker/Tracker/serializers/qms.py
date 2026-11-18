@@ -898,6 +898,16 @@ class NCRReportRefSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
 
 
+class NCRTodoSerializer(serializers.Serializer):
+    """What an open NCR still needs from its owner."""
+    awaiting_decision = serializers.IntegerField(help_text="Decisions not yet made.")
+    containment_needed = serializers.BooleanField(
+        help_text="Major/Critical with no containment recorded: its decisions can't close.")
+    capa_decision_needed = serializers.BooleanField()
+    decided_to_close = serializers.IntegerField(help_text="Decided, not yet closed.")
+    at_mrb = serializers.BooleanField(help_text="A part under it is held at MRB.")
+
+
 class NCRSerializer(SecureModelMixin):
     """An NCR: what is wrong, its containment and CAPA decision, and what it covers.
     The header (description, severity, containment) is editable while it is open;
@@ -918,6 +928,17 @@ class NCRSerializer(SecureModelMixin):
     combined_into_number = serializers.CharField(source='combined_into.ncr_number', read_only=True,
                                                  allow_null=True)
     combined_from = serializers.SerializerMethodField()
+    assigned_to_name = serializers.SerializerMethodField()
+    todo = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_assigned_to_name(self, obj):
+        return self._name(obj.assigned_to)
+
+    @extend_schema_field(NCRTodoSerializer)
+    def get_todo(self, obj):
+        from Tracker.services.qms.ncr import todo
+        return todo(obj)
 
     class Meta:
         model = NCR
@@ -925,7 +946,7 @@ class NCRSerializer(SecureModelMixin):
             'id', 'ncr_number', 'state', 'state_display', 'closed_at',
             'description', 'severity', 'severity_display',
             'step', 'step_name', 'work_order', 'work_order_erp_id', 'batch_execution',
-            'raised_by', 'raised_by_name',
+            'raised_by', 'raised_by_name', 'assigned_to', 'assigned_to_name', 'todo',
             'containment_action', 'containment_completed_at', 'containment_completed_by',
             'containment_completed_by_name', 'containment_performed_by', 'containment_performed_by_name',
             'capa_decision', 'capa_decision_note', 'capa_decided_by', 'capa_decided_by_name',
@@ -937,6 +958,8 @@ class NCRSerializer(SecureModelMixin):
         read_only_fields = (
             'ncr_number', 'state', 'closed_at', 'step', 'work_order', 'batch_execution', 'raised_by',
             'combined_into', 'header_by_hand',
+            # Owner changes through `assign`, which moves its open decisions with it.
+            'assigned_to',
             'containment_completed_at', 'containment_completed_by',
             'capa_decision', 'capa_decision_note', 'capa_decided_by', 'capa_decided_at',
             'created_at', 'updated_at', 'archived',
@@ -994,6 +1017,11 @@ class NCRSerializer(SecureModelMixin):
         return [{'id': r.id, 'report_number': r.report_number or '', 'status': r.status,
                  'part_erp_id': r.part.ERP_id if r.part_id else None, 'created_at': r.created_at}
                 for r in sorted((r for r in obj.reports.all() if not r.archived), key=lambda r: r.created_at)]
+
+
+class AssignNCRSerializer(serializers.Serializer):
+    """Give an NCR an owner (null: back to the queue)."""
+    assigned_to = TenantScopedPrimaryKeyRelatedField(queryset=User.objects.all(), allow_null=True)
 
 
 class CombineNCRsSerializer(serializers.Serializer):
@@ -1080,6 +1108,13 @@ class QuarantineDispositionSerializer(SecureModelMixin):
 
     # A rejected material lot (receiving), when the disposition is about one.
     material_lot_number = serializers.CharField(source='material_lot.lot_number', read_only=True, allow_null=True)
+    # Who put it up: the NCR's raiser — for a whole-lot reject request, the inspector.
+    raised_by_name = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_raised_by_name(self, obj):
+        u = obj.ncr.raised_by if obj.ncr_id else None
+        return u.display_name if u is not None else None
 
     class Meta:
         model = QuarantineDisposition
@@ -1104,7 +1139,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             'scrap_verified', 'scrap_verification_method', 'scrap_verified_by',
             'scrap_verified_by_name', 'scrap_verified_at',
             # Relationships
-            'part', 'material_lot', 'material_lot_number', 'quantity',
+            'part', 'material_lot', 'material_lot_number', 'quantity', 'raised_by_name',
             'batch_execution', 'step', 'step_info', 'rework_attempt_at_step',
             'rework_limit_exceeded', 'quality_reports',
             # MRB: the step whose visit cap sent the part here (set by the engine)

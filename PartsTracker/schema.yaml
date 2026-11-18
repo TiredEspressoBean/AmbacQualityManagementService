@@ -19263,6 +19263,14 @@ paths:
         Not deleted: an NCR is closed by its decisions.
       parameters:
       - in: query
+        name: assigned_to
+        schema:
+          type: integer
+      - in: query
+        name: assigned_to__isnull
+        schema:
+          type: boolean
+      - in: query
         name: batch_execution
         schema:
           type: string
@@ -19564,6 +19572,50 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/NCRs/{id}/assign/:
+    post:
+      operationId: api_NCRs_assign_create
+      description: 'Give the NCR an owner: its containment, CAPA call and every decision
+        under it not yet closed go with it.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignNCRRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AssignNCRRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AssignNCRRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/NCRs/{id}/capa-decision/:
     post:
       operationId: api_NCRs_capa_decision_create
@@ -19585,6 +19637,38 @@ paths:
             schema:
               $ref: '#/components/schemas/CapaDecisionRequestRequest'
         required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NCR'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/NCRs/{id}/close-decided/:
+    post:
+      operationId: api_NCRs_close_decided_create
+      description: 'Close every decided decision under the NCR through the completion
+        check. All or nothing: a refusal names each one''s blockers.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this NCR.
+        required: true
+      tags:
+      - api
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -53240,6 +53324,15 @@ components:
           nullable: true
         archived:
           type: boolean
+    AssignNCRRequest:
+      type: object
+      description: 'Give an NCR an owner (null: back to the queue).'
+      properties:
+        assigned_to:
+          type: integer
+          nullable: true
+      required:
+      - assigned_to
     AttentionTypeEnum:
       enum:
       - full
@@ -66336,6 +66429,18 @@ components:
           type: string
           nullable: true
           readOnly: true
+        assigned_to:
+          type: integer
+          readOnly: true
+          nullable: true
+        assigned_to_name:
+          type: string
+          nullable: true
+          readOnly: true
+        todo:
+          allOf:
+          - $ref: '#/components/schemas/NCRTodo'
+          readOnly: true
         containment_action:
           type: string
           description: Immediate action taken to prevent escape
@@ -66441,6 +66546,8 @@ components:
           readOnly: true
       required:
       - archived
+      - assigned_to
+      - assigned_to_name
       - batch_execution
       - capa_decided_at
       - capa_decided_by
@@ -66471,6 +66578,7 @@ components:
       - state_display
       - step
       - step_name
+      - todo
       - updated_at
       - work_order
       - work_order_erp_id
@@ -66590,6 +66698,31 @@ components:
       description: |-
         * `OPEN` - Open
         * `CLOSED` - Closed
+    NCRTodo:
+      type: object
+      description: What an open NCR still needs from its owner.
+      properties:
+        awaiting_decision:
+          type: integer
+          description: Decisions not yet made.
+        containment_needed:
+          type: boolean
+          description: 'Major/Critical with no containment recorded: its decisions
+            can''t close.'
+        capa_decision_needed:
+          type: boolean
+        decided_to_close:
+          type: integer
+          description: Decided, not yet closed.
+        at_mrb:
+          type: boolean
+          description: A part under it is held at MRB.
+      required:
+      - at_mrb
+      - awaiting_decision
+      - capa_decision_needed
+      - containment_needed
+      - decided_to_close
     NcrAgingResponse:
       type: object
       properties:
@@ -79334,6 +79467,10 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
           nullable: true
           description: How much is dispositioned, in the lot's stock unit.
+        raised_by_name:
+          type: string
+          nullable: true
+          readOnly: true
         batch_execution:
           type: string
           format: uuid
@@ -79436,6 +79573,7 @@ components:
       - ncr_number
       - part_erp_id
       - quality_reports
+      - raised_by_name
       - resolution_completed
       - resolution_completed_at
       - resolution_completed_by

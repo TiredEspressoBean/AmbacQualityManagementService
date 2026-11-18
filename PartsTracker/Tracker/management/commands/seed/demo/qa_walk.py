@@ -114,6 +114,18 @@ FAILED_LOAD_WO = 'WO-QA-MANAGE-02'
 FAILED_LOAD_PARTS = ['INJ-QA-MANAGE-011', 'INJ-QA-MANAGE-012', 'INJ-QA-MANAGE-013']
 HOT_BATH = 71.0
 
+# QA Manager: two NCRs that are one problem. Two bodies from the same grinder setup fail
+# Body Inspection for the same oversize bore, each raising its own NCR (a failure is the
+# part's); nobody has taken either. The lesson: combine them, then take the one NCR.
+COMBINE_WO = 'WO-QA-MANAGE-03'
+COMBINE_PARTS = ['INJ-QA-MANAGE-021', 'INJ-QA-MANAGE-022', 'INJ-QA-MANAGE-023']
+
+# QA Manager: an NCR decided but not contained. A body failed Body Inspection (Major);
+# Maria owns it and decided Scrap, but no containment is recorded — so closing the
+# decision is refused until it is. The lesson: why "Close decided" says no.
+UNCONTAINED_WO = 'WO-QA-MANAGE-04'
+UNCONTAINED_PARTS = ['INJ-QA-MANAGE-031', 'INJ-QA-MANAGE-032']
+
 # Casey's reason names the certification the gate found missing at that step.
 OVERRIDE_REASONS = {
     'Body Inspection': 'Only operator free for the cell; run on my authority pending '
@@ -218,6 +230,18 @@ class DemoQaWalkSeeder(BaseSeeder):
         self._space_out(wo, self.today - timedelta(hours=1, minutes=40))
         self._date_failed_load(wo)
 
+        with transaction.atomic():
+            wo = self._work_order(order, process, COMBINE_WO, len(COMBINE_PARTS))
+            parts = self._parts(wo, part_type, COMBINE_PARTS)
+            result['combine_pair'] = self._walk_combine_pair(wo, parts, result)
+        self._space_out(wo, self.today - timedelta(hours=1, minutes=10))
+
+        with transaction.atomic():
+            wo = self._work_order(order, process, UNCONTAINED_WO, len(UNCONTAINED_PARTS))
+            parts = self._parts(wo, part_type, UNCONTAINED_PARTS)
+            result['uncontained_ncr'] = self._walk_uncontained(wo, parts, result)
+        self._space_out(wo, self.today - timedelta(hours=1, minutes=25))
+
         result['failed_gauge'] = self._fail_gauge()
 
         result['work_orders'] = [wo1, wo2] + drills
@@ -245,6 +269,12 @@ class DemoQaWalkSeeder(BaseSeeder):
         self.log(f"  {FAILED_LOAD_WO}: Wash load failed (bath {HOT_BATH:g} °C), "
                  f"{fl.ncr_number if fl else 'no NCR'} holds "
                  f"{len(FAILED_LOAD_PARTS)} parts for Maria")
+        pair = result.get('combine_pair') or []
+        self.log(f"  {COMBINE_WO}: same oversize bore twice, "
+                 f"{' and '.join(n.ncr_number for n in pair) or 'no NCRs'} to combine")
+        un = result.get('uncontained_ncr')
+        self.log(f"  {UNCONTAINED_WO}: {un.ncr_number if un else 'no NCR'} decided Scrap, "
+                 f"no containment — closing refused")
         self.log(f"  Training-gate overrides recorded: {result['override_count']}")
         return result
 
@@ -355,6 +385,53 @@ class DemoQaWalkSeeder(BaseSeeder):
         if disposition is None:
             self.log(f"  Warning: no disposition opened for {failed.ERP_id}.", warning=True)
         return disposition
+
+    def _fail_bore(self, part, result):
+        self._run_step_for([part], 'Body Inspection', result, advance=False,
+                           out_of_spec='Bore Diameter', reading=OVERSIZE_BORE,
+                           defect=self._defect('Bore oversize'),
+                           defect_note={'location': 'Seat bore',
+                                        'notes': 'Bore 4.007 mm on the CMM, over the 4.005 '
+                                                 'maximum. Same grinder setup.'})
+        return (QuarantineDisposition.objects
+                .filter(part=part, current_state='OPEN').select_related('ncr').first())
+
+    def _walk_combine_pair(self, wo, parts, result):
+        """The first piece bought off; the other two fail for the same oversize bore,
+        each on its own NCR, neither taken."""
+        first, *bad = parts
+        self._make_bodies(wo, parts, result)
+        self._run_step_for([first], 'Body Inspection', result, advance=False)
+        self._buy_off(wo, 'Body Inspection', first)
+        self._advance(first, 'PASS')
+        ncrs = []
+        for part in bad:
+            d = self._fail_bore(part, result)
+            if d is None:
+                self.log(f"  Warning: no disposition opened for {part.ERP_id}.", warning=True)
+            elif d.ncr not in ncrs:
+                ncrs.append(d.ncr)
+        return ncrs
+
+    def _walk_uncontained(self, wo, parts, result):
+        """The first piece bought off; the second fails; Maria takes the NCR and decides
+        Scrap, and nobody records containment."""
+        from Tracker.services.qms.disposition import decide_disposition
+        from Tracker.services.qms.ncr import assign_ncr
+        first, bad = parts
+        self._make_bodies(wo, parts, result)
+        self._run_step_for([first], 'Body Inspection', result, advance=False)
+        self._buy_off(wo, 'Body Inspection', first)
+        self._advance(first, 'PASS')
+        d = self._fail_bore(bad, result)
+        if d is None:
+            self.log(f"  Warning: no disposition opened for {bad.ERP_id}.", warning=True)
+            return None
+        assign_ncr(d.ncr, self.maria)
+        d.refresh_from_db()
+        decide_disposition(d, disposition_type='SCRAP', authorized_by=self.maria,
+                           notes='Bore past the rework allowance; scrap.')
+        return d.ncr
 
     def _walk_pair_first_piece(self, wo, parts, result):
         """Both bodies made, inspected, nitrided, assembled and calibrated (first pieces

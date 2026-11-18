@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CombineNcrsDialog, type CombinableNcr } from "@/components/quality/CombineNcrsDialog";
 import { useListNcrs } from "@/hooks/ncrs";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { useAuthUser } from "@/hooks/useAuthUser";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
@@ -14,11 +15,11 @@ import type { NcrListSearchParams } from "@/lib/routes/search-params";
 
 const col = createColumnHelper<Schema<"NCR">>();
 
-type View = "open" | "capa" | "all";
+type View = "open" | "mine" | "capa" | "all";
 
 // A filtered list hook per view: open NCRs (the default), NCRs still waiting for the
 // CAPA call (ISO 9001 10.2.1(b) — evaluated, not only acted on), or every NCR.
-function useNcrList(view: View) {
+function useNcrList(view: View, me: number | undefined) {
     return function useList({ offset, limit, ordering, search, filters }: {
         offset: number; limit: number; ordering?: string; search?: string;
         filters?: Record<string, string>;
@@ -28,7 +29,8 @@ function useNcrList(view: View) {
         if (ordering !== undefined) queries.ordering = ordering;
         if (search !== undefined) queries.search = search;
         // A view narrows; it doesn't override what the sidebar (or a link) chose.
-        if (view === "open" && queries.state === undefined) queries.state = "OPEN";
+        if ((view === "open" || view === "mine") && queries.state === undefined) queries.state = "OPEN";
+        if (view === "mine" && me != null) queries.assigned_to = me;
         // A combined NCR's CAPA call is made on the one it went into.
         if (view === "capa") { queries.capa_decision__isnull = true; queries.combined_into__isnull = true; }
         return useListNcrs(queries);
@@ -47,6 +49,13 @@ export function NcrListPage() {
     const navigate = useNavigate();
     // The view is in the URL, so a link or a reload lands on it.
     const urlSearch = useSearch({ strict: false }) as NcrListSearchParams;
+    const me = useAuthUser().data?.pk;
+    // A date filter from a link ("NCRs open > 7 days"): shown, and clearable.
+    const openedBefore = typeof urlSearch.created_at__lt === "string" ? urlSearch.created_at__lt : undefined;
+    const clearOpenedBefore = () => navigate({
+        to: "/quality/ncrs",
+        search: (prev: Record<string, unknown>) => { const { created_at__lt: _drop, ...rest } = prev; return rest; },
+    });
     const view: View = urlSearch.view ?? "open";
     const setView = (v: View) => navigate({
         to: "/quality/ncrs", search: (prev: Record<string, unknown>) => ({ ...prev, view: v }), replace: true,
@@ -67,6 +76,7 @@ export function NcrListPage() {
 
     const views: { value: View; label: string }[] = [
         { value: "open", label: "Open" },
+        { value: "mine", label: "Mine" },
         { value: "capa", label: "Awaiting CAPA decision" },
         { value: "all", label: "All" },
     ];
@@ -74,13 +84,25 @@ export function NcrListPage() {
     return (
         <>
         <ModelEditorPage
+            // The editor seeds its filters from the URL once: clearing the date filter starts it afresh.
+            key={openedBefore ?? "all-dates"}
             // A view is a different list: start it from its first page.
             resetKey={view}
+            searchPlaceholder="Search NCRs by number, description or part…"
             title="NCRs"
             modelName="NCRs"
             listQueryKey={["ncrs"]}
             extraToolbarContent={
                 <div className="flex items-center gap-1">
+                    {openedBefore && (
+                        <span className="mr-2 inline-flex items-center gap-1 rounded-full border bg-muted px-2 py-0.5 text-xs">
+                            Opened before {new Date(openedBefore).toLocaleDateString()}
+                            <button type="button" onClick={clearOpenedBefore} aria-label="Clear the date filter"
+                                    className="rounded-full hover:bg-background">
+                                <X className="h-3 w-3" />
+                            </button>
+                        </span>
+                    )}
                     <ListChecks className="h-4 w-4 text-muted-foreground" />
                     {views.map((v) => (
                         <Button key={v.value} size="sm" variant={view === v.value ? "default" : "outline"}
@@ -90,7 +112,7 @@ export function NcrListPage() {
                     ))}
                 </div>
             }
-            useList={useNcrList(view)}
+            useList={useNcrList(view, me)}
             sortOptions={[
                 { label: "Opened (Newest)", value: "-created_at" },
                 { label: "Opened (Oldest)", value: "created_at" },

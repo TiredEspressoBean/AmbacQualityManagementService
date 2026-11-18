@@ -1,7 +1,7 @@
 import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Link, redirect} from "@tanstack/react-router"
 import { OperatorRuntimeSearch } from "@/lib/routes/operator-runtime-search"
 import {
-    ApprovalsHistorySearch, CapaListSearch, CreateCapaSearch, CreateNcrSearch, DispositionSearch, NcrListSearch,
+    ApprovalsHistorySearch, CapaListSearch, CreateCapaSearch, CreateNcrSearch, DispositionSearch, NcrListSearch, NcrDetailSearch,
     ProcessFlowSearch, SignupSearch, WorkOrderControlSearch, AnnotatorSearch, WorkOrderDetailSearch, CalibrationRecordNewSearch, CapacitySearch,
     DocumentsListSearch, QualityReportNewSearch,
 } from "@/lib/routes/search-params"
@@ -827,6 +827,7 @@ export const ncrCreateRoute = createRoute({
 
 export const ncrDetailRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/quality/ncrs/$ncrId',
+    validateSearch: NcrDetailSearch,
     component: lazyRouteComponent(() => import("@/pages/quality/NcrDetailPage"), "NcrDetailPage"),
 });
 

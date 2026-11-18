@@ -379,7 +379,7 @@ def members(ncr) -> list[dict]:
             'held': d.held,
             # An inspector's whole-lot reject request: the outcome asked for, nobody's
             # decision yet — confirmed or declined on the lot, not decided here.
-            'requested': bool(d.material_lot_id and d.disposition_type and not d.decision_authorized_by_id),
+            'requested': bool(d.disposition_type) and not is_decided(d),
         }
         if key in seen:
             rows[seen[key]] = row  # the latest decision on it
@@ -645,11 +645,121 @@ def combine_ncrs(target, others, *, user) -> NCR:
             target.capa_decision_note = other.capa_decision_note
             target.capa_decided_by = other.capa_decided_by
             target.capa_decided_at = other.capa_decided_at
+        if target.assigned_to_id is None and other.assigned_to_id is not None:
+            target.assigned_to_id = other.assigned_to_id
         other.state = 'CLOSED'
         other.closed_at = timezone.now()
         other.combined_into = target
-        other.save(update_fields=['state', 'closed_at', 'combined_into', 'updated_at'])
+        other.assigned_to = None
+        other.save(update_fields=['state', 'closed_at', 'combined_into', 'assigned_to', 'updated_at'])
     target.save()
+    # One owner: what moved in is the kept NCR's owner's now.
+    if target.assigned_to_id is not None:
+        _assign_open(target, target.assigned_to_id)
     sync_state(target.pk)
     target.refresh_from_db()
     return target
+
+
+# --- owner -----------------------------------------------------------------------------
+
+def todo(ncr) -> dict:
+    """What an open NCR still needs: decisions to make, containment (Major/Critical —
+    without it its decisions can't close), its CAPA call, decisions to close. Reads the
+    prefetched dispositions."""
+    open_ = ncr.state == 'OPEN'
+    live = [d for d in ncr.dispositions.all() if not d.archived and d.current_state != 'CLOSED']
+    return {
+        'awaiting_decision': sum(1 for d in live if not d.disposition_type) if open_ else 0,
+        'containment_needed': (open_ and ncr.severity in ('CRITICAL', 'MAJOR')
+                               and not ncr.containment_completed_at and bool(live)),
+        'capa_decision_needed': open_ and ncr.capa_decision is None and ncr.combined_into_id is None,
+        'decided_to_close': sum(1 for d in live if is_decided(d)) if open_ else 0,
+        # A part held at MRB (a visit cap or failed check sent it there).
+        'at_mrb': any(d.escalated_from_step_id for d in live),
+    }
+
+
+@transaction.atomic
+def close_decided(ncr, user) -> list:
+    """Close every decision under the NCR that's decided and not yet closed, through the
+    same completion check as closing one. All or nothing: if any can't close, none does,
+    and the refusal names each one's blockers — the list of what's left to do, rather
+    than an NCR half closed (user go 2026-11-18)."""
+    from Tracker.services.qms.disposition import complete_disposition_resolution
+    if ncr.state != 'OPEN':
+        raise ValueError(f"{ncr.ncr_number} is closed.")
+    ready = [d for d in (QuarantineDisposition.objects  # tenant-safe: scoped by the NCR FK
+                         .filter(ncr=ncr, archived=False).exclude(current_state='CLOSED')
+                         .select_related('part', 'material_lot').order_by('disposition_number'))
+             if is_decided(d)]
+    if not ready:
+        raise ValueError(f"Nothing on {ncr.ncr_number} is decided and waiting to close.")
+    blocked = []
+    for d in ready:
+        blockers = d.get_completion_blockers()
+        if blockers:
+            what = d.part.ERP_id if d.part_id else (
+                f"lot {d.material_lot.lot_number}" if d.material_lot_id else d.disposition_number)
+            blocked.append(f"{what}: {'; '.join(blockers)}")
+    if blocked:
+        raise ValueError("None closed — " + " | ".join(blocked))
+    for d in ready:
+        complete_disposition_resolution(d, user)
+    return ready
+
+
+def is_decided(d) -> bool:
+    """Has a decision someone made — not a whole-lot reject request, which carries the
+    outcome asked for and waits to be confirmed on the lot."""
+    return bool(d.disposition_type) and not (d.material_lot_id and not d.decision_authorized_by_id)
+
+
+def _assign_open(ncr, user_id) -> int:
+    """Its decisions not yet closed go with the NCR."""
+    return (QuarantineDisposition.objects  # tenant-safe: scoped by the NCR FK
+            .filter(ncr=ncr, archived=False).exclude(current_state='CLOSED')
+            .update(assigned_to_id=user_id))
+
+
+@transaction.atomic
+def assign_ncr(ncr, user) -> NCR:
+    """Give the NCR to `user` (None: back to the queue): its containment, its CAPA call,
+    and every decision under it not yet closed (user ruling 2026-11-18). Taking it from
+    the queue is assigning it to yourself."""
+    locked = NCR.objects.select_for_update().get(pk=ncr.pk)  # tenant-safe: .objects auto-scopes
+    if locked.state != 'OPEN':
+        raise ValueError(f"{locked.ncr_number} is closed; it has no owner to change.")
+    locked.assigned_to = user
+    locked.save(update_fields=['assigned_to', 'updated_at'])
+    _assign_open(locked, user.pk if user is not None else None)
+    return locked
+
+
+def follow_owner(disposition) -> None:
+    """A decision and its NCR have one owner: a new or unassigned decision under an
+    owned NCR is the owner's; one taken on its own under an unowned NCR may make its
+    taker the owner (adopt_owner)."""
+    # Unscoped and fresh: a save outside a request has no tenant context, and the
+    # disposition's cached NCR may predate its owner.
+    ncr = NCR.unscoped.filter(pk=disposition.ncr_id).first() if disposition.ncr_id else None  # tenant-safe: own FK
+    if ncr is None or disposition.current_state == 'CLOSED' or disposition.archived:
+        return
+    if ncr.assigned_to_id is not None and disposition.assigned_to_id is None:
+        QuarantineDisposition.unscoped.filter(pk=disposition.pk).update(  # tenant-safe: own pk
+            assigned_to_id=ncr.assigned_to_id)
+        disposition.assigned_to_id = ncr.assigned_to_id
+    elif ncr.assigned_to_id is None and disposition.assigned_to_id is not None:
+        adopt_owner(ncr)
+
+
+def adopt_owner(ncr) -> None:
+    """An unowned NCR whose open decisions all have one assignee is theirs — a decision
+    taken on its own (the disposition form) takes its NCR."""
+    if ncr is None or ncr.assigned_to_id is not None or ncr.state != 'OPEN':
+        return
+    owners = set(QuarantineDisposition.unscoped  # tenant-safe: scoped by the NCR FK
+                 .filter(ncr=ncr, archived=False, assigned_to__isnull=False)
+                 .exclude(current_state='CLOSED').values_list('assigned_to_id', flat=True))
+    if len(owners) == 1:
+        NCR.unscoped.filter(pk=ncr.pk).update(assigned_to_id=owners.pop())  # tenant-safe: own pk

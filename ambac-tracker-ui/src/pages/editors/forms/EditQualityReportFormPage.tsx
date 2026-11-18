@@ -12,7 +12,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useParams, useSearch } from "@tanstack/react-router"
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { useInfiniteQuery, infiniteQueryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 import { invalidateAfterNcrChange } from "@/hooks/ncrs"
 
@@ -84,6 +84,7 @@ const employeeOptionsInfinite = () =>
 export default function EditQualityReportFormPage() {
     const queryClient = useQueryClient()
     const params = useParams({ strict: false });
+    const navigate = useNavigate();
     const mode = params.id ? "edit" : "create";
     // `?part=&step=` prefill a new report (the operator home's "Flag").
     const prefill = useSearch({ strict: false }) as { part?: string; step?: string };
@@ -103,7 +104,6 @@ export default function EditQualityReportFormPage() {
 
     // Fetch parts, steps, and equipment for dropdowns
     const { data: partsData } = useRetrieveParts({ limit: 100, search: partSearch });
-    const { data: stepsData } = useRetrieveSteps({ limit: 100, search: stepSearch });
     const { data: equipmentData } = useRetrieveEquipments({ limit: 100, search: machineSearch });
 
     // A prefilled part / step may be outside the first page of options; fetch it so the
@@ -122,12 +122,29 @@ export default function EditQualityReportFormPage() {
         ...(prefillPart && !(partsData?.results ?? []).some((x) => x.id === prefillPart.id) ? [prefillPart] : []),
         ...(partsData?.results ?? []),
     ];
+    const equipment = equipmentData?.results ?? [];
+
+
+    // The chosen part: its process limits the step picker, and its current step is
+    // where it's being inspected unless said otherwise.
+    const [chosenPartId, setChosenPartId] = useState<string | undefined>(mode === "create" ? prefill.part : undefined);
+    const { data: chosenPart } = useQuery({
+        queryKey: ["parts", "detail", chosenPartId],
+        queryFn: () => api.api_Parts_retrieve({ params: { id: chosenPartId! } }),
+        enabled: !!chosenPartId,
+    });
+    const { data: stepsData } = useRetrieveSteps({
+        limit: 100, search: stepSearch,
+        ...(chosenPart?.process ? { process_memberships__process: String(chosenPart.process) } : {}),
+    });
+
     const steps = [
         ...(prefillStep && !(stepsData?.results ?? []).some((x) => x.id === prefillStep.id) ? [prefillStep] : []),
         ...(stepsData?.results ?? []),
     ];
-    const equipment = equipmentData?.results ?? [];
-
+    // Its current step, named even when it isn't in the first page of steps.
+    const partStepOption = chosenPart?.step && !steps.some((x) => x.id === chosenPart.step)
+        ? [{ value: String(chosenPart.step), label: chosenPart.step_name ?? "Current step" }] : [];
 
     const form = useForm<FormValues, any, FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
@@ -142,15 +159,20 @@ export default function EditQualityReportFormPage() {
         } as FormValues,
     });
 
-    // Opened with ?part=&step= (the operator home's "Flag"): the person flagging found
-    // it, so Detected By starts as them.
+    // Whoever records it found it, unless they say otherwise: Detected By starts as them.
     const { data: me } = useAuthUser();
-    const fromFlag = mode === "create" && !!prefill.part;
     useEffect(() => {
-        if (fromFlag && me?.pk != null && form.getValues("detected_by") == null) {
+        if (mode === "create" && me?.pk != null && form.getValues("detected_by") == null) {
             form.setValue("detected_by", Number(me.pk));
         }
-    }, [fromFlag, me?.pk, form]);
+    }, [mode, me?.pk, form]);
+    // A part chosen: inspected at its current step, unless a step was handed over.
+    useEffect(() => {
+        if (mode === "create" && chosenPart?.step && !(prefill.step && chosenPart.id === prefill.part)) {
+            form.setValue("step", String(chosenPart.step));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- once per part chosen
+    }, [chosenPart?.id]);
 
     // Reset form when quality report data loads in edit mode
     useEffect(() => {
@@ -204,10 +226,20 @@ export default function EditQualityReportFormPage() {
             );
         } else {
             createQualityReport.mutate(submitData, {
-                onSuccess: () => {
-                    toast.success("Inspection recorded");
-                    if (values.status === "FAIL") void invalidateAfterNcrChange(queryClient);
+                onSuccess: async (created) => {
                     form.reset();
+                    setChosenPartId(undefined);
+                    if (values.status !== "FAIL") { toast.success("Inspection recorded"); return; }
+                    void invalidateAfterNcrChange(queryClient);
+                    // A Fail is on an NCR now (its open one, or a new one): say which, and go there.
+                    const saved = await api.api_QualityReports_retrieve({ params: { id: String(created.id) } }).catch(() => null);
+                    if (saved?.ncr) {
+                        toast.success(`Inspection recorded · on ${saved.ncr_number}`, {
+                            action: { label: "Open NCR", onClick: () => navigate({ to: "/quality/ncrs/$ncrId", params: { ncrId: String(saved.ncr) } }) },
+                        });
+                    } else {
+                        toast.success("Inspection recorded");
+                    }
                 },
                 onError: (error) => {
                     console.error("Failed to create quality report:", error);
@@ -274,7 +306,7 @@ export default function EditQualityReportFormPage() {
                                             className="w-[300px]"
                                             contentClassName="w-[300px]"
                                             value={field.value || null}
-                                            onChange={(v) => v && form.setValue("part", v)}
+                                            onChange={(v) => { if (v) { form.setValue("part", v); setChosenPartId(v); } }}
                                             options={parts.map((p) => ({ value: p.id, label: p.ERP_id, ...(p.part_type_name ? { description: p.part_type_name } : {}) }))}
                                             onSearch={setPartSearch}
                                             placeholder="Select a part"
@@ -303,14 +335,16 @@ export default function EditQualityReportFormPage() {
                                             contentClassName="w-[300px]"
                                             value={field.value || null}
                                             onChange={(v) => v && form.setValue("step", v)}
-                                            options={steps.map((s) => ({ value: s.id, label: s.name, ...(s.part_type_name ? { description: s.part_type_name } : {}) }))}
+                                            options={[...partStepOption, ...steps.map((s) => ({ value: s.id, label: s.name, ...(s.part_type_name ? { description: s.part_type_name } : {}) }))]}
                                             onSearch={setStepSearch}
                                             placeholder="Select a step"
                                             searchPlaceholder="Search steps..."
                                             emptyText="No steps found."
                                         />
                                     </FormControl>
-                                    <FormDescription>The process step where inspection occurred</FormDescription>
+                                    <FormDescription>
+                                        Where it was inspected — the part's current step unless you change it. The list is its process's steps.
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             );
@@ -382,8 +416,8 @@ export default function EditQualityReportFormPage() {
                                             value={field.value == null ? null : String(field.value)}
                                             onChange={(v) => v && form.setValue("detected_by", Number(v))}
                                             options={[
-                                                // The signed-in person, when prefilled and not on the loaded page.
-                                                ...(fromFlag && me && !employees.some((e) => String(e.id) === String(me.pk))
+                                                // The signed-in person (the default), when not on the loaded page.
+                                                ...(mode === "create" && me && !employees.some((e) => String(e.id) === String(me.pk))
                                                     ? [{ value: String(me.pk), label: me.full_name || me.email || "Me" }]
                                                     : []),
                                                 ...employees.map((emp) => ({ value: String(emp.id), label: `${emp.first_name} ${emp.last_name}` })),

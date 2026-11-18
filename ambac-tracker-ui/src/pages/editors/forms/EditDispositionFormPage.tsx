@@ -572,6 +572,7 @@ export default function EditDispositionFormPage() {
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium">Decides part of</span>
                                                     <Link to="/quality/ncrs/$ncrId" params={{ ncrId: String(disposition.ncr) }}
+                                                          search={{ from_disposition: String(disposition.id) }}
                                                           className="font-mono text-primary underline-offset-2 hover:underline">
                                                         {disposition.ncr_number}
                                                     </Link>

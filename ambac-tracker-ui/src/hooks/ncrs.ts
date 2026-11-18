@@ -75,3 +75,18 @@ export function partPickerDescription(
         onNcr ? `on ${onNcr}` : null,
     ].filter(Boolean).join(" · ") || undefined;
 }
+
+/** Open NCRs the user owns — "My NCRs" on Home and the NCR list's Mine view. */
+export const myNcrsOptions = (userPk: number | null | undefined) => queryOptions({
+    queryKey: ["ncrs", "mine", userPk] as const,
+    enabled: userPk != null,
+    queryFn: () => api.api_NCRs_list({ queries: { assigned_to: userPk!, state: "OPEN", ordering: "created_at", limit: 50 } }),
+    select: (d) => d.results ?? [],
+});
+
+/** NCRs still waiting for their CAPA call (a combined NCR's is the kept one's): Home's count. */
+export const awaitingCapaCallOptions = () => queryOptions({
+    queryKey: ["ncrs", "awaiting-capa-count"] as const,
+    queryFn: () => api.api_NCRs_list({ queries: { capa_decision__isnull: true, combined_into__isnull: true, limit: 1 } }),
+    select: (d) => d.count ?? 0,
+});

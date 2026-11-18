@@ -75,10 +75,15 @@ export const CreateNcrSearch = z.object({
 });
 export type CreateNcrSearchParams = z.infer<typeof CreateNcrSearch>;
 
+/** `/quality/ncrs/$ncrId` — arrived from one of its decisions: the page offers the way back. */
+export const NcrDetailSearch = z.object({
+    from_disposition: z.string().uuid().optional().catch(undefined),
+});
+
 /** `/quality/ncrs` — the view (Open / Awaiting CAPA decision / All); any other key is a
  *  list filter the editor seeds from the URL (`state`, `created_at__lt`, …), kept as is. */
 export const NcrListSearch = z.object({
-    view: z.enum(["open", "capa", "all"]).optional().catch(undefined),
+    view: z.enum(["open", "mine", "capa", "all"]).optional().catch(undefined),
 }).passthrough();
 export type NcrListSearchParams = z.infer<typeof NcrListSearch>;
 

@@ -5676,6 +5676,9 @@ export type NCR = {
   batch_execution: string | null;
   raised_by: number | null;
   raised_by_name: string | null;
+  assigned_to: number | null;
+  assigned_to_name: string | null;
+  todo: NCRTodo;
   containment_action?: /**
    * Immediate action taken to prevent escape
    */
@@ -5716,6 +5719,25 @@ export type NCRStateEnum =
    * @enum OPEN, CLOSED
    */
   "OPEN" | "CLOSED";
+export type NCRTodo = {
+  /**
+   * Decisions not yet made.
+   */
+  awaiting_decision: number;
+  /**
+   * Major/Critical with no containment recorded: its decisions can't close.
+   */
+  containment_needed: boolean;
+  capa_decision_needed: boolean;
+  /**
+   * Decided, not yet closed.
+   */
+  decided_to_close: number;
+  /**
+   * A part under it is held at MRB.
+   */
+  at_mrb: boolean;
+};
 export type CapaDecisionEnum =
   /**
    * * `PROMOTED` - CAPA raised
@@ -9483,6 +9505,7 @@ export type QuarantineDisposition = {
      */
     (string | null)
     | undefined;
+  raised_by_name: string | null;
   batch_execution: string | null;
   step?: (string | null) | undefined;
   step_info: {};
@@ -23944,6 +23967,13 @@ const PatchedMilestoneRequest = z
   })
   .partial();
 const NCRStateEnum = z.enum(["OPEN", "CLOSED"]);
+const NCRTodo = z.object({
+  awaiting_decision: z.number().int(),
+  containment_needed: z.boolean(),
+  capa_decision_needed: z.boolean(),
+  decided_to_close: z.number().int(),
+  at_mrb: z.boolean(),
+});
 const NCRMember = z.object({
   part_id: z.string().uuid().nullable(),
   erp_id: z.string().nullable(),
@@ -23982,6 +24012,9 @@ const NCR = z.object({
   batch_execution: z.string().uuid().nullable(),
   raised_by: z.number().int().nullable(),
   raised_by_name: z.string().nullable(),
+  assigned_to: z.number().int().nullable(),
+  assigned_to_name: z.string().nullable(),
+  todo: NCRTodo,
   containment_action: z.string().optional(),
   containment_completed_at: z.string().datetime({ offset: true }).nullable(),
   containment_completed_by: z.number().int().nullable(),
@@ -24037,6 +24070,7 @@ const AddPartsToNCRRequest = z.object({
   parts: z.array(z.string().uuid()),
   reason: z.string().optional(),
 });
+const AssignNCRRequest = z.object({ assigned_to: z.number().int().nullable() });
 const CapaDecisionRequestDecisionEnum = z.enum(["NOT_REQUIRED", "DEFERRED"]);
 const CapaDecisionRequestRequest = z.object({
   decision: CapaDecisionRequestDecisionEnum,
@@ -25549,6 +25583,7 @@ const QuarantineDisposition = z.object({
     .string()
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
+  raised_by_name: z.string().nullable(),
   batch_execution: z.string().uuid().nullable(),
   step: z.string().uuid().nullish(),
   step_info: z.object({}).partial().passthrough().nullable(),
@@ -31751,6 +31786,7 @@ export const schemas = {
   MilestoneRequest,
   PatchedMilestoneRequest,
   NCRStateEnum,
+  NCRTodo,
   NCRMember,
   NCRReportRef,
   NCRRef,
@@ -31760,6 +31796,7 @@ export const schemas = {
   NCRRequest,
   PatchedNCRRequest,
   AddPartsToNCRRequest,
+  AssignNCRRequest,
   CapaDecisionRequestDecisionEnum,
   CapaDecisionRequestRequest,
   api_NCRs_decide_create_Body,
@@ -46252,6 +46289,16 @@ Not deleted: an NCR is closed by its decisions.`,
     requestFormat: "json",
     parameters: [
       {
+        name: "assigned_to",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "assigned_to__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "batch_execution",
         type: "Query",
         schema: z.string().uuid().optional(),
@@ -46452,6 +46499,32 @@ Not deleted: an NCR is closed by its decisions.`,
   },
   {
     method: "post",
+    path: "/api/NCRs/:id/assign/",
+    alias: "api_NCRs_assign_create",
+    description: `Give the NCR an owner: its containment, CAPA call and every decision under it not yet closed go with it.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ assigned_to: z.number().int().nullable() }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/NCRs/:id/capa-decision/",
     alias: "api_NCRs_capa_decision_create",
     description: `Record that the NCR needs no CAPA, or that the decision is deferred, with the reason. (CAPA raised is set by the CAPA.)`,
@@ -46462,6 +46535,27 @@ Not deleted: an NCR is closed by its decisions.`,
         type: "Body",
         schema: CapaDecisionRequestRequest,
       },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: NCR,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/NCRs/:id/close-decided/",
+    alias: "api_NCRs_close_decided_create",
+    description: `Close every decided decision under the NCR through the completion check. All or nothing: a refusal names each one&#x27;s blockers.`,
+    requestFormat: "json",
+    parameters: [
       {
         name: "id",
         type: "Path",
@@ -47128,7 +47222,10 @@ personal rules.`,
       },
     ],
     response: PersonalRule,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "put",
     path: "/api/notifications/rules/personal/:id/",
@@ -47172,10 +47269,7 @@ personal rules.`,
       },
     ],
     response: PersonalRule,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/notifications/rules/personal/:id/",
@@ -52161,7 +52255,10 @@ Lifecycle endpoints:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/process-change-requests/:id/reject/",
@@ -52219,10 +52316,7 @@ Lifecycle endpoints:
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/process-change-requests/:id/submit/",
@@ -57534,7 +57628,10 @@ Response:
       },
     ],
     response: DimensionalResultsResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/spc/hierarchy/",
@@ -57625,10 +57722,7 @@ Response:
       },
     ],
     response: PaginatedStepEquipmentAffinityList,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepEquipmentAffinities/",
@@ -63218,7 +63312,10 @@ Use /api/Orders/ for full CRUD operations (staff only).`,
       },
     ],
     response: PaginatedCustomerOrderList,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrackerOrders/:id/",
@@ -63269,10 +63366,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         schema: z.object({ detail: z.string() }),
       },
     ],
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingRecords/",

@@ -36,7 +36,7 @@ from Tracker.serializers.qms import (
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
     FiveWhysSerializer, FishboneSerializer,
     FPIRecordSerializer, CapaDecisionRequestSerializer,
-    NCRSerializer, RaiseNCRSerializer, AddPartsToNCRSerializer, CombineNCRsSerializer,
+    NCRSerializer, RaiseNCRSerializer, AddPartsToNCRSerializer, CombineNCRsSerializer, AssignNCRSerializer,
 )
 from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSerializer
 # Module-level so `request_approval` can name it in @extend_schema; the
@@ -178,6 +178,7 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         # A combined NCR's CAPA call is the one it was combined into: "awaiting a CAPA
         # decision" asks combined_into__isnull=true as well.
         'combined_into': ['isnull'],
+        'assigned_to': ['exact', 'isnull'],
         # "Open longer than N days" (the dashboard's attention link).
         'created_at': ['lt'],
     }
@@ -193,8 +194,12 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         'combine': ['change_ncr'],
         'containment_complete': ['change_ncr'],
         'capa_decision': ['initiate_capa'],
+        # Taking an NCR is taking its decisions — today's take (user go 2026-11-18).
+        'assign': ['change_quarantinedisposition'],
+        'close_decided': ['close_disposition'],
     }
-    crud_exempt_actions = {'decide', 'capa_decision', 'add_parts', 'containment_complete', 'combine'}
+    crud_exempt_actions = {'decide', 'capa_decision', 'add_parts', 'containment_complete', 'combine',
+                           'assign', 'close_decided'}
     cosign_actions = {'decide': 'approve_disposition'}
 
     def get_queryset(self):
@@ -203,7 +208,7 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
         # One query per relation for the whole page, not per NCR: members, records and
         # CAPAs are read off these (services/qms/ncr.members uses the prefetch).
         return (super().get_queryset()
-                .select_related('step', 'work_order', 'raised_by', 'containment_completed_by',
+                .select_related('step', 'work_order', 'raised_by', 'assigned_to', 'containment_completed_by',
                                 'capa_decided_by', 'batch_execution', 'combined_into')
                 .prefetch_related('dispositions__part', 'dispositions__material_lot',
                                   'batch_execution__parts', 'reports__part', 'capas', 'combined_from')
@@ -279,6 +284,36 @@ class NCRViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, SecondPe
             return Response({'detail': str(e), 'code': 'decide_invalid'}, status=status.HTTP_400_BAD_REQUEST)
         ncr.refresh_from_db()
         return Response(NCRSerializer(ncr, context=self.get_serializer_context()).data)
+
+    @extend_schema(
+        request=AssignNCRSerializer,
+        responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
+        description="Give the NCR an owner: its containment, CAPA call and every decision under it "
+                    "not yet closed go with it.")
+    @action(detail=True, methods=['post'], url_path='assign')
+    def assign(self, request, pk=None):
+        from Tracker.services.qms.ncr import assign_ncr
+        ncr = self.get_object()
+        req = AssignNCRSerializer(data=request.data, context=self.get_serializer_context())
+        req.is_valid(raise_exception=True)
+        try:
+            ncr = assign_ncr(ncr, req.validated_data['assigned_to'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(NCRSerializer(self.get_queryset().get(pk=ncr.pk), context=self.get_serializer_context()).data)
+
+    @extend_schema(request=None, responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
+                   description="Close every decided decision under the NCR through the completion "
+                               "check. All or nothing: a refusal names each one's blockers.")
+    @action(detail=True, methods=['post'], url_path='close-decided')
+    def close_decided(self, request, pk=None):
+        from Tracker.services.qms.ncr import close_decided
+        ncr = self.get_object()
+        try:
+            close_decided(ncr, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(NCRSerializer(self.get_queryset().get(pk=ncr.pk), context=self.get_serializer_context()).data)
 
     @extend_schema(request=CombineNCRsSerializer, responses={200: NCRSerializer, 400: OpenApiTypes.OBJECT},
                    description="Combine NCRs into one: their decisions and inspection records move under "
@@ -394,7 +429,7 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
         # The NCR's parts (affected_parts), its containment name and the work order are
         # read per row: fetched once for the page.
         return qs.select_related('assigned_to', 'resolution_completed_by', 'part__part_type',
-                                 'part__work_order', 'ncr__containment_completed_by', 'ncr__work_order',
+                                 'part__work_order', 'ncr__containment_completed_by', 'ncr__raised_by', 'ncr__work_order',
                                  ).prefetch_related(
             'quality_reports', 'documents', 'ncr__dispositions__part', 'ncr__dispositions__material_lot',
             'ncr__batch_execution__parts').distinct()

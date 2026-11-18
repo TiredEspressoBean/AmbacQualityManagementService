@@ -7707,6 +7707,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/NCRs/{id}/assign/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Give the NCR an owner: its containment, CAPA call and every decision under it not yet closed go with it. */
+        post: operations["api_NCRs_assign_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/NCRs/{id}/capa-decision/": {
         parameters: {
             query?: never;
@@ -7718,6 +7735,23 @@ export interface paths {
         put?: never;
         /** @description Record that the NCR needs no CAPA, or that the decision is deferred, with the reason. (CAPA raised is set by the CAPA.) */
         post: operations["api_NCRs_capa_decision_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/NCRs/{id}/close-decided/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Close every decided decision under the NCR through the completion check. All or nothing: a refusal names each one's blockers. */
+        post: operations["api_NCRs_close_decided_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22471,6 +22505,10 @@ export interface components {
             step?: string | null;
             archived?: boolean;
         };
+        /** @description Give an NCR an owner (null: back to the queue). */
+        AssignNCRRequest: {
+            assigned_to: number | null;
+        };
         /**
          * @description * `full` - Full attention (operator tied to the machine)
          *     * `load_unload` - Load/unload only (machine runs unattended between)
@@ -28597,6 +28635,9 @@ export interface components {
             readonly batch_execution: string | null;
             readonly raised_by: number | null;
             readonly raised_by_name: string | null;
+            readonly assigned_to: number | null;
+            readonly assigned_to_name: string | null;
+            readonly todo: components["schemas"]["NCRTodo"];
             /** @description Immediate action taken to prevent escape */
             containment_action?: string;
             /** Format: date-time */
@@ -28685,6 +28726,18 @@ export interface components {
          * @enum {string}
          */
         NCRStateEnum: "OPEN" | "CLOSED";
+        /** @description What an open NCR still needs from its owner. */
+        NCRTodo: {
+            /** @description Decisions not yet made. */
+            awaiting_decision: number;
+            /** @description Major/Critical with no containment recorded: its decisions can't close. */
+            containment_needed: boolean;
+            capa_decision_needed: boolean;
+            /** @description Decided, not yet closed. */
+            decided_to_close: number;
+            /** @description A part under it is held at MRB. */
+            at_mrb: boolean;
+        };
         NcrAgingResponse: {
             data: {
                 [key: string]: unknown;
@@ -35767,6 +35820,7 @@ export interface components {
              * @description How much is dispositioned, in the lot's stock unit.
              */
             quantity?: string | null;
+            readonly raised_by_name: string | null;
             /** Format: uuid */
             readonly batch_execution: string | null;
             /** Format: uuid */
@@ -57016,6 +57070,8 @@ export interface operations {
     api_NCRs_list: {
         parameters: {
             query?: {
+                assigned_to?: number;
+                assigned_to__isnull?: boolean;
                 batch_execution?: string;
                 /**
                  * @description * `PROMOTED` - CAPA raised
@@ -57216,6 +57272,44 @@ export interface operations {
             };
         };
     };
+    api_NCRs_assign_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this NCR. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignNCRRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AssignNCRRequest"];
+                "multipart/form-data": components["schemas"]["AssignNCRRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NCR"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_NCRs_capa_decision_create: {
         parameters: {
             query?: never;
@@ -57231,6 +57325,38 @@ export interface operations {
                 "application/json": components["schemas"]["CapaDecisionRequestRequest"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NCR"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_NCRs_close_decided_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this NCR. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

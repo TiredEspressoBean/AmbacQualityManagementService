@@ -679,3 +679,66 @@ class P3FixesTests(_Shop):
                     if i["type"] == "quarantine")
         self.assertEqual((kpis["parts_in_quarantine"], item["count"]), (1, 1))
         self.assertEqual(item["link"], "/production/dispositions")
+
+
+class NcrOwnerTests(_Shop):
+    """NCR owner and closing from the NCR (user go 2026-11-18)."""
+
+    def test_taking_an_ncr_takes_its_open_decisions(self):
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        self.client.post(f"/api/NCRs/{ncr.id}/add-parts/", {"parts": [str(self.parts[1].id)]}, format="json")
+        r = self.client.post(f"/api/NCRs/{ncr.id}/assign/", {"assigned_to": self.user_a.id}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["assigned_to"], self.user_a.id)
+        self.assertEqual(set(ncr.dispositions.values_list("assigned_to_id", flat=True)), {self.user_a.id})
+        # Back to the queue: its decisions too.
+        self.client.post(f"/api/NCRs/{ncr.id}/assign/", {"assigned_to": None}, format="json")
+        self.assertEqual(set(ncr.dispositions.values_list("assigned_to_id", flat=True)), {None})
+
+    def test_a_failure_joining_an_owned_ncr_is_the_owners(self):
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        self.client.post(f"/api/NCRs/{ncr.id}/assign/", {"assigned_to": self.user_a.id}, format="json")
+        self.client.post(f"/api/NCRs/{ncr.id}/add-parts/", {"parts": [str(self.parts[2].id)]}, format="json")
+        added = ncr.dispositions.get(part=self.parts[2])
+        self.assertEqual(added.assigned_to_id, self.user_a.id)
+
+    def test_taking_the_only_decision_takes_an_unowned_ncr(self):
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        d = ncr.dispositions.get()
+        d.assigned_to = self.user_a
+        d.save(update_fields=["assigned_to"])
+        ncr.refresh_from_db()
+        self.assertEqual(ncr.assigned_to_id, self.user_a.id)
+
+    def test_the_queue_is_one_row_per_ncr(self):
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        self.client.post(f"/api/NCRs/{ncr.id}/add-parts/", {"parts": [str(self.parts[1].id)]}, format="json")
+        r = self.client.get("/api/NCRs/", {"assigned_to__isnull": "true", "state": "OPEN"})
+        self.assertEqual([n["id"] for n in r.json()["results"]], [str(ncr.id)])
+        self.assertEqual(r.json()["results"][0]["todo"]["awaiting_decision"], 2)
+
+    def test_close_decided_is_all_or_nothing(self):
+        from Tracker.services.qms.disposition import decide_disposition
+        ncr = self._ncr_of(self._fail(self.parts[0]))  # MAJOR: containment needed to close
+        self.client.post(f"/api/NCRs/{ncr.id}/add-parts/", {"parts": [str(self.parts[1].id)]}, format="json")
+        for d in ncr.dispositions.all():
+            decide_disposition(d, disposition_type="SCRAP", authorized_by=self.superuser)
+        r = self.client.get(f"/api/NCRs/{ncr.id}/")
+        self.assertTrue(r.json()["todo"]["containment_needed"])
+        r = self.client.post(f"/api/NCRs/{ncr.id}/close-decided/")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("None closed", r.json()["detail"])
+        self.assertIn("B-0:", r.json()["detail"])
+        self.assertFalse(ncr.dispositions.filter(current_state="CLOSED").exists())
+        from Tracker.services.qms.ncr import record_containment
+        record_containment(ncr, action="Held on the rack.", user=self.superuser)
+        r = self.client.post(f"/api/NCRs/{ncr.id}/close-decided/")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["state"], "CLOSED")
+
+    def test_taking_needs_the_take_permission(self):
+        ncr = self._ncr_of(self._fail(self.parts[0]))
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, ['full_tenant_access', 'view_ncr'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        r = self.client.post(f"/api/NCRs/{ncr.id}/assign/", {"assigned_to": self.user_a.id}, format="json")
+        self.assertEqual(r.status_code, 403, r.content)

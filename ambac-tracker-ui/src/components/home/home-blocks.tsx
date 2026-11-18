@@ -66,7 +66,9 @@ import {
 import { useOSPShipments, useReadyToShip } from "@/hooks/useOutsideProcess";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 import { parseDateOnly } from "@/lib/date-only";
-import { UnassignedDispositions, unassignedDispositionsOptions } from "@/components/quality/UnassignedDispositions";
+import { UnassignedNcrs, unassignedNcrsOptions } from "@/components/quality/UnassignedDispositions";
+import { MyNcrsList } from "@/components/quality/MyNcrs";
+import { awaitingCapaCallOptions, myNcrsOptions } from "@/hooks/ncrs";
 import { BypassRequestsCard } from "@/components/quality/BypassRequestsCard";
 
 /** Normalize a list endpoint's envelope (paginated `{count,results}` or a bare
@@ -212,17 +214,6 @@ const woQueueOptions = () =>
         staleTime: 15_000,
     });
 
-const myDispositionsOptions = (userPk: AuthUser["pk"]) =>
-    queryOptions({
-        queryKey: ["home", "my-dispositions", userPk],
-        enabled: userPk != null,
-        queryFn: () =>
-            api.api_QuarantineDispositions_list({
-                queries: { assigned_to: userPk, current_state: "OPEN", limit: 10 },
-            }) as Promise<{ results?: Array<{ id: string; disposition_number: string }> }>,
-        staleTime: 30_000,
-    });
-
 const docsDueForReviewOptions = () =>
     queryOptions({
         queryKey: ["home", "documents", "due-for-review"],
@@ -365,16 +356,32 @@ function InspectionQueueBlock() {
     );
 }
 
-function UnassignedDispositionsBlock({ userPk }: { userPk: number }) {
-    const { data: rows = [] } = useQuery(unassignedDispositionsOptions());
+function UnassignedNcrsBlock({ userPk }: { userPk: number }) {
+    const { data: rows = [] } = useQuery(unassignedNcrsOptions());
     if (rows.length === 0) return null;
     return (
         <Card>
             <CardHeader className="pb-1">
-                <CardTitle className="text-base">Dispositions to take ({rows.length})</CardTitle>
+                <CardTitle className="text-base">NCRs to take ({rows.length})</CardTitle>
             </CardHeader>
             <CardContent>
-                <UnassignedDispositions userPk={userPk} />
+                <UnassignedNcrs userPk={userPk} />
+            </CardContent>
+        </Card>
+    );
+}
+
+/** The NCRs you own and what each needs: hidden when you own none. */
+function MyNcrsBlock({ userPk }: { userPk: number }) {
+    const { data: rows = [] } = useQuery(myNcrsOptions(userPk));
+    if (rows.length === 0) return null;
+    return (
+        <Card>
+            <CardHeader className="pb-1">
+                <CardTitle className="text-base">My NCRs ({rows.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <MyNcrsList userPk={userPk} />
             </CardContent>
         </Card>
     );
@@ -389,12 +396,11 @@ function UnassignedDispositionsBlock({ userPk }: { userPk: number }) {
 function MyQualityActionsBlock({ user }: { user: AuthUser }) {
     const { data: approvals = [] } = useMyPendingApprovals();
     const { data: tasks = [] } = useMyCapaTasks();
-    const { data: dispResp } = useQuery(myDispositionsOptions(user.pk));
+    const { data: myNcrs = [] } = useQuery(myNcrsOptions(user.pk));
 
     const openTasks = (tasks ?? []).filter((t) => t.status !== "COMPLETED");
     const overdue = openTasks.filter((t) => t.due_date && parseDateOnly(t.due_date) < new Date()).length;
-    const dispositions = dispResp?.results ?? [];
-    const total = approvals.length + openTasks.length + dispositions.length;
+    const total = approvals.length + openTasks.length + myNcrs.length;
 
     // Self-hide when there's nothing assigned — the sidebar /inbox and the
     // notifications bell already cover the "nothing to do" state; a dead-zero
@@ -424,8 +430,8 @@ function MyQualityActionsBlock({ user }: { user: AuthUser }) {
                         <div className="text-xs text-muted-foreground">CAPA tasks</div>
                     </div>
                     <div className="rounded-md border p-2">
-                        <div className="text-xl font-semibold tabular-nums">{dispositions.length}</div>
-                        <div className="text-xs text-muted-foreground">My dispositions</div>
+                        <div className="text-xl font-semibold tabular-nums">{myNcrs.length}</div>
+                        <div className="text-xs text-muted-foreground">My NCRs</div>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -434,9 +440,9 @@ function MyQualityActionsBlock({ user }: { user: AuthUser }) {
                             Open inbox <ArrowRight className="ml-1 h-4 w-4" />
                         </Button>
                     </Link>
-                    {dispositions.length > 0 && (
-                        <Link to="/production/dispositions" className="flex-1">
-                            <Button className="w-full" variant="outline">Quarantined Parts</Button>
+                    {myNcrs.length > 0 && (
+                        <Link to="/quality/ncrs" search={{ view: "mine" }} className="flex-1">
+                            <Button className="w-full" variant="outline">My NCRs</Button>
                         </Link>
                     )}
                 </div>
@@ -455,12 +461,13 @@ function MyQualityActionsBlock({ user }: { user: AuthUser }) {
 // ---------------------------------------------------------------------------
 
 function StatTile({
-    label, value, icon: Icon, link, variant = "default",
+    label, value, icon: Icon, link, search, variant = "default",
 }: {
     label: string;
     value: number | string;
     icon: LucideIcon;
     link: string;
+    search?: Record<string, string>;
     variant?: "default" | "warning" | "danger";
 }) {
     const isZero = value === 0 || value === "0" || value === "0%";
@@ -474,6 +481,7 @@ function StatTile({
     return (
         <Link
             to={link}
+            search={search}
             className="min-w-[130px] flex-1 rounded-lg border bg-card px-3 py-2.5 transition-colors hover:bg-accent"
         >
             <div className="flex items-center justify-between gap-2">
@@ -601,10 +609,13 @@ function NeedsAttentionBlock() {
 
 function QualityKpisBlock() {
     const { data } = useDashboardKpis();
+    const { data: awaitingCapa = 0 } = useQuery(awaitingCapaCallOptions());
     const overdue = data?.overdue_capas ?? 0;
     return (
         <StatSection icon={Gauge} title="Quality">
             <StatTile label="Open NCRs" value={data?.open_ncrs ?? 0} icon={FileWarning} link="/quality/ncrs" />
+            {/* Every NCR needs its CAPA call (ISO 9001 10.2.1 b) — decided, not assumed. */}
+            <StatTile label="Awaiting a CAPA decision" value={awaitingCapa} icon={ClipboardCheck} link="/quality/ncrs" search={{ view: "capa" }} />
             {/* Parts held in quarantine — the same count as "Parts in quarantine" under Needs
                 attention and the Quarantined Parts page's list. */}
             <StatTile label="Quarantined parts" value={data?.parts_in_quarantine ?? 0} icon={PackageSearch} link="/production/dispositions" />
@@ -1561,7 +1572,8 @@ const BLOCKS: BlockDef[] = [
     // Triage banner — wide, 4 tiles.
     // The QA queue: dispositions nobody has taken, MRB holds marked (walk 2026-10-22 —
     // a held part's decision was findable only through the dispositions list).
-    { id: "unassigned-dispositions", size: "full", groups: ["QA Manager", "Tenant Admin"], Component: ({ user }) => <UnassignedDispositionsBlock userPk={user.pk} /> },
+    { id: "unassigned-dispositions", size: "full", groups: ["QA Manager", "Tenant Admin"], Component: ({ user }) => <UnassignedNcrsBlock userPk={user.pk} /> },
+    { id: "my-ncrs", size: "full", groups: ["QA Manager", "QA Inspector", "Production Manager", "Shift Lead", "Tenant Admin"], Component: ({ user }) => <MyNcrsBlock userPk={user.pk} /> },
     { id: "needs-attention", size: "full", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <NeedsAttentionBlock /> },
     // Bypass and rollback requests waiting on the people who approve them — found only
     // on the inspector's home before (walk 2026-10-26). Renders nothing when none wait.

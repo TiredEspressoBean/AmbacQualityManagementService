@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, FileText, Loader2, Plus } from "lucide-react";
 import { api } from "@/lib/api/generated";
@@ -7,6 +7,9 @@ import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { invalidateAfterNcrChange, partPickerDescription, useNcr, useOpenNcrByPart } from "@/hooks/ncrs";
 import { useRetrieveParts } from "@/hooks/parts";
 import { useEmployeeSearch } from "@/hooks/employee-search";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { NcrTodoChips } from "@/components/quality/MyNcrs";
+import { toast } from "sonner";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +61,7 @@ export function NcrDetailPage() {
 
 function NcrDetail({ ncr }: { ncr: Ncr }) {
     const navigate = useNavigate();
+    const { from_disposition: fromDisposition } = useSearch({ strict: false }) as { from_disposition?: string };
     const queryClient = useQueryClient();
     const perms = usePermissionSet();
     const open = ncr.state === "OPEN";
@@ -70,10 +74,19 @@ function NcrDetail({ ncr }: { ncr: Ncr }) {
     return (
         <div className="container space-y-6 py-8 px-4 md:px-6">
             <div className="flex flex-wrap items-center gap-3">
-                <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/quality/ncrs" })}>
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    NCRs
-                </Button>
+                {fromDisposition ? (
+                    // Arrived from one of its decisions: the way back to it.
+                    <Button variant="ghost" size="sm"
+                            onClick={() => navigate({ to: "/production/dispositions/$id/edit", params: { id: fromDisposition } })}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to {ncr.members.find((m) => String(m.disposition_id) === fromDisposition)?.disposition_number ?? "the disposition"}
+                    </Button>
+                ) : (
+                    <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/quality/ncrs" })}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        NCRs
+                    </Button>
+                )}
                 <h1 className="text-xl font-semibold font-mono">{ncr.ncr_number}</h1>
                 <StatusBadge status={ncr.state} label={ncr.state_display} />
                 <StatusBadge status={ncr.severity} label={ncr.severity_display} />
@@ -89,6 +102,7 @@ function NcrDetail({ ncr }: { ncr: Ncr }) {
                     <ContainmentCard ncr={ncr} canEdit={canEdit} onChanged={refresh} />
                 </div>
                 <div className="space-y-6">
+                    <OwnerCard ncr={ncr} onChanged={refresh} />
                     <FoundCard ncr={ncr} />
                     <CapaCard ncr={ncr} onChanged={refresh} />
                     <ReportsCard ncr={ncr} />
@@ -112,6 +126,13 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
     const chosenWaiting = chosen.filter((id) => waiting.some((m) => String(m.disposition_id) === id));
     const toggle = (id: string, on: boolean) =>
         setChosen((prev) => on ? [...prev, id] : prev.filter((x) => x !== id));
+    // Every decided decision closed at once, through the same check as one (close_disposition).
+    const canClose = usePermissionSet().has("close_disposition") && ncr.state === "OPEN";
+    const closeDecided = useMutation({
+        mutationFn: () => api.api_NCRs_close_decided_create(undefined, { params: { id: String(ncr.id) } }),
+        meta: { errorMessage: "Couldn't close the decisions", successMessage: "Decided dispositions closed" },
+        onSuccess: onChanged,
+    });
 
     return (
         <Card>
@@ -127,6 +148,13 @@ function MembersCard({ ncr, onChanged, canAdd }: { ncr: Ncr; onChanged: () => vo
                     {canAdd && (
                         <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
                             <Plus className="mr-1 h-4 w-4" /> Add parts
+                        </Button>
+                    )}
+                    {canClose && ncr.todo.decided_to_close > 0 && (
+                        <Button size="sm" variant="outline" disabled={closeDecided.isPending}
+                                onClick={() => closeDecided.mutate()}>
+                            {closeDecided.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                            Close decided ({ncr.todo.decided_to_close})
                         </Button>
                     )}
                     {canDecide && (
@@ -360,7 +388,7 @@ function DecideDialog({ ncr, open, onOpenChange, dispositions, count, onDone }: 
                 open={cosignOpen}
                 onOpenChange={(v) => { setCosignOpen(v); if (!v) setCosignError(null); }}
                 title="Authorize disposition decision"
-                description={`Recording "${decisionLabel(type) ?? type}" for ${count} needs approval authority. An authorized colleague can co-sign here; the decision is recorded under their name.`}
+                description={`Recording "${decisionLabel(type) ?? type}" for ${count} part${count === 1 ? "" : "s"} needs approval authority. An authorized colleague can co-sign here; the decision is recorded under their name.`}
                 emailLabel="Approver email"
                 confirmationText="I authorize this disposition decision."
                 confirmLabel="Authorize"
@@ -519,10 +547,17 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
         onSuccess: onChanged,
     });
 
+    // Decisions are made and waiting on this: say so where it's recorded.
+    const blocking = ncr.todo.containment_needed && ncr.todo.decided_to_close > 0;
     return (
-        <Card>
+        <Card className={blocking ? "border-destructive" : undefined}>
             <CardHeader>
                 <CardTitle>Containment</CardTitle>
+                {blocking && (
+                    <p className="text-sm font-medium text-destructive">
+                        Record containment before these decisions can close.
+                    </p>
+                )}
                 <CardDescription>
                     The immediate action taken to prevent escape — once, for everything this NCR covers.
                     {(ncr.severity === "CRITICAL" || ncr.severity === "MAJOR") && !done
@@ -585,6 +620,61 @@ function ContainmentCard({ ncr, canEdit, onChanged }: { ncr: Ncr; canEdit: boole
 }
 
 // ---- Context ---------------------------------------------------------------------
+
+/** Who owns the NCR — its containment, its CAPA call, and its open decisions, which go
+ *  with it when it's taken or reassigned (change_quarantinedisposition, as taking a
+ *  decision always needed). */
+function OwnerCard({ ncr, onChanged }: { ncr: Ncr; onChanged: () => void }) {
+    const canAssign = usePermissionSet().has("change_quarantinedisposition") && ncr.state === "OPEN";
+    const me = useAuthUser().data?.pk;
+    const [picking, setPicking] = useState(false);
+    const employees = useEmployeeSearch(picking);
+    const assign = useMutation({
+        mutationFn: (userId: number | null) =>
+            api.api_NCRs_assign_create({ assigned_to: userId }, { params: { id: String(ncr.id) } }),
+        meta: { errorMessage: "Couldn't change the owner" },
+        onSuccess: (n) => {
+            toast.success(n.assigned_to_name ? `${n.ncr_number} is ${n.assigned_to_name}'s — with its decisions.`
+                : `${n.ncr_number} is back in the queue.`);
+            setPicking(false);
+            onChanged();
+        },
+    });
+    return (
+        <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Owner</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+                <p>{ncr.assigned_to_name ?? <span className="text-amber-600 dark:text-amber-400">Nobody — it's in the queue.</span>}</p>
+                <NcrTodoChips todo={ncr.todo} />
+                {canAssign && (picking ? (
+                    <Combobox
+                        value={ncr.assigned_to == null ? null : String(ncr.assigned_to)}
+                        onChange={(v) => assign.mutate(v ? Number(v) : null)}
+                        options={employees.options}
+                        onSearch={employees.onSearch}
+                        loading={employees.loading}
+                        selectedLabel={ncr.assigned_to_name ?? undefined}
+                        placeholder="Choose the owner"
+                        searchPlaceholder="Search..."
+                        emptyText="No employees found."
+                        clearLabel="Back to the queue"
+                    />
+                ) : (
+                    <div className="flex flex-wrap gap-2">
+                        {me != null && ncr.assigned_to !== me && (
+                            <Button size="sm" variant="outline" disabled={assign.isPending}
+                                    onClick={() => assign.mutate(me)}>Take it</Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => setPicking(true)}>
+                            {ncr.assigned_to ? "Reassign" : "Assign"}
+                        </Button>
+                    </div>
+                ))}
+                <p className="text-xs text-muted-foreground">Its decisions not yet closed go with it.</p>
+            </CardContent>
+        </Card>
+    );
+}
 
 function FoundCard({ ncr }: { ncr: Ncr }) {
     const row = (label: string, value: React.ReactNode) => (

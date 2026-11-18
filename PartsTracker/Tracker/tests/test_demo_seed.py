@@ -163,6 +163,26 @@ class DemoSeedFlowsTests(TestCase):
             aged = NCR.objects.filter(state="OPEN", created_at__lt=timezone.now() - timedelta(days=8))
             self.assertGreaterEqual(aged.count(), 1)
 
+    def test_two_ncrs_wait_to_be_combined(self):
+        # The Combine lesson: one problem raised twice, on one work order, nobody's yet.
+        from Tracker.models import NCR
+        with tenant_context(self.tenant.id):
+            pair = NCR.objects.filter(work_order__ERP_id="WO-QA-MANAGE-03", state="OPEN")
+            self.assertEqual(pair.count(), 2)
+            self.assertFalse(pair.filter(assigned_to__isnull=False).exists())
+
+    def test_a_decided_ncr_without_containment_wont_close(self):
+        # Closing is refused until containment is recorded — the lesson's point.
+        from Tracker.models import NCR
+        from Tracker.services.qms.ncr import close_decided
+        with tenant_context(self.tenant.id):
+            ncr = NCR.objects.get(work_order__ERP_id="WO-QA-MANAGE-04", state="OPEN")
+            self.assertEqual((ncr.severity, ncr.containment_completed_at, ncr.assigned_to.username),
+                             ("MAJOR", None, ncr.assigned_to.username))
+            self.assertTrue(ncr.dispositions.filter(disposition_type="SCRAP").exists())
+            with self.assertRaisesMessage(ValueError, "None closed"):
+                close_decided(ncr, ncr.assigned_to)
+
     def test_a_finding_waits_for_the_lead(self):
         # The Shift Lead's pending finding: recorded at Nozzle Inspection, where a
         # replacement isn't pre-approved, so it waits and the unit holds at the check.
@@ -503,8 +523,9 @@ class DemoSeedFlowsTests(TestCase):
             self.assertTrue(ncrs.filter(capa_decision="NOT_REQUIRED").exists())
             waiting = ncrs.filter(capa_decision__isnull=True)
             self.assertFalse(waiting.filter(state="CLOSED").exists())
-            # At most half: the open exhibits (an awaiting finding, aged NCRs) wait by design.
-            self.assertLessEqual(waiting.count(), ncrs.count() / 2)
+            # Only open NCRs wait — the exhibits that teach the call — and a call is made on
+            # open ones too (the cosmetic one-off), not only at closing.
+            self.assertTrue(ncrs.filter(state="OPEN").exclude(capa_decision__isnull=True).exists())
 
     def test_the_bath_capa_answers_the_hot_loads_ncr_and_its_record(self):
         from Tracker.models import CAPA

@@ -899,6 +899,10 @@ class NCR(SecureModel):
         'Tracker.BatchExecution', on_delete=models.PROTECT, null=True, blank=True, related_name='ncrs')
     raised_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                   related_name='ncrs_raised')
+    # Who owns it: its containment, its CAPA call, and its decisions (assigned with it —
+    # services/qms/ncr.assign_ncr). Unowned, it waits in the QA queue to be taken.
+    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='ncrs_assigned')
     # Combined into another NCR (services/qms/ncr.combine_ncrs): its decisions and
     # records moved there, and it closed. Kept, not deleted — the history both ways.
     combined_into = models.ForeignKey('self', on_delete=models.PROTECT, null=True, blank=True,
