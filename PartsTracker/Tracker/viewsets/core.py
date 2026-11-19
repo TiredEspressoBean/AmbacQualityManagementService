@@ -1198,7 +1198,8 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                              "already_accepted": invitation.accepted_at is not None,
                              "detail": refusal})
         except UserInvitation.DoesNotExist:
-            return Response({"valid": False, "detail": "Invalid invitation token"}, status=status.HTTP_404_NOT_FOUND)
+            from Tracker.services.core.sign_in import INVITE_INVALID
+            return Response({"valid": False, "detail": INVITE_INVALID}, status=status.HTTP_404_NOT_FOUND)
 
     @extend_schema(request=inline_serializer(name="AcceptInvitationInput", fields={"token": serializers.CharField(),
                                                                                    "password": serializers.CharField(
@@ -1222,7 +1223,8 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         try:
             invitation = UserInvitation.objects.select_related('user').get(token=token)
         except UserInvitation.DoesNotExist:
-            return Response({"detail": "Invalid invitation token"}, status=status.HTTP_404_NOT_FOUND)
+            from Tracker.services.core.sign_in import INVITE_INVALID
+            return Response({"detail": INVITE_INVALID}, status=status.HTTP_404_NOT_FOUND)
 
         # Accepted, replaced, expired — or the account is set up already: an invitation sets
         # an account up once, never a new password on one in use (services/core/sign_in).

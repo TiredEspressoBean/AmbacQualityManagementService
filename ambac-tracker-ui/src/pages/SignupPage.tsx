@@ -114,7 +114,8 @@ export default function SignupPage() {
     const refusal = check.data && !check.data.valid
         ? check.data.detail ?? 'This invitation link can no longer be used. Ask for a new one.'
         : check.isError && (check.error as { response?: { status?: number } })?.response?.status === 404
-            ? apiErrorMessage(check.error) ?? 'Invalid invitation token'
+            ? apiErrorMessage(check.error)
+                ?? "This invitation link isn't valid — check you have the whole link, or ask for a new one."
             : null
     if (refusal) {
         return (

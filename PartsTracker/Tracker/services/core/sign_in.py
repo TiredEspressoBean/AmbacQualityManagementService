@@ -36,10 +36,10 @@ LINK_DAYS_MAX = 30          # settings.PASSWORD_RESET_TIMEOUT is this, so no tok
 EMAIL_RESET_DAYS = 1
 
 ALREADY_SET_UP = "This account is already set up — sign in, or ask your administrator for a reset link."
-INVITE_ACCEPTED = "This invitation has already been accepted"
 INVITE_EXPIRED = "This invitation has expired"
 INVITE_REPLACED = "This invitation link was replaced by a newer one. Ask for the latest link."
-NOT_SET_UP ="Not set up yet — send an invitation instead."
+INVITE_INVALID = "This invitation link isn't valid — check you have the whole link, or ask for a new one."
+NOT_SET_UP = "Not set up yet — send an invitation instead."
 LINK_EXPIRED = "This reset link has expired. Ask for a new one."
 LINK_USED = "This reset link has already been used. Ask for a new one."
 # An emailed link that was used (its token hashed the old password), or a mangled one.
@@ -92,9 +92,8 @@ def invitation_refusal(invitation) -> str | None:
     apart from an expired one by what's recorded: a newer invitation for the same person
     (resend and send both replace through create_invitation)."""
     from Tracker.models import UserInvitation
-    if invitation.accepted_at:
-        return INVITE_ACCEPTED
-    if is_set_up(invitation.user):
+    # Accepted: the account is set up — what the invitee needs is where to go next.
+    if invitation.accepted_at or is_set_up(invitation.user):
         return ALREADY_SET_UP
     if invitation.is_valid():
         return None

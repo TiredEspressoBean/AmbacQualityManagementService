@@ -14,6 +14,8 @@ export function useInvitationCheck(token: string | undefined) {
         enabled: Boolean(token),
         retry: false,
         staleTime: Infinity,
+        // An unknown token is a 404 the page explains itself.
+        meta: { suppressGlobalError: true },
     });
 }
 

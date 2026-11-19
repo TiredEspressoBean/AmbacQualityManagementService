@@ -133,6 +133,16 @@ class InvitationFixTests(_Fixture):
         self.assertEqual((self._validate(old)["valid"], self._validate(old)["detail"]), (False, replaced))
         self.assertEqual(self._accept(old).json()["detail"], replaced)
 
+    def test_an_accepted_link_says_where_to_go_and_a_mangled_one_says_check_it(self):
+        token = self._invite(self.newbie).json()["invitation_url"].split("token=")[1]
+        self.assertEqual(self._accept(token).status_code, 200)
+        set_up = "This account is already set up — sign in, or ask your administrator for a reset link."
+        self.assertEqual(self._validate(token)["detail"], set_up)
+        self.assertEqual(self._accept(token, password="Again-pw-99").json()["detail"], set_up)
+        invalid = "This invitation link isn't valid — check you have the whole link, or ask for a new one."
+        self.assertEqual(self._validate(token[:-4])["detail"], invalid)
+        self.assertEqual(self._accept(token[:-4]).json()["detail"], invalid)
+
     def test_an_expired_link_reads_expired_and_a_set_up_account_reads_set_up(self):
         from Tracker.models import UserInvitation
         UserInvitation.objects.create(user=self.newbie, invited_by=self.admin, token="t-old",
