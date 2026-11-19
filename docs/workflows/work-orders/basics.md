@@ -51,6 +51,7 @@ An order may have multiple work orders if:
 | **Notes** | Instructions or comments | No |
 | **Related Order** | The customer order, if there is one | No |
 | **Process** | Manufacturing workflow to follow. Only **approved** processes **in force** are offered | No |
+| **Quantity** | How many units to make. On a new work order it creates that many units at the process's first step, the same as **Plan** on an order line | No |
 | **Expected Completion Date** | Target completion | Yes |
 
 !!! note "Created Pending, and nothing else"
@@ -72,9 +73,15 @@ An order may have multiple work orders if:
     ones for a decrease. The work order page shows both: *Order quantity ·
     &lt;n&gt; parts started*.
 
-    A work order created on this form starts with 0 parts started and no order
-    quantity of its own. A work order planned from the schedule or an
-    order line gets both when it is planned.
+    A work order created on this form with a **Quantity** gets both, the same as
+    one planned from the schedule or an order line. Left empty, it starts with 0
+    parts started, and units are added later with **Add Parts**.
+
+    Once the work order exists, its quantity isn't edited directly: *"Change a
+    work order's units with Add parts, make-up or reduce on the work order — the
+    quantity follows them."* A work-order **import** records the quantity but
+    creates no units, because an imported job may already be part-way through its
+    route: its units come in on the Parts sheet, at the step each is at.
 
 !!! note "Naming an order ties the work order to its line"
     When **Related Order** has exactly one open line for this work order's

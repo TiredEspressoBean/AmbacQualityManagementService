@@ -194,7 +194,8 @@ Maximum file size: **10 MB**, and **10,000 rows** per import. Exports cap at
 #### Step 2: Column Mapping
 
 The system automatically maps columns based on:
-- Exact name matches (high confidence)
+- Exact name matches (high confidence), ignoring case and a template's `*`
+  marking, so a downloaded template maps itself unchanged
 - Similar names (medium confidence)
 - Custom mappings you configure
 

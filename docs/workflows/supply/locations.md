@@ -71,6 +71,14 @@ label code, otherwise **LOC:&lt;name&gt;** — and older labels still scan.
 a lot splits the remainder off, so the record follows the material rather than
 the paperwork.
 
+!!! important "A piece moved before inspection follows its lot"
+    Moving part of a lot that's still **awaiting inspection**, or held, doesn't
+    take that piece out of inspection. The piece keeps the lot's state, and the
+    lot's decision covers it: accept the lot and the piece is accepted with it;
+    reject it and the piece is rejected too, under the same disposition. Only the
+    lot appears in the inspection queue. A piece rejected on its own, in a partial
+    reject, gets its own disposition instead.
+
 The location box suggests matching locations as you type. **Enter** takes a
 suggestion only when you chose it with the arrow keys. Otherwise it submits what
 you scanned or typed, exactly as entered, so *Rack 1* stays Rack 1 even when
