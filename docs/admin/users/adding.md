@@ -109,9 +109,15 @@ same link, valid until the same date.
 
 Each link works **once**. Accepting an invitation, or resending one, cancels the
 person's other pending invitations, so an old link in someone's inbox stops
-working. An account that's already set up can't take an invitation: *"This
-account is already set up — sign in, or ask your administrator for a reset
-link."*
+working. A link that can't be used says why as soon as it's opened, in place of the
+form:
+
+| The link | What the person sees |
+|----------|----------------------|
+| Replaced by a resend | *"This invitation link was replaced by a newer one. Ask for the latest link."* |
+| Already used, or the account is already set up | *"This account is already set up — sign in, or ask your administrator for a reset link."* |
+| Past its date | *"This invitation has expired"* |
+| Incomplete or mistyped | *"This invitation link isn't valid — check you have the whole link, or ask for a new one."* |
 
 Creating and copying links needs `add_user`; the links on the invitations list are
 shown only to people who hold it.
