@@ -561,18 +561,22 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         # Send invitation email — best-effort. The invitation row + copyable
         # link below are the source of truth; onboarding must not depend on a
         # working mail path (a misconfigured/disabled backend must not 500).
-        email_sent = True
-        try:
-            from Tracker.email_notifications import send_invitation_email
-            send_invitation_email(invitation.id, immediate=True)
-        except Exception:  # noqa: BLE001 - surface link regardless of mail health
-            email_sent = False
-            logging.getLogger(__name__).warning(
-                "Invitation email dispatch failed for invitation %s; returning link only",
-                invitation.id, exc_info=True,
-            )
+        # Email off on this deployment (settings.EMAIL_ENABLED): the link is the invitation.
+        email_sent = bool(settings.EMAIL_ENABLED)
+        if email_sent:
+            try:
+                from Tracker.email_notifications import send_invitation_email
+                send_invitation_email(invitation.id, immediate=True)
+            except Exception:  # noqa: BLE001 - surface link regardless of mail health
+                email_sent = False
+                logging.getLogger(__name__).warning(
+                    "Invitation email dispatch failed for invitation %s; returning link only",
+                    invitation.id, exc_info=True,
+                )
 
         detail = ("Invitation sent successfully" if email_sent
+                  else "Invitation created — give them the link."
+                  if not settings.EMAIL_ENABLED
                   else "Invitation created - email could not be sent, share the link directly")
         return Response({"detail": detail, "invitation_id": invitation.id,
                          "user_email": user_to_invite.email, "expires_at": invitation.expires_at,
@@ -1274,26 +1278,45 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                         status=status.HTTP_200_OK)
 
     @extend_schema(
-        request=inline_serializer(name="ResendInvitationInput", fields={"invitation_id": serializers.IntegerField()}),
-        responses={200: OpenApiResponse(response=dict, description="Invitation resent successfully")})
+        request=inline_serializer(name="ResendInvitationInput", fields={
+            "invitation_id": serializers.IntegerField(required=False),
+            "user_id": serializers.IntegerField(required=False,
+                                                help_text="Instead of invitation_id: the person's latest invitation."),
+            "valid_days": serializers.IntegerField(required=False, min_value=1, max_value=30,
+                                                   help_text="How many days the new link works (default 7)."),
+        }),
+        responses={200: inline_serializer(name="ResendInvitationResponse", fields={
+            "detail": serializers.CharField(),
+            "invitation_id": serializers.IntegerField(),
+            "user_email": serializers.EmailField(),
+            "expires_at": serializers.DateTimeField(),
+            "invitation_url": serializers.CharField(),
+            "email_sent": serializers.BooleanField(),
+        })})
     @action(detail=False, methods=['post'], url_path='resend')
     def resend(self, request):
-        """Resend an invitation: a new link, and the old one cancelled. Whoever may invite
-        (add_user) — the link is a way into the account."""
-        from Tracker.services.core.sign_in import create_invitation, invitation_url, is_set_up
+        """Resend an invitation: a new link for the days chosen, and the old one cancelled.
+        Whoever may invite (add_user) — the link is a way into the account."""
+        from Tracker.services.core.sign_in import create_invitation, invitation_url, is_set_up, link_days
         if not request.user.has_tenant_perm('add_user'):
             return Response({"detail": "Sending invitations needs the permission to add users."},
                             status=status.HTTP_403_FORBIDDEN)
 
         invitation_id = request.data.get('invitation_id')
+        user_id = request.data.get('user_id')
 
-        if not invitation_id:
-            return Response({"detail": "invitation_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not invitation_id and not user_id:
+            return Response({"detail": "invitation_id or user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            invitation = UserInvitation.objects.select_related('user').get(id=invitation_id)
-        except UserInvitation.DoesNotExist:
+        invitations = UserInvitation.objects.select_related('user')
+        invitation = (invitations.filter(id=invitation_id).first() if invitation_id
+                      else invitations.filter(user_id=user_id).order_by('-sent_at').first())
+        if invitation is None:
             return Response({"detail": "Invitation not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            days = link_days(request.data.get('valid_days'))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # Can't resend accepted invitations
         if invitation.accepted_at:
@@ -1304,18 +1327,19 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                              "code": "already_set_up"}, status=status.HTTP_400_BAD_REQUEST)
 
         # A new invitation, the old one cancelled (create_invitation does both).
-        new_invitation = create_invitation(invitation.user, invited_by=request.user)
+        new_invitation = create_invitation(invitation.user, invited_by=request.user, days=days)
 
         # Email is a bonus: the link below is the invitation (sign-in never depends on mail).
-        email_sent = True
-        try:
-            from Tracker.email_notifications import send_invitation_email
-            send_invitation_email(new_invitation.id, immediate=False)
-        except Exception:  # noqa: BLE001 - the link is returned regardless
-            email_sent = False
-            logging.getLogger(__name__).warning(
-                "Invitation email dispatch failed for invitation %s; returning link only",
-                new_invitation.id, exc_info=True)
+        email_sent = bool(settings.EMAIL_ENABLED)
+        if email_sent:
+            try:
+                from Tracker.email_notifications import send_invitation_email
+                send_invitation_email(new_invitation.id, immediate=False)
+            except Exception:  # noqa: BLE001 - the link is returned regardless
+                email_sent = False
+                logging.getLogger(__name__).warning(
+                    "Invitation email dispatch failed for invitation %s; returning link only",
+                    new_invitation.id, exc_info=True)
 
         return Response({"detail": "Invitation resent successfully", "invitation_id": new_invitation.id,
                          "user_email": new_invitation.user.email, "expires_at": new_invitation.expires_at,

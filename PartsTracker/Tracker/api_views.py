@@ -10,6 +10,7 @@ from rest_framework import serializers, status
 from Tracker.authentication import TenantMembershipSessionAuthentication
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from dj_rest_auth.views import LoginView, PasswordResetView, PasswordResetConfirmView
@@ -149,6 +150,28 @@ class ThrottledPasswordResetConfirmView(PasswordResetConfirmView):
                 after_password_reset(user, token=request.data.get('token', ''),
                                      remote_addr=get_client_ip(request))
         return response
+
+
+class PasswordResetCheckView(APIView):
+    """Whether a reset link still works, for the Reset password page to ask when it opens:
+    a used or expired link says so in place of the form (services/core/sign_in)."""
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = [ClientIPScopedRateThrottle]
+    throttle_scope = 'password_reset'
+
+    @extend_schema(
+        request=inline_serializer(name='PasswordResetCheckInput', fields={
+            'uid': serializers.CharField(), 'token': serializers.CharField()}),
+        responses=inline_serializer(name='PasswordResetCheck', fields={
+            'valid': serializers.BooleanField(),
+            'detail': serializers.CharField(allow_null=True,
+                                            help_text="Why the link can't be used (null when it can).")}),
+    )
+    def post(self, request):
+        from Tracker.services.core.sign_in import reset_link_state
+        detail = reset_link_state(request.data.get('uid', ''), request.data.get('token', ''))
+        return Response({'valid': detail is None, 'detail': detail})
 
 
 class ThrottledRegisterView(RegisterView):

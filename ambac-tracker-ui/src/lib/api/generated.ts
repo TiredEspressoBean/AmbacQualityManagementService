@@ -12748,6 +12748,7 @@ export type User = {
     | undefined;
   job_role_name: string | null;
   invitation_state: InvitationStateEnum | NullEnum | null;
+  is_set_up: boolean;
   default_shift?:
     | /**
      * The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
@@ -29024,6 +29025,7 @@ const User = z.object({
   job_role: z.string().uuid().nullish(),
   job_role_name: z.string().nullable(),
   invitation_state: z.union([InvitationStateEnum, NullEnum]).nullable(),
+  is_set_up: z.boolean(),
   default_shift: z.string().uuid().nullish(),
 });
 const PaginatedUserList = z.object({
@@ -29223,8 +29225,20 @@ const AcceptInvitationResponse = z.object({
   detail: z.string(),
   user_id: z.number().int(),
 });
-const ResendInvitationInputRequest = z.object({
+const ResendInvitationInputRequest = z
+  .object({
+    invitation_id: z.number().int(),
+    user_id: z.number().int(),
+    valid_days: z.number().int().gte(1).lte(30),
+  })
+  .partial();
+const ResendInvitationResponse = z.object({
+  detail: z.string(),
   invitation_id: z.number().int(),
+  user_email: z.string().email(),
+  expires_at: z.string().datetime({ offset: true }),
+  invitation_url: z.string(),
+  email_sent: z.boolean(),
 });
 const ValidateTokenInputRequest = z.object({ token: z.string().min(1) });
 const ValidateTokenResponse = z.object({
@@ -31259,6 +31273,14 @@ const PasswordChangeRequest = z.object({
 });
 const PasswordResetRequest = z.object({ email: z.string().min(1).email() });
 const PasswordResetResponse = z.object({ detail: z.string() });
+const PasswordResetCheckInputRequest = z.object({
+  uid: z.string().min(1),
+  token: z.string().min(1),
+});
+const PasswordResetCheck = z.object({
+  valid: z.boolean(),
+  detail: z.string().nullable(),
+});
 const PasswordResetConfirmRequest = z.object({
   new_password1: z.string().min(1).max(128),
   new_password2: z.string().min(1).max(128),
@@ -32460,6 +32482,7 @@ export const schemas = {
   AcceptInvitationInputRequest,
   AcceptInvitationResponse,
   ResendInvitationInputRequest,
+  ResendInvitationResponse,
   ValidateTokenInputRequest,
   ValidateTokenResponse,
   UserWorkCenterMembership,
@@ -32718,6 +32741,8 @@ export const schemas = {
   PasswordChangeRequest,
   PasswordResetRequest,
   PasswordResetResponse,
+  PasswordResetCheckInputRequest,
+  PasswordResetCheck,
   PasswordResetConfirmRequest,
   PasswordResetConfirmResponse,
   RegisterRequest,
@@ -65259,17 +65284,17 @@ Provides endpoints for:
     method: "post",
     path: "/api/UserInvitations/resend/",
     alias: "api_UserInvitations_resend_create",
-    description: `Resend an invitation: a new link, and the old one cancelled. Whoever may invite
-(add_user) — the link is a way into the account.`,
+    description: `Resend an invitation: a new link for the days chosen, and the old one cancelled.
+Whoever may invite (add_user) — the link is a way into the account.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: z.object({ invitation_id: z.number().int() }),
+        schema: ResendInvitationInputRequest,
       },
     ],
-    response: z.object({}).partial().passthrough(),
+    response: ResendInvitationResponse,
   },
   {
     method: "post",
@@ -67033,6 +67058,22 @@ Returns the success/fail message.`,
       },
     ],
     response: z.object({ detail: z.string() }),
+  },
+  {
+    method: "post",
+    path: "/auth/password/reset/check/",
+    alias: "auth_password_reset_check_create",
+    description: `Whether a reset link still works, for the Reset password page to ask when it opens:
+a used or expired link says so in place of the form (services/core/sign_in).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PasswordResetCheckInputRequest,
+      },
+    ],
+    response: PasswordResetCheck,
   },
   {
     method: "post",

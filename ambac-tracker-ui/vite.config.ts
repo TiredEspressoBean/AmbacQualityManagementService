@@ -98,6 +98,20 @@ export default defineConfig(({ mode }) => {
                     secure: false,
                     agent: keepAliveAgent,
                 },
+                // Django's admin and its stylesheets, as Caddy routes them in prod
+                // (/admin/* is the app's pages).
+                '/djangoadmin': {
+                    target: API_TARGET,
+                    changeOrigin: true,
+                    secure: false,
+                    agent: keepAliveAgent,
+                },
+                '/static': {
+                    target: API_TARGET,
+                    changeOrigin: true,
+                    secure: false,
+                    agent: keepAliveAgent,
+                },
                 '/accounts': {
                     target: API_TARGET,
                     changeOrigin: true,

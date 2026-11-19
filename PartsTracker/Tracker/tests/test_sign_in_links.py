@@ -107,6 +107,39 @@ class InvitationFixTests(_Fixture):
         self.assertIsNotNone(inv)
         self.assertAlmostEqual((inv.expires_at - timezone.now()).days, 6, delta=1)
 
+    def test_resend_by_person_is_a_new_link_for_the_days_chosen(self):
+        old_url = self._invite(self.newbie).json()["invitation_url"]
+        with patch("Tracker.email_notifications.send_invitation_email"):
+            r = self.client.post("/api/UserInvitations/resend/",
+                                 {"user_id": self.newbie.id, "valid_days": 3}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertNotEqual(r.json()["invitation_url"], old_url)
+        expires = timezone.datetime.fromisoformat(r.json()["expires_at"].replace("Z", "+00:00"))
+        self.assertAlmostEqual((expires - timezone.now()).total_seconds() / 86400, 3, delta=0.01)
+        self.assertEqual(self._accept(old_url.split("token=")[1]).status_code, 400)
+        self.assertEqual(self._accept(r.json()["invitation_url"].split("token=")[1]).status_code, 200)
+
+    def test_with_email_off_an_invitation_is_a_link_and_nothing_is_sent(self):
+        with override_settings(EMAIL_ENABLED=False), \
+                patch("Tracker.email_notifications.send_invitation_email") as send:
+            r = self.client.post("/api/User/send-invitation/", {"user_id": self.newbie.id}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertIs(r.json()["email_sent"], False)
+        self.assertIn("/signup?token=", r.json()["invitation_url"])
+        send.assert_not_called()
+
+    def test_set_up_is_a_usable_password_not_a_sign_in(self):
+        # Loaded with a password, never signed in (the seeded staff): set up.
+        loaded = User.objects.create_user(username="ld", email="ld@a.test", password="pw-loaded-1",
+                                          tenant=self.tenant_a)
+        self.assertIsNone(loaded.last_login)
+        r = self._invite(loaded)
+        self.assertEqual((r.status_code, r.json()["code"]), (400, "already_set_up"))
+        self.assertEqual(self.client.post(f"/api/User/{loaded.id}/reset-link/").status_code, 200)
+        rows = {u["id"]: u for u in self.client.get("/api/User/?limit=200").json()["results"]}
+        self.assertIs(rows[loaded.id]["is_set_up"], True)
+        self.assertIs(rows[self.newbie.id]["is_set_up"], False)
+
     def test_only_someone_who_may_invite_sees_or_resends_links(self):
         from Tracker.models import UserInvitation
         self._invite(self.newbie)
@@ -206,6 +239,48 @@ class ResetLinkTests(_Fixture):
             self.assertEqual(self._confirm(url, "Mailed-late-26!").status_code, 400)
         self.assertEqual(self._confirm(url, "Mailed-pw-2026!").status_code, 200)
         self.assertFalse(Token.objects.filter(user=self.worker).exists())
+
+    def _check(self, url):
+        uid, token = url.rstrip("/").split("/")[-2:]
+        self.client.force_authenticate(user=None)
+        return self.client.post("/auth/password/reset/check/", {"uid": uid, "token": token},
+                                format="json").json()
+
+    def test_the_page_knows_a_link_is_spent_or_expired_when_it_opens(self):
+        url = self._link(self.worker).json()["reset_url"]
+        self.assertEqual(self._check(url), {"valid": True, "detail": None})
+        self.assertEqual(self._confirm(url, "Fresh-pw-2026!").status_code, 200)
+        self.assertEqual(self._check(url)["detail"], "This reset link has already been used. Ask for a new one.")
+        self.authenticate_as(self.admin, self.tenant_a)
+        url = self.client.post(f"/api/User/{self.worker.id}/reset-link/", {"valid_days": 1},
+                               format="json").json()["reset_url"]
+        with self._later(days=2):
+            self.assertEqual(self._check(url)["detail"], "This reset link has expired. Ask for a new one.")
+        uid = url.rstrip("/").split("/")[-2]
+        self.assertFalse(self._check(f"/reset-password/{uid}/garbage-token/")["valid"])
+
+    def test_email_is_opt_in(self):
+        from PartsTrackerApp.settings import email_config
+        smtp = "django.core.mail.backends.smtp.EmailBackend"
+        dummy = "django.core.mail.backends.dummy.EmailBackend"
+        self.assertEqual(email_config({}), (False, dummy))
+        self.assertEqual(email_config({"EMAIL_HOST": "smtp.sendgrid.net", "EMAIL_BACKEND": smtp}),
+                         (False, dummy))  # a host configured doesn't turn it on
+        self.assertEqual(email_config({"EMAIL_ENABLED": "true", "EMAIL_HOST": "smtp.sendgrid.net"}),
+                         (True, smtp))
+        console = "django.core.mail.backends.console.EmailBackend"
+        self.assertEqual(email_config({"EMAIL_BACKEND": console}), (False, console))  # dev's choice kept
+
+    def test_with_email_off_a_notification_is_suppressed_not_sent(self):
+        from Tracker.models import NotificationOutbox, NotificationStatus
+        from Tracker.services.core.notifications.tasks import dispatch_outbox_row
+        row = NotificationOutbox.objects.create(tenant=self.tenant_a, event_code="test", channel="email",
+                                                user=self.worker, rendered_subject="s",
+                                                rendered_body_text="b", idempotency_key="email-off-1")
+        with override_settings(EMAIL_ENABLED=False):
+            result = dispatch_outbox_row.apply(args=[row.id]).get()
+        row.refresh_from_db()
+        self.assertEqual((result["status"], row.status), ("suppressed", NotificationStatus.SUPPRESSED))
 
     def test_the_sign_in_page_knows_whether_email_is_on(self):
         with override_settings(EMAIL_ENABLED=False):

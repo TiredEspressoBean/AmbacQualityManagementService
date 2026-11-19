@@ -29,6 +29,7 @@ from Tracker.api_views import (
     get_csrf_token, get_user_api_token,
     ThrottledLoginView, ThrottledPasswordResetView,
     ThrottledPasswordResetConfirmView, ThrottledRegisterView, sign_in_notice,
+    PasswordResetCheckView,
 )
 from dj_rest_auth.views import PasswordResetConfirmView, PasswordResetView
 
@@ -90,6 +91,8 @@ urlpatterns += [
     # emailed-path route above.
     path("auth/password/reset/confirm/", ThrottledPasswordResetConfirmView.as_view(),
          name="rest_password_reset_confirm"),
+    # The page asks this when it opens: a used or expired link says so before the form.
+    path("auth/password/reset/check/", PasswordResetCheckView.as_view()),
     path("auth/registration/", ThrottledRegisterView.as_view()),
     path("auth/", include("dj_rest_auth.urls")),
     path("auth/registration/", include("dj_rest_auth.registration.urls")),

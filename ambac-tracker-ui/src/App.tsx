@@ -14,6 +14,10 @@ import { toast } from "sonner";
 // Create router with queryClient for data prefetching
 const router = createAppRouter(queryClient);
 
+/** Queries readable signed out, which a 401 must not remove: the organization (branding),
+ *  the sign-in notice (system-use banner, whether email is on) and a reset link's check. */
+const SIGNED_OUT_QUERIES = new Set(["tenant", "sign-in-notice", "password-reset-check"]);
+
 export default function App() {
     const interceptorSetup = useRef(false);
 
@@ -35,13 +39,15 @@ export default function App() {
 
                     // Handle 401 Unauthorized - session expired or not logged in
                     if (status === 401) {
-                        // Drop any cached user data — but keep the organization query.
-                        // It's branding, readable signed out, and TenantProvider sits
-                        // above the router observing it: clear() removed it from under
-                        // that observer, so the login page's burst of 401s left the
-                        // provider on a detached pre-login "no organization", and
-                        // sign-in's reset had nothing to refetch (sidebar read "uqmes").
-                        queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== "tenant" });
+                        // Drop any cached user data — but keep what's readable signed out
+                        // (SIGNED_OUT_QUERIES). Removing one drops it from under its
+                        // observer: the organization query left TenantProvider on a
+                        // detached "no organization" (sidebar read "uqmes"); the sign-in
+                        // notice left the login page without the system-use notice and the
+                        // forgot-password page offering email with email off.
+                        queryClient.removeQueries({
+                            predicate: (q) => !SIGNED_OUT_QUERIES.has(String(q.queryKey[0])),
+                        });
 
                         // Only redirect if not already on login/signup pages
                         const publicPaths = ['/login', '/signup', '/password-reset-request', '/reset-password'];

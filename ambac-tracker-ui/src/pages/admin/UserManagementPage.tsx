@@ -64,7 +64,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRetrieveUsers } from "@/hooks/useRetrieveUsers";
 import { useTenantGroups } from "@/hooks/useTenantGroups";
 import { useSetUsersTenantActive } from "@/hooks/useSetUsersTenantActive";
-import { useSendUserInvitation } from "@/hooks/useSendUserInvitation";
+import { useResendUserInvitation, useSendUserInvitation } from "@/hooks/useSendUserInvitation";
+import { useAuthUser } from "@/hooks/useAuthUser";
 import { useUserResetLink } from "@/hooks/useUserResetLink";
 import { useAddUserToTenantGroup } from "@/hooks/useAddUserToTenantGroup";
 import { InviteLinkDialog } from "@/components/users/InviteLinkDialog";
@@ -154,8 +155,10 @@ export function UserManagementPage() {
     const [linkTitle, setLinkTitle] = useState<string | undefined>(undefined);
     const [linkDescription, setLinkDescription] = useState<string | undefined>(undefined);
     const resetLink = useUserResetLink();
-    // Asking how long a link works, before it's made: an invitation or a reset link.
-    const [daysFor, setDaysFor] = useState<{ kind: "invite" | "reset"; userId: number; email: string; name: string } | null>(null);
+    // Asking how long a link works, before it's made: an invitation (new or resent) or a
+    // reset link.
+    const [daysFor, setDaysFor] = useState<{ kind: "invite" | "resend" | "reset"; userId: number; email: string; name: string } | null>(null);
+    const { data: me } = useAuthUser();
 
     const queryClient = useQueryClient();
     const { data: usersData, isLoading } = useRetrieveUsers({
@@ -165,6 +168,7 @@ export function UserManagementPage() {
     const { data: groupsData } = useTenantGroups({ limit: 200 });
     const setTenantActive = useSetUsersTenantActive();
     const sendInvite = useSendUserInvitation();
+    const resendInvite = useResendUserInvitation();
     const addToGroup = useAddUserToTenantGroup();
 
     /** Invalidate the User list query — useUpdateUser's onSuccess only
@@ -240,6 +244,7 @@ export function UserManagementPage() {
             const data = await resetLink.mutateAsync({ userId, validDays: days });
             showLink(data.reset_url, email, "Reset link", linkValidUntil(name, data.expires_at));
             toast.success(`Reset link ready for ${name}`);
+            invalidateUsers();
         } catch (err) {
             toast.error(`Couldn't create a reset link for ${name}`, {
                 description: apiErrorMessage(err) ?? undefined,
@@ -273,6 +278,24 @@ export function UserManagementPage() {
             }
             toast.error(`Failed to create invitation link for ${email}`, {
                 description: err instanceof Error ? err.message : undefined,
+            });
+        }
+    };
+
+    /** Resend: a new invitation link for the days chosen; the old link stops working. */
+    const handleResendLink = async (userId: number, email: string, name: string, days: number) => {
+        try {
+            const data = await resendInvite.mutateAsync({ userId, validDays: days });
+            showLink(data.invitation_url, email, "Invitation link", linkValidUntil(name, data.expires_at));
+            toast.success(`New invitation link ready for ${name}`);
+        } catch (err) {
+            if (apiErrorField(apiErrorBody(err), "code") === "already_set_up") {
+                toast.info(`${name} is already set up — create a reset link instead.`);
+                setDaysFor({ kind: "reset", userId, email, name });
+                return;
+            }
+            toast.error(`Couldn't resend the invitation to ${name}`, {
+                description: apiErrorMessage(err) ?? undefined,
             });
         }
     };
@@ -315,8 +338,12 @@ export function UserManagementPage() {
         clearSelection();
     };
 
+    // Invited before: a new link (the old one stops working). Never invited: a first one.
     const handleBulkResend = () =>
-        handleBulkFanout("Resent invitations", (id) => sendInvite.mutateAsync(id));
+        handleBulkFanout("Resent invitations", (id) =>
+            rows.find((r) => r.id === id)?.invitation_state
+                ? resendInvite.mutateAsync({ userId: id })
+                : sendInvite.mutateAsync(id));
 
     /** Activate/deactivate the current selection in ONE tenant-scoped call.
      *  The backend skips the requesting user, so updated_count may be < the
@@ -659,19 +686,23 @@ export function UserManagementPage() {
                                                         <Edit className="h-4 w-4 mr-2" />
                                                         Edit profile
                                                     </DropdownMenuItem>
-                                                    {u._status === "pending_invite" || u._status === "expired_invite" || u._status === "never_signed_in" ? (
+                                                    {/* Exactly one way in, by the server's one rule (is_set_up):
+                                                        not set up, an invitation; set up, a reset link. Not
+                                                        for an outside contact, a suspended account or yourself. */}
+                                                    {u._status === "contact" || (u._status === "inactive" && u.is_set_up) ? null
+                                                    : !u.is_set_up ? (
                                                         <>
-                                                            <DropdownMenuItem onClick={() => setDaysFor({ kind: "invite", userId: u.id, email: u.email ?? "", name: rowName(u) })}>
+                                                            <DropdownMenuItem onClick={() => setDaysFor({ kind: u.invitation_state ? "resend" : "invite", userId: u.id, email: u.email ?? "", name: rowName(u) })}>
                                                                 <Mail className="h-4 w-4 mr-2" />
-                                                                {u._status === "never_signed_in" ? "Send invitation" : "Resend invitation"}
+                                                                {u.invitation_state ? "Resend invitation" : "Send invitation"}
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email ?? "", rowName(u))}>
                                                                 <LinkIcon className="h-4 w-4 mr-2" />
                                                                 Copy access link
                                                             </DropdownMenuItem>
                                                         </>
-                                                    ) : u.last_login ? (
-                                                        // Signed in before: a forgotten password gets a reset link, in person.
+                                                    ) : u.id !== me?.pk ? (
+                                                        // Set up: a forgotten password gets a reset link, in person.
                                                         <DropdownMenuItem onClick={() => setDaysFor({ kind: "reset", userId: u.id, email: u.email ?? "", name: rowName(u) })}>
                                                             <KeyRound className="h-4 w-4 mr-2" />
                                                             Create reset link
@@ -763,14 +794,17 @@ export function UserManagementPage() {
             <LinkDaysDialog
                 open={daysFor !== null}
                 onOpenChange={(o) => { if (!o) setDaysFor(null); }}
-                title={daysFor?.kind === "reset" ? "Create reset link" : "Send invitation"}
+                title={daysFor?.kind === "reset" ? "Create reset link"
+                    : daysFor?.kind === "resend" ? "Resend invitation" : "Send invitation"}
                 name={daysFor?.name ?? ""}
-                actionLabel={daysFor?.kind === "reset" ? "Create reset link" : "Create invitation link"}
+                actionLabel={daysFor?.kind === "reset" ? "Create reset link"
+                    : daysFor?.kind === "resend" ? "Create new invitation link" : "Create invitation link"}
                 onCreate={async (days) => {
                     if (!daysFor) return;
                     const { kind, userId, email, name } = daysFor;
                     setDaysFor(null);
                     if (kind === "reset") await handleResetLink(userId, email, name, days);
+                    else if (kind === "resend") await handleResendLink(userId, email, name, days);
                     else await handleInviteLink(userId, email, name, days);
                 }}
             />

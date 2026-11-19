@@ -17287,8 +17287,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Resend an invitation: a new link, and the old one cancelled. Whoever may invite
-         *     (add_user) — the link is a way into the account.
+         * @description Resend an invitation: a new link for the days chosen, and the old one cancelled.
+         *     Whoever may invite (add_user) — the link is a way into the account.
          */
         post: operations["api_UserInvitations_resend_create"];
         delete?: never;
@@ -21845,6 +21845,26 @@ export interface paths {
          *     Returns the success/fail message.
          */
         post: operations["auth_password_reset_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password/reset/check/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Whether a reset link still works, for the Reset password page to ask when it opens:
+         *     a used or expired link says so in place of the form (services/core/sign_in).
+         */
+        post: operations["auth_password_reset_check_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -31793,6 +31813,15 @@ export interface components {
             new_password1: string;
             new_password2: string;
         };
+        PasswordResetCheck: {
+            valid: boolean;
+            /** @description Why the link can't be used (null when it can). */
+            detail: string | null;
+        };
+        PasswordResetCheckInputRequest: {
+            uid: string;
+            token: string;
+        };
         /** @description Serializer for confirming a password reset attempt. */
         PasswordResetConfirmRequest: {
             new_password1: string;
@@ -36870,7 +36899,21 @@ export interface components {
             email: string;
         };
         ResendInvitationInputRequest: {
+            invitation_id?: number;
+            /** @description Instead of invitation_id: the person's latest invitation. */
+            user_id?: number;
+            /** @description How many days the new link works (default 7). */
+            valid_days?: number;
+        };
+        ResendInvitationResponse: {
+            detail: string;
             invitation_id: number;
+            /** Format: email */
+            user_email: string;
+            /** Format: date-time */
+            expires_at: string;
+            invitation_url: string;
+            email_sent: boolean;
         };
         ResetLinkInputRequest: {
             /** @description How many days the link works (default 7). */
@@ -41679,6 +41722,7 @@ export interface components {
             job_role?: string | null;
             readonly job_role_name: string | null;
             readonly invitation_state: (components["schemas"]["InvitationStateEnum"] | components["schemas"]["NullEnum"]) | null;
+            readonly is_set_up: boolean;
             /**
              * Format: uuid
              * @description The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
@@ -74225,7 +74269,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["ResendInvitationInputRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["ResendInvitationInputRequest"];
@@ -74233,15 +74277,12 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Invitation resent successfully */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ResendInvitationResponse"];
                 };
             };
         };
@@ -80795,6 +80836,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PasswordResetResponse"];
+                };
+            };
+        };
+    };
+    auth_password_reset_check_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetCheckInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PasswordResetCheckInputRequest"];
+                "multipart/form-data": components["schemas"]["PasswordResetCheckInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordResetCheck"];
                 };
             };
         };

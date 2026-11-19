@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 
 from celery import shared_task
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -58,6 +59,14 @@ def dispatch_outbox_row(self, outbox_id: str) -> dict:
                 row.save(update_fields=['status', 'error', 'updated_at'])
                 logger.error("dispatch_outbox_row: %s", exc)
                 return {'status': 'failed', 'outbox_id': str(outbox_id), 'reason': 'unknown-channel'}
+
+            # Email off on this deployment (settings.EMAIL_ENABLED): nothing to send, and
+            # nothing to retry — the row says so rather than claiming it was sent.
+            if row.channel == 'email' and not settings.EMAIL_ENABLED:
+                row.status = NotificationStatus.SUPPRESSED
+                row.error = "Email is off on this deployment."
+                row.save(update_fields=['status', 'error', 'updated_at'])
+                return {'status': 'suppressed', 'outbox_id': str(outbox_id), 'reason': 'email-off'}
 
             try:
                 channel.send(row)

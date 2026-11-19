@@ -65,8 +65,23 @@ export const usePasswordResetConfirm = () => {
             api.auth_password_reset_confirm_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }),
+        // The form shows the reason inline.
+        meta: { suppressGlobalError: true },
     })
 }
+
+/** Whether a reset link still works, asked when the page opens: a used or expired
+ *  link says so in place of the form, before anyone types a password. */
+const useResetLinkCheck = (uid: string, token: string) =>
+    useQuery({
+        queryKey: ['password-reset-check', uid, token],
+        queryFn: () =>
+            api.auth_password_reset_check_create({ uid, token }, {
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+            }),
+        retry: false,
+        staleTime: Infinity,
+    })
 
 // 📝 Form Schemas
 const passwordResetRequestSchema = z.object({
@@ -231,6 +246,7 @@ interface PasswordResetConfirmProps {
 
 export const PasswordResetConfirm = ({ token, uid, onSuccess }: PasswordResetConfirmProps) => {
     const mutation = usePasswordResetConfirm()
+    const check = useResetLinkCheck(uid, token)
 
     const form = useForm<PasswordResetConfirmForm>({
         resolver: zodResolver(passwordResetConfirmSchema),
@@ -269,6 +285,34 @@ export const PasswordResetConfirm = ({ token, uid, onSuccess }: PasswordResetCon
                         </Alert>
                     </CardContent>
                 </Card>
+            </div>
+        )
+    }
+
+    // A spent or expired link: say so instead of offering a form that can't work.
+    // (If the check itself fails — a throttle, the network — the form stays; the
+    // submit checks again.)
+    if (check.data && !check.data.valid) {
+        return (
+            <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
+                <Card className="mx-auto max-w-sm">
+                    <CardHeader>
+                        <CardTitle className="text-2xl">Reset link can't be used</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>{check.data.detail}</AlertDescription>
+                        </Alert>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
+    if (check.isPending) {
+        return (
+            <div className="flex min-h-[50vh] w-full items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
         )
     }

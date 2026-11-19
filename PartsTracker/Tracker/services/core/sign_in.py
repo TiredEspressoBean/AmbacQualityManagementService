@@ -11,9 +11,10 @@ them too where it's configured. They work the same way: one behaviour to learn.
 - **Once.** An invitation is used up when accepted; a reset link when the password
   is set (its token hashes the old password).
 - **One live invitation per person.** Accepting one, or resending, cancels the rest
-  (cancelled = expired now). While one is pending, sending returns the same link.
-- **An invitation only sets up an account that isn't set up**: never a new password on
-  a working one. A set-up account gets a reset link.
+  (cancelled = expired now). While one is pending, sending (Copy access link) returns
+  the same link; Resend makes a new one for the days chosen.
+- **An invitation only sets up an account that isn't set up** (no usable password):
+  never a new password on a working one. A set-up account gets a reset link.
 - **A reset link** is the same link the "forgot password" email carries (allauth's uid
   and token, so the existing Reset password page takes it). Issued only by someone who
   may invite (add_user), never for oneself, for a Tenant Admin only by a Tenant Admin,
@@ -38,6 +39,8 @@ ALREADY_SET_UP = "This account is already set up — sign in, or ask your admini
 NOT_SET_UP = "Not set up yet — send an invitation instead."
 LINK_EXPIRED = "This reset link has expired. Ask for a new one."
 LINK_USED = "This reset link has already been used. Ask for a new one."
+# An emailed link that was used (its token hashed the old password), or a mangled one.
+LINK_INVALID = "This reset link is no longer valid — it may already have been used. Ask for a new one."
 
 
 def link_days(value) -> int:
@@ -54,9 +57,12 @@ def link_days(value) -> int:
 
 
 def is_set_up(user) -> bool:
-    """Whether the account is in use: it has signed in, or it has a real password.
-    A user created without one has an unusable (or, through the API, empty) password."""
-    return user.last_login is not None or (bool(user.password) and user.has_usable_password())
+    """Whether the account is set up: it has a usable password. The one rule for which
+    link a person gets — set up: a reset link; not: an invitation — used by both actions
+    and the User Management menu (via the row's is_set_up). Whether they've signed in
+    yet doesn't enter into it. A user created without a password has an unusable (or,
+    through the API, empty) one."""
+    return bool(user.password) and user.has_usable_password()
 
 
 def cancel_pending_invitations(user, *, keep=None) -> int:
@@ -149,6 +155,22 @@ def reset_refusal(token: str) -> str | None:
     if age is not None and age > timedelta(days=EMAIL_RESET_DAYS):
         return LINK_EXPIRED
     return None
+
+
+def reset_link_state(uid: str, token: str) -> str | None:
+    """Why a reset link can't be used, checked when the page opens (so a spent or expired
+    link says so before anyone types a password), or None when it works."""
+    from allauth.account.forms import default_token_generator
+    from allauth.account.utils import url_str_to_user_pk
+    from django.contrib.auth import get_user_model
+    refusal = reset_refusal(token)
+    if refusal:
+        return refusal
+    try:
+        user = get_user_model().objects.get(pk=url_str_to_user_pk(uid or ""))
+    except Exception:  # noqa: BLE001 - a malformed or unknown uid is just a bad link
+        return LINK_INVALID
+    return None if default_token_generator.check_token(user, token or "") else LINK_INVALID
 
 
 def sign_out_everywhere(user) -> int:

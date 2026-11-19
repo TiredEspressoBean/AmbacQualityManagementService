@@ -702,14 +702,14 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 #             EMAIL_HOST_PASSWORD=<api-key>, EMAIL_PORT=587, EMAIL_USE_TLS=true
 #   On-prem:  point EMAIL_HOST/EMAIL_PORT at the internal relay; many allow the
 #             app's IP unauthenticated (leave USER/PASSWORD blank).
-# Override the backend to make email a no-op while no mail path is available:
-#   EMAIL_BACKEND=django.core.mail.backends.dummy.EmailBackend    (silently discard)
+# Email is opt-in: none of this sends anything until EMAIL_ENABLED=true (below).
+# For development, a backend that delivers nowhere:
 #   EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend  (log to stdout)
 def _env_bool(name, default):
     # Any non-empty string is truthy, so "False" would read as True — parse it.
     return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
 
-EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+# EMAIL_BACKEND is set with EMAIL_ENABLED below (email_config).
 # Neutral default (localhost). Set EMAIL_HOST per deployment — no provider baked in.
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
 # Env-driven so on-prem can use M365 Direct Send (port 25) vs submission (587).
@@ -725,14 +725,29 @@ SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 # Fail fast instead of hanging forever when a mail host is firewalled/blackholed
 # (a blocked outbound SMTP connect with no timeout blocks the request/worker).
 EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "10"))
-# Whether this deployment sends email — what the sign-in page reads to offer "email me a
-# reset link" or "ask your administrator" (sign-in never depends on email; user ruling
-# 2026-11-19). Set EMAIL_ENABLED explicitly; unset, it's on only for a real backend with a
-# mail host other than the default localhost.
+# Whether this deployment sends email. OPT-IN: off unless EMAIL_ENABLED=true is set — a
+# configured EMAIL_HOST doesn't turn it on (user ruling 2026-11-19; sign-in never depends
+# on email). Off:
+#   - the sign-in page says "ask your administrator for a reset link" instead of
+#     offering to email one;
+#   - nothing is sent: the backend becomes the dummy one (a non-delivering console /
+#     locmem / file backend chosen explicitly is kept, for development), so every send —
+#     invitations, notifications, reports, the reset email — is a clean no-op;
+#   - notification outbox rows for the email channel are marked Suppressed, not Sent.
 _NO_MAIL_BACKENDS = ("dummy", "console", "locmem", "filebased")
-EMAIL_ENABLED = _env_bool("EMAIL_ENABLED", "true" if (
-    not any(b in EMAIL_BACKEND for b in _NO_MAIL_BACKENDS)
-    and (EMAIL_HOST not in ("", "localhost", "127.0.0.1") or "smtp" not in EMAIL_BACKEND)) else "false")
+
+
+def email_config(environ) -> tuple[bool, str]:
+    """(EMAIL_ENABLED, EMAIL_BACKEND) for an environment: on only for EMAIL_ENABLED=true;
+    off, a delivering backend becomes the dummy one."""
+    enabled = environ.get("EMAIL_ENABLED", "false").strip().lower() in ("1", "true", "yes", "on")
+    backend = environ.get("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+    if not enabled and not any(b in backend for b in _NO_MAIL_BACKENDS):
+        backend = "django.core.mail.backends.dummy.EmailBackend"
+    return enabled, backend
+
+
+EMAIL_ENABLED, EMAIL_BACKEND = email_config(os.environ)
 
 # The ceiling for any password reset token: the longest a link may be issued for
 # (services/core/sign_in.LINK_DAYS_MAX, 30 days). Each link's own lifetime is shorter —

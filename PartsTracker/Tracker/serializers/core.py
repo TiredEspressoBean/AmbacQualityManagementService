@@ -439,6 +439,14 @@ class UserSerializer(SecureModelMixin):
     # null when none was ever sent. "Pending invite" was read off last_login alone, so a
     # seeded or imported person who was never invited read as invited (Admin walk).
     invitation_state = serializers.SerializerMethodField()
+    # Set up (a usable password): the one rule for which link the person gets — a reset
+    # link if set up, an invitation if not (services/core/sign_in.is_set_up).
+    is_set_up = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_set_up(self, obj):
+        from Tracker.services.core.sign_in import is_set_up
+        return is_set_up(obj)
 
     @extend_schema_field(serializers.ChoiceField(choices=['pending', 'expired'], allow_null=True))
     def get_invitation_state(self, obj):
@@ -456,12 +464,12 @@ class UserSerializer(SecureModelMixin):
             'id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 'date_joined',
             'last_login', 'parent_company', 'parent_company_id', 'contact_role', 'groups',
             'tenant', 'user_type', 'user_type_display', 'tenant_membership_status',
-            'job_role', 'job_role_name', 'invitation_state',
+            'job_role', 'job_role_name', 'invitation_state', 'is_set_up',
             # Crew rostering: the shift this person works (drives the scheduling
             # calendar's crew lens + the solver's operator windows).
             'default_shift')
         read_only_fields = ('date_joined', 'last_login', 'full_name', 'tenant', 'user_type', 'user_type_display',
-                            'tenant_membership_status', 'job_role_name', 'invitation_state')
+                            'tenant_membership_status', 'job_role_name', 'invitation_state', 'is_set_up')
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, attrs):
