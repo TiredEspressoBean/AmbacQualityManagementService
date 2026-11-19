@@ -134,7 +134,7 @@ export const PasswordResetRequest = ({ onSuccess }: PasswordResetRequestProps) =
                         <CardDescription>Ask your administrator for a reset link.</CardDescription>
                     </CardHeader>
                     <CardContent className="text-sm text-muted-foreground">
-                        They create it from User Management and give it to you. It works once, for 24 hours.
+                        They create it from User Management and give it to you. It works once, until the date they set.
                     </CardContent>
                 </Card>
             </div>
