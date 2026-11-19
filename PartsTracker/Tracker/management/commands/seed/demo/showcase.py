@@ -533,10 +533,12 @@ class DemoShowcaseSeeder(BaseSeeder):
                     status="ACCEPTED"))
 
         # Control valves run short, so Requirements has a buy line for Purchasing and
-        # the Planner (2026-10-21): 150 bought against ~115 units of open build demand,
-        # less what's been drawn, leaves the last builds uncovered. No incoming lot, so
-        # the solver only flags those operations (material-short) and holds nothing.
-        stock_qty = {"Control Valve Assembly": Decimal("150")}
+        # the Planner (2026-10-21): 120 bought; the floor draws ~40 of them, leaving ~80
+        # on the shelf against ~107 still to be drawn by open builds, so the last builds
+        # are uncovered (~27 short). Demand nets what's been drawn (2026-11-19) — at 150
+        # nothing was short once drawn valves stopped counting twice. No incoming lot,
+        # so the solver only flags those operations (material-short) and holds nothing.
+        stock_qty = {"Control Valve Assembly": Decimal("120")}
         for name, pt in buy_parts.items():
             qty = stock_qty.get(name, Decimal("200"))
             MaterialLot.objects.get_or_create(

@@ -92,9 +92,15 @@ def work_order_material_requirements(work_order) -> dict:
     # same reading the buy list uses, so the two cannot disagree about one order.
     reman = (work_order_line_demand(work_order, lines)
              if work_order.cores.exists() else None)
+    # What the job's units have already drawn: gone from on-hand, so gone from demand.
+    from Tracker.services.mes.consumption import drawn_by_work_order, net_of_drawn
+    drawn = drawn_by_work_order(tenant, [work_order.id]) if reman is None else {}
     for line in lines:
+        buy = buy_line_item(line)
         if reman is None:
             required = float(Decimal(str(line.quantity)) * Decimal(work_order.quantity))
+            if buy is not None:
+                required = net_of_drawn(drawn, work_order.id, buy.key, required)
             line_forecast, pool_ok = 0.0, False
         else:
             d = reman.get(line.id) or LineDemand()
@@ -116,7 +122,6 @@ def work_order_material_requirements(work_order) -> dict:
             'safety_stock': 0.0,
         }
 
-        buy = buy_line_item(line)
         if buy is not None:
             # Stock hangs off `material` for a raw Material and `material_type` for a
             # buyable PartType — same lot table, different column.
@@ -304,9 +309,13 @@ def sourcing_requirements(tenant) -> dict:
     need_by: dict = {}      # (kind, id) -> earliest need-by date
     buy_obj: dict = {}      # (kind, id) -> BuyItem
     demand_by_customer: dict = {}   # (item key, customer company id) -> firm qty
-    for wo in (WorkOrder.objects.filter(archived=False, tenant=tenant, process__isnull=False)
-               .exclude(workorder_status__in=excluded).select_related('process', 'related_order')
-               .prefetch_related('parts__core_role')):
+    open_wos = list(WorkOrder.objects.filter(archived=False, tenant=tenant, process__isnull=False)
+                    .exclude(workorder_status__in=excluded).select_related('process', 'related_order')
+                    .prefetch_related('parts__core_role'))
+    # What each job's units have already drawn: gone from on-hand, so gone from demand.
+    from Tracker.services.mes.consumption import drawn_by_work_order, net_of_drawn
+    drawn = drawn_by_work_order(tenant, [wo.id for wo in open_wos])
+    for wo in open_wos:
         wo_customer = wo.related_order.company_id if wo.related_order_id else None
         pt_id = wo.process.part_type_id
         if pt_id is None:
@@ -342,6 +351,8 @@ def sourcing_requirements(tenant) -> dict:
             if buy is None:
                 continue
             k = buy.key
+            if reman is None:
+                firm = net_of_drawn(drawn, wo.id, k, firm)
             if firm:
                 demand[k] = demand.get(k, 0.0) + firm
                 demand_dates.setdefault(k, []).append((nb, firm))

@@ -96,6 +96,11 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
             safety[buy.key] = buy.safety_stock
             items[buy.key] = buy
 
+    # What each job's units have already drawn: gone from on-hand, so gone from demand
+    # (services/mes/consumption.drawn_by_work_order — the same netting the Requirements
+    # report does).
+    from Tracker.services.mes.consumption import drawn_by_work_order, net_of_drawn
+    drawn = drawn_by_work_order(tenant, list(wo_starts))
     # tenant-safe: explicit tenant filter
     for wo in (WorkOrder.objects.filter(tenant=tenant, id__in=list(wo_starts))
                .values('id', 'process_id', 'quantity')):
@@ -113,7 +118,10 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
             buy = buy_line_item(line)
             if buy is None:
                 continue
-            _add(buy, float(Decimal(str(line.quantity)) * wo['quantity']), idx, 'firm')
+            qty = net_of_drawn(drawn, wo['id'], buy.key,
+                               float(Decimal(str(line.quantity)) * wo['quantity']))
+            if qty:
+                _add(buy, qty, idx, 'firm')
 
     # Demand no work order carries yet: explode through MAKE lines, since no child work
     # order exists to carry the components.

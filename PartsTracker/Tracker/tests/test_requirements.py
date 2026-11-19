@@ -160,3 +160,72 @@ class SourcingRequirementsTests(TenantContextMixin, TestCase):
             quantity=1, process=self.proc)
         rows = work_order_material_requirements(wo)['rows']
         self.assertTrue(any(r['component'] == "Gasket" for r in rows))
+
+
+class ConsumedComponentsTests(TenantContextMixin, TestCase):
+    """A component a unit has already drawn from stock is gone from on-hand; it must be
+    gone from demand too, or it counts twice and the shortage grows with floor progress
+    (user-approved fix 2026-11-19). A work order of N whose K units drew their parts
+    demands N−K, wherever the demand is read."""
+
+    def setUp(self):
+        super().setUp()
+        from datetime import date as _d
+        from django.contrib.auth import get_user_model
+        from Tracker.models import MaterialLot, MaterialUsage, Parts, Steps
+        self.tenant = Tenant.objects.create(name="Cons", slug="consumed", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        asm = PartTypes.objects.create(tenant=self.tenant, name="Valve Body")
+        proc = Processes.objects.create(tenant=self.tenant, name="P", part_type=asm,
+                                        status="APPROVED", is_current_version=True)
+        bom = BOM.objects.create(tenant=self.tenant, part_type=asm, revision="A",
+                                 bom_type="ASSEMBLY", status="RELEASED", is_current_version=True)
+        step = Steps.objects.create(tenant=self.tenant, part_type=asm, name="Assemble")
+        self.valve = Material.objects.create(tenant=self.tenant, name="Control Valve",
+                                             purchase_lead_time_days=5)
+        BOMLine.objects.create(tenant=self.tenant, bom=bom, material=self.valve, quantity=Decimal(1),
+                               source="BUY", line_number=1, consumed_at_step=step)
+        user = get_user_model().objects.create_user(username="op", email="op@c.test", password="x",
+                                                    tenant=self.tenant)
+        # 10 received; the two draws below take 2 (recording a draw deducts it): 8 left.
+        lot = MaterialLot.objects.create(
+            tenant=self.tenant, lot_number="V1", material=self.valve, received_date=_d.today(),
+            received_by=user, quantity=Decimal(10), quantity_remaining=Decimal(10),
+            unit_of_measure="EA", status="ACCEPTED")
+        self.wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-C", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=5, process=proc, expected_start=_d.today())
+        for i in range(2):
+            part = Parts.objects.create(tenant=self.tenant, ERP_id=f"P-{i}", part_type=asm,
+                                        work_order=self.wo, step=step)
+            MaterialUsage.objects.create(tenant=self.tenant, lot=lot, part=part, work_order=self.wo,
+                                         qty_consumed=Decimal(1), consumed_by=user, step=step)
+        # A work order with no units yet still demands its whole quantity.
+        self.fresh = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-NEW", workorder_status=WorkOrderStatus.PENDING,
+            quantity=4, process=proc, expected_start=_d.today())
+
+    def test_the_per_job_readout_asks_only_for_what_is_still_to_be_drawn(self):
+        row = next(r for r in work_order_material_requirements(self.wo)['rows']
+                   if r['component'] == "Control Valve")
+        self.assertEqual(row['on_hand'], 8.0)        # the 2 drawn left the shelf
+        self.assertEqual(row['quantity'], 3.0)       # 5 ordered, 2 drawn
+        self.assertEqual(row['short_qty'], 0.0)      # 8 on the shelf covers 3
+        fresh = next(r for r in work_order_material_requirements(self.fresh)['rows']
+                     if r['component'] == "Control Valve")
+        self.assertEqual(fresh['quantity'], 4.0)
+
+    def test_the_source_lane_counts_a_drawn_part_once(self):
+        # 3 + 4 = 7 still to draw against 8 on the shelf: nothing to buy. Counting the
+        # drawn 2 again (5 + 4 = 9) read short by 1.
+        req = sourcing_requirements(self.tenant)
+        self.assertFalse(any(r['material'] == "Control Valve" for r in req['source']))
+
+    def test_the_material_lane_and_outlook_count_a_drawn_part_once(self):
+        from django.utils import timezone
+        from Tracker.services.planning.material_load import material_series
+        from Tracker.services.planning.rccp import _month_buckets
+        buckets = _month_buckets(self.tenant, timezone.now(), 1)
+        rows = material_series(self.tenant, buckets, {self.wo.id: 0, self.fresh.id: 0})
+        valve = next(m for m in rows if m['name'] == "Control Valve")
+        self.assertEqual(valve['series'][0]['demand'], 7.0)

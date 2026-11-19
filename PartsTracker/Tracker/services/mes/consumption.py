@@ -335,6 +335,46 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
     return result
 
 
+def drawn_by_work_order(tenant, work_order_ids) -> dict:
+    """`{(work_order_id, (kind, id)): quantity}` already drawn from stock into each work
+    order's units, per bought item.
+
+    What demand nets off: a part drawn here left on-hand when it was drawn, so a
+    requirement that still asked for it would count it twice — once gone from the
+    shelf, once still wanted — and the shortage would grow with floor progress. Read
+    from the same records that took it off the shelf (not from how far the units have
+    got), so demand and on-hand always move together: an advance that drew nothing (no
+    operator, or the shelf was short) leaves its demand standing against stock that was
+    never reduced."""
+    from django.db.models import Sum
+    from Tracker.models import MaterialUsage
+    out: dict = {}
+    for r in (MaterialUsage.objects.filter(  # tenant-safe: explicit tenant filter
+                  tenant=tenant, work_order_id__in=list(work_order_ids), lot__isnull=False)
+              .values('work_order_id', 'lot__material_id', 'lot__material_type_id')
+              .annotate(q=Sum('qty_consumed'))):
+        if r['lot__material_id'] is not None:
+            key = ('MATERIAL', r['lot__material_id'])
+        elif r['lot__material_type_id'] is not None:
+            key = ('PART_TYPE', r['lot__material_type_id'])
+        else:
+            continue
+        k = (r['work_order_id'], key)
+        out[k] = out.get(k, 0.0) + float(r['q'] or 0)
+    return out
+
+
+def net_of_drawn(drawn: dict, work_order_id, key, required: float) -> float:
+    """`required` less what this work order has already drawn of `key`, and that much
+    taken off `drawn` — so two lines of one item on a BOM share the draw, not each
+    claim all of it."""
+    have = drawn.get((work_order_id, key), 0.0)
+    take = min(have, required)
+    if take:
+        drawn[(work_order_id, key)] = have - take
+    return required - take
+
+
 def consume_for_step_safely(part, step, operator, bom_cache: dict | None = None):
     """`consume_for_step` that can never break the caller's transition.
 
