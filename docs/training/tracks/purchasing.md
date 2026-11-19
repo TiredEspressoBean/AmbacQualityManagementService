@@ -69,10 +69,11 @@ Log in as Priya. **Purchasing** links **Shortages**, **Material outlook**, **Exp
 **You will:** find a shortage and record that it's ordered.
 
 1. **Shortages** (**Scheduling** > **Requirements**). **Source (buy)** lists what
-   open work needs that stock plus what's expected won't cover: *Control Valve
-   Assembly · short 14*, with its lead time, need-by and order-by dates. *Order now*
-   means the order-by date has passed. No supplier is named yet: module 4 sets it.
-2. Place the order in the ERP. Then tick the row and **Add expected delivery**:
+   open work needs that stock plus what's expected won't cover: **Control Valve
+   Assembly**, with how many it's short, its lead time, need-by and order-by dates.
+   *Order now* means the order-by date has passed. No supplier is named yet: module 4
+   sets it.
+2. Place the order in the ERP. Then tick the row and **Add expected deliveries**:
    *Record what you've ordered in the ERP so planning counts it as incoming. Nothing
    is purchased here.*
 3. Enter the PO number and line, the quantity, and the supplier's promised date (it
