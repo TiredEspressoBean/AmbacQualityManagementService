@@ -47,6 +47,10 @@ ADMIN_ONLY_MODELS = {
     # role/user perms, and suspend/reactivate by the User viewset's
     # bulk-activate action — never by membership CRUD perms.
     'tenantmembership',
+    # Issued reset links. Written by the reset-link action (gated by add_user, the
+    # invite permission) and stamped used by the reset itself — no PasswordResetLink
+    # viewset, so no CRUD perm is ever checked (services/core/sign_in).
+    'passwordresetlink',
     # Schedule-edit journal. Rows are written by the manual-move services and read
     # back only by the schedule's undo endpoint — there is no ScheduleEdit viewset,
     # so no role needs CRUD on it. Undo is gated by the scheduling perms on the

@@ -51975,7 +51975,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RestAuthDetail'
+                $ref: '#/components/schemas/PasswordResetConfirmResponse'
           description: ''
   /auth/registration/:
     post:

@@ -53,8 +53,10 @@ urlpatterns = [
     path('health/', health_check, name='health_check'),
     path('ready/', ready_check, name='ready_check'),
 
-    path('admin/doc/', include('django.contrib.admindocs.urls')),
-    path('admin/', admin.site.urls, name='admin'),
+    # Django's own admin, off /admin/: that prefix is the app's (/admin/users and the rest),
+    # and the proxy sends whatever it routes here to Django.
+    path('djangoadmin/doc/', include('django.contrib.admindocs.urls')),
+    path('djangoadmin/', admin.site.urls, name='admin'),
 
     path("accounts/", include("allauth.urls")),
 ]
@@ -83,6 +85,11 @@ urlpatterns += [
     path("auth/login/", ThrottledLoginView.as_view()),
     path("auth/sign-in-notice/", sign_in_notice),
     path("auth/password/reset/", ThrottledPasswordResetView.as_view()),
+    # The Reset password page posts here: the throttle, each link's own lifetime and
+    # signing out elsewhere (services/core/sign_in) must apply to it, not only to the
+    # emailed-path route above.
+    path("auth/password/reset/confirm/", ThrottledPasswordResetConfirmView.as_view(),
+         name="rest_password_reset_confirm"),
     path("auth/registration/", ThrottledRegisterView.as_view()),
     path("auth/", include("dj_rest_auth.urls")),
     path("auth/registration/", include("dj_rest_auth.registration.urls")),

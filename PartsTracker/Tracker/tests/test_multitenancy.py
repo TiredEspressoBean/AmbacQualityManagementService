@@ -149,7 +149,7 @@ class TenantMiddlewareTestCase(TestCase):
 
     def test_exempt_paths_no_tenant(self):
         """Test that exempt paths don't require tenant."""
-        exempt_paths = ['/api/health/', '/auth/login/', '/admin/', '/accounts/']
+        exempt_paths = ['/api/health/', '/auth/login/', '/djangoadmin/', '/accounts/']
 
         for path in exempt_paths:
             request = self.factory.get(path)

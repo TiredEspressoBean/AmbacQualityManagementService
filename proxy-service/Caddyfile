@@ -22,7 +22,8 @@
         reverse_proxy {$BACKEND_URL}
     }
 
-    handle /admin/* {
+    # Django's admin. /admin/* is the app's own pages and falls through to the SPA.
+    handle /djangoadmin/* {
         reverse_proxy {$BACKEND_URL}
     }
 

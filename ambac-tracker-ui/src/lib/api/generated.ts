@@ -31265,6 +31265,7 @@ const PasswordResetConfirmRequest = z.object({
   uid: z.string().min(1),
   token: z.string().min(1),
 });
+const PasswordResetConfirmResponse = z.object({ detail: z.string() });
 const RegisterRequest = z.object({
   username: z.string().min(1).max(150),
   email: z.string().min(1).email(),
@@ -31338,7 +31339,6 @@ const PatchedTenantAwareUserDetailsRequest = z
     last_name: z.string().max(150).nullable(),
   })
   .partial();
-const PasswordResetConfirmResponse = z.object({ detail: z.string() });
 const ApprovalResponseRequest = z.object({
   approval_request: z.string().uuid(),
   approver: z.number().int(),
@@ -32719,6 +32719,7 @@ export const schemas = {
   PasswordResetRequest,
   PasswordResetResponse,
   PasswordResetConfirmRequest,
+  PasswordResetConfirmResponse,
   RegisterRequest,
   Register,
   ResendEmailVerificationRequest,
@@ -32731,7 +32732,6 @@ export const schemas = {
   TenantAwareUserDetails,
   TenantAwareUserDetailsRequest,
   PatchedTenantAwareUserDetailsRequest,
-  PasswordResetConfirmResponse,
   ApprovalResponseRequest,
   CapaTaskAssigneeRequest,
   DefectRow,

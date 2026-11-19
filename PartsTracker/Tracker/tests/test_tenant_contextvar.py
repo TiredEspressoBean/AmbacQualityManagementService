@@ -157,7 +157,7 @@ class TenantMiddlewareContextVarTests(TenantTestCase):
             return HttpResponse('ok')
 
         middleware = TenantMiddleware(get_response)
-        request = factory.get('/admin/')
+        request = factory.get('/djangoadmin/')
         request.user = self.superuser  # can access any tenant
 
         outer_value = get_current_tenant_id()

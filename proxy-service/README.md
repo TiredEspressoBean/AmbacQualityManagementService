@@ -17,7 +17,7 @@ Internet → proxy (public) → Backend.railway.internal:8000
 | `/api/*` | Backend:8000 |
 | `/auth/*` | Backend:8000 |
 | `/accounts/*` | Backend:8000 |
-| `/admin/*` | Backend:8000 |
+| `/djangoadmin/*` | Backend:8000 (Django's admin; `/admin/*` is the app's) |
 | `/media/*` | Backend:8000 |
 | `/static/*` | Backend:8000 |
 | `/docs/*` | docs:80 |

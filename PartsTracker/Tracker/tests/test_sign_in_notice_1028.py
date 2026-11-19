@@ -35,7 +35,8 @@ class SignInNoticeTests(TenantTestCase):
 
     def test_no_notice_shows_nothing_and_changes_nothing(self):
         r = self.client.get('/auth/sign-in-notice/')
-        self.assertEqual(r.json(), {'text': '', 'requires_ack': False})
+        # The notice's own fields (the response also says whether email is on).
+        self.assertEqual({k: r.json()[k] for k in ('text', 'requires_ack')}, {'text': '', 'requires_ack': False})
         self.assertEqual(self._login().status_code, 200)
         self.assertFalse(self._acks().exists())
 
@@ -43,7 +44,7 @@ class SignInNoticeTests(TenantTestCase):
         self._set(NOTICE, True)
         r = self.client.get('/auth/sign-in-notice/')
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json(), {'text': NOTICE, 'requires_ack': True})
+        self.assertEqual({k: r.json()[k] for k in ('text', 'requires_ack')}, {'text': NOTICE, 'requires_ack': True})
 
     def test_a_shown_but_not_required_notice_does_not_block(self):
         self._set(NOTICE, False)

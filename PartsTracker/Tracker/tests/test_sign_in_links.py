@@ -128,7 +128,8 @@ class ResetLinkTests(_Fixture):
     def _confirm(self, url, password):
         uid, token = url.rstrip("/").split("/")[-2:]
         self.client.force_authenticate(user=None)
-        return self.client.post(f"/password/reset/confirm/{uid}/{token}/",
+        # The path the Reset password page posts to.
+        return self.client.post("/auth/password/reset/confirm/",
                                 {"uid": uid, "token": token, "new_password1": password,
                                  "new_password2": password}, format="json")
 

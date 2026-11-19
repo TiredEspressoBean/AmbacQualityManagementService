@@ -48,7 +48,7 @@ class TenantMiddleware:
         '/ready/',
         '/api/health/',
         '/auth/',
-        '/admin/',
+        '/djangoadmin/',  # Django's admin (moved off /admin/, the app's pages)
         '/accounts/',
         '/__reload__/',
         '/api/schema/',
@@ -352,7 +352,7 @@ class TenantStatusMiddleware:
         '/api/tenant/current/',  # Need to see why suspended
         '/api/tenant/billing/',  # Need to pay to unsuspend
         '/api/auth/',  # Need to log in to see status
-        '/admin/',
+        '/djangoadmin/',  # Django's admin (moved off /admin/, the app's pages)
     ]
 
     def __init__(self, get_response):
