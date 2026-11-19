@@ -57,14 +57,17 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
             raise ValueError(f"Cannot split a {locked.status} lot")
         # The pieces are what the lot is: accepted stock splits into accepted stock
         # (consumption draws ACCEPTED/IN_USE only, so a RECEIVED child of good stock
-        # could never be used), a held lot's pieces stay held for the same reason. A lot
-        # still in receiving keeps its child at RECEIVED, as before.
+        # could never be used), a held lot's pieces stay held, and a lot still awaiting
+        # its decision splits into pieces awaiting the same one — they follow the
+        # parent's decision and never open an inspection of their own (inventory's
+        # children-follow rule; user ruling 2026-11-19). A piece of a lot under
+        # inspection used to come out RECEIVED, outside the inspection it belonged to.
         if locked.status in ("ACCEPTED", "IN_USE"):
             child_status, child_hold = "ACCEPTED", ""
         elif locked.status == "QUARANTINE":
             child_status, child_hold = "QUARANTINE", locked.hold_reason
         else:
-            child_status, child_hold = "RECEIVED", ""
+            child_status, child_hold = locked.status, ""
 
         child_count = locked.child_lots.count()
         child_lot_number = f"{locked.lot_number}-{child_count + 1:02d}"

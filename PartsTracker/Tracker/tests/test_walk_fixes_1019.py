@@ -36,7 +36,8 @@ class NewWorkProcessTests(TenantTestCase):
 
     def _create(self, process):
         return self.client.post("/api/WorkOrders/", {
-            "ERP_id": f"WO-NW-{process.pk.hex[:6]}", "quantity": 1, "process": str(process.id)},
+            # No quantity: one would start units, which these routing-less processes can't.
+            "ERP_id": f"WO-NW-{process.pk.hex[:6]}", "process": str(process.id)},
             format="json")
 
     def test_the_picker_lists_only_the_version_in_force(self):

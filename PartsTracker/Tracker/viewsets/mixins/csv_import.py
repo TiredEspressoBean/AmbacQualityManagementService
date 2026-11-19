@@ -270,6 +270,10 @@ class CSVImportMixin:
         columns = []
         viewset_mapping = getattr(self, 'csv_field_mapping', {})
         reference_fields = {f['name'].lower() for f in model_fields if f['type'] == 'reference'}
+        # Headers are matched case-insensitively (normalize_header lowercases them and drops
+        # the template's required-column "*"), but the suggestion must name the field as
+        # the dialog lists it: "erp_id" matched ERP_id and showed as no field at all.
+        real_name = {f['name'].lower(): f['name'] for f in model_fields}
 
         for header in headers:
             header_lower = normalize_header(header)
@@ -289,15 +293,15 @@ class CSVImportMixin:
                 confidence = 'high'
             # Check exact match
             elif header_lower in field_names_set:
-                mapped_to = header_lower
+                mapped_to = real_name.get(header_lower, header_lower)
                 confidence = 'high'
             elif fk_base:
-                mapped_to = fk_base
+                mapped_to = real_name.get(fk_base, fk_base)
                 confidence = 'high'
             # Check if header matches a field display name
             else:
                 for field in model_fields:
-                    if header.lower() == field['display'].lower():
+                    if header.strip().rstrip('*').strip().lower() == field['display'].lower():
                         mapped_to = field['name']
                         confidence = 'medium'
                         break

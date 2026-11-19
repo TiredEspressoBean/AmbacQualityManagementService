@@ -60,12 +60,16 @@ const formSchema = schemas.WorkOrderRequest.pick({
     expected_completion: z.coerce.date(),
     // Why the priority changed — required by the server when an edit changes it.
     priority_reason: z.string().optional(),
+    // Create only: how many units to start. Units on an existing order change through
+    // Add parts, make-up or reduce on the work order, not here.
+    units: z.coerce.number().int().min(0, "Can't be negative").optional(),
 })
 
 type FormValues = Omit<Schema<"WorkOrderRequest">, "expected_completion"> & {
     expected_completion: Date
     related_order: string
     priority_reason?: string
+    units?: number
 }
 
 const PRIORITY_LABEL: Record<number, string> = { 1: "Urgent", 2: "High", 3: "Normal", 4: "Low" }
@@ -144,8 +148,9 @@ export default function WorkOrderFormPage() {
         const expectedDate = d
             ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
             : undefined
+        const { units, ...rest } = values
         const payload = {
-            ...values,
+            ...rest,
             process: values.process || null,
             related_order: values.related_order || null,
             expected_completion: expectedDate,
@@ -169,7 +174,11 @@ export default function WorkOrderFormPage() {
                 }
             )
         } else {
-            createWorkOrder.mutate({ ...payload, priority_reason: undefined }, {
+            if (units && !values.process) {
+                form.setError("process", { message: "Pick the process the units will run." })
+                return
+            }
+            createWorkOrder.mutate({ ...payload, priority_reason: undefined, quantity: units || 0 }, {
                 onSuccess: () => {
                     toast.success("Work order created successfully!")
                     form.reset()
@@ -376,6 +385,27 @@ export default function WorkOrderFormPage() {
                         )
                     }}
                 />
+
+                {mode === "create" && (
+                    <FormField
+                        control={form.control}
+                        name="units"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Quantity</FormLabel>
+                                <FormControl>
+                                    <Input type="number" min={0} step={1} className="w-[160px]" placeholder="0"
+                                           {...field} value={field.value ?? ""} />
+                                </FormControl>
+                                <FormDescription>
+                                    Units to start: this many are created at the process's first step. To
+                                    change units later, use Add parts or make-up on the work order.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
 
                 <FormField
                     control={form.control}

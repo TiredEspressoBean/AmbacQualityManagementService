@@ -31,12 +31,16 @@ def awaiting_inspection(qs):
     its own copy (the inbox lost the core-lot exclusion). A third copy is the
     MaterialLot list's `inspection_pending` lens (MaterialLotViewSet.get_queryset),
     which calls this too."""
+    from django.db.models import F
     return (qs.filter(archived=False)  # .objects doesn't exclude soft-deleted; the per-model queue does
             .filter(Q(status__in=["RECEIVED", "AWAITING_INSPECTION"])
                     | (Q(status="QUARANTINE") & ~Q(hold_reason="")))
             # A customer's bulk cores are graded unit by unit as they're identified,
             # not sampled as supplier stock.
-            .filter(holds_cores=False))
+            .filter(holds_cores=False)
+            # A piece split off a lot still awaiting its decision takes that decision
+            # (services/mes/inventory.FOLLOW_FROM): it isn't a second lot to inspect.
+            .exclude(parent_lot__isnull=False, parent_lot__status=F("status")))
 
 
 def _lot_rows(user=None):

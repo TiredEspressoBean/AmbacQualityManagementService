@@ -17,8 +17,36 @@ from __future__ import annotations
 from django.db import transaction
 
 
+# A piece split off a delivery before its decision (a partial move to the lab, say) is
+# still that delivery: it waits for the same decision and takes it — accepted, rejected,
+# returned or scrapped with the rest, held and released with it — and never opens an
+# inspection of its own (user ruling 2026-11-19). These are the states a piece follows
+# its parent out of. Stock that has been accepted splits into lots of its own, so a
+# move of the parent's stock (shipped, rejected from stock) doesn't carry its pieces.
+FOLLOW_FROM = ("RECEIVED", "AWAITING_INSPECTION", "QUARANTINE", "REJECTED")
+
+
+def following_children(lot) -> list:
+    """The pieces of ``lot`` still following it: split off, in the state it's in, and
+    not decided on their own — a piece rejected in a partial reject has a disposition
+    of its own and goes where that sends it, not where the rest of the lot goes."""
+    from Tracker.models import MaterialLot
+    if lot.status not in FOLLOW_FROM:
+        return []
+    return list(MaterialLot.all_tenants.filter(  # tenant-safe: scoped by the parent FK
+        parent_lot_id=lot.pk, status=lot.status, archived=False, dispositions__isnull=True))
+
+
+def delivery_quantity(lot):
+    """What's left of the delivery ``lot`` heads: its own remaining and that of every
+    piece still following it — what one decision on it covers."""
+    return lot.quantity_remaining + sum(
+        (delivery_quantity(child) for child in following_children(lot)), 0)
+
+
 def _transition(lot, *, allowed_from, to):
-    """Lock ``lot``, assert its status is in ``allowed_from``, set it to ``to``."""
+    """Lock ``lot``, assert its status is in ``allowed_from``, set it to ``to`` — and
+    take every piece still following it along (``FOLLOW_FROM``)."""
     from Tracker.models import MaterialLot
 
     with transaction.atomic():
@@ -28,8 +56,11 @@ def _transition(lot, *, allowed_from, to):
                 f"Lot {locked.lot_number} is {locked.status}; "
                 f"expected one of {', '.join(allowed_from)}."
             )
+        children = following_children(locked)
         locked.status = to
         locked.save(update_fields=["status", "updated_at"])
+        for child in children:
+            _transition(child, allowed_from=(child.status,), to=to)
         lot.refresh_from_db()
     return lot
 

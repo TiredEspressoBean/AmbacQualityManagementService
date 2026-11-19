@@ -19,9 +19,15 @@ def holds(lot) -> list[str]:
 
 
 def _write(lot, codes: list[str]) -> None:
+    from Tracker.services.mes.inventory import following_children
+    # Pieces still following the lot (inventory.FOLLOW_FROM) carry its holds too:
+    # held, released and cleared with it, as its status is.
+    children = following_children(lot)
     lot.hold_reasons = codes
     lot.hold_reason = codes[0] if codes else ""
     lot.save(update_fields=["hold_reasons", "hold_reason", "updated_at"])
+    for child in children:
+        _write(child, list(codes))
 
 
 def add_hold(lot, code: str) -> None:

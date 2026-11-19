@@ -87,7 +87,8 @@ class WorkOrderPriorityTests(TenantTestCase):
 
     def test_a_new_work_order_sets_its_first_priority_without_a_reason(self):
         r = self.client.post("/api/WorkOrders/", {
-            "ERP_id": "WO-NEW", "workorder_status": "PENDING", "quantity": 1,
+            # No quantity: one would start units, which this routing-less process can't.
+            "ERP_id": "WO-NEW", "workorder_status": "PENDING",
             "process": str(self.wo.process_id), "priority": 1,
         }, format="json")
         self.assertEqual(r.status_code, 201, r.content)

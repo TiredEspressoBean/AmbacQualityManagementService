@@ -1137,12 +1137,50 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
                     validated_data['related_order'], validated_data.get('process'))
             except CannotPlan as e:
                 raise serializers.ValidationError({'order_line': str(e)})
+        if validated_data['quantity'] > 0:
+            return self._create_with_units(validated_data)
         return super().create(validated_data)
+
+    def _create_with_units(self, validated_data):
+        """A quantity on create starts that many units at the process's first step,
+        through plan_work_order — the service Plan N on an order line uses — so a job
+        made here is the same as one planned from a line (user ruling 2026-11-19). It
+        makes the parts and explodes the BOM; the remaining fields are set on the job."""
+        from Tracker.services.mes.work_order import plan_work_order
+        process = validated_data.get('process')
+        if process is None:
+            raise serializers.ValidationError({'process': "Pick the process the units will run."})
+        request = self.context.get('request')
+        try:
+            wo = plan_work_order(
+                tenant=validated_data['tenant'], process=process,
+                quantity=validated_data['quantity'], user=getattr(request, 'user', None),
+                erp_id=validated_data.get('ERP_id') or None,
+                priority=validated_data.get('priority'),
+                expected_start=validated_data.get('expected_start'),
+                expected_completion=validated_data.get('expected_completion'))
+        except ValueError as e:
+            raise serializers.ValidationError({'quantity': str(e)})
+        planned = {'tenant', 'process', 'quantity', 'ERP_id', 'priority',
+                   'expected_start', 'expected_completion', 'workorder_status'}
+        rest = {k: v for k, v in validated_data.items() if k not in planned}
+        for k, v in rest.items():
+            setattr(wo, k, v)
+        if rest:
+            wo.save(update_fields=list(rest))
+        return wo
 
     def update(self, instance, validated_data):
         """Priority goes through change_priority, which records the reason; the rest
-        saves as before."""
+        saves as before. Quantity is the units on the job, so it changes only through
+        the paths that make or cancel units (Add parts, make-up, reduce) — never as a
+        bare number."""
         from Tracker.services.mes.work_order import change_priority, parts_follow_order
+        if 'quantity' in validated_data and validated_data['quantity'] != instance.quantity:
+            raise serializers.ValidationError({'quantity': (
+                "Change a work order's units with Add parts, make-up or reduce on the "
+                "work order — the quantity follows them.")})
+        validated_data.pop('quantity', None)
         reason = validated_data.pop('priority_reason', '')
         old_order_id = instance.related_order_id
         new_priority = validated_data.pop('priority', None)

@@ -29,7 +29,9 @@ def line_for_new_work_order(order, process):
     Left unattached, the line still read its quantity as unplanned while the job loaded
     and bought the same units again. So: exactly one such line → that line; none →
     None (nothing to attach — a legacy order, or a job for something not on a line);
-    several → CannotPlan, naming them, since only a person knows which it's for.
+    several → CannotPlan, naming them, since only a person knows which it's for. Lines
+    with units still unplanned are the candidates; a fully planned line only counts when
+    every line is.
 
     Creation only: a job already on file is never re-attached, and a line added to the
     order later is new demand ("lines are additive"). Remanufacture is left alone — its
@@ -44,6 +46,10 @@ def line_for_new_work_order(order, process):
         status=OrderLineStatus.OPEN, archived=False).order_by('line_number'))
     if not lines:
         return None
+    # A line with nothing left to plan isn't what a new job is for; when every line is
+    # fully planned, the job is still the order's work, so it attaches (and shows as
+    # over-planning) rather than loading on its own.
+    lines = [ln for ln in lines if ln.remaining_quantity > 0] or lines
     if len(lines) > 1:
         numbers = ", ".join(str(ln.line_number) for ln in lines)
         raise CannotPlan(

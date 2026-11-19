@@ -157,15 +157,19 @@ def reject_lot(report, user, *, disposition_type: str = "RETURN_TO_SUPPLIER",
             # it used to overwrite it, and releasing the request lost the other.
             lot_holds.hold(lot, HOLD_WHOLE_LOT_REJECT_REQUESTED)
             disposition = _open_disposition(
-                lot, user=user, disposition_type=disposition_type, quantity=total,
+                lot, user=user, disposition_type=disposition_type,
+                # The whole delivery: pieces split off it follow its decision.
+                quantity=inventory.delivery_quantity(lot),
                 description=description, report=report, severity=severity, decided=False)
             return lot, disposition, "WHOLE_LOT_REQUESTED"
 
+        # Measured before the reject moves the pieces along with the lot.
+        covered = inventory.delivery_quantity(lot)
         ri.reject(report, user)
         lot.refresh_from_db()
         lot_holds.clear_holds(lot)  # rejected: the decision supersedes every hold
         disposition = _open_disposition(
-            lot, user=user, disposition_type=disposition_type, quantity=total,
+            lot, user=user, disposition_type=disposition_type, quantity=covered,
             description=description, report=report, severity=severity)
         apply_disposition_to_lot(disposition)
         return lot, disposition, "WHOLE_LOT"

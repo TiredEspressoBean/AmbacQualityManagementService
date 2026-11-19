@@ -274,3 +274,73 @@ class TraceAndSheetTests(_Fixture):
         self.assertEqual((ctx.quantity, ctx.erp_po, ctx.reason, ctx.supplier_name),
                          ("20 EA", "4500123 / 10", "Flash", "Acme"))
         self.assertNotIn("price", ctx.model_dump_json().lower())
+
+
+class SplitUnderInspectionTests(_Fixture):
+    """A piece split off a lot awaiting inspection (a partial move to the lab) keeps the
+    lot's state and takes its decision; it never opens an inspection of its own (user
+    ruling 2026-11-19 — confirmed in the browser on RCV-MAT-0003, where the piece came
+    out RECEIVED, outside the inspection)."""
+
+    def _split(self, lot, qty="10"):
+        from Tracker.services.mes.material_lot import split_material_lot
+        child = split_material_lot(lot, Decimal(qty), reason="moved to the lab")
+        self.assertEqual(child.status, "AWAITING_INSPECTION")
+        return child
+
+    def test_accepting_the_lot_accepts_its_pieces(self):
+        lot = self._lot()
+        child = self._split(lot)
+        # The parent's sample, inspected and clean (the piece is never sampled).
+        self.assertEqual(self.client.post(f"/api/MaterialLots/{lot.id}/record_bulk/",
+                                          {"defectives_found": 0}, format="json").status_code, 200)
+        resp = self.client.post(f"/api/MaterialLots/{lot.id}/accept/")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        child.refresh_from_db()
+        self.assertEqual(child.status, "ACCEPTED")          # usable stock now
+
+    def test_rejecting_the_lot_rejects_its_pieces_on_the_same_disposition(self):
+        lot = self._lot()
+        child = self._split(lot)
+        resp = self.client.post(f"/api/MaterialLots/{lot.id}/reject/", {"whole_lot": True}, format="json")
+        self.assertEqual(resp.json()["outcome"], "WHOLE_LOT", resp.content)
+        child.refresh_from_db()
+        self.assertEqual(child.status, "REJECTED")
+        # One disposition, for the whole delivery — the piece in the lab included.
+        lot.refresh_from_db()
+        self.assertEqual(lot.dispositions.get().quantity, Decimal(500))
+        self.assertFalse(child.dispositions.exists())
+
+    def test_a_following_piece_is_not_a_second_lot_to_inspect(self):
+        from Tracker.models import MaterialLot
+        from Tracker.services.qms.incoming_inspection import awaiting_inspection
+        lot = self._lot()
+        child = self._split(lot)
+        queue = set(awaiting_inspection(MaterialLot.objects.all()).values_list("id", flat=True))
+        self.assertIn(lot.id, queue)
+        self.assertNotIn(child.id, queue)
+
+    def test_a_held_lots_pieces_are_released_with_it(self):
+        from Tracker.services.qms import lot_holds
+        from Tracker.services.mes import inventory
+        lot = self._lot()
+        lot_holds.hold(lot, "MANUAL_HOLD")
+        from Tracker.services.mes.material_lot import split_material_lot
+        child = split_material_lot(lot, Decimal("10"), reason="moved")
+        self.assertEqual(child.status, "QUARANTINE")
+        lot.refresh_from_db()
+        lot_holds.clear_holds(lot)
+        inventory.return_to_inspection(lot)
+        child.refresh_from_db()
+        self.assertEqual((child.status, lot_holds.holds(child)), ("AWAITING_INSPECTION", []))
+
+    def test_a_piece_rejected_on_its_own_keeps_its_own_course(self):
+        """A partial reject splits the bad pieces off with their own disposition: the
+        rest being accepted doesn't accept them."""
+        from Tracker.models import MaterialLot
+        lot = self._lot()
+        resp = self.client.post(f"/api/MaterialLots/{lot.id}/reject/", {
+            "rejected_quantity": "20", "disposition_type": "RETURN_TO_SUPPLIER"}, format="json")
+        bad = MaterialLot.objects.get(pk=resp.json()["lot"]["id"])
+        lot.refresh_from_db()
+        self.assertEqual((lot.status, bad.status), ("ACCEPTED", "REJECTED"))

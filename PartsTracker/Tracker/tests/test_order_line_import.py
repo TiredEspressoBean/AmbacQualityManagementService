@@ -136,6 +136,52 @@ class OrderLineImportTests(APITestCase):
         line = OrderLine.objects.get(order=self.order, line_number=1)
         self.assertEqual(WorkOrder.objects.get(ERP_id="WO-FORM").order_line_id, line.id)
 
+    def test_the_forms_quantity_starts_that_many_units_as_plan_n_does(self):
+        """The form had no quantity, so a job made there had 0 units and loaded nothing
+        (user ruling 2026-11-19): N units at the first step, through plan_work_order."""
+        from Tracker.models import Parts, ProcessStep, Steps
+        step = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Assemble")
+        ProcessStep.objects.create(process=self.process, step=step, order=1)
+        self._lines(self.HEADER, "ORD-9,1,INJ-1,4,2027-03-01,")
+        r = self.client.post("/api/WorkOrders/", {
+            "ERP_id": "WO-QTY", "related_order": str(self.order.id), "process": str(self.process.id),
+            "quantity": 4, "notes": "from the form"}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        wo = WorkOrder.objects.get(ERP_id="WO-QTY")
+        self.assertEqual((wo.quantity, wo.target_good_quantity, wo.notes), (4, 4, "from the form"))
+        self.assertEqual(Parts.objects.filter(work_order=wo, step=step).count(), 4)
+        line = OrderLine.objects.get(order=self.order, line_number=1)
+        self.assertEqual((wo.order_line_id, line.remaining_quantity), (line.id, 0))
+        # Units change through Add parts / make-up / reduce — not as a bare number.
+        r = self.client.patch(f"/api/WorkOrders/{wo.id}/", {"quantity": 9}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("Add parts", str(r.json()))
+
+    def test_the_templates_own_headers_map_themselves(self):
+        """The template marks required columns "ERP_id*"; uploaded as it came, the preview
+        matched it but suggested "erp_id", a name the dialog doesn't list, so the column
+        showed unmapped (2026-11-19). Every required column, whatever its case."""
+        import json
+        head = self.client.get("/api/WorkOrders/import-template/csv/").content.decode("utf-8-sig").splitlines()[0]
+        starred = [h for h in head.split(",") if h.endswith("*")]
+        self.assertIn("ERP_id*", starred)
+        f = io.BytesIO(f"{head}\n".encode()); f.name = "template.csv"
+        cols = self.client.post("/api/WorkOrders/import-preview/", {"file": f},
+                                format="multipart").json()["columns"]
+        # The preview reads headers normalised (case, the "*"), so match them that way.
+        by_header = {c["original"].rstrip("*").lower(): c["mapped_to"] for c in cols}
+        for h in starred:
+            self.assertEqual(by_header[h.rstrip("*").lower()], h.rstrip("*"), by_header)
+        # And the mapping the dialog sends imports the row.
+        mapping = {c["original"]: c["mapped_to"] or "_skip_" for c in cols}
+        values = {"erp_id": "WO-TPL", "process": "Build"}
+        cells = [values.get(h.rstrip("*").lower(), "") for h in head.split(",")]
+        f = io.BytesIO(f"{head}\n{','.join(cells)}\n".encode()); f.name = "filled.csv"
+        r = self.client.post("/api/WorkOrders/import/", {"file": f, "mode": "upsert",
+                                                         "column_mapping": json.dumps(mapping)},
+                             format="multipart")
+        self.assertEqual(r.json()["summary"]["created"], 1, r.content)
+
     def test_a_work_order_naming_a_line_its_order_lacks_is_refused(self):
         r = self._upload("/api/WorkOrders/import/",
                          "ERP_id,related_order,order_line_number,process,quantity\n"
