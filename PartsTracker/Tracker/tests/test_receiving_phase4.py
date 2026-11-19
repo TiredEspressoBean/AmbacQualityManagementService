@@ -334,6 +334,22 @@ class SplitUnderInspectionTests(_Fixture):
         child.refresh_from_db()
         self.assertEqual((child.status, lot_holds.holds(child)), ("AWAITING_INSPECTION", []))
 
+    def test_a_partial_reject_accepts_the_rest_and_the_moved_piece_together(self):
+        """The rejected pieces split off with a disposition of their own; the rest of the
+        lot is accepted, and the piece moved to the lab is accepted with it."""
+        from Tracker.models import MaterialLot
+        lot = self._lot()
+        moved = self._split(lot)
+        resp = self.client.post(f"/api/MaterialLots/{lot.id}/reject/", {
+            "rejected_quantity": "20", "disposition_type": "RETURN_TO_SUPPLIER"}, format="json")
+        self.assertEqual(resp.json()["outcome"], "PARTIAL", resp.content)
+        bad = MaterialLot.objects.get(pk=resp.json()["lot"]["id"])
+        lot.refresh_from_db()
+        moved.refresh_from_db()
+        self.assertEqual((lot.status, moved.status, bad.status), ("ACCEPTED", "ACCEPTED", "REJECTED"))
+        self.assertEqual(bad.dispositions.get().quantity, Decimal(20))
+        self.assertFalse(lot.dispositions.exists() or moved.dispositions.exists())
+
     def test_a_piece_rejected_on_its_own_keeps_its_own_course(self):
         """A partial reject splits the bad pieces off with their own disposition: the
         rest being accepted doesn't accept them."""
