@@ -585,6 +585,28 @@ class RccpLoadPlacementTests(_RccpFixture, TestCase):
         self.assertGreater(series[0], 0.0,
                            "in-progress work must load the current bucket")
 
+    def test_an_order_with_no_parts_yet_loads_its_whole_route(self):
+        """Audit C (2026-11-19, confirmed in the browser on WO-2024-0048-A): load was
+        read only off the order's parts, so an order released before its parts were
+        made carried no hours and What to release showed it taking no time. Its units
+        are all their work still to do."""
+        today = timezone.now().date()
+        WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-NOPARTS", workorder_status=WorkOrderStatus.PENDING,
+            quantity=5, process=self.process, expected_completion=today + timedelta(days=20))
+        self.assertAlmostEqual(sum(self._labor_series()), 5.0, places=1)  # 5 units × 1 h
+
+    def test_made_units_and_units_still_to_make_add_up_once(self):
+        """3 of 5 units made (at the one step), 2 not yet: 5 hours, not 3 and not 8."""
+        today = timezone.now().date()
+        wo = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-PART", workorder_status=WorkOrderStatus.IN_PROGRESS,
+            quantity=5, process=self.process, expected_completion=today + timedelta(days=20))
+        for i in range(3):
+            Parts.objects.create(tenant=self.tenant, ERP_id=f"WO-PART-{i}", part_type=self.pt,
+                                 work_order=wo, step=self.step)
+        self.assertAlmostEqual(sum(self._labor_series()), 5.0, places=1)
+
 
 class RccpOrderLineDemandTests(_RccpFixture, TestCase):
     """Open order lines no work order carries yet are placed like an undated work
@@ -617,6 +639,18 @@ class RccpOrderLineDemandTests(_RccpFixture, TestCase):
         labor = rccp.build_capacity_load(self.tenant, months=6)["labor"]["series"]
         self.assertAlmostEqual(sum(b["load_hours"] for b in labor), 10.0, delta=0.5)
         self.assertEqual(sum(b["order_line_hours"] for b in labor), 0.0)
+
+    def test_make_up_units_are_not_more_of_the_order(self):
+        """Audit D (2026-11-19, confirmed in the browser on WO-QA-MANAGE-04): a make-up
+        part raises the work order's quantity to replace scrap; the line read it as one
+        more unit covered and its unplanned remainder shrank."""
+        due = timezone.now().date() + timedelta(days=60)
+        line = self._line(10, due)
+        wo = self._wo(6, due=due, erp="WO-MAKEUP")
+        WorkOrder.objects.filter(pk=wo.pk).update(order_line=line, related_order=line.order,
+                                                  quantity=8, target_good_quantity=6)
+        line.refresh_from_db()
+        self.assertEqual((line.planned_quantity, line.remaining_quantity), (6, 4))
 
     def test_a_deleted_line_carries_no_load(self):
         """API DELETE archives a line; an archived line is no one's demand any more."""

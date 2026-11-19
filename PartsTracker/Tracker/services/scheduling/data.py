@@ -158,6 +158,10 @@ class WorkOrderData:
     parts: tuple  # tuple[PartData, ...] — reman cores included; a core is a part
     steps: tuple   # tuple[StepNode, ...] — the process routing nodes, ordered
     edges: tuple   # tuple[EdgeData, ...] — the routing DAG
+    # Units the order is for that don't exist as parts yet (quantity less every part made,
+    # finished or not). Capacity planning loads them over the whole route; without this a
+    # released order with no parts carried no hours at all (audit C, 2026-11-19).
+    unstarted: int = 0
 
 
 @dataclass(frozen=True)
@@ -633,6 +637,8 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
             pegged_consumes_step_id=consumes_step_id,
             quantity=wo.quantity,
             process_id=wo.process_id, parts=parts, steps=steps, edges=edges,
+            unstarted=max(0, (wo.quantity or 0)
+                          - sum(1 for p in wo.parts.all() if not p.archived)),
         ))
     return result
 
@@ -1042,9 +1048,15 @@ def get_material_gates(tenant, horizon: HorizonData):
     short: set = set()
     detail: dict = {}  # (wo_id, step_id|None) -> [human shortage lines]
     hstart_date = horizon.start.date()
-    for wo in (WorkOrder.objects.filter(archived=False, tenant=tenant, process__isnull=False)
-               .exclude(workorder_status__in=excluded)
-               .select_related('process').prefetch_related('parts__core_role')):
+    open_wos = list(WorkOrder.objects.filter(archived=False, tenant=tenant, process__isnull=False)
+                    .exclude(workorder_status__in=excluded)
+                    .select_related('process').prefetch_related('parts__core_role'))
+    # What each job's units have already drawn: gone from on-hand, so gone from what the
+    # job still needs — the Requirements report's rule (services/mes/consumption).
+    # Counting it again flagged a part-built job short of parts it already has (audit A).
+    from Tracker.services.mes.consumption import drawn_by_work_order, net_of_drawn
+    drawn = drawn_by_work_order(tenant, [wo.id for wo in open_wos])
+    for wo in open_wos:
         pt_id = wo.process.part_type_id
         if pt_id is None:
             continue
@@ -1060,7 +1072,7 @@ def get_material_gates(tenant, horizon: HorizonData):
             item = buy_item_from_values(line)
             if item is None:
                 continue  # BUY line with no purchasable component — nothing to net
-            required = float(line['quantity']) * wo.quantity
+            required = net_of_drawn(drawn, wo.id, item, float(line['quantity']) * wo.quantity)
             have = onhand.get(item, 0.0)
             if have >= required:
                 continue  # enough on hand → no gate

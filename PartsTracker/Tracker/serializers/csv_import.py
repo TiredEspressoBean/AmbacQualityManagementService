@@ -947,6 +947,20 @@ class WorkOrderImport(PriorityReasonImport):
         result['order_line'] = line
         return result
 
+    def create_instance(self, data: Dict[str, Any]) -> models.Model:
+        # A NEW job naming its order but no line is that line's work when there's exactly
+        # one it can be; several, and the row says which (order_line_number). Jobs already
+        # on file are never re-attached by a re-import (user ruling 2026-11-19, audit B).
+        if data.get('related_order') is not None and data.get('order_line') is None:
+            from Tracker.services.mes.order_line import CannotPlan, line_for_new_work_order
+            try:
+                line = line_for_new_work_order(data['related_order'], data.get('process'))
+            except CannotPlan as e:
+                raise serializers.ValidationError({'order_line_number': str(e)})
+            if line is not None:
+                data['order_line'] = line
+        return super().create_instance(data)
+
 
 # ===== Model-specific CSV Import Serializers =====
 

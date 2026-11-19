@@ -9,10 +9,10 @@ scales to years. Two resources per bucket:
     hours when lights-out, shift hours when attended — reuses the runs_unattended
     resolution).
 
-Load is coarse and deliberately so (RCCP works off planned orders, not detailed
-WIP): each active work order's full routing × quantity × cycle time, point-loaded
-into the bucket of its due date. Refinements (back-scheduling across lead time,
-skill-specific labor pools, BOM sub-assembly load, in-progress netting) are v2.
+Load is the work still to do: each active work order's units from their current step
+onward (operations done, and units finished or shipped, add nothing), plus units the
+order is for that aren't parts yet over the whole route, times cycle time. Open order
+lines add their unplanned remainder over the whole route.
 
 CTP explodes a candidate order's routing the same way, adds it to the load, and
 checks whether any resource in the affected bucket crosses capacity — answering
@@ -349,12 +349,18 @@ def _route_counts(wo) -> dict:
     from Tracker.services.scheduling.routing import resolve_route
 
     counts: dict = {}
+    # A unit with no step yet starts at the head of the route (resolve_route), and so
+    # do the units the order is for that aren't parts yet: both are all their work
+    # still to do. Skipping them left a released order with no parts at zero hours.
     for unit in wo.parts:  # a reman core is a part, so it is counted here
-        if unit.current_step_id is None:
-            continue
         route_ids, _ = resolve_route(unit.current_step_id, wo.steps, wo.edges)
         for sid in route_ids:
             counts[sid] = counts.get(sid, 0) + 1
+    unstarted = getattr(wo, 'unstarted', 0)
+    if unstarted:
+        route_ids, _ = resolve_route(None, wo.steps, wo.edges)
+        for sid in route_ids:
+            counts[sid] = counts.get(sid, 0) + unstarted
     return counts
 
 

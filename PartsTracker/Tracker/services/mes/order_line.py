@@ -21,6 +21,37 @@ class CannotPlan(ValueError):
     """The line can't become work, with the reason a planner needs to act on."""
 
 
+def line_for_new_work_order(order, process):
+    """The order line a work order being CREATED for `order` is for, when it names the
+    order but no line (user ruling 2026-11-19, audit B).
+
+    A job on an order with an open new-build line of its product is that line's work.
+    Left unattached, the line still read its quantity as unplanned while the job loaded
+    and bought the same units again. So: exactly one such line → that line; none →
+    None (nothing to attach — a legacy order, or a job for something not on a line);
+    several → CannotPlan, naming them, since only a person knows which it's for.
+
+    Creation only: a job already on file is never re-attached, and a line added to the
+    order later is new demand ("lines are additive"). Remanufacture is left alone — its
+    cores carry their order themselves (OrderLine.planned_quantity)."""
+    from Tracker.models import OrderLine
+    if order is None or process is None or process.part_type_id is None:
+        return None
+    if process.is_disassembly or process.is_remanufactured:
+        return None
+    lines = list(OrderLine.objects.filter(  # tenant-safe: scoped by the order FK
+        order=order, part_type_id=process.part_type_id, fulfilment='NEW_BUILD',
+        status=OrderLineStatus.OPEN, archived=False).order_by('line_number'))
+    if not lines:
+        return None
+    if len(lines) > 1:
+        numbers = ", ".join(str(ln.line_number) for ln in lines)
+        raise CannotPlan(
+            f"Order {order.order_number or order.name} has {len(lines)} open lines of "
+            f"{process.part_type.name} (lines {numbers}) — say which line this job is for.")
+    return lines[0]
+
+
 def plan_order_line(line, *, user=None, quantity: int | None = None,
                     priority: int | None = None) -> WorkOrder:
     """Create a work order covering `quantity` of `line` (default: all that remains).

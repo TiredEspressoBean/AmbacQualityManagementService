@@ -221,6 +221,20 @@ class ConsumedComponentsTests(TenantContextMixin, TestCase):
         req = sourcing_requirements(self.tenant)
         self.assertFalse(any(r['material'] == "Control Valve" for r in req['source']))
 
+    def test_the_material_gate_counts_a_drawn_part_once(self):
+        """Audit A (2026-11-19): the solver's material gate compared a job's whole BOM ×
+        quantity with on-hand that its own draws had already reduced. With 3 on the
+        shelf, the job still needing 3 was flagged short (5 > 3) and would be gated on a
+        receipt it doesn't need; the job needing 4 is short for real."""
+        from Tracker.models import MaterialLot
+        from Tracker.services.scheduling.data import get_material_gates, get_schedule_horizon
+        MaterialLot.objects.filter(tenant=self.tenant, lot_number="V1").update(
+            quantity_remaining=Decimal(3))
+        _release, short, _detail = get_material_gates(self.tenant, get_schedule_horizon(self.tenant))
+        flagged = {wo_id for wo_id, _step in short}
+        self.assertNotIn(self.wo.id, flagged)
+        self.assertIn(self.fresh.id, flagged)
+
     def test_the_material_lane_and_outlook_count_a_drawn_part_once(self):
         from django.utils import timezone
         from Tracker.services.planning.material_load import material_series

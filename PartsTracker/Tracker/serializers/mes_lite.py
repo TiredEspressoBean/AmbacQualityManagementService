@@ -1128,6 +1128,15 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         # model's default of 1 read "1 part started" with no parts. Parts added later
         # raise it (Add Parts, make-up).
         validated_data.setdefault('quantity', 0)
+        # Naming the order but no line: the job is the order's line's work when there's
+        # exactly one it can be (services/mes/order_line.line_for_new_work_order).
+        if validated_data.get('related_order') and not validated_data.get('order_line'):
+            from Tracker.services.mes.order_line import CannotPlan, line_for_new_work_order
+            try:
+                validated_data['order_line'] = line_for_new_work_order(
+                    validated_data['related_order'], validated_data.get('process'))
+            except CannotPlan as e:
+                raise serializers.ValidationError({'order_line': str(e)})
         return super().create(validated_data)
 
     def update(self, instance, validated_data):

@@ -428,6 +428,22 @@ class S13ManualHoldIsNotARelease(_SupplyFixture):
         self.assertEqual(m["holds_released"], [{"reason": "AWAITING_COC", "lots": 1}])
 
 
+class AuditFSplitPendingLotWaitsOnce(_SupplyFixture):
+    """Audit F (2026-11-19, confirmed in the browser on RCV-MAT-0003): a partial move of
+    a lot awaiting inspection split it, and Receiving Metrics counted 5 deliveries
+    waiting for a decision where there were 4. The pieces are one receipt."""
+
+    def test_a_split_pending_lot_is_one_delivery_waiting(self):
+        from Tracker.services.mes.dock_metrics import dock_metrics
+        from Tracker.services.mes.material_lot import split_material_lot
+        lot = self._lot("F-1", status="AWAITING_INSPECTION")
+        before = dock_metrics(self.tenant, today=timezone.now().date())["awaiting_decision"]
+        split_material_lot(lot, Decimal("10"), reason="moved to the lab")
+        m = dock_metrics(self.tenant, today=timezone.now().date())
+        self.assertEqual(m["awaiting_decision"], before)
+        self.assertEqual(m["lots_received"], 1)
+
+
 class S16ReimportKeepsReceivedDateTests(_SupplyFixture):
     """S16: re-importing an identical opening-stock row with a blank received date
     leaves the existing lot UNCHANGED — it used to re-date it to today."""

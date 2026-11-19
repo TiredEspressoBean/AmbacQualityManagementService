@@ -2769,12 +2769,18 @@ class OrderLine(SecureModel):
         way, so the two agree).
         """
         from django.db.models import Sum
+        from django.db.models.functions import Coalesce
+
+        # The GOOD units a work order is for: make-up parts raise its quantity to replace
+        # scrap but are no more of the customer's order (target_good_quantity pins what
+        # it's for). Summing quantity read a line covered by its make-up parts (audit D).
+        good = Coalesce('target_good_quantity', 'quantity')
 
         def _pegged(line) -> int:
             # tenant-safe: reverse FK from an in-tenant OrderLine row.
             agg = line.work_orders.exclude(
                 workorder_status=WorkOrderStatus.CANCELLED
-            ).aggregate(q=Sum('quantity'), back=Sum('short_close_returned_quantity'))
+            ).aggregate(q=Sum(good), back=Sum('short_close_returned_quantity'))
             return max(0, (agg['q'] or 0) - (agg['back'] or 0))
 
         pegged = _pegged(self)

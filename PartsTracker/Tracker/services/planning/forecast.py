@@ -150,6 +150,7 @@ def claims_by_month(tenant, first: date, last: date) -> dict:
     never uses up new-build forecast, from entry. Nor does remanufacture work on no line
     (`is_remanufactured` processes). The forecast is of new builds only.
     """
+    from django.db.models.functions import Coalesce
     from Tracker.models import OrderLine, WorkOrder
     first, end = month_start(first), add_months(month_start(last), 1)
     out: dict = defaultdict(lambda: {'firm': 0, 'tentative': 0})
@@ -166,8 +167,10 @@ def claims_by_month(tenant, first: date, last: date) -> dict:
                       process__is_remanufactured=False,
                       expected_completion__gte=first, expected_completion__lt=end)
               .exclude(workorder_status='CANCELLED')
-              .values('process__part_type_id', 'expected_completion', 'quantity')):
-        out[(r['process__part_type_id'], month_start(r['expected_completion']))]['firm'] += r['quantity'] or 0
+              # Good units owed: make-up parts replace scrap, they aren't more demand (audit D).
+              .annotate(good=Coalesce('target_good_quantity', 'quantity'))
+              .values('process__part_type_id', 'expected_completion', 'good')):
+        out[(r['process__part_type_id'], month_start(r['expected_completion']))]['firm'] += r['good'] or 0
     return dict(out)
 
 

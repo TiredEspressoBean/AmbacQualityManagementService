@@ -41,9 +41,16 @@ def dock_metrics(tenant, days: int = 30, today=None) -> dict:
                  "lots": per_day.get(start + timedelta(days=i), {}).get("n", 0)}
                 for i in range(days)]
 
-    # Waiting now, and how long the oldest has waited.
-    waiting = list(lots.filter(status__in=PENDING_STATUSES)
-                   .exclude(received_date__isnull=True).values_list("received_date", flat=True))
+    # Waiting now, and how long the oldest has waited — per DELIVERY: a pending lot split
+    # into pieces (a partial move) is one receipt waiting, not one per piece (audit F,
+    # 2026-11-19). Keyed by the delivery a piece came from, so a piece still waiting
+    # counts even once its parent has been decided.
+    from django.db.models.functions import Coalesce
+    waiting_by_delivery = dict(
+        lots.filter(status__in=PENDING_STATUSES).exclude(received_date__isnull=True)
+        .annotate(delivery=Coalesce("parent_lot_id", "id"))
+        .values_list("delivery", "received_date"))
+    waiting = list(waiting_by_delivery.values())
     oldest_wait_days = max(((today - d).days for d in waiting), default=None)
 
     # Time from inspection opened to decision, for runs decided in the window.

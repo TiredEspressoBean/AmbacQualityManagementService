@@ -89,6 +89,53 @@ class OrderLineImportTests(APITestCase):
         self.assertEqual(wo.order_line_id, line.id)
         self.assertEqual((line.planned_quantity, line.remaining_quantity), (6, 4))
 
+    WO_HEADER = "ERP_id,related_order,order_line_number,process,quantity,expected_completion"
+
+    def test_a_new_job_naming_only_its_order_is_its_one_lines_work(self):
+        """Audit B (2026-11-19, confirmed in the browser): a job imported for an order
+        with no line number stayed unattached, so the line still read 4 to plan while the
+        job loaded and bought the same 4 again. With one open line of its product, it's
+        that line's work (user ruling: attach at creation)."""
+        from Tracker.services.planning.forecast import claims_by_month
+        from datetime import date
+        self._lines(self.HEADER, "ORD-9,1,INJ-1,4,2027-03-01,")
+        r = self._upload("/api/WorkOrders/import/",
+                         f"{self.WO_HEADER}\nWO-B,ORD-9,,Build,4,2027-03-01\n")
+        self.assertEqual(r.json()["summary"]["created"], 1, r.content)
+        line = OrderLine.objects.get(order=self.order, line_number=1)
+        self.assertEqual(WorkOrder.objects.get(ERP_id="WO-B").order_line_id, line.id)
+        self.assertEqual((line.planned_quantity, line.remaining_quantity), (4, 0))
+        claims = claims_by_month(self.tenant, date(2027, 3, 1), date(2027, 3, 1))
+        self.assertEqual(sum(c['firm'] for c in claims.values()), 4)   # once, not 8
+
+    def test_several_open_lines_and_the_row_must_say_which(self):
+        self._lines(self.HEADER, "ORD-9,1,INJ-1,4,2027-03-01,", "ORD-9,2,INJ-1,6,2027-04-01,")
+        r = self._upload("/api/WorkOrders/import/",
+                         f"{self.WO_HEADER}\nWO-B2,ORD-9,,Build,4,2027-03-01\n")
+        body = r.json()
+        self.assertEqual(body["summary"]["errors"], 1, body)
+        self.assertIn("say which line", str(body))
+        self.assertFalse(WorkOrder.objects.filter(ERP_id="WO-B2").exists())
+
+    def test_a_job_already_on_file_is_never_re_attached(self):
+        """Lines are additive: a line added later is new demand, and re-importing an old
+        job doesn't make it that line's work."""
+        WorkOrder.objects.create(tenant=self.tenant, ERP_id="WO-OLD", quantity=3,
+                                 process=self.process, related_order=self.order)
+        self._lines(self.HEADER, "ORD-9,1,INJ-1,5,2027-03-01,")
+        self._upload("/api/WorkOrders/import/", f"{self.WO_HEADER}\nWO-OLD,ORD-9,,Build,3,2027-03-01\n")
+        self.assertIsNone(WorkOrder.objects.get(ERP_id="WO-OLD").order_line_id)
+        self.assertEqual(OrderLine.objects.get(order=self.order, line_number=1).remaining_quantity, 5)
+
+    def test_the_work_order_form_attaches_the_same_way(self):
+        self._lines(self.HEADER, "ORD-9,1,INJ-1,4,2027-03-01,")
+        r = self.client.post("/api/WorkOrders/", {
+            "ERP_id": "WO-FORM", "related_order": str(self.order.id),
+            "process": str(self.process.id)}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        line = OrderLine.objects.get(order=self.order, line_number=1)
+        self.assertEqual(WorkOrder.objects.get(ERP_id="WO-FORM").order_line_id, line.id)
+
     def test_a_work_order_naming_a_line_its_order_lacks_is_refused(self):
         r = self._upload("/api/WorkOrders/import/",
                          "ERP_id,related_order,order_line_number,process,quantity\n"
