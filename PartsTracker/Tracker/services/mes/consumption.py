@@ -346,12 +346,22 @@ def drawn_by_work_order(tenant, work_order_ids) -> dict:
     got), so demand and on-hand always move together: an advance that drew nothing (no
     operator, or the shelf was short) leaves its demand standing against stock that was
     never reduced."""
+    return _drawn(tenant, 'work_order_id', work_order_ids)
+
+
+def drawn_by_part(tenant, part_ids) -> dict:
+    """`{(part_id, (kind, id)): quantity}` — the same reading per unit, for demand read
+    unit by unit (a reman core is a part: services/reman/demand)."""
+    return _drawn(tenant, 'part_id', part_ids)
+
+
+def _drawn(tenant, owner: str, ids) -> dict:
     from django.db.models import Sum
     from Tracker.models import MaterialUsage
     out: dict = {}
     for r in (MaterialUsage.objects.filter(  # tenant-safe: explicit tenant filter
-                  tenant=tenant, work_order_id__in=list(work_order_ids), lot__isnull=False)
-              .values('work_order_id', 'lot__material_id', 'lot__material_type_id')
+                  tenant=tenant, lot__isnull=False, **{f'{owner}__in': list(ids)})
+              .values(owner, 'lot__material_id', 'lot__material_type_id')
               .annotate(q=Sum('qty_consumed'))):
         if r['lot__material_id'] is not None:
             key = ('MATERIAL', r['lot__material_id'])
@@ -359,19 +369,19 @@ def drawn_by_work_order(tenant, work_order_ids) -> dict:
             key = ('PART_TYPE', r['lot__material_type_id'])
         else:
             continue
-        k = (r['work_order_id'], key)
+        k = (r[owner], key)
         out[k] = out.get(k, 0.0) + float(r['q'] or 0)
     return out
 
 
-def net_of_drawn(drawn: dict, work_order_id, key, required: float) -> float:
-    """`required` less what this work order has already drawn of `key`, and that much
-    taken off `drawn` — so two lines of one item on a BOM share the draw, not each
-    claim all of it."""
-    have = drawn.get((work_order_id, key), 0.0)
+def net_of_drawn(drawn: dict, owner_id, key, required: float) -> float:
+    """`required` less what this work order (or unit) has already drawn of `key`, and
+    that much taken off `drawn` — so two lines of one item on a BOM share the draw, not
+    each claim all of it."""
+    have = drawn.get((owner_id, key), 0.0)
     take = min(have, required)
     if take:
-        drawn[(work_order_id, key)] = have - take
+        drawn[(owner_id, key)] = have - take
     return required - take
 
 

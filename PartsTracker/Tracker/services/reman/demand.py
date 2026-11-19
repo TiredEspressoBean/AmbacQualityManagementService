@@ -87,19 +87,32 @@ def work_order_line_demand(work_order, lines) -> dict:
     Lines with no demand are omitted. Call only for a work order that carries cores;
     a new build's demand is its BOM times its quantity, as it always was.
     """
-    from Tracker.services.mes.bom import line_allows_recovery
+    from Tracker.services.mes.bom import buy_line_item, line_allows_recovery
+    from Tracker.services.mes.consumption import drawn_by_part, net_of_drawn
     from Tracker.services.reman.rebuild import resolve_rebuild_plan
 
     firm: dict = {}
     forecast: dict = {}
     pool: dict = {}
 
+    lines = list(lines)
+    cores = list(work_order.cores.filter(archived=False).select_related('core_type'))
+    # What each unit has already drawn from stock: gone from on-hand, so gone from its
+    # demand — the same rule as a new build's (services/mes/consumption), read per unit
+    # because a reman order's demand is read per core. A component fitted from the
+    # recovered pool or a stock unit (install_component) isn't a lot draw and moves no
+    # lot stock, so it's neither netted here nor taken off on-hand.
+    drawn = drawn_by_part(work_order.tenant, [c.part_id for c in cores])
+    buys = {line.id: buy_line_item(line) for line in lines}
+
     def add(bucket, line_id, qty):
+        # `core`: the unit the loop below is reading.
+        if qty and bucket is firm and buys.get(line_id) is not None:
+            qty = net_of_drawn(drawn, core.part_id, buys[line_id].key, qty)
         if qty:
             bucket[line_id] = bucket.get(line_id, 0.0) + qty
 
-    lines = list(lines)
-    for core in work_order.cores.filter(archived=False).select_related('core_type'):
+    for core in cores:
         if _uses_plan(core):
             by_line: dict = {}
             for slot in resolve_rebuild_plan(core).slots:

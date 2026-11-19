@@ -91,7 +91,9 @@ export function WorkOrderMaterialsPanel({ workOrderId }: { workOrderId: string }
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
-                    {num(r.quantity)} {r.unit_of_measure}
+                    {/* An optional line is never drawn from stock, so nothing comes off
+                        it as units are built: it's the most the job could use. */}
+                    {r.is_optional && "up to "}{num(r.quantity)} {r.unit_of_measure}
                     {/* A reman order's expected replacements on units not yet opened —
                         a forecast, shown beside the firm quantity and never added to it. */}
                     {(r.forecast ?? 0) > 0 && (

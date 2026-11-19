@@ -99,27 +99,39 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
     # What each job's units have already drawn: gone from on-hand, so gone from demand
     # (services/mes/consumption.drawn_by_work_order — the same netting the Requirements
     # report does).
+    from Tracker.models import Core
     from Tracker.services.mes.consumption import drawn_by_work_order, net_of_drawn
+    from Tracker.services.reman.demand import work_order_line_demand
     drawn = drawn_by_work_order(tenant, list(wo_starts))
+    # A reman work order's demand is read per core, from where each core is — the
+    # reading the Requirements page uses — not its BOM times its quantity, which asked
+    # a teardown order for a whole rebuild kit per core.
+    reman_wos = set(Core.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, part__work_order_id__in=list(wo_starts))
+        .values_list('part__work_order_id', flat=True))
     # tenant-safe: explicit tenant filter
-    for wo in (WorkOrder.objects.filter(tenant=tenant, id__in=list(wo_starts))
-               .values('id', 'process_id', 'quantity')):
-        idx = wo_starts.get(wo['id'])
+    for wo in WorkOrder.objects.filter(tenant=tenant, id__in=list(wo_starts)):
+        idx = wo_starts.get(wo.id)
         if idx is None or not (0 <= idx < n):
             continue
-        pt = pt_of_process.get(wo['process_id'])
+        pt = pt_of_process.get(wo.process_id)
         if pt is None:
             continue
-        for line in _lines(pt):
-            # MAKE lines are their own work orders with their own demand; optional lines
-            # aren't commitments. Counting either here double-books the plan.
-            if line.is_optional:
-                continue
+        # MAKE lines are their own work orders with their own demand; optional lines
+        # aren't commitments. Counting either here double-books the plan.
+        lines = [line for line in _lines(pt) if not line.is_optional]
+        per_core = work_order_line_demand(wo, lines) if wo.id in reman_wos else None
+        for line in lines:
             buy = buy_line_item(line)
             if buy is None:
                 continue
-            qty = net_of_drawn(drawn, wo['id'], buy.key,
-                               float(Decimal(str(line.quantity)) * wo['quantity']))
+            if per_core is not None:
+                # Firm only: a reman forecast is reported beside demand, never in it.
+                d = per_core.get(line.id)
+                qty = d.firm if d is not None else 0.0
+            else:
+                qty = net_of_drawn(drawn, wo.id, buy.key,
+                                   float(Decimal(str(line.quantity)) * wo.quantity))
             if qty:
                 _add(buy, qty, idx, 'firm')
 

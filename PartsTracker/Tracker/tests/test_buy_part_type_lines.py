@@ -354,6 +354,64 @@ class RemanDemandByStageTests(_RecoverableFixture):
         self._rebuild(cores=2, status="REBUILT")
         self.assertIsNone(self._housing())
 
+    def _seal_line(self):
+        seal = PartTypes.objects.create(tenant=self.tenant, name="Seal", can_buy=True,
+                                        can_recover=False)
+        BOMLine.objects.create(tenant=self.tenant, bom=self.core_bom, component_type=seal,
+                               quantity=Decimal(2), source="BUY", line_number=2)
+        return seal
+
+    def _draw(self, core, item, qty):
+        """The unit's rebuild drew `qty` of `item` from a lot (recording the draw takes
+        it off the lot, as consumption does)."""
+        from Tracker.models import MaterialLot, MaterialUsage
+        lot = MaterialLot.objects.create(
+            tenant=self.tenant, lot_number=f"L-{core.core_number}", material_type=item,
+            received_date=date.today(), received_by=self.user, quantity=Decimal(qty),
+            quantity_remaining=Decimal(qty), unit_of_measure="EA", status="ACCEPTED")
+        MaterialUsage.objects.create(tenant=self.tenant, lot=lot, part=core.part,
+                                     work_order=core.part.work_order,
+                                     qty_consumed=Decimal(qty), consumed_by=self.user)
+
+    def test_a_core_that_has_drawn_its_plan_demands_nothing_more(self):
+        """Still IN_REBUILD, but its seals are in it: gone from the shelf, so gone from
+        demand (user ruling 2026-11-19). Counting them again read 2 short of stock
+        that had already done its job."""
+        seal = self._seal_line()
+        wo = self._rebuild(cores=1, mode="REPAIR_RETURN")
+        self._draw(wo.cores.get(), seal, 2)
+        self.assertIsNone(self._row('source', 'material', "Seal"))
+
+    def test_a_core_not_yet_drawn_demands_its_plan(self):
+        seal = self._seal_line()
+        drawn = self._rebuild(cores=1, mode="REPAIR_RETURN")
+        self._draw(drawn.cores.get(), seal, 2)
+        self._rebuild(cores=1, mode="REPAIR_RETURN")     # nothing drawn yet
+        self.assertEqual(self._row('source', 'material', "Seal")['qty_short'], 2)
+
+    def test_the_outlook_and_requirements_agree_on_a_reman_work_order(self):
+        """The material lane read a reman order as its BOM times its quantity — a whole
+        kit per core — while Requirements read it per core. Both read per core now."""
+        from django.utils import timezone
+        from Tracker.services.mes.requirements import work_order_material_requirements
+        from Tracker.services.planning.material_load import material_series
+        from Tracker.services.planning.rccp import _month_buckets
+        seal = self._seal_line()
+        wo = self._rebuild(cores=3, mode="REPAIR_RETURN")
+        self._draw(wo.cores.first(), seal, 2)
+        teardown = self._rebuild(cores=2, status="IN_DISASSEMBLY")
+        buckets = _month_buckets(self.tenant, timezone.now(), 1)
+        lane = {m['name']: m['series'][0]['demand']
+                for m in material_series(self.tenant, buckets, {wo.id: 0, teardown.id: 0})}
+        readout: dict = {}
+        for w in (wo, teardown):
+            for r in work_order_material_requirements(w)['rows']:
+                readout[r['component']] = readout.get(r['component'], 0.0) + r['quantity']
+        self.assertEqual(readout["Seal"], 4.0)         # 3 cores × 2, one core's drawn
+        self.assertEqual(lane.get("Seal"), readout["Seal"])
+        # The teardown asks for nothing; the rebuild for what its plan replaces.
+        self.assertEqual(lane.get(self.housing.name, 0.0), readout[self.housing.name])
+
 
 class SourcingShowsTheRecoverableLaneTests(_RecoverableFixture):
     """The bank's yield, reported beside the buy figure — and only where some exchange
