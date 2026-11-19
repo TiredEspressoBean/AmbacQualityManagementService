@@ -53,11 +53,13 @@ class UserInvitationTestCase(VectorTestCase):
         # Link staff user to admin group
         UserRole.objects.create(user=self.staff_user, group=self.admin_group)
 
-        # Create a user to be invited (in same tenant)
+        # Create a user to be invited (in same tenant): not set up yet — no password,
+        # never signed in — as the roster import makes them. An account that's set up
+        # gets a reset link, not an invitation.
         self.invited_user = User.objects.create_user(
             username='inviteduser',
             email='invited@example.com',
-            password='temporarypassword',
+            password=None,
             is_active=False,
             tenant=self.tenant
         )

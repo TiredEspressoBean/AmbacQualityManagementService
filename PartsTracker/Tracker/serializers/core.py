@@ -564,12 +564,14 @@ class UserInvitationSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_invitation_url(self, obj):
-        """Generate invitation signup URL"""
+        """The signup link — only for someone who may invite (add_user). It is a way into
+        the account, so a staff member who can merely see invitations doesn't get it."""
         request = self.context.get('request')
-        if request:
-            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
-            return f"{frontend_url}/signup?token={obj.token}"
-        return None
+        user = getattr(request, 'user', None)
+        if user is None or not getattr(user, 'has_tenant_perm', None) or not user.has_tenant_perm('add_user'):
+            return None
+        from Tracker.services.core.sign_in import invitation_url
+        return invitation_url(obj)
 
 
 # ===== AUTHENTICATION & PASSWORD RESET SERIALIZERS =====

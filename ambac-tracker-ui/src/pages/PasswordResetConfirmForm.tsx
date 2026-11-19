@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/generated'
 import { getCookie } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -115,6 +115,29 @@ export const PasswordResetRequest = ({ onSuccess }: PasswordResetRequestProps) =
                     onSuccess?.()
                 },
             }
+        )
+    }
+
+    // Without email on this deployment there's nothing to send: the way back in is a
+    // reset link from an administrator (sign-in never depends on email).
+    const { data: signIn } = useQuery({
+        queryKey: ['sign-in-notice'],
+        queryFn: () => api.auth_sign_in_notice_retrieve(),
+        staleTime: 5 * 60_000,
+    })
+    if (signIn && !signIn.email_enabled) {
+        return (
+            <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
+                <Card className="mx-auto max-w-sm">
+                    <CardHeader>
+                        <CardTitle className="text-2xl">Reset your password</CardTitle>
+                        <CardDescription>Ask your administrator for a reset link.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-sm text-muted-foreground">
+                        They create it from User Management and give it to you. It works once, for 24 hours.
+                    </CardContent>
+                </Card>
+            </div>
         )
     }
 

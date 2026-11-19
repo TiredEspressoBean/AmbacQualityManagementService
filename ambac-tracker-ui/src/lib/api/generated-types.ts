@@ -16945,6 +16945,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/User/{id}/reset-link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A password reset link to hand to the person — the same link the forgot-password email carries, valid once, for the days chosen (1–30, default 7). Whoever may invite (add_user); never for yourself; for a Tenant Admin only by a Tenant Admin; only for an account that's set up. */
+        post: operations["api_User_reset_link_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/User/bulk-activate/": {
         parameters: {
             query?: never;
@@ -17269,7 +17286,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Resend an invitation (staff only) */
+        /**
+         * @description Resend an invitation: a new link, and the old one cancelled. Whoever may invite
+         *     (add_user) — the link is a way into the account.
+         */
         post: operations["api_UserInvitations_resend_create"];
         delete?: never;
         options?: never;
@@ -36852,6 +36872,15 @@ export interface components {
         ResendInvitationInputRequest: {
             invitation_id: number;
         };
+        ResetLinkInputRequest: {
+            /** @description How many days the link works (default 7). */
+            valid_days?: number;
+        };
+        ResetLinkResponse: {
+            reset_url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
         /**
          * @description * `REUSE` - Reuse as-is — the recovered component is serviceable
          *     * `RECONDITION` - Recondition — work it before it goes back
@@ -37772,6 +37801,8 @@ export interface components {
         };
         SendInvitationInputRequest: {
             user_id: number;
+            /** @description How many days the link works (default 7). */
+            valid_days?: number;
         };
         SendInvitationResponse: {
             detail: string;
@@ -38074,6 +38105,8 @@ export interface components {
         SignInNotice: {
             text: string;
             requires_ack: boolean;
+            /** @description Whether this deployment sends email: the sign-in page offers an emailed reset link, or says to ask an administrator. */
+            email_enabled: boolean;
         };
         SignOffStepRequestRequest: {
             /** Format: uuid */
@@ -73668,6 +73701,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLog"][];
+                };
+            };
+        };
+    };
+    api_User_reset_link_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this User. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ResetLinkInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ResetLinkInputRequest"];
+                "multipart/form-data": components["schemas"]["ResetLinkInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetLinkResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

@@ -21,12 +21,10 @@ the synchronous viewset path (<25 rows) and the Celery batch path
 from __future__ import annotations
 
 import io
-from datetime import timedelta
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from django.conf import settings
 from django.db import transaction
-from django.utils import timezone
 
 if TYPE_CHECKING:
     from Tracker.models import Tenant, User
@@ -165,7 +163,7 @@ def _create_and_invite(
     """Create a new User in this tenant, assign groups, fire an invitation (unless
     ``invite`` is False — then no invitation exists until one is sent)."""
     from django.db import IntegrityError
-    from Tracker.models import User, UserInvitation, UserRole
+    from Tracker.models import User, UserRole
 
     # New users default to Active unless the row explicitly says Inactive.
     is_active = True if desired_is_active is None else desired_is_active
@@ -192,12 +190,9 @@ def _create_and_invite(
 
             if not invite:
                 return {"outcome": "created", "user_id": str(user.id), "warnings": []}
-            invitation = UserInvitation.objects.create(
-                user=user,
-                invited_by=acting_user,
-                token=UserInvitation.generate_token(),
-                expires_at=timezone.now() + timedelta(days=7),
-            )
+            # The default lifetime every link has unless someone chose otherwise.
+            from Tracker.services.core.sign_in import create_invitation
+            invitation = create_invitation(user, invited_by=acting_user)
     except IntegrityError as e:
         return {"outcome": "error", "error": f"DB integrity: {e}"}
     except Exception as e:  # noqa: BLE001 - surface to caller; never raise
@@ -565,14 +560,12 @@ def uninvited_users(tenant):
 def invite_uninvited(tenant, *, acting_user) -> int:
     """Invite every `uninvited_users` user: an invitation each, emailed once the
     transaction commits (as a single invite is). Returns how many were invited."""
-    from Tracker.models import UserInvitation
     from Tracker.email_notifications import send_invitation_email
+    from Tracker.services.core.sign_in import create_invitation
     invited = 0
     with transaction.atomic():
         for user in uninvited_users(tenant):
-            invitation = UserInvitation.objects.create(
-                user=user, invited_by=acting_user, token=UserInvitation.generate_token(),
-                expires_at=timezone.now() + timedelta(days=7))
+            invitation = create_invitation(user, invited_by=acting_user)
             try:
                 send_invitation_email(invitation.id, immediate=False)
             except Exception:  # noqa: BLE001 - the invitation stands; resend from the user's row

@@ -42438,6 +42438,50 @@ paths:
                 items:
                   $ref: '#/components/schemas/AuditLog'
           description: ''
+  /api/User/{id}/reset-link/:
+    post:
+      operationId: api_User_reset_link_create
+      description: A password reset link to hand to the person — the same link the
+        forgot-password email carries, valid once, for the days chosen (1–30, default
+        7). Whoever may invite (add_user); never for yourself; for a Tenant Admin
+        only by a Tenant Admin; only for an account that's set up.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this User.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetLinkInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResetLinkInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResetLinkInputRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetLinkResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/User/bulk-activate/:
     post:
       operationId: api_User_bulk_activate_create
@@ -43029,7 +43073,9 @@ paths:
   /api/UserInvitations/resend/:
     post:
       operationId: api_UserInvitations_resend_create
-      description: Resend an invitation (staff only)
+      description: |-
+        Resend an invitation: a new link, and the old one cancelled. Whoever may invite
+        (add_user) — the link is a way into the account.
       tags:
       - api
       requestBody:
@@ -81780,6 +81826,25 @@ components:
           type: integer
       required:
       - invitation_id
+    ResetLinkInputRequest:
+      type: object
+      properties:
+        valid_days:
+          type: integer
+          maximum: 30
+          minimum: 1
+          description: How many days the link works (default 7).
+    ResetLinkResponse:
+      type: object
+      properties:
+        reset_url:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - expires_at
+      - reset_url
     ResolutionEnum:
       enum:
       - REUSE
@@ -83690,6 +83755,11 @@ components:
       properties:
         user_id:
           type: integer
+        valid_days:
+          type: integer
+          maximum: 30
+          minimum: 1
+          description: How many days the link works (default 7).
       required:
       - user_id
     SendInvitationResponse:
@@ -84317,7 +84387,12 @@ components:
           type: string
         requires_ack:
           type: boolean
+        email_enabled:
+          type: boolean
+          description: 'Whether this deployment sends email: the sign-in page offers
+            an emailed reset link, or says to ask an administrator.'
       required:
+      - email_enabled
       - requires_ack
       - text
     SignOffStepRequestRequest:

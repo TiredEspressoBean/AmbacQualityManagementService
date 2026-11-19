@@ -29091,6 +29091,13 @@ const AuditLog = z.object({
   changes: z.unknown().nullish(),
   changes_display: z.array(AuditChange),
 });
+const ResetLinkInputRequest = z
+  .object({ valid_days: z.number().int().gte(1).lte(30) })
+  .partial();
+const ResetLinkResponse = z.object({
+  reset_url: z.string(),
+  expires_at: z.string().datetime({ offset: true }),
+});
 const BulkUserActivationInputRequest = z.object({
   user_ids: z.array(z.number().int()),
   is_active: z.boolean(),
@@ -29157,7 +29164,10 @@ const BulkReconcileStatusResponse = z.object({
   error: z.string().optional(),
 });
 const InviteUninvitedResult = z.object({ invited: z.number().int() });
-const SendInvitationInputRequest = z.object({ user_id: z.number().int() });
+const SendInvitationInputRequest = z.object({
+  user_id: z.number().int(),
+  valid_days: z.number().int().gte(1).lte(30).optional(),
+});
 const SendInvitationResponse = z.object({
   detail: z.string(),
   invitation_id: z.number().int(),
@@ -31269,7 +31279,11 @@ const ResendEmailVerificationRequest = z.object({
   email: z.string().min(1).email(),
 });
 const VerifyEmailRequest = z.object({ key: z.string().min(1) });
-const SignInNotice = z.object({ text: z.string(), requires_ack: z.boolean() });
+const SignInNotice = z.object({
+  text: z.string(),
+  requires_ack: z.boolean(),
+  email_enabled: z.boolean(),
+});
 const AuthUserTenantGroup = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -32422,6 +32436,8 @@ export const schemas = {
   AuditLogActionEnum,
   AuditChange,
   AuditLog,
+  ResetLinkInputRequest,
+  ResetLinkResponse,
   BulkUserActivationInputRequest,
   BulkCompanyAssignmentInputRequest,
   BulkReconcileRowRequest,
@@ -64810,6 +64826,34 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
   },
   {
     method: "post",
+    path: "/api/User/:id/reset-link/",
+    alias: "api_User_reset_link_create",
+    description: `A password reset link to hand to the person — the same link the forgot-password email carries, valid once, for the days chosen (1–30, default 7). Whoever may invite (add_user); never for yourself; for a Tenant Admin only by a Tenant Admin; only for an account that&#x27;s set up.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z
+          .object({ valid_days: z.number().int().gte(1).lte(30) })
+          .partial(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: ResetLinkResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/User/bulk-activate/",
     alias: "api_User_bulk_activate_create",
     description: `Bulk activate/deactivate users **within the current tenant**.
@@ -64979,7 +65023,7 @@ untouched. Request/response shape is unchanged.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ user_id: z.number().int() }),
+        schema: SendInvitationInputRequest,
       },
     ],
     response: SendInvitationResponse,
@@ -65215,7 +65259,8 @@ Provides endpoints for:
     method: "post",
     path: "/api/UserInvitations/resend/",
     alias: "api_UserInvitations_resend_create",
-    description: `Resend an invitation (staff only)`,
+    description: `Resend an invitation: a new link, and the old one cancelled. Whoever may invite
+(add_user) — the link is a way into the account.`,
     requestFormat: "json",
     parameters: [
       {

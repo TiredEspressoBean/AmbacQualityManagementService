@@ -47,6 +47,7 @@ from .core import (
     User,
     Companies,
     UserInvitation,
+    PasswordResetLink,
 
     # External integrations (moved here to avoid circular imports)
     ExternalAPIOrderIdentifier,
@@ -423,6 +424,7 @@ __all__ = [
     'User',
     'Companies',
     'UserInvitation',
+    'PasswordResetLink',
     'part_doc_upload_path',
     'ClassificationLevel',
     'ArchiveReason',

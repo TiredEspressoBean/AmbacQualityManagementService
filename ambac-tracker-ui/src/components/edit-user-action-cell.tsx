@@ -17,7 +17,7 @@ import { useDeleteUser } from "@/hooks/useDeleteUser.ts";
 import { useSendUserInvitation } from "@/hooks/useSendUserInvitation.ts";
 import { InviteLinkDialog } from "@/components/users/InviteLinkDialog.tsx";
 import { toast } from "sonner";
-import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
+import { apiErrorBody, apiErrorField, apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Props = {
     userId: number;
@@ -71,7 +71,8 @@ export function EditUserActionsCell({ userId }: Props) {
                     return;
                 }
                 console.error("Failed to send invitation:", error);
-                toast.error("Failed to send invitation.");
+                // e.g. already set up: the server says to create a reset link instead.
+                toast.error("Couldn't send the invitation.", { description: apiErrorMessage(error) ?? undefined });
             },
         });
     };

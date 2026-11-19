@@ -501,7 +501,11 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         return Response({"invited": invite_uninvited(self.tenant, acting_user=request.user)})
 
     @extend_schema(
-        request=inline_serializer(name="SendInvitationInput", fields={"user_id": serializers.IntegerField()}),
+        request=inline_serializer(name="SendInvitationInput", fields={
+            "user_id": serializers.IntegerField(),
+            "valid_days": serializers.IntegerField(required=False, min_value=1, max_value=30,
+                                                   help_text="How many days the link works (default 7)."),
+        }),
         responses={201: inline_serializer(name="SendInvitationResponse", fields={
             "detail": serializers.CharField(),
             "invitation_id": serializers.IntegerField(),
@@ -526,6 +530,13 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         except User.DoesNotExist:
             return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        # An invitation sets up an account; one already in use gets a reset link instead
+        # (an invitation would set a new password on a working account).
+        from Tracker.services.core.sign_in import create_invitation, invitation_url, is_set_up
+        if is_set_up(user_to_invite):
+            return Response({"detail": "This account is already set up — create a reset link for it instead.",
+                             "code": "already_set_up"}, status=status.HTTP_400_BAD_REQUEST)
+
         # Check if user already has a pending invitation
         existing_invitation = UserInvitation.objects.filter(user=user_to_invite, accepted_at__isnull=True,
                                                             expires_at__gt=timezone.now()).first()
@@ -540,11 +551,12 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
                  "invitation_url": f"{settings.FRONTEND_URL}/signup?token={existing_invitation.token}"},
                 status=status.HTTP_400_BAD_REQUEST)
 
-        # Create invitation
-        invitation = UserInvitation.objects.create(user=user_to_invite, invited_by=request.user,
-                                                   token=UserInvitation.generate_token(),
-                                                   expires_at=timezone.now() + timedelta(days=7)  # 7 day expiration
-                                                   )
+        from Tracker.services.core.sign_in import link_days
+        try:
+            days = link_days(request.data.get('valid_days'))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        invitation = create_invitation(user_to_invite, invited_by=request.user, days=days)
 
         # Send invitation email — best-effort. The invitation row + copyable
         # link below are the source of truth; onboarding must not depend on a
@@ -564,9 +576,36 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
                   else "Invitation created - email could not be sent, share the link directly")
         return Response({"detail": detail, "invitation_id": invitation.id,
                          "user_email": user_to_invite.email, "expires_at": invitation.expires_at,
-                         "invitation_url": f"{settings.FRONTEND_URL}/signup?token={invitation.token}",
+                         "invitation_url": invitation_url(invitation),
                          "email_sent": email_sent},
                         status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        request=inline_serializer(name="ResetLinkInput", fields={
+            "valid_days": serializers.IntegerField(required=False, min_value=1, max_value=30,
+                                                   help_text="How many days the link works (default 7)."),
+        }),
+        responses={200: inline_serializer(name="ResetLinkResponse", fields={
+            "reset_url": serializers.CharField(),
+            "expires_at": serializers.DateTimeField(),
+        }), 400: OpenApiTypes.OBJECT},
+        description="A password reset link to hand to the person — the same link the forgot-password "
+                    "email carries, valid once, for the days chosen (1–30, default 7). Whoever may invite (add_user); never for "
+                    "yourself; for a Tenant Admin only by a Tenant Admin; only for an account that's set up.")
+    @action(detail=True, methods=['post'], url_path='reset-link')
+    def reset_link(self, request, pk=None):
+        from Tracker.services.core.sign_in import link_days, reset_link, reset_link_refusal
+        from Tracker.throttling import get_client_ip
+        target = self.get_object()
+        refusal = reset_link_refusal(target, issuer=request.user, tenant=self.tenant)
+        if refusal:
+            return Response({"detail": refusal}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            days = link_days(request.data.get('valid_days'))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(reset_link(target, issuer=request.user, days=days,
+                                   remote_addr=get_client_ip(request)))
 
     @extend_schema(
         request=inline_serializer(
@@ -1181,8 +1220,15 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             else:
                 return Response({"detail": "This invitation has expired"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Set password and activate user
+        # An invitation sets up an account, once: never a new password on one in use
+        # (a stale or second link would otherwise reset a working account).
+        from Tracker.services.core.sign_in import ALREADY_SET_UP, cancel_pending_invitations, is_set_up
         user = invitation.user
+        if is_set_up(user):
+            return Response({"detail": ALREADY_SET_UP, "code": "already_set_up"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Set password and activate user
         user.set_password(password)
         user.is_active = True
         user.save()
@@ -1192,6 +1238,8 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         invitation.accepted_ip_address = self.get_client_ip(request)
         invitation.accepted_user_agent = request.META.get('HTTP_USER_AGENT', '')
         invitation.save()
+        # This link set the account up: every other link for it is dead.
+        cancel_pending_invitations(user, keep=invitation)
 
         # If the invitee checked the "weekly order updates" opt-in box on
         # the activation form, create a personal NotificationSchedule for
@@ -1230,8 +1278,12 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         responses={200: OpenApiResponse(response=dict, description="Invitation resent successfully")})
     @action(detail=False, methods=['post'], url_path='resend')
     def resend(self, request):
-        """Resend an invitation (staff only)"""
-        from datetime import timedelta
+        """Resend an invitation: a new link, and the old one cancelled. Whoever may invite
+        (add_user) — the link is a way into the account."""
+        from Tracker.services.core.sign_in import create_invitation, invitation_url, is_set_up
+        if not request.user.has_tenant_perm('add_user'):
+            return Response({"detail": "Sending invitations needs the permission to add users."},
+                            status=status.HTTP_403_FORBIDDEN)
 
         invitation_id = request.data.get('invitation_id')
 
@@ -1247,17 +1299,27 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         if invitation.accepted_at:
             return Response({"detail": "Cannot resend an accepted invitation"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create new invitation (invalidates old token)
-        new_invitation = UserInvitation.objects.create(user=invitation.user, invited_by=request.user,
-                                                       token=UserInvitation.generate_token(),
-                                                       expires_at=timezone.now() + timedelta(days=7))
+        if is_set_up(invitation.user):
+            return Response({"detail": "This account is already set up — create a reset link for it instead.",
+                             "code": "already_set_up"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Send invitation email via Celery
-        from Tracker.email_notifications import send_invitation_email
-        send_invitation_email(new_invitation.id, immediate=False)
+        # A new invitation, the old one cancelled (create_invitation does both).
+        new_invitation = create_invitation(invitation.user, invited_by=request.user)
+
+        # Email is a bonus: the link below is the invitation (sign-in never depends on mail).
+        email_sent = True
+        try:
+            from Tracker.email_notifications import send_invitation_email
+            send_invitation_email(new_invitation.id, immediate=False)
+        except Exception:  # noqa: BLE001 - the link is returned regardless
+            email_sent = False
+            logging.getLogger(__name__).warning(
+                "Invitation email dispatch failed for invitation %s; returning link only",
+                new_invitation.id, exc_info=True)
 
         return Response({"detail": "Invitation resent successfully", "invitation_id": new_invitation.id,
-                         "user_email": new_invitation.user.email, "expires_at": new_invitation.expires_at},
+                         "user_email": new_invitation.user.email, "expires_at": new_invitation.expires_at,
+                         "invitation_url": invitation_url(new_invitation), "email_sent": email_sent},
                         status=status.HTTP_200_OK)
 
     def get_client_ip(self, request):

@@ -2315,6 +2315,27 @@ class UserInvitation(models.Model):
         return secrets.token_urlsafe(48)
 
 
+class PasswordResetLink(models.Model):
+    """A password reset link an administrator issued to hand over in person
+    (services/core/sign_in). Its own lifetime, chosen when it was issued — the token
+    carries only the global ceiling — and when it was used. The token itself isn't
+    kept, only its hash."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_links')
+    issued_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='reset_links_issued')
+    token_hash = models.CharField(max_length=64, unique=True)
+    issued_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-issued_at']
+
+    def __str__(self):
+        return f"Reset link for {self.user.email} ({'used' if self.used_at else 'unused'})"
+
+
 class NotificationTask(SecureModel):
     """
     Unified notification task supporting both recurring (fixed interval)

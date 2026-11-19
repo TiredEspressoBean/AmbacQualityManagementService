@@ -24,6 +24,7 @@ import {
     Edit,
     Eye,
     Link as LinkIcon,
+    KeyRound,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -64,11 +65,13 @@ import { useRetrieveUsers } from "@/hooks/useRetrieveUsers";
 import { useTenantGroups } from "@/hooks/useTenantGroups";
 import { useSetUsersTenantActive } from "@/hooks/useSetUsersTenantActive";
 import { useSendUserInvitation } from "@/hooks/useSendUserInvitation";
+import { useUserResetLink } from "@/hooks/useUserResetLink";
 import { useAddUserToTenantGroup } from "@/hooks/useAddUserToTenantGroup";
 import { InviteLinkDialog } from "@/components/users/InviteLinkDialog";
+import { LinkDaysDialog, linkValidUntil } from "@/components/users/LinkDaysDialog";
 import { InviteUninvitedButton } from "@/components/users/InviteUninvitedButton";
 import { format, formatDistanceToNow } from "date-fns";
-import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
+import { apiErrorBody, apiErrorField, apiErrorMessage } from "@/lib/api/describeApiError";
 
 // ---------------------------------------------------------------------------
 // Status derivation
@@ -93,6 +96,10 @@ const STATUS_VARIANT: Record<UserStatus, "default" | "secondary" | "destructive"
     never_signed_in: "outline",
     contact: "secondary",
 };
+
+/** A row's person, as a sentence names them. */
+const rowName = (u: { first_name?: string | null; last_name?: string | null; email?: string | null }) =>
+    [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email || "this person";
 
 /** Derive a status from User fields. "inactive" reflects the per-tenant
  *  membership being SUSPENDED (the tenant-scoped deactivation) OR the global
@@ -143,6 +150,12 @@ export function UserManagementPage() {
     const [inviteLinkUrl, setInviteLinkUrl] = useState<string | null>(null);
     const [inviteLinkEmail, setInviteLinkEmail] = useState<string | undefined>(undefined);
     const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
+    // The same dialog shows an invitation or a reset link; these say which.
+    const [linkTitle, setLinkTitle] = useState<string | undefined>(undefined);
+    const [linkDescription, setLinkDescription] = useState<string | undefined>(undefined);
+    const resetLink = useUserResetLink();
+    // Asking how long a link works, before it's made: an invitation or a reset link.
+    const [daysFor, setDaysFor] = useState<{ kind: "invite" | "reset"; userId: number; email: string; name: string } | null>(null);
 
     const queryClient = useQueryClient();
     const { data: usersData, isLoading } = useRetrieveUsers({
@@ -211,26 +224,51 @@ export function UserManagementPage() {
 
     // ---- Action handlers --------------------------------------------------
 
-    /** Create (or surface an existing) invitation and show its copyable link.
-     *  Doubles as email-free access recovery: accepting a fresh invite re-sets
-     *  the user's password. Works for any user — active users get a new invite,
-     *  users with a live pending invite get that invite's link back (400). */
-    const handleInviteLink = async (userId: number, email: string) => {
+    /** Show a made link in the copy dialog, with when it stops working. */
+    const showLink = (url: string, email: string, title: string, description: string) => {
+        setInviteLinkUrl(url);
+        setInviteLinkEmail(email);
+        setLinkTitle(title);
+        setLinkDescription(description);
+        setInviteLinkOpen(true);
+    };
+
+    /** A reset link to hand over in person: an account already set up gets this, never
+     *  an invitation (which would set a new password on a working account). */
+    const handleResetLink = async (userId: number, email: string, name: string, days: number) => {
         try {
-            const data = await sendInvite.mutateAsync(userId);
-            if (data?.invitation_url) {
-                setInviteLinkUrl(data.invitation_url);
-                setInviteLinkEmail(email);
-                setInviteLinkOpen(true);
-            }
-            toast.success(`Invitation link ready for ${email}`);
+            const data = await resetLink.mutateAsync({ userId, validDays: days });
+            showLink(data.reset_url, email, "Reset link", linkValidUntil(name, data.expires_at));
+            toast.success(`Reset link ready for ${name}`);
         } catch (err) {
+            toast.error(`Couldn't create a reset link for ${name}`, {
+                description: apiErrorMessage(err) ?? undefined,
+            });
+        }
+    };
+
+    /** Create (or surface the pending) invitation and show its copyable link. `days`
+     *  unset: the default lifetime. A pending invitation's link comes back unchanged. */
+    const handleInviteLink = async (userId: number, email: string, name?: string, days?: number) => {
+        const who = name || email;
+        try {
+            const data = await sendInvite.mutateAsync(days ? { userId, validDays: days } : userId);
+            if (data?.invitation_url) {
+                showLink(data.invitation_url, email, "Invitation link", linkValidUntil(who, data.expires_at));
+            }
+            toast.success(`Invitation link ready for ${who}`);
+        } catch (err) {
+            // Set up already (a password, no sign-in yet): a reset link, not an invitation.
+            if (apiErrorField(apiErrorBody(err), "code") === "already_set_up") {
+                toast.info(`${who} is already set up — create a reset link instead.`);
+                setDaysFor({ kind: "reset", userId, email, name: who });
+                return;
+            }
             const invitationUrl = apiErrorField(apiErrorBody(err), "invitation_url");
             if (invitationUrl) {
-                setInviteLinkUrl(invitationUrl);
-                setInviteLinkEmail(email);
-                setInviteLinkOpen(true);
-                toast.info(`${email} already has a pending invitation — here's the link.`);
+                const until = apiErrorField(apiErrorBody(err), "expires_at");
+                showLink(invitationUrl, email, "Invitation link",
+                         until ? linkValidUntil(who, String(until), true) : "Already invited.");
                 return;
             }
             toast.error(`Failed to create invitation link for ${email}`, {
@@ -622,15 +660,23 @@ export function UserManagementPage() {
                                                         Edit profile
                                                     </DropdownMenuItem>
                                                     {u._status === "pending_invite" || u._status === "expired_invite" || u._status === "never_signed_in" ? (
-                                                        <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email ?? "")}>
-                                                            <Mail className="h-4 w-4 mr-2" />
-                                                            {u._status === "never_signed_in" ? "Send invitation" : "Resend invitation"}
+                                                        <>
+                                                            <DropdownMenuItem onClick={() => setDaysFor({ kind: "invite", userId: u.id, email: u.email ?? "", name: rowName(u) })}>
+                                                                <Mail className="h-4 w-4 mr-2" />
+                                                                {u._status === "never_signed_in" ? "Send invitation" : "Resend invitation"}
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email ?? "", rowName(u))}>
+                                                                <LinkIcon className="h-4 w-4 mr-2" />
+                                                                Copy access link
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    ) : u.last_login ? (
+                                                        // Signed in before: a forgotten password gets a reset link, in person.
+                                                        <DropdownMenuItem onClick={() => setDaysFor({ kind: "reset", userId: u.id, email: u.email ?? "", name: rowName(u) })}>
+                                                            <KeyRound className="h-4 w-4 mr-2" />
+                                                            Create reset link
                                                         </DropdownMenuItem>
                                                     ) : null}
-                                                    <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email ?? "")}>
-                                                        <LinkIcon className="h-4 w-4 mr-2" />
-                                                        Copy access link
-                                                    </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     {u.is_active ? (
                                                         <DropdownMenuItem
@@ -711,6 +757,22 @@ export function UserManagementPage() {
                 onOpenChange={setInviteLinkOpen}
                 url={inviteLinkUrl}
                 email={inviteLinkEmail}
+                {...(linkTitle ? { title: linkTitle } : {})}
+                {...(linkDescription ? { description: linkDescription } : {})}
+            />
+            <LinkDaysDialog
+                open={daysFor !== null}
+                onOpenChange={(o) => { if (!o) setDaysFor(null); }}
+                title={daysFor?.kind === "reset" ? "Create reset link" : "Send invitation"}
+                name={daysFor?.name ?? ""}
+                actionLabel={daysFor?.kind === "reset" ? "Create reset link" : "Create invitation link"}
+                onCreate={async (days) => {
+                    if (!daysFor) return;
+                    const { kind, userId, email, name } = daysFor;
+                    setDaysFor(null);
+                    if (kind === "reset") await handleResetLink(userId, email, name, days);
+                    else await handleInviteLink(userId, email, name, days);
+                }}
             />
         </TooltipProvider>
     );

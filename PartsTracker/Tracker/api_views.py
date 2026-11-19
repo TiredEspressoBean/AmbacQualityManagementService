@@ -79,7 +79,10 @@ class ThrottledLoginView(LoginView):
 @extend_schema(
     responses=inline_serializer(
         name='SignInNotice',
-        fields={'text': serializers.CharField(), 'requires_ack': serializers.BooleanField()},
+        fields={'text': serializers.CharField(), 'requires_ack': serializers.BooleanField(),
+                'email_enabled': serializers.BooleanField(
+                    help_text="Whether this deployment sends email: the sign-in page offers an "
+                              "emailed reset link, or says to ask an administrator.")},
     ),
 )
 @api_view(['GET'])
@@ -89,7 +92,9 @@ def sign_in_notice(request):
     """The system-use notice for the sign-in page; empty text when the tenant has none."""
     from Tracker.services.core.sign_in_notice import notice_for, sign_in_tenant
     text, requires_ack = notice_for(sign_in_tenant(request))
-    return Response({'text': text, 'requires_ack': requires_ack})
+    from django.conf import settings
+    return Response({'text': text, 'requires_ack': requires_ack,
+                     'email_enabled': bool(getattr(settings, 'EMAIL_ENABLED', False))})
 
 
 class ThrottledPasswordResetView(PasswordResetView):
@@ -122,7 +127,28 @@ class ThrottledPasswordResetConfirmView(PasswordResetConfirmView):
         )
     )
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        # The link's own lifetime first (an issued one's chosen days, an emailed one's
+        # day), before the password is touched: the token alone only knows the ceiling.
+        from Tracker.services.core.sign_in import reset_refusal
+        refusal = reset_refusal(request.data.get('token', ''))
+        if refusal:
+            return Response({'detail': refusal, 'token': [refusal]}, status=status.HTTP_400_BAD_REQUEST)
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            # Any reset — an emailed link or one an administrator issued — signs the person
+            # out everywhere else (services/core/sign_in.after_password_reset).
+            from allauth.account.utils import url_str_to_user_pk
+            from django.contrib.auth import get_user_model
+            from Tracker.services.core.sign_in import after_password_reset
+            from Tracker.throttling import get_client_ip
+            try:
+                user = get_user_model().objects.get(pk=url_str_to_user_pk(request.data.get('uid', '')))
+            except Exception:  # noqa: BLE001 - the reset itself already succeeded
+                user = None
+            if user is not None:
+                after_password_reset(user, token=request.data.get('token', ''),
+                                     remote_addr=get_client_ip(request))
+        return response
 
 
 class ThrottledRegisterView(RegisterView):
