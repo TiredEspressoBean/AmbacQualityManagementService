@@ -166,7 +166,7 @@ Five sections, one under another on the page:
 
 | Section | Covers |
 |---------|--------|
-| **Source (buy)** | Purchased material short of coverage — see [Turning a shortage into an expected delivery](#turning-a-shortage-into-an-expected-delivery) |
+| **Source (buy)** | Purchased material short of coverage: what open work still has to draw (less what's already been drawn into it), against stock and expected deliveries. See [Turning a shortage into an expected delivery](#turning-a-shortage-into-an-expected-delivery) |
 | **Recover (tear down)** | Teardown proposed to refill recovered stock — see [Planning a teardown](#planning-a-teardown) |
 | **Produce (build)** | In-house component work orders pegged to open demand |
 | **Tooling** | Fixtures, tools, dies and NC programs not yet on hand |

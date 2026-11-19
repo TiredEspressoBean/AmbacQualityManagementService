@@ -39,9 +39,17 @@ cumulative supply.
 
 | | |
 |---|---|
+| **Demand** means | What open work still has to draw: each job's bill of materials for its quantity, **less what has already been drawn into that job**. A part fitted comes off stock once and stops counting as demand at the same moment, so it isn't counted twice. A remanufacture job is read per core, from what each core's rebuild still needs |
 | **On hand** means | Accepted or In Use lots, **less safety stock** |
 | **Incoming** means | Lots with a promised date and quantity still remaining |
 | **Excluded** | Make lines (they have their own orders) and optional lines (not commitments) |
+
+The same rule for demand runs through [Requirements](overview.md#requirements),
+the material outlook export, and the scheduler's material check, so all of them
+agree about what a job still needs. They can still show different totals for the
+same item: Requirements counts **all** open work at once, while this lane places
+each job's demand in the month it starts and also counts order lines not yet on a
+work order.
 
 !!! warning "The lane goes red while there is still stock on the shelf"
     Opening cover is **free** stock, not physical stock — the safety buffer is

@@ -102,7 +102,7 @@ Below, four tabs:
 |-----|-------|
 | **Overview** | Customer, due date, quantity, and **QA Progress** — completed, total parts, need rework — with the digital traveler and notes |
 | **Parts** | The parts on the job, filterable by status |
-| **Materials** | Material for the job |
+| **Materials** | Material the job still needs: each line of its bill of materials for the job's quantity, less what has already been drawn into it. An optional line reads *up to N*, the most it could take if every unit uses it |
 | **Labor** | Actual direct and rework hours per operator, against the route's planned hours — see [Labor](basics.md#labor) |
 
 ### On the Home page

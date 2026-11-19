@@ -58,8 +58,16 @@ same working time the scheduler plans against:
 ## What's in the load
 
 The heatmap's load is the work orders, **plus open order lines not yet planned
-into work orders**. A customer order that hasn't been turned into a work order
-yet still asks for the crew and machines, so it counts:
+into work orders**.
+
+A work order loads only the work it still has to do. Each unit loads its
+**current step onward**, so a unit near the end of its route adds only its last
+steps, and shipped, completed or scrapped units add nothing. Units the work order
+hasn't created yet (its quantity beyond the parts on it) load the **whole route**,
+so a job planned but not started still shows its full weight.
+
+A customer order that hasn't been turned into a work order yet still asks for the
+crew and machines, so it counts:
 
 - Each such line is placed as if it were a work order: its work starts its
   routing's lead time before the line's due date, on the part type's

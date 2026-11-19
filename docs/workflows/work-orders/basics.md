@@ -76,6 +76,15 @@ An order may have multiple work orders if:
     quantity of its own. A work order planned from the schedule or an
     order line gets both when it is planned.
 
+!!! note "Naming an order ties the work order to its line"
+    When **Related Order** has exactly one open line for this work order's
+    product, the work order is attached to that line, so the line counts as
+    planned and its demand isn't counted twice. When the order has several such
+    lines, the form refuses (*"Order &lt;order&gt; has 2 open lines of
+    &lt;product&gt; (lines 1, 2) — say which line this job is for."*): plan it from
+    the line instead, with **Plan** on the order page. An existing work order is
+    never re-attached.
+
 !!! note "A work order need not be tied to a customer order"
     **Related Order** is optional — stock builds, internal work and rework all
     exist without one. **Expected Completion Date** is not: the schedule is built
