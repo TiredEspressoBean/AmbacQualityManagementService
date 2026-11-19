@@ -29246,6 +29246,7 @@ const ValidateTokenResponse = z.object({
   user_email: z.string().email(),
   expires_at: z.string().datetime({ offset: true }),
   expired: z.boolean(),
+  detail: z.string().nullable(),
 });
 const UserWorkCenterMembership = z.object({
   id: z.string().uuid(),
@@ -65300,7 +65301,8 @@ Whoever may invite (add_user) — the link is a way into the account.`,
     method: "post",
     path: "/api/UserInvitations/validate-token/",
     alias: "api_UserInvitations_validate_token_create",
-    description: `Validate an invitation token (public endpoint)`,
+    description: `Validate an invitation token (public endpoint): the signup page asks when it
+opens, and a link that can&#x27;t be used says why in place of the form.`,
     requestFormat: "json",
     parameters: [
       {

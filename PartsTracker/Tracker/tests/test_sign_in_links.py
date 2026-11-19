@@ -119,6 +119,30 @@ class InvitationFixTests(_Fixture):
         self.assertEqual(self._accept(old_url.split("token=")[1]).status_code, 400)
         self.assertEqual(self._accept(r.json()["invitation_url"].split("token=")[1]).status_code, 200)
 
+    def _validate(self, token):
+        self.client.force_authenticate(user=None)
+        return self.client.post("/api/UserInvitations/validate-token/", {"token": token}, format="json").json()
+
+    def test_a_replaced_link_says_so_when_it_opens_and_when_used(self):
+        replaced = "This invitation link was replaced by a newer one. Ask for the latest link."
+        old = self._invite(self.newbie).json()["invitation_url"].split("token=")[1]
+        self.assertEqual((self._validate(old)["valid"], self._validate(old)["detail"]), (True, None))
+        self.authenticate_as(self.admin, self.tenant_a)
+        with patch("Tracker.email_notifications.send_invitation_email"):
+            self.client.post("/api/UserInvitations/resend/", {"user_id": self.newbie.id}, format="json")
+        self.assertEqual((self._validate(old)["valid"], self._validate(old)["detail"]), (False, replaced))
+        self.assertEqual(self._accept(old).json()["detail"], replaced)
+
+    def test_an_expired_link_reads_expired_and_a_set_up_account_reads_set_up(self):
+        from Tracker.models import UserInvitation
+        UserInvitation.objects.create(user=self.newbie, invited_by=self.admin, token="t-old",
+                                      expires_at=timezone.now() - timedelta(days=1))
+        self.assertEqual(self._validate("t-old")["detail"], "This invitation has expired")
+        UserInvitation.objects.create(user=self.worker, invited_by=self.admin, token="t-worker",
+                                      expires_at=timezone.now() + timedelta(days=7))
+        self.assertEqual(self._validate("t-worker")["detail"],
+                         "This account is already set up — sign in, or ask your administrator for a reset link.")
+
     def test_with_email_off_an_invitation_is_a_link_and_nothing_is_sent(self):
         with override_settings(EMAIL_ENABLED=False), \
                 patch("Tracker.email_notifications.send_invitation_email") as send:

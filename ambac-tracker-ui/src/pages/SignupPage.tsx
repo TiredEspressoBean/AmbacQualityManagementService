@@ -27,7 +27,10 @@ import {
 import { PasswordInput } from '@/components/ui/password-input'
 import { Checkbox } from '@/components/ui/checkbox'
 
-import { useAcceptInvitation } from '@/hooks/useAcceptInvitation'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertCircle, Loader2 } from 'lucide-react'
+import { useAcceptInvitation, useInvitationCheck } from '@/hooks/useAcceptInvitation'
+import { apiErrorMessage } from '@/lib/api/describeApiError'
 
 const signupSchema = z.object({
     password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -42,6 +45,7 @@ export default function SignupPage() {
     const navigate = useNavigate()
     const search = useSearch({ strict: false }) as { token?: string }
     const acceptInvitation = useAcceptInvitation()
+    const check = useInvitationCheck(search.token)
 
     type SignupFormValues = z.infer<typeof signupSchema>
     const form = useForm<SignupFormValues, any, SignupFormValues>({
@@ -102,6 +106,39 @@ export default function SignupPage() {
 
             toast.error(errorMessage)
         }
+    }
+
+    // A link that can't set the account up — replaced by a newer one, expired, used, or
+    // not a link at all — says why in place of the form. (If the check can't be made — a
+    // throttle, the network — the form stays; Create Account checks again.)
+    const refusal = check.data && !check.data.valid
+        ? check.data.detail ?? 'This invitation link can no longer be used. Ask for a new one.'
+        : check.isError && (check.error as { response?: { status?: number } })?.response?.status === 404
+            ? apiErrorMessage(check.error) ?? 'Invalid invitation token'
+            : null
+    if (refusal) {
+        return (
+            <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
+                <Card className="mx-auto max-w-sm">
+                    <CardHeader>
+                        <CardTitle className="text-2xl">Invitation link can't be used</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>{refusal}</AlertDescription>
+                        </Alert>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
+    if (check.isPending && search.token) {
+        return (
+            <div className="flex min-h-[50vh] w-full items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+        )
     }
 
     return (

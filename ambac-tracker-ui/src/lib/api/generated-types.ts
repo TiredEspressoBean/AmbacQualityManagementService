@@ -17306,7 +17306,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Validate an invitation token (public endpoint) */
+        /**
+         * @description Validate an invitation token (public endpoint): the signup page asks when it
+         *     opens, and a link that can't be used says why in place of the form.
+         */
         post: operations["api_UserInvitations_validate_token_create"];
         delete?: never;
         options?: never;
@@ -41952,6 +41955,8 @@ export interface components {
             /** Format: date-time */
             expires_at: string;
             expired: boolean;
+            /** @description Why the link can't be used (null when it can). */
+            detail: string | null;
         };
         /**
          * @description * `PASS` - Pass

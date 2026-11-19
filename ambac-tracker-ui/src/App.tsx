@@ -15,8 +15,9 @@ import { toast } from "sonner";
 const router = createAppRouter(queryClient);
 
 /** Queries readable signed out, which a 401 must not remove: the organization (branding),
- *  the sign-in notice (system-use banner, whether email is on) and a reset link's check. */
-const SIGNED_OUT_QUERIES = new Set(["tenant", "sign-in-notice", "password-reset-check"]);
+ *  the sign-in notice (system-use banner, whether email is on) and a reset or invitation
+ *  link's check. */
+const SIGNED_OUT_QUERIES = new Set(["tenant", "sign-in-notice", "password-reset-check", "invitation-check"]);
 
 export default function App() {
     const interceptorSetup = useRef(false);

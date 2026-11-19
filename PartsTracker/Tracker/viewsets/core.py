@@ -1173,10 +1173,16 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                                                      fields={"valid": serializers.BooleanField(),
                                                              "user_email": serializers.EmailField(),
                                                              "expires_at": serializers.DateTimeField(),
-                                                             "expired": serializers.BooleanField()})})
+                                                             "expired": serializers.BooleanField(),
+                                                             "detail": serializers.CharField(
+                                                                 allow_null=True,
+                                                                 help_text="Why the link can't be used "
+                                                                           "(null when it can).")})})
     @action(detail=False, methods=['post'], url_path='validate-token')
     def validate_token(self, request):
-        """Validate an invitation token (public endpoint)"""
+        """Validate an invitation token (public endpoint): the signup page asks when it
+        opens, and a link that can't be used says why in place of the form."""
+        from Tracker.services.core.sign_in import invitation_refusal
         token = request.data.get('token')
 
         if not token:
@@ -1184,11 +1190,13 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
         try:
             invitation = UserInvitation.objects.select_related('user').get(token=token)
+            refusal = invitation_refusal(invitation)
 
-            return Response({"valid": invitation.is_valid(), "user_email": invitation.user.email,
+            return Response({"valid": refusal is None, "user_email": invitation.user.email,
                              "user_first_name": invitation.user.first_name, "user_last_name": invitation.user.last_name,
                              "expires_at": invitation.expires_at, "expired": invitation.is_expired(),
-                             "already_accepted": invitation.accepted_at is not None})
+                             "already_accepted": invitation.accepted_at is not None,
+                             "detail": refusal})
         except UserInvitation.DoesNotExist:
             return Response({"valid": False, "detail": "Invalid invitation token"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1216,21 +1224,16 @@ class UserInvitationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         except UserInvitation.DoesNotExist:
             return Response({"detail": "Invalid invitation token"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check if valid
-        if not invitation.is_valid():
-            if invitation.accepted_at:
-                return Response({"detail": "This invitation has already been accepted"},
-                                status=status.HTTP_400_BAD_REQUEST)
-            else:
-                return Response({"detail": "This invitation has expired"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # An invitation sets up an account, once: never a new password on one in use
-        # (a stale or second link would otherwise reset a working account).
-        from Tracker.services.core.sign_in import ALREADY_SET_UP, cancel_pending_invitations, is_set_up
+        # Accepted, replaced, expired — or the account is set up already: an invitation sets
+        # an account up once, never a new password on one in use (services/core/sign_in).
+        from Tracker.services.core.sign_in import ALREADY_SET_UP, cancel_pending_invitations, invitation_refusal
+        refusal = invitation_refusal(invitation)
+        if refusal:
+            body = {"detail": refusal}
+            if refusal == ALREADY_SET_UP:
+                body["code"] = "already_set_up"
+            return Response(body, status=status.HTTP_400_BAD_REQUEST)
         user = invitation.user
-        if is_set_up(user):
-            return Response({"detail": ALREADY_SET_UP, "code": "already_set_up"},
-                            status=status.HTTP_400_BAD_REQUEST)
 
         # Set password and activate user
         user.set_password(password)

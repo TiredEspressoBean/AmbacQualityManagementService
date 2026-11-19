@@ -43102,7 +43102,9 @@ paths:
   /api/UserInvitations/validate-token/:
     post:
       operationId: api_UserInvitations_validate_token_create
-      description: Validate an invitation token (public endpoint)
+      description: |-
+        Validate an invitation token (public endpoint): the signup page asks when it
+        opens, and a link that can't be used says why in place of the form.
       tags:
       - api
       requestBody:
@@ -92161,7 +92163,12 @@ components:
           format: date-time
         expired:
           type: boolean
+        detail:
+          type: string
+          nullable: true
+          description: Why the link can't be used (null when it can).
       required:
+      - detail
       - expired
       - expires_at
       - user_email
