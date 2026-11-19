@@ -103,21 +103,17 @@ Password** card.
 
 ## Password Reset
 
-If you forget your password:
+If you forget your password, **ask your administrator for a reset link.** They
+create it in User Management and give it to you. Open it, choose a new password,
+and sign in. It works once, until the date they set. Choosing the new password
+signs you out on every other device.
 
-1. Click **Forgot your password?** on the login page
-2. Enter your email address
-3. Click **Send reset email**
-4. Check your email for the reset link
-5. Click the link and set a new password
+Where this deployment sends email, **Forgot your password?** on the login page can
+also email you a link, valid for one day: enter your email address, then open the
+link from your inbox. Where it doesn't, that page says to ask your administrator.
 
 !!! note "SSO Users"
     If your organization uses SSO, password reset is handled by your IT department through your identity provider (Microsoft Entra ID, Okta, etc.).
-
-!!! tip "If the reset email never arrives"
-    The reset depends on this deployment sending mail, which not every one does.
-    If nothing arrives, ask your administrator: an **access link** from User
-    Management lets you set a new password without email.
 
 ## Multi-Tenant Access
 

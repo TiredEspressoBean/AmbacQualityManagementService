@@ -13,7 +13,7 @@ Solutions for frequently encountered problems.
 
 **Solutions**:
 1. Check email spelling
-2. Reset password via "Forgot Password"
+2. Ask your administrator for a reset link (or use **Forgot your password?** where this deployment sends email)
 3. Check Caps Lock
 
 There is no account lockout. Too many attempts in a short time are throttled

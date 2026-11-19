@@ -32,7 +32,7 @@ personal rule can both fire on the same thing.
 | **Event** | Which event it listens for |
 | **Condition** | An optional condition tested against the event — shown in the list's **When** column, as `always` when there is none |
 | **Recipients** | Users, groups, or (customer scope only) external contacts |
-| **Channels** | Where the notification goes — for example in-app, email |
+| **Channels** | Where the notification goes — for example in-app, email. Email goes out only where email is switched on for this deployment; otherwise in-app still arrives and the email is skipped |
 | **Active** | Whether it fires at all |
 
 A rule also stores a **priority** and a **minimum gap** (which suppresses repeat

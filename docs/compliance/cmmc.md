@@ -241,7 +241,7 @@ The application provides evidence for these assessment objectives:
 - Access records for document views and downloads, report generation, data
   exports and AI queries
 - Superuser and staff accounts can also read the log in the Django admin at
-  `/admin/auditlog/logentry/`
+  `/djangoadmin/auditlog/logentry/`
 
 **Configuration:**
 - Version history for documents and processes

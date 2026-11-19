@@ -71,20 +71,14 @@ token** — see [Inviting Users](#inviting-users) below.
 3. They set a password, unless they sign in through SSO
 4. They can log in
 
-!!! danger "Do not assume the link was emailed — check, or hand it over yourself"
-    Whether an invitation is *delivered* depends on how this deployment is
-    configured. The mail backend is set per environment, and one of its settings
-    discards mail entirely — which is a normal choice where there is no mail path
-    to use. Find out which you are on before you rely on it.
+!!! danger "Hand the link over: don't wait for an email"
+    UQMES sends no email unless whoever runs it has switched email on for this
+    deployment, and most don't. With it off, nothing is sent and the invitation
+    says so: *"Invitation created — give them the link."*
 
-    **The link does not depend on email.** Every invited user's row carries their
-    signup link with a **Copy** button — open it, copy the link, and send it to
-    them however you normally reach them. That path always works.
-
-    So if you are covering for someone and onboarding a person today: copy the link
-    and hand it over. Telling them to watch their inbox is the failure that costs a
-    day, because nothing errors — the invitation is created either way, and the only
-    symptom is a person who never arrives.
+    **The link does not depend on email.** Copy it from the dialog and send it
+    however you normally reach the person, or give it to them in person. That path
+    always works, on every deployment.
 
 !!! note "Email verification is optional"
     Address verification is configured as *optional*, so a new user can sign
@@ -104,14 +98,48 @@ Open the person's row menu in **User Management**:
 
 | Action | When it appears | What it does |
 |--------|-----------------|--------------|
-| **Copy access link** | Always, for any user | Creates an invitation — or returns the live one — and shows the signup link with a **Copy** button |
-| **Resend invitation** | Only while they are pending or expired | The same thing, named for the case you are usually in |
+| **Copy access link** | For someone not yet set up | Creates an invitation, or returns the live one, and shows the signup link with a **Copy** button |
+| **Resend invitation** | Only while they are pending or expired | A new invitation; the old link stops working |
+| **Create reset link** | For someone already set up | A password reset link to hand over: see [Forgotten passwords](#forgotten-passwords) |
 
-!!! tip "This is also how you get someone back in without email"
-    Accepting a fresh invitation **re-sets the person's password**. So **Copy
-    access link** on an *active* user is a password reset you can hand over
-    directly — which is the answer when someone is locked out and the reset mail
-    is not reaching them.
+A new link asks **Valid for** in days: 1 to 30, 7 unless you change it. The dialog
+reads *"Give this link to &lt;name&gt; in person. It works once, until
+&lt;date&gt;."* While an invitation is still pending, asking again gives you the
+same link, valid until the same date.
+
+Each link works **once**. Accepting an invitation, or resending one, cancels the
+person's other pending invitations, so an old link in someone's inbox stops
+working. An account that's already set up can't take an invitation: *"This
+account is already set up — sign in, or ask your administrator for a reset
+link."*
+
+Creating and copying links needs `add_user`; the links on the invitations list are
+shown only to people who hold it.
+
+## Forgotten passwords
+
+UQMES never needs email to get someone back in. **Create reset link** on the
+person's row in **User Management** gives you a link to hand over, valid for the
+days you set (1 to 30, default 7). They open it, choose a new password, and are
+signed out everywhere else, including any API tokens.
+
+It's refused:
+
+- for your own account: use **Change password** on your profile
+- for someone not set up yet: *"Not set up yet — send an invitation instead."*
+- for a suspended account
+- for a Tenant Admin, unless you are one
+
+A used link reads *"This reset link has already been used. Ask for a new one."*; an
+expired one, *"This reset link has expired. Ask for a new one."*
+
+Where email is configured, **Forgot your password?** on the login page also emails a
+reset link, valid for one day. Where it isn't, the page says to ask an
+administrator instead.
+
+!!! note "When the only Tenant Admin is locked out"
+    Nobody inside the tenant can issue them a link. Whoever runs the server resets
+    the password there with `python manage.py changepassword <email>`.
 
 ### Inviting everyone who was never invited
 

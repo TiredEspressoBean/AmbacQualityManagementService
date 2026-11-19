@@ -2,8 +2,8 @@
 
 **Admin** > **Data Management** (`/Edit`)
 
-One index of every shared-configuration table in the system, in the style of the
-Django admin index. If you are setting a plant up, or changing something the shop
+One index of every shared-configuration table in the system. If you are setting a
+plant up, or changing something the shop
 relies on rather than something the shop is *doing*, this is where it lives.
 
 ## Why things moved here

@@ -320,7 +320,7 @@ Check:
 
 | Request | Action |
 |---------|--------|
-| Password reset | The reset link on the login page — or, if mail does not arrive, **Copy access link** on their row, which lets them set a new one |
+| Password reset | **Create reset link** on their row in User Management, handed over in person. See [Forgotten passwords](../admin/users/adding.md#forgotten-passwords) |
 | Permission change | Modify group membership |
 | New account | Create user, assign groups |
 | Access issue | Check permissions and group membership |

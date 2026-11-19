@@ -97,7 +97,7 @@ Levels](../workflows/documents/library.md#classification-levels).
 Navigate to **Admin** > **User Management**, click **Add user**, fill in the details, then **Create User**.
 
 ### How do I reset someone's password?
-If using SSO, this is handled by your identity provider. Otherwise, use "Password Reset" function.
+If using SSO, this is handled by your identity provider. Otherwise, **Create reset link** on their row in **User Management** and give them the link. See [Forgotten passwords](../admin/users/adding.md#forgotten-passwords).
 
 ### How do I change user permissions?
 Edit the user, modify group membership. Groups determine permissions.
