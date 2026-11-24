@@ -150,16 +150,25 @@ def validate_answer(substep, node_id, cap, step_execution) -> dict:
 def rate_quantity(part, step, line, item_key) -> Decimal:
     """What this unit draws of an optional line at its usage %: the running target
     for the work order after this unit, less what's already been drawn there."""
+    from django.db import transaction
     from django.db.models import Sum
-    from Tracker.models import MaterialUsage, StepExecution
+    from Tracker.models import MaterialUsage, WorkOrder
     from Tracker.services.mes.consumption import item_filter
     wo_id = part.work_order_id
     if wo_id is None or line.usage_percent is None:
         return Decimal('0')
-    # Units of the order that have left this step, this one included (consumption runs
-    # after the visit closes); a rework re-entry is another pass, as for required lines.
-    n = StepExecution.objects.filter(  # tenant-safe: by the work order FK
-        part__work_order_id=wo_id, step=step, exited_at__isnull=False).count()
+    # This unit is one more pass of the line through the step, counted on the work
+    # order (a rework re-entry is another pass, as for required lines). Counted from
+    # step executions it read 0 for units moved with none — every unit then drew
+    # nothing (walk 2026-11-24). Locked, so two units leaving at once count twice.
+    with transaction.atomic():
+        wo = WorkOrder.objects.select_for_update().get(pk=wo_id)  # tenant-safe: by the part's FK
+        passes = dict(wo.optional_usage_passes or {})
+        key = f"{line.id}:{step.id}"
+        n = int(passes.get(key, 0)) + 1
+        passes[key] = n
+        wo.optional_usage_passes = passes
+        wo.save(update_fields=['optional_usage_passes'])
     per_unit = Decimal(str(line.quantity))
     target = (Decimal(n) * per_unit * Decimal(str(line.usage_percent)) / Decimal(100)
               ).quantize(Decimal('1'), rounding=ROUND_HALF_UP)

@@ -116,6 +116,23 @@ class RateDrawTests(_Fixture):
             totals.append(int(drawn))
         self.assertEqual(totals, [0, 1, 1, 1, 1, 2, 2, 2])
 
+    def test_a_bulk_advance_of_units_with_no_step_execution_counts_and_draws(self):
+        """Walk 2026-11-24 (WO-TRAIN-BOTTLE): two units moved in one bulk call, with no
+        step execution at the step. The rate draw counted units from exited executions,
+        read 0, and drew nothing; the call also reported 0 advanced. Now 2 advanced, and
+        the 25% kit is drawn on the 2nd unit (half up: 0 then 1)."""
+        from Tracker.models import Orders, StepExecution
+        self._stock()
+        order = Orders.objects.create(tenant=self.tenant, name="O-BULK")
+        two = self.parts[:2]
+        for p in two:
+            p.order = order
+            p.save(update_fields=["order"])
+        self.assertFalse(StepExecution.objects.filter(part__in=two).exists())
+        result = order.bulk_increment_parts_at_step(self.step.id, operator=self.operator)
+        self.assertEqual(result, {"advanced": 2, "total": 2})
+        self.assertEqual(self._drawn(), Decimal(1))
+
     def test_no_usage_percent_and_no_question_draws_nothing(self):
         self._stock()
         self.line.usage_percent = None

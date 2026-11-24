@@ -2464,7 +2464,10 @@ class Orders(SecureModel):
         for part in parts_to_advance:
             try:
                 result = part.increment_step(operator=operator)
-                if result in ["completed_workorder", "full_work_order_advanced"]:
+                # What advance_part_step returns when the part moved on. It used to
+                # count two names it never returns, so a bulk advance read "0 advanced"
+                # while the parts had gone. "marked_ready" waits for its lot: not moved.
+                if result in ("advanced", "completed", "escalated"):
                     advanced += 1
             except Exception as e:
                 logger.warning(
@@ -2895,6 +2898,13 @@ class WorkOrder(SecureModel):
                   "Make-up planning tops parts back up to this when actual scrap outruns "
                   "the expected gross-up. Null on legacy WOs (falls back to `quantity`).")
     """Ordered good-part count; make-up planning replaces scrap to keep parts alive up to it."""
+
+    optional_usage_passes = models.JSONField(
+        default=dict, blank=True,
+        help_text="Units that have left a step drawing an optional BOM line at its usage "
+                  "%, keyed '<bom line id>:<step id>' — the running count the rate draw "
+                  "rounds against (services/mes/optional_usage). Kept here because not "
+                  "every path leaves a step execution to count.")
 
     documents = GenericRelation('Tracker.Documents')
     """Optional document relating to this Work Order"""
