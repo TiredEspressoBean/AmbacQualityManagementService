@@ -268,7 +268,17 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
     for line in _released_bom_lines(part.part_type_id, cache):
         if line.consumed_at_step_id != step.id:
             continue
-        if line.source != 'BUY' or line.is_optional:
+        if line.source != 'BUY':
+            continue
+        if line.is_optional:
+            # Not drawn (nobody records whether an optional part was fitted), but the
+            # unit has passed the step: its share of any kit picked for the job comes
+            # off the reservation, as a drawn line's does. Left there, an optional pick
+            # held its stock off on-hand forever (user ruling 2026-11-24).
+            optional_item = buy_line_item(line)
+            if optional_item is not None:
+                _release_line_share(part, step, optional_item.key, tenant,
+                                    Decimal(str(line.quantity)))
             continue
         # Resolved from the item master, not the line's flag — a raw-material line can
         # never be recovered, whatever the override says. This used to read
@@ -463,6 +473,24 @@ def _mark_line_issued(part, step, item, tenant, drawn_by_lot: dict) -> None:
     row.picked_lots = entries
     row.qty_issued = Decimal(str(row.qty_issued or 0)) + total
     fields = ['qty_issued', 'picked_lots']
+    if row.qty_issued >= Decimal(str(row.qty_picked or 0)):
+        row.issued_at = timezone.now()
+        fields.append('issued_at')
+    row.save(update_fields=fields)
+
+
+def _release_line_share(part, step, item, tenant, qty: Decimal) -> None:
+    """A unit passed the step without drawing this line (an optional part): its `qty`
+    comes off the job's pick for it, so the reservation ends once the units have passed
+    — the same running count `_mark_line_issued` keeps for a drawn line, with nothing
+    drawn (`qty_issued` is what's left the reservation, drawn or released)."""
+    from django.utils import timezone
+
+    row = _staging_line(part, step, item, tenant)
+    if row is None or row.issued_at is not None:
+        return
+    row.qty_issued = Decimal(str(row.qty_issued or 0)) + qty
+    fields = ['qty_issued']
     if row.qty_issued >= Decimal(str(row.qty_picked or 0)):
         row.issued_at = timezone.now()
         fields.append('issued_at')

@@ -2447,8 +2447,9 @@ class Orders(SecureModel):
 
         return result
 
-    def bulk_increment_parts_at_step(self, step_id):
-        """Increment all parts at a specific step"""
+    def bulk_increment_parts_at_step(self, step_id, operator=None):
+        """Increment all parts at a specific step, as `operator` — who the step's
+        material is drawn by (without one nothing can be drawn)."""
         try:
             target_step = Steps.objects.get(id=step_id)
         except Steps.DoesNotExist:
@@ -2462,7 +2463,7 @@ class Orders(SecureModel):
 
         for part in parts_to_advance:
             try:
-                result = part.increment_step()
+                result = part.increment_step(operator=operator)
                 if result in ["completed_workorder", "full_work_order_advanced"]:
                     advanced += 1
             except Exception as e:

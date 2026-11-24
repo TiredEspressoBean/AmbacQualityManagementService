@@ -599,3 +599,56 @@ class StockNeedsInspectionTests(_SupplyFixture):
         self.assertEqual(res["rows"][0]["detail"],
                          "Stock on Hand: column 'Status' isn't one this sheet reads. "
                          "Remove it, or see the sheet's columns.")
+
+
+class OptionalPickReleasedAtTheStep(_ConsumptionFixture):
+    """Bug 1 (user ruling 2026-11-24): a kit picked for an OPTIONAL line was reserved
+    forever — consumption skips optional lines, so nothing ever took it off the
+    reservation. A unit passing the step now releases its share, as a drawn line does."""
+
+    slug = "material-bug1"
+
+    def test_an_optional_pick_is_released_as_the_units_pass(self):
+        from Tracker.models import BOMLine
+        from Tracker.services.mes.consumption import consume_for_step, reserved_quantity
+        BOMLine.objects.filter(tenant=self.tenant, material=self.seal).update(is_optional=True)
+        lot = self._lot("OPT", qty=10)
+        line = self._pick(lot, 4)                     # 2 units x 2, kitted just in case
+        self.assertEqual(reserved_quantity(self.seal.id, self.tenant), Decimal('4'))
+        for p in self.parts:
+            consume_for_step(p, self.step, self.operator)
+        line.refresh_from_db()
+        self.assertIsNotNone(line.issued_at)
+        self.assertEqual(reserved_quantity(self.seal.id, self.tenant), Decimal('0'))
+        lot.refresh_from_db()
+        self.assertEqual(lot.quantity_remaining, Decimal('10'))   # released, not drawn
+
+    def test_an_optional_line_never_makes_the_station_short(self):
+        from Tracker.models import BOMLine
+        from Tracker.services.mes.staging import _materials_for
+        BOMLine.objects.filter(tenant=self.tenant, material=self.seal).update(is_optional=True)
+        rows = _materials_for(self.pt.id, self.step.id, 2, {}, {}, self.tenant,
+                              work_order_id=self.wo.id)
+        self.assertEqual([(r['optional'], r['short']) for r in rows], [(True, 0.0)])
+
+
+class AdvanceWithoutAnOperatorTests(_ConsumptionFixture):
+    """Bug 3 (2026-11-24): Orders > increment-step advanced parts with nobody named, so
+    nothing was drawn and stock read high. Whoever moved them draws."""
+
+    slug = "material-bug3"
+
+    def test_the_order_level_advance_draws_as_the_person_who_moved_the_parts(self):
+        from Tracker.models import MaterialUsage, Orders, ProcessStep, Steps
+        nxt = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Test",
+                                   step_type="TASK")
+        ProcessStep.objects.create(process=self.process, step=nxt, order=2)
+        order = Orders.objects.create(tenant=self.tenant, name="O-B3")
+        for p in self.parts:
+            p.order = order
+            p.save(update_fields=["order"])
+        self._lot("B3", qty=10)
+        order.bulk_increment_parts_at_step(self.step.id, operator=self.operator)
+        usages = MaterialUsage.objects.filter(work_order=self.wo)
+        self.assertEqual(sum(u.qty_consumed for u in usages), Decimal('4'))
+        self.assertTrue(all(u.consumed_by_id == self.operator.id for u in usages))

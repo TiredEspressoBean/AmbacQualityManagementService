@@ -426,12 +426,15 @@ class OrderSeeder(BaseSeeder):
                 part.part_status = PartsStatus.READY_FOR_NEXT_STEP
             part.save(update_fields=['part_status'])
 
+            # Someone moves the part, and draws the step's material as they do — with
+            # nobody named nothing is drawn and the seeded stock reads high.
+            mover = random.choice(employees) if employees else None
             try:
-                increment_result = part.increment_step(decision_result=decision_result)
+                increment_result = part.increment_step(operator=mover, decision_result=decision_result)
             except ValueError:
                 # Try with default decision if required
                 try:
-                    increment_result = part.increment_step(decision_result='DEFAULT')
+                    increment_result = part.increment_step(operator=mover, decision_result='DEFAULT')
                 except ValueError:
                     break  # Can't advance
 

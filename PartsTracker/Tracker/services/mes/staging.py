@@ -285,7 +285,9 @@ def _materials_for(part_type_id, step_id, units: int, onhand: dict,
             'material': item.name,
             'needed': float(needed),
             'on_hand': float(have),
-            'short': float(max(Decimal('0'), needed - have)),
+            # An optional line isn't owed, so it's never the station's shortage: kitted
+            # if there's stock, and never a reason the job reads short.
+            'short': 0.0 if line.is_optional else float(max(Decimal('0'), needed - have)),
             'optional': bool(line.is_optional),
             # The lots consumption WILL draw, so the picker pulls those and the
             # traceability record matches what physically went in.
@@ -414,10 +416,12 @@ def consolidated_pick(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_H
                 row = rows.get(key)
                 if row is None:
                     row = rows[key] = {
-                        'material': m['material'], 'needed': 0.0,
+                        'material': m['material'], 'needed': 0.0, 'owed': 0.0,
                         'on_hand': m['on_hand'], 'drops': [],
                     }
                 row['needed'] += m['needed']
+                if not m.get('optional'):
+                    row['owed'] += m['needed']
                 row['drops'].append({
                     'qty': m['needed'], 'station': st['name'], 'erp_id': job['erp_id'],
                     'step_name': job['step_name'], 'staged': bool(job.get('staged_at')),
@@ -434,7 +438,9 @@ def consolidated_pick(tenant, work_center_id=None, hours: int = DEFAULT_WINDOW_H
             'material': name,
             'needed': float(needed),
             'on_hand': row['on_hand'],
-            'short': float(max(Decimal('0'), needed - planned)),
+            # Short against what's owed: optional quantities are kitted when there's
+            # stock, and never make the pull read short.
+            'short': float(max(Decimal('0'), Decimal(str(row['owed'])) - planned)),
             'lots': plan,
             'storage_location': next(
                 (p['storage_location'] for p in plan if p['storage_location']), ''),

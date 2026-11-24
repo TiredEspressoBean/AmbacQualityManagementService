@@ -700,12 +700,13 @@ class RemanSeeder(BaseSeeder):
                 part.part_status = PartsStatus.READY_FOR_NEXT_STEP
             part.save(update_fields=['part_status'])
 
-            # Use workflow engine to advance
+            # Use workflow engine to advance — as someone, who draws the step's material.
+            mover = random.choice(employees) if employees else None
             try:
-                increment_result = part.increment_step(decision_result=decision_result)
+                increment_result = part.increment_step(operator=mover, decision_result=decision_result)
             except ValueError:
                 try:
-                    increment_result = part.increment_step(decision_result='DEFAULT')
+                    increment_result = part.increment_step(operator=mover, decision_result='DEFAULT')
                 except ValueError:
                     break  # Can't advance
 

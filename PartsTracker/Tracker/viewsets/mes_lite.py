@@ -1833,7 +1833,9 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
         serializer.is_valid(raise_exception=True)
 
         try:
-            result = order.bulk_increment_parts_at_step(step_id)
+            # Whoever moved the parts draws the step's material (bug 3, 2026-11-24):
+            # advanced with nobody named, nothing was drawn and stock read high.
+            result = order.bulk_increment_parts_at_step(step_id, operator=request.user)
             return Response(result, status=status.HTTP_200_OK)
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
