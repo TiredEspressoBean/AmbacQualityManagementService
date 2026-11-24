@@ -74,6 +74,25 @@ These ask the operator for something and create the record.
 | **Harvested components** | Components recovered during teardown, with their grades (reman) |
 | **Components installed** | Which components went into the unit — its as-built record |
 | **Rebuild finding** | A component found worse than its teardown grade, for a lead to apply or dismiss (reman) |
+| **Optional part used?** | Whether this unit used an optional part, how many, and from which lot — see [Optional part used?](#optional-part-used) |
+
+### Optional part used?
+
+For an optional line of the part type's bill of materials consumed at this step:
+the operator answers **Used** or **Not used** for each unit, with how many and the
+lot it came from (**Took another lot** if it wasn't the one offered). The
+properties panel lists only the optional lines consumed at this step.
+
+- It is **always required**: the unit can't leave the step until it's answered
+  (*"'&lt;part&gt;' used? not answered for this unit"*).
+- **Used** draws exactly that, from that lot, as the unit leaves the step. **Not
+  used** draws nothing.
+- It **replaces the usage % draw** for that line, so the part is never drawn twice.
+  The usage % still drives planning.
+- It's offered on steps that run one unit at a time, not batch steps, since the
+  answer is per unit.
+
+See [Optional lines](../../admin/setup/part-types.md#optional-lines).
 
 !!! tip "Measurements are more than a number field"
     Use **Measurement** rather than a text input for numeric values. Only

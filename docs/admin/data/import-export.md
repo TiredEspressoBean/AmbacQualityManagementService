@@ -460,7 +460,7 @@ file can carry several. The remaining columns are the line:
 `line_number`, `component_type` (a part) **or** `material` (a raw material),
 `quantity`, `unit_of_measure`, `source` (MAKE/BUY), `consumed_at_step`
 (`Process > Step`), `find_number`, `reference_designator`, `is_optional`,
-`allow_harvested`, `notes`.
+`usage_percent` (optional lines only), `allow_harvested`, `notes`.
 
 !!! warning "The file replaces the BOM, it does not merge into it"
     The rows for a given BOM are its **complete line list**. A line you leave out

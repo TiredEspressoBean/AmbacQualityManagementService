@@ -42,7 +42,8 @@ cumulative supply.
 | **Demand** means | What open work still has to draw: each job's bill of materials for its quantity, **less what has already been drawn into that job**. A part fitted comes off stock once and stops counting as demand at the same moment, so it isn't counted twice. A remanufacture job is read per core, from what each core's rebuild still needs |
 | **On hand** means | Accepted or In Use lots, **less safety stock** |
 | **Incoming** means | Lots with a promised date and quantity still remaining |
-| **Excluded** | Make lines (they have their own orders) and optional lines (not commitments) |
+| **Optional lines** | Counted at their **usage %** (quantity × %), or left out when the line has none. See [Optional lines](../../admin/setup/part-types.md#optional-lines) |
+| **Excluded** | Make lines (they have their own orders) |
 
 The same rule for demand runs through [Requirements](overview.md#requirements),
 the material outlook export, and the scheduler's material check, so all of them

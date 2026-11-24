@@ -163,6 +163,46 @@ teardown processes. The work order picks which one it runs.
 Only the **default disassembly process** is held on the part type, and only as a
 preselection for the teardown dialog.
 
+## Bill of materials
+
+The **Bill of Materials** card on the part type lists what goes into one unit:
+each line a component or material, its quantity, whether it's made or bought, and
+the step it's **consumed at**. A released bill is read-only; **New revision**
+opens a draft to edit, which you release when it's right.
+
+**Bought parts leave stock at their step.** As each unit leaves the step a line is
+consumed at, that line's quantity is drawn from its lot (the lot staged for the
+job first, then the earliest to expire), and recorded against the unit.
+
+### Optional lines
+
+A line marked **Optional** is one a unit may or may not use: a seal kit replaced
+only if worn, a shim fitted only when needed. How much of it is planned and drawn
+depends on two things you can set:
+
+| The line has… | Planning counts | At the step |
+|---|---|---|
+| A **"used?" question** in the step's work instructions | the usage % (if set) | The operator answers for each unit, and exactly that is drawn |
+| A **Usage %** only | quantity × usage % | Drawn automatically at that rate |
+| Neither | nothing | Nothing is drawn |
+
+**Usage %** is on the optional line's edit dialog: *"The share of units expected to
+use it. Planning counts this share, and units passing the step draw at this rate
+unless the step asks "used?". Blank: not planned or drawn."* It's refused on a
+required line: *"A usage % is for an optional line; a required line is always
+used."*
+
+Drawn at a rate, it keeps a running total for the work order, to the nearest whole
+part: at 25%, four units passing draw one kit, eight draw two. It never draws more
+than the units could have used. Cycle counts correct the difference from what was
+really fitted.
+
+The **"used?" question** gives the exact answer and the lot it came from, for
+lines where that matters: see [Optional part used?](../../workflows/dwi/authoring.md#optional-part-used).
+
+A work order's **Materials** tab shows an optional line as *up to N* (every unit
+using it) and, with a usage %, *expected N*.
+
 ## 3D Model
 
 A 3D model is uploaded against a part type, and optionally against a particular

@@ -46,6 +46,7 @@ and the kind of capture determines what the operator sees:
 | **Harvested components** | Components recovered during teardown, with their grades (reman) |
 | **Components installed** | Which components went into the unit — its as-built record |
 | **Rebuild finding** | A component found worse than its teardown grade, for a lead to decide (reman) |
+| **Optional part used?** | Whether this unit used an optional part, how many, and from which lot |
 
 Not every substep asks for something. Callouts, document links, embedded
 media — an image or a video — 3D callouts on the part's model, and measurement
