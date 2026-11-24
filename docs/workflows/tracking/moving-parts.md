@@ -46,11 +46,14 @@ step**.
     finished part appears stuck: another part in its lot still has work
     outstanding.
 
-!!! warning "Force advance is for emergencies"
-    The work order control page has a force-advance control, labelled
-    *"Force advance step (emergency; default flow is event-driven)"*. It bypasses
-    the requirements that normally gate a step. Use it to recover from a stuck
-    state, not as part of routine operation.
+!!! warning "Force advance doesn't skip requirements"
+    The work order control page has a force-advance control. It moves parts on
+    now, but only if the step's requirements are met, the same as any advance:
+    one whose requirements aren't is refused, with the reason (*"Substep '…' not
+    completed for this part"*, *"QA signoff required but not received"*). That
+    holds for a part nobody has started at the step too: it counts as nothing done
+    yet. To get past a requirement, complete it or [request a
+    bypass](#requesting-a-bypass).
 
 ## Quality data on individual parts
 

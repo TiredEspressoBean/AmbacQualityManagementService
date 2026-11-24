@@ -122,11 +122,13 @@ So to move parts forward, do the work the step asks for — record the
 measurements, complete the inspection, finish the substeps. The system handles
 the transition.
 
-!!! warning "Force advance is for emergencies"
-    The work order control page has a **force advance** control, labelled in the
-    UI as *"Force advance step (emergency; default flow is event-driven)"*. It
-    bypasses the requirements that normally gate a step. Use it only to recover
-    from a stuck state, not as part of routine operation.
+!!! warning "Force advance doesn't skip requirements"
+    The work order control page has a **force advance** control. It moves parts
+    on now rather than waiting for the work to move them, but only if the step's
+    requirements are met, the same as any advance. A part whose requirements
+    aren't met is refused, with the reason. To get past one, complete it or
+    **Request bypass** on the part (see [Moving Parts
+    Forward](../workflows/tracking/moving-parts.md#requesting-a-bypass)).
 
 ## Step 5: Record Measurements (Optional)
 
