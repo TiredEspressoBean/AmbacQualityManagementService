@@ -19734,6 +19734,7 @@ export type WorkOrder = {
   short_closed_at: string | null;
   short_close_returned_quantity: number;
   start_refusal: string | null;
+  process_locked: boolean;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -29651,6 +29652,7 @@ const WorkOrder = z.object({
   short_closed_at: z.string().datetime({ offset: true }).nullable(),
   short_close_returned_quantity: z.number().int(),
   start_refusal: z.string().nullable(),
+  process_locked: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),

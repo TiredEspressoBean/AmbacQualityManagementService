@@ -365,21 +365,35 @@ export default function WorkOrderFormPage() {
                         return (
                             <FormItem className="flex flex-col">
                                 <FormLabel required={required.process}>Process</FormLabel>
-                                <FormControl>
-                                    <Combobox
-                                        className="w-[300px]"
-                                        value={field.value ?? null}
-                                        onChange={(v) => form.setValue("process", v ?? undefined)}
-                                        options={(processes?.results ?? []).map((p) => ({ value: p.id, label: p.name }))}
-                                        onSearch={setProcessSearch}
-                                        clearLabel="No process"
-                                        selectedLabel={workOrder?.process_info?.name ?? undefined}
-                                        placeholder="Select a process (optional)"
-                                        searchPlaceholder="Search processes..."
-                                        emptyText="No processes found."
-                                    />
-                                </FormControl>
-                                <FormDescription>The manufacturing process this work order follows</FormDescription>
+                                {mode === "edit" && workOrder?.process_locked ? (
+                                    // Its units are on this routing: a bare swap would strand
+                                    // them, so the server refuses it (process_locked).
+                                    <>
+                                        <p className="text-sm font-medium">{workOrder.process_info?.name ?? "—"}</p>
+                                        <FormDescription>
+                                            This work order has units on its routing. Change its routing
+                                            through a process change, which moves its parts.
+                                        </FormDescription>
+                                    </>
+                                ) : (
+                                    <>
+                                        <FormControl>
+                                            <Combobox
+                                                className="w-[300px]"
+                                                value={field.value ?? null}
+                                                onChange={(v) => form.setValue("process", v ?? undefined)}
+                                                options={(processes?.results ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                                                onSearch={setProcessSearch}
+                                                clearLabel="No process"
+                                                selectedLabel={workOrder?.process_info?.name ?? undefined}
+                                                placeholder="Select a process (optional)"
+                                                searchPlaceholder="Search processes..."
+                                                emptyText="No processes found."
+                                            />
+                                        </FormControl>
+                                        <FormDescription>The manufacturing process this work order follows</FormDescription>
+                                    </>
+                                )}
                                 <FormMessage />
                             </FormItem>
                         )

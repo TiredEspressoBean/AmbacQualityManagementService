@@ -42340,6 +42340,7 @@ export interface components {
             readonly short_closed_at: string | null;
             readonly short_close_returned_quantity: number;
             readonly start_refusal: string | null;
+            readonly process_locked: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */

@@ -954,6 +954,27 @@ def _load_parts_scoped(tenant_id, part_ids: list, *, lock: bool = False) -> dict
     return {str(p.id): p for p in qs}
 
 
+def place_part_at_step(part, step, *, user=None, reason: str) -> bool:
+    """Put `part` at `step` without running the steps between — loading in-flight work
+    (the Parts import's `step` column). Recorded as a move: any open visit is closed as
+    CANCELLED (left, not done), one StepTransitionLog names who placed it and why, and
+    no visits are invented for the steps it skips. Returns False when it's already
+    there. It used to set the step with no log and leave the old visit open (audit
+    2026-11-24)."""
+    from Tracker.models import StepExecution, StepTransitionLog
+    if part.step_id == step.id:
+        return False
+    with transaction.atomic():
+        now = timezone.now()
+        StepExecution.objects.filter(  # tenant-safe: by the part FK
+            part=part, exited_at__isnull=True).update(status='CANCELLED', exited_at=now)
+        part.step = step
+        part.save(update_fields=['step'])
+        StepTransitionLog.objects.create(tenant=part.tenant, part=part, step=step,
+                                         operator=user, reason=reason)
+    return True
+
+
 def bulk_increment(tenant_id, part_ids: list, operator) -> list[BulkResult]:
     """Advance each listed part one step. Per-id errors are captured, not raised."""
     results: list[BulkResult] = []

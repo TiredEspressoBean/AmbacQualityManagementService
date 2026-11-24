@@ -1007,6 +1007,29 @@ class PartsCSVImportSerializer(BaseCSVImportSerializer):
                      "work_order on the row or already on the part. Not for reman cores."),
         }
 
+    # Placing a part at its step is recorded as a move (services/mes/parts.
+    # place_part_at_step): the open visit closed, one transition log naming who and why,
+    # no visits invented for the skipped steps. Written straight onto the part, it left
+    # no log and the old visit open (audit 2026-11-24).
+    def create_instance(self, data: Dict[str, Any]) -> models.Model:
+        step = data.pop('step', None)
+        part = super().create_instance(data)
+        if step is not None:
+            self._place(part, step)
+        return part
+
+    def update_instance(self, instance: models.Model, data: Dict[str, Any]) -> models.Model:
+        step = data.pop('step', None)
+        part = super().update_instance(instance, data)
+        if step is not None and self._place(part, step):
+            self.unchanged = False   # the step moved even if nothing else did
+        return part
+
+    def _place(self, part, step) -> bool:
+        from Tracker.services.mes.parts import place_part_at_step
+        return place_part_at_step(part, step, user=self.user,
+                                  reason=f"Placed at {step.name} by import")
+
     def transform_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Additional transformations for Parts."""
         result = super().transform_data({k: v for k, v in data.items() if k != 'step'})

@@ -680,7 +680,7 @@ class PartsStepImportTests(APITestCase):
                     steps[sname] = st
                 procs[pname] = (proc, steps)
             cls.build, cls.build_steps = procs["Build"]
-            cls.repair_steps = procs["Repair"][1]
+            cls.repair, cls.repair_steps = procs["Repair"]
             cls.wo = WorkOrder.objects.create(
                 tenant=cls.tenant, ERP_id="WO-STEP", quantity=1,
                 workorder_status=WorkOrderStatus.IN_PROGRESS, process=cls.build)
@@ -724,6 +724,55 @@ class PartsStepImportTests(APITestCase):
         self.assertEqual(r.json()["summary"]["updated"], 1, r.content)
         part.refresh_from_db()
         self.assertEqual(part.step_id, self.build_steps["Test"].id)
+
+    def test_an_imported_step_is_recorded_as_a_move(self):
+        """Audit 2026-11-24: the import set the step with no transition log and left the
+        old visit open. Now: one log naming who placed it and why, the open visit closed
+        as CANCELLED, no visits invented for the steps it skipped; the same step again
+        is no change."""
+        from Tracker.models import Parts, StepExecution, StepTransitionLog
+        part = Parts.objects.create(tenant=self.tenant, ERP_id="P-MOVE", part_type=self.pt,
+                                    work_order=self.wo, step=self.build_steps["Cut"])
+        visit = StepExecution.objects.create(tenant=self.tenant, part=part,
+                                             step=self.build_steps["Cut"], status="IN_PROGRESS")
+        r = self._upload(f"id,step\n{part.id},Test", mode="update")
+        self.assertEqual(r.json()["summary"]["updated"], 1, r.content)
+        part.refresh_from_db()
+        self.assertEqual(part.step_id, self.build_steps["Test"].id)
+        logs = StepTransitionLog.objects.filter(part=part)
+        self.assertEqual(logs.count(), 1)
+        self.assertEqual((logs[0].step_id, logs[0].operator_id, logs[0].reason),
+                         (self.build_steps["Test"].id, self.user.id, "Placed at Test by import"))
+        visit.refresh_from_db()
+        self.assertEqual(visit.status, "CANCELLED")
+        self.assertIsNotNone(visit.exited_at)
+        self.assertEqual(StepExecution.objects.filter(part=part).count(), 1)   # none invented
+        r = self._upload(f"id,step\n{part.id},Test", mode="update")
+        self.assertEqual(r.json()["summary"]["unchanged"], 1, r.content)
+        self.assertEqual(StepTransitionLog.objects.filter(part=part).count(), 1)
+
+    def test_a_work_order_with_units_keeps_its_process(self):
+        """Audit 2026-11-24: swapping a started work order's process stranded its parts
+        on the old routing's steps. Refused once it has units; allowed before."""
+        from Tracker.models import Parts, WorkOrder, WorkOrderStatus
+        part = Parts.objects.create(tenant=self.tenant, ERP_id="P-LOCK", part_type=self.pt,
+                                    work_order=self.wo, step=self.build_steps["Cut"])
+        r = self.client.patch(f"/api/WorkOrders/{self.wo.id}/", {"process": str(self.repair.id)},
+                              format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("process change", str(r.json()))
+        self.wo.refresh_from_db()
+        part.refresh_from_db()
+        self.assertEqual((self.wo.process_id, part.step_id),
+                         (self.build.id, self.build_steps["Cut"].id))
+        self.assertIs(self.client.get(f"/api/WorkOrders/{self.wo.id}/").json()["process_locked"], True)
+        empty = WorkOrder.objects.create(tenant=self.tenant, ERP_id="WO-EMPTY", quantity=0,
+                                         workorder_status=WorkOrderStatus.PENDING, process=self.build)
+        r = self.client.patch(f"/api/WorkOrders/{empty.id}/", {"process": str(self.repair.id)},
+                              format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        empty.refresh_from_db()
+        self.assertEqual(empty.process_id, self.repair.id)
 
     def test_a_core_part_is_not_moved_by_import(self):
         from datetime import date

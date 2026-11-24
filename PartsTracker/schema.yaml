@@ -93064,6 +93064,9 @@ components:
           type: string
           nullable: true
           readOnly: true
+        process_locked:
+          type: boolean
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -93086,6 +93089,7 @@ components:
       - parts_summary
       - priority_changes
       - process_info
+      - process_locked
       - related_order_detail
       - related_order_info
       - release_override_reason

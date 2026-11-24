@@ -1076,6 +1076,14 @@ class WorkOrderPriorityChangeSerializer(serializers.Serializer):
     changed_at = serializers.DateTimeField()
 
 
+def _has_live_units(work_order) -> bool:
+    """Whether the work order has units on its routing — any part not archived,
+    cancelled or scrapped, started or not. Once it has, its process is fixed: changing it
+    goes through a process change, which moves the parts."""
+    return work_order.parts.filter(archived=False).exclude(  # tenant-safe: reverse FK from an in-tenant row
+        part_status__in=['CANCELLED', 'SCRAPPED']).exists()
+
+
 class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
     """Full work order serializer for detail views"""
     # Changing priority (expediting is setting it to Urgent) takes a reason, like hold,
@@ -1094,6 +1102,13 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         help_text="Cleared holds, newest first, with who released them and what resolved them.")
     parent_workorder_id = serializers.UUIDField(read_only=True, allow_null=True)
     child_count = serializers.SerializerMethodField()
+    # The process can't be changed once the work order has units on its routing; the
+    # edit form shows it read-only then (the same rule update() enforces).
+    process_locked = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_process_locked(self, obj):
+        return _has_live_units(obj)
 
     # A teardown WO's subjects are cores, not parts, so a control page that renders
     # only parts shows an empty job. Detail only — on a list this would be an N+1 per
@@ -1176,6 +1191,13 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         the paths that make or cancel units (Add parts, make-up, reduce) — never as a
         bare number."""
         from Tracker.services.mes.work_order import change_priority, parts_follow_order
+        new_process = validated_data.get('process', instance.process)
+        if new_process != instance.process and _has_live_units(instance):
+            # Its units sit on the old routing's steps (from the moment they're made,
+            # started or not); a bare swap stranded them there (audit 2026-11-24).
+            raise serializers.ValidationError({'process': (
+                "This work order has units on its routing; change its routing through a "
+                "process change, which moves its parts.")})
         if 'quantity' in validated_data and validated_data['quantity'] != instance.quantity:
             raise serializers.ValidationError({'quantity': (
                 "Change a work order's units with Add parts, make-up or reduce on the "
@@ -1206,7 +1228,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         'parent_workorder_id', 'split_reason', 'split_at', 'child_count', 'cores',
         'priority_reason', 'priority_changes',
         'short_closed', 'short_close_reason', 'short_closed_by', 'short_closed_at',
-        'short_close_returned_quantity', 'start_refusal',
+        'short_close_returned_quantity', 'start_refusal', 'process_locked',
         'created_at', 'updated_at', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'related_order_info', 'parts_summary', 'related_order_detail',
