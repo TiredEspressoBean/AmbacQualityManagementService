@@ -41,6 +41,8 @@ def live_bypasses(step_execution):
 
 def clear_bypassed(step_execution, blockers: list[Blocker]) -> list[Blocker]:
     """`blockers` less those an approved, unexpired bypass on the execution covers."""
+    if step_execution is None:   # a bypass is granted on a visit; none recorded, none to apply
+        return blockers
     live = set(live_bypasses(step_execution).values_list('block_type', flat=True))
     if not live:
         return blockers

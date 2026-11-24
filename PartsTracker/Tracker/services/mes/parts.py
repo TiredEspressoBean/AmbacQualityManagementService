@@ -334,10 +334,15 @@ def advance_part_step(
 
     current_execution = StepExecution.get_current_execution(part)
 
-    if not skip_gate_check and current_execution and part.work_order:
+    # Gated whether or not the unit has a visit recorded: one placed at the step (or a
+    # new order's unit nobody opened) has done nothing there, and the step's gates
+    # hold it as they would an opened unit with nothing recorded. It used to skip
+    # every gate (walk 2026-11-24, user ruling).
+    if not skip_gate_check and part.work_order:
         can_advance, blockers = part.step.can_advance_from_step(
             current_execution,
             part.work_order,
+            part=part,
         )
         if not can_advance:
             raise ValueError(f"Cannot advance: {', '.join(blockers)}")

@@ -162,7 +162,11 @@ class UsedQuestionTests(_Fixture):
         self.assertEqual(self._drawn(), Decimal(0))
 
     def test_an_unanswered_question_refuses_the_unit_leaving_the_step(self):
+        """Refused even on a step with no gates configured: the question is required
+        whatever the step's gate setup (the substep gate would refuse first otherwise)."""
         from Tracker.services.mes.parts import advance_part_step
+        from Tracker.services.mes.step_gates import set_step_gates
+        set_step_gates(self.step, [])
         self._ask()
         with self.assertRaisesMessage(ValueError, "used? not answered"):
             advance_part_step(self.parts[0], operator=self.operator)

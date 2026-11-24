@@ -566,12 +566,18 @@ def record_start(execution, decision: StartDecision, *, by=None, at=None) -> Non
 # RELEASE
 # ============================================================================
 
-def release_blockers(step: 'Steps', step_execution, work_order) -> list[Blocker]:
-    """Everything that holds `step_execution`'s part at `step`, before any bypass."""
+def release_blockers(step: 'Steps', step_execution, work_order, part=None) -> list[Blocker]:
+    """Everything that holds `step_execution`'s part at `step`, before any bypass.
+
+    `step_execution` may be None — a unit at the step with no visit recorded (placed
+    there, or a new order's unit nobody has opened). That is "nothing done yet", not
+    "nothing to check": the step's gates hold it as they would an opened unit with
+    nothing recorded (user ruling 2026-11-24). Pass `part` then."""
     from Tracker.models import QualityReports
 
     out: list[Blocker] = []
-    part = step_execution.part  # None for a core's teardown execution.
+    if step_execution is not None:
+        part = step_execution.part  # None for a core's teardown execution.
 
     # A nonconformance holds the part until its disposition is decided — one question
     # for the quarantine hold, an out-of-spec reading and a failed sample alike
@@ -614,7 +620,7 @@ def release_blockers(step: 'Steps', step_execution, work_order) -> list[Blocker]
     # An out-of-spec reading at this visit, when the step blocks on one: held until the
     # disposition it raised is decided. A core's teardown visit has no part and no
     # disposition, so its reading holds it as it stands.
-    if step.block_on_measurement_failure:
+    if step.block_on_measurement_failure and step_execution is not None:  # no visit, no readings
         from Tracker.models import StepExecutionMeasurement
         if StepExecutionMeasurement.objects.filter(step_execution=step_execution,  # tenant-safe: FK-correlated to a scoped visit
                                                    is_within_spec=False).exists():
@@ -627,7 +633,7 @@ def release_blockers(step: 'Steps', step_execution, work_order) -> list[Blocker]
     if part is not None and step.has_gate(str(GateCode.SUBSTEPS_INCOMPLETE)):
         from Tracker.services.dwi.advancement_gate import substep_completion_blockers
         out += [Blocker(GateCode.SUBSTEPS_INCOMPLETE, m)
-                for m in substep_completion_blockers(step, step_execution, work_order)]
+                for m in substep_completion_blockers(step, step_execution, work_order, part=part)]
 
     # Competence backstop: a visit that never passed a start gate has no training
     # snapshot; it doesn't leave a step that needs training unless the recorded
@@ -635,7 +641,7 @@ def release_blockers(step: 'Steps', step_execution, work_order) -> list[Blocker]
     # mid-step doesn't re-block them).
     if _needs_operator_backstop(step, step_execution, work_order):
         from Tracker.services.training import check_training_authorization
-        worker = step_execution.assigned_to
+        worker = step_execution.assigned_to if step_execution is not None else None
         if worker is None:
             out.append(Blocker(GateCode.QUALIFIED_OPERATOR,
                                "No qualified operator recorded for a step that requires training"))
@@ -660,7 +666,7 @@ def _life_trackings(part):
 
 
 def _needs_operator_backstop(step, step_execution, work_order) -> bool:
-    if step_execution.training_authorization is not None:
+    if step_execution is not None and step_execution.training_authorization is not None:
         return False
     if not step.has_gate(str(GateCode.QUALIFIED_OPERATOR)):
         return False

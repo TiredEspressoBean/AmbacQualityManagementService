@@ -1239,7 +1239,7 @@ class Steps(SecureModel):
                 'inspection_completion': (inspected_parts / sampled_parts * 100) if sampled_parts > 0 else 0,
                 'meets_minimum': self.validate_sampling_coverage(work_order)}
 
-    def can_advance_from_step(self, step_execution, work_order, apply_overrides=True):
+    def can_advance_from_step(self, step_execution, work_order, apply_overrides=True, part=None):
         """
         Release gate: what holds the part at this step, after any approved bypass.
         Thin delegate to `services.mes.gates.release_blockers`, the one release decision.
@@ -1258,7 +1258,8 @@ class Steps(SecureModel):
             tuple: (can_advance: bool, blockers: list of str)
         """
         from Tracker.services.mes.gates import release_blockers
-        blockers = release_blockers(self, step_execution, work_order)
+        # `part` for a unit with no visit recorded (step_execution None).
+        blockers = release_blockers(self, step_execution, work_order, part=part)
         if blockers and apply_overrides:
             from Tracker.services.mes.step_override import clear_bypassed
             blockers = clear_bypassed(step_execution, blockers)

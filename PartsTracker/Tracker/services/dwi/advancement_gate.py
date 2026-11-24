@@ -67,10 +67,13 @@ def _accepted_return_completions(step_execution, substep_ids) -> dict:
 
 
 def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
-                                work_order: "WorkOrder") -> list[str]:
+                                work_order: "WorkOrder", part=None) -> list[str]:
     """Return blocker strings for any required-and-unsatisfied substep.
 
-    Empty list means the substep-completion gate passes for this part.
+    Empty list means the substep-completion gate passes for this part. With no visit
+    recorded (`step_execution` None, `part` given) nothing has been done, so every
+    required substep is incomplete — except a sampled one with a rule, which holds
+    nothing until its sampling is decided (the same rule as a visit with no decision).
     """
     from Tracker.models import (
         BatchExecution,
@@ -81,7 +84,8 @@ def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
         SubstepScope,
     )
 
-    part = getattr(step_execution, 'part', None)
+    if step_execution is not None:
+        part = getattr(step_execution, 'part', None)
     if part is None:
         # Cores don't carry per-part substep completions yet; defer to the
         # reman-specific gate. Substep gate is part-only for now.
@@ -94,6 +98,11 @@ def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
         return []
 
     substep_ids = [s.id for s in substeps]
+
+    if step_execution is None:
+        return [f"Substep '{s.title}' not completed for this part" for s in substeps
+                if not s.is_optional
+                and not (s.scope == SubstepScope.SAMPLED and s.sampling_rule_id is not None)]
 
     # Pre-fetch live completions for this StepExecution.
     completions_by_substep: dict[int, SubstepCompletion] = {
