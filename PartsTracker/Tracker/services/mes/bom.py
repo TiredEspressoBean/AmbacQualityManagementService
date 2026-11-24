@@ -195,6 +195,9 @@ def create_new_bom_version(
                 find_number=line.find_number,
                 reference_designator=line.reference_designator,
                 is_optional=line.is_optional,
+                # Left out, a new revision silently dropped an optional line's rate:
+                # released, it stopped being planned or drawn.
+                usage_percent=line.usage_percent,
                 allow_harvested=line.allow_harvested,
                 notes=line.notes,
                 line_number=line.line_number,

@@ -90,6 +90,20 @@ class BomImportTests(ImportExportTestCase):
         self.assertIn("No change", str(body["results"]))
         self.assertEqual(BOM.objects.filter(part_type=self.injector).count(), 1)
 
+    def test_an_optional_lines_usage_percent_survives_export_and_a_new_revision(self):
+        """Walk 2026-11-24: a new revision dropped the optional line's usage %, so the
+        released draft stopped planning and drawing it. The export carries it too."""
+        from Tracker.models import BOM, BOMLine
+        from Tracker.services.mes.bom import create_new_bom_version
+        BOMLine.objects.filter(bom=self.released, material=self.oring).update(
+            is_optional=True, usage_percent=Decimal("25"))
+        body = self.import_file(self.export("xlsx"), "bom.xlsx")
+        self.assertEqual(body["summary"]["errors"], 0, body)
+        self.assertIn("No change", str(body["results"]))
+        self.assertEqual(BOM.objects.filter(part_type=self.injector).count(), 1)
+        draft = create_new_bom_version(self.released, user=self.user, change_description="rev B")
+        self.assertEqual(draft.lines.get(material=self.oring).usage_percent, Decimal("25"))
+
     def test_the_template_offers_the_parent_columns(self):
         header = self.client.get(f"/api/{self.endpoint}/import-template/csv/").content.decode(
             "utf-8-sig").splitlines()[0]

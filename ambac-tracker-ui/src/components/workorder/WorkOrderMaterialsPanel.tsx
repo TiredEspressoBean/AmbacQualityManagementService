@@ -153,7 +153,8 @@ export function WorkOrderMaterialsPanel({ workOrderId }: { workOrderId: string }
       </div>
       <p className="text-xs text-muted-foreground">
         “Incoming” = promised receipts for bought items, or quantity on live component work
-        orders for made items. Bins, lot picking, and reservations live in the ERP.
+        orders for made items. Material is drawn from its lot as each unit leaves the step
+        that uses it; an optional line by its usage %, or by the step's “used?” answer.
       </p>
     </div>
   );

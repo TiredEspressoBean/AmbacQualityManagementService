@@ -691,6 +691,7 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                                         <TableHead>UoM</TableHead>
                                         <TableHead>Consumed at</TableHead>
                                         <TableHead>Optional</TableHead>
+                                        <TableHead className="text-right">Usage %</TableHead>
                                         {isDraft && <TableHead className="w-20 text-right">Edit</TableHead>}
                                     </TableRow>
                                 </TableHeader>
@@ -717,6 +718,10 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                                                     {line.consumed_at_step_name || "Whole assembly"}
                                                 </TableCell>
                                                 <TableCell>{line.is_optional ? "Yes" : "No"}</TableCell>
+                                                {/* Optional lines only: the share of units expected to use the part. */}
+                                                <TableCell className="text-right tabular-nums">
+                                                    {line.is_optional && line.usage_percent != null ? `${Number(line.usage_percent)}%` : ""}
+                                                </TableCell>
                                                 {isDraft && (
                                                     <TableCell className="text-right">
                                                         <Button variant="ghost" size="icon" title="Edit line"
