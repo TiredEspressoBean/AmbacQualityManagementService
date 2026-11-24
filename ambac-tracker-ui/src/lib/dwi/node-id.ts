@@ -50,6 +50,7 @@ export const CAPTURE_NODE_TYPES = new Set<string>([
     "harvestedComponentCapture",
     "componentInstallCapture",
     "rebuildFindingCapture",
+    "optionalPartUsed",
     // QMS field + 3D-annotation capture nodes. These are keyed by node_id in
     // build-captures.ts (SubstepResponse kinds: status / equipment_roles /
     // personnel_roles / signatures / defects / annotation), so each inserted

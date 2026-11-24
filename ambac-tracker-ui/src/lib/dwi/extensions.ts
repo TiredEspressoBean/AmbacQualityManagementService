@@ -21,6 +21,7 @@ import { PartCallout } from "@/components/dwi/nodes/PartCallout";
 import { HarvestedComponentCapture } from "@/components/dwi/nodes/HarvestedComponentCapture";
 import { ComponentInstallCapture } from "@/components/dwi/nodes/ComponentInstallCapture";
 import { RebuildFindingCapture } from "@/components/dwi/nodes/RebuildFindingCapture";
+import { OptionalPartUsedCapture } from "@/components/dwi/nodes/OptionalPartUsedCapture";
 import { DocumentLink } from "@/components/dwi/nodes/DocumentLink";
 import { SlashCommand } from "@/lib/dwi/slash-command";
 
@@ -52,4 +53,5 @@ export const DWI_EXTENSIONS = [
     HarvestedComponentCapture,
     ComponentInstallCapture,
     RebuildFindingCapture,
+    OptionalPartUsedCapture,
 ];

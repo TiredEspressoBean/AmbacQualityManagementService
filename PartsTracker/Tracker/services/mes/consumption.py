@@ -243,9 +243,6 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
     expired lot is skipped rather than consumed — `assert_lot_usable` is the gate, and
     this path calls it explicitly rather than relying on the model's save() backstop.
     """
-    from Tracker.models import MaterialUsage
-    from Tracker.services.life_tracking.shelf_life import assert_lot_usable
-
     result = ConsumptionResult()
     if operator is None or not getattr(operator, 'is_authenticated', True):
         result.skipped_reason = "no operator to attribute consumption to"
@@ -265,26 +262,11 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
 
     cache = bom_cache if bom_cache is not None else {}
     tenant = part.tenant
+    questions = None   # the step's "used?" questions, read once if an optional line needs them
     for line in _released_bom_lines(part.part_type_id, cache):
         if line.consumed_at_step_id != step.id:
             continue
         if line.source != 'BUY':
-            continue
-        if line.is_optional:
-            # Not drawn (nobody records whether an optional part was fitted), but the
-            # unit has passed the step: its share of any kit picked for the job comes
-            # off the reservation, as a drawn line's does. Left there, an optional pick
-            # held its stock off on-hand forever (user ruling 2026-11-24).
-            optional_item = buy_line_item(line)
-            if optional_item is not None:
-                _release_line_share(part, step, optional_item.key, tenant,
-                                    Decimal(str(line.quantity)))
-            continue
-        # Resolved from the item master, not the line's flag — a raw-material line can
-        # never be recovered, whatever the override says. This used to read
-        # `line.allow_harvested`, which defaulted True on EVERY line including material
-        # ones, so a reman job silently never issued its springs or seals.
-        if is_reman and line_allows_recovery(line):
             continue
         # Both BUY kinds draw here now. A line is either a raw material or a purchased
         # part, and `MaterialLot` has always been able to hold stock of either — it was
@@ -293,56 +275,111 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
         item = buy_line_item(line)
         if item is None:
             continue
-
-        needed = Decimal(str(line.quantity))
-        drawn = Decimal('0')
-        by_lot: dict = {}
-        expired: list[str] = []
-        picked = _picked_lots_for(part, step, item.key, tenant)
-        # Prefer the lots the picker actually put in the tote over re-deriving FEFO.
-        # This is the whole point of recording them: the sheet named what the plan
-        # WOULD draw, the picker took what was really on the shelf, and the record has
-        # to say what happened rather than what was intended.
-        for lot in (picked or _usable_lots(item.key, tenant, customer_id)):
-            if drawn >= needed:
-                break
-            if lot.owner_id is not None and lot.owner_id != customer_id:
-                continue  # another customer's property — never into this job
-            try:
-                assert_lot_usable(lot)
-            except ValueError:
-                # Expired — left for disposal, never built with. Staging refuses an
-                # expired lot; one that expired after it was staged is skipped here and
-                # the shortfall says so (user ruling 2026-11-11: finished work is never
-                # held over it).
-                if picked:
-                    expired.append(lot.lot_number)
-                continue
-            take = min(lot.quantity_remaining, needed - drawn)
-            if take <= 0:
-                continue
-            usage = MaterialUsage.objects.create(
-                tenant=tenant, lot=lot, part=part, work_order=work_order,
-                qty_consumed=take, consumed_by=operator, step=step,
-            )
-            result.usages.append(usage)
-            drawn += take
-            by_lot[str(lot.id)] = by_lot.get(str(lot.id), Decimal('0')) + take
-
-        _mark_line_issued(part, step, item.key, tenant, by_lot)
-
-        if drawn < needed:
-            # Recorded, not raised: the part was built, so the shortfall is a stock
-            # accuracy problem to surface, not a reason to refuse the advance.
-            shortfall = {
-                'material': item.name,
-                'needed': float(needed), 'drawn': float(drawn),
-                'short': float(needed - drawn),
-            }
-            if expired:
-                shortfall['reason'] = (f"lot {', '.join(expired)} expired after it was staged")
-            result.shortfalls.append(shortfall)
+        answered_lots: list = []
+        if line.is_optional:
+            # An optional line draws what the unit's "used?" answer says, else at its
+            # usage %, else nothing (services/mes/optional_usage; user ruling
+            # 2026-11-24). Reman never draws one this way: replace-if-worn runs through
+            # findings and the rebuild plan.
+            from Tracker.services.mes import optional_usage
+            if questions is None:
+                questions = optional_usage.questions_for_step(step)
+            share = Decimal(str(line.quantity))
+            needed = Decimal('0')
+            if not is_reman:
+                if str(line.id) in questions:
+                    answer = optional_usage.answer_for(part, step, questions[str(line.id)][1])
+                    if answer is None:
+                        # Only a path that skips the gate gets here (a decision routing a
+                        # FAIL on, an MRB move): not drawn rather than stranding the unit.
+                        logger.warning("Optional part %s not answered for part=%s step=%s; "
+                                       "nothing drawn.", item.name, part.id, step.id)
+                        answer = {}
+                    if answer.get('used'):
+                        needed = Decimal(str(answer.get('quantity') or 0))
+                        answered_lots = [l.get('lot_id') for l in answer.get('lots') or []]
+                elif line.usage_percent is not None:
+                    needed = optional_usage.rate_quantity(part, step, line, item.key)
+            drawn = (_draw(part, step, item, needed, operator, result, customer_id,
+                           preferred=answered_lots) if needed > 0 else Decimal('0'))
+            # Whatever wasn't drawn of the unit's share comes off any kit picked for
+            # the job, as a drawn line's does: left there, an optional pick held its
+            # stock off on-hand forever.
+            if share > drawn:
+                _release_line_share(part, step, item.key, tenant, share - drawn)
+            continue
+        # Resolved from the item master, not the line's flag — a raw-material line can
+        # never be recovered, whatever the override says. This used to read
+        # `line.allow_harvested`, which defaulted True on EVERY line including material
+        # ones, so a reman job silently never issued its springs or seals.
+        if is_reman and line_allows_recovery(line):
+            continue
+        _draw(part, step, item, Decimal(str(line.quantity)), operator, result, customer_id)
     return result
+
+
+def _draw(part, step, item, needed, operator, result, customer_id, preferred=()) -> Decimal:
+    """Draw `needed` of `item` for one unit at `step`: the lots the operator named
+    (`preferred`, a "used?" answer's), then the lots picked for the job, then FEFO —
+    recorded per lot against the unit, taken off the job's pick, and any shortfall
+    reported. Returns what was drawn."""
+    from Tracker.models import MaterialLot, MaterialUsage
+    from Tracker.services.life_tracking.shelf_life import assert_lot_usable
+
+    tenant = part.tenant
+    work_order = part.work_order
+    drawn = Decimal('0')
+    by_lot: dict = {}
+    expired: list[str] = []
+    picked = _picked_lots_for(part, step, item.key, tenant)
+    named = list(MaterialLot.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, id__in=[p for p in preferred if p], **item_filter(item.key))) if preferred else []
+    # Prefer the lots the picker actually put in the tote over re-deriving FEFO.
+    # This is the whole point of recording them: the sheet named what the plan
+    # WOULD draw, the picker took what was really on the shelf, and the record has
+    # to say what happened rather than what was intended.
+    sources = named + [l for l in (picked or _usable_lots(item.key, tenant, customer_id))
+                       if l.id not in {n.id for n in named}]
+    for lot in sources:
+        if drawn >= needed:
+            break
+        if lot.owner_id is not None and lot.owner_id != customer_id:
+            continue  # another customer's property — never into this job
+        try:
+            assert_lot_usable(lot)
+        except ValueError:
+            # Expired — left for disposal, never built with. Staging refuses an
+            # expired lot; one that expired after it was staged is skipped here and
+            # the shortfall says so (user ruling 2026-11-11: finished work is never
+            # held over it).
+            if picked:
+                expired.append(lot.lot_number)
+            continue
+        take = min(lot.quantity_remaining, needed - drawn)
+        if take <= 0:
+            continue
+        usage = MaterialUsage.objects.create(
+            tenant=tenant, lot=lot, part=part, work_order=work_order,
+            qty_consumed=take, consumed_by=operator, step=step,
+        )
+        result.usages.append(usage)
+        drawn += take
+        by_lot[str(lot.id)] = by_lot.get(str(lot.id), Decimal('0')) + take
+
+    _mark_line_issued(part, step, item.key, tenant, by_lot)
+
+    if drawn < needed:
+        # Recorded, not raised: the part was built, so the shortfall is a stock
+        # accuracy problem to surface, not a reason to refuse the advance.
+        shortfall = {
+            'material': item.name,
+            'needed': float(needed), 'drawn': float(drawn),
+            'short': float(needed - drawn),
+        }
+        if expired:
+            shortfall['reason'] = (f"lot {', '.join(expired)} expired after it was staged")
+        result.shortfalls.append(shortfall)
+    return drawn
 
 
 def drawn_by_work_order(tenant, work_order_ids) -> dict:

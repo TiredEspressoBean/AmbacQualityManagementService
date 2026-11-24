@@ -203,6 +203,20 @@ def create_new_bom_version(
     return new_version
 
 
+def planned_share(line):
+    """How much of a BOM line's quantity planning counts as demand, or None to leave it
+    out: a required line in full; an optional line at its usage % when one is set (the
+    share of units expected to use it), and not at all when it isn't — an optional part
+    nobody has said how often is used isn't owed (user ruling 2026-11-24). Works on a
+    BOMLine or a `.values()` dict carrying `is_optional` and `usage_percent`."""
+    from decimal import Decimal
+    get = line.get if isinstance(line, dict) else (lambda k: getattr(line, k, None))
+    if not get('is_optional'):
+        return Decimal(1)
+    pct = get('usage_percent')
+    return None if pct is None else Decimal(str(pct)) / Decimal(100)
+
+
 def line_allows_recovery(line) -> bool:
     """Whether a recovered component may satisfy this BOM line.
 

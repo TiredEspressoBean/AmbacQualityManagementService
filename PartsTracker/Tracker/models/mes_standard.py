@@ -20,7 +20,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q, CheckConstraint, Index
 
@@ -2503,6 +2503,14 @@ class BOMLine(SecureModel):
 
     # Options
     is_optional = models.BooleanField(default=False)
+    usage_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Optional lines only: the share of units expected to use this part. "
+                  "Planning counts quantity x this; units passing the consuming step draw "
+                  "at this rate (unless a 'used?' question on the step asks instead). "
+                  "Blank: not planned and not drawn.",
+    )
     allow_harvested = models.BooleanField(
         null=True, blank=True,
         help_text="Per-use OVERRIDE of the component type's `can_recover`. Leave blank "

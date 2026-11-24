@@ -604,6 +604,10 @@ class DemoShowcaseSeeder(BaseSeeder):
                     quantity=Decimal(qty),
                     unit_of_measure=uom, find_number=find, line_number=int(find),
                     is_optional=optional,
+                    # An optional kit is fitted on about a quarter of units: planning
+                    # counts that share and units passing the step draw at that rate
+                    # (user ruling 2026-11-24).
+                    usage_percent=Decimal("25") if optional else None,
                 )
                 if source in ("MAKE", "BUY_PART"):
                     line_kwargs['component_type'] = make_types[name]

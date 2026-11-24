@@ -341,6 +341,16 @@ def advance_part_step(
         )
         if not can_advance:
             raise ValueError(f"Cannot advance: {', '.join(blockers)}")
+    if not skip_gate_check:
+        # A "used?" question on an optional part is required whatever gates the step is
+        # set up with: the unit's draw is made from the answer as it leaves (user
+        # ruling 2026-11-24, services/mes/optional_usage). Paths that skip the gate (a
+        # decision routing a FAIL on, MRB) move the unit anyway and draw nothing.
+        from Tracker.services.mes.optional_usage import unanswered
+        missing = unanswered(part, part.step)
+        if missing:
+            raise ValueError("Cannot advance: " + ", ".join(
+                f"'{name}' used? not answered for this unit" for name in missing))
 
     # A reman check with Repair nodes routes inside get_next_step (repair_routing):
     # every op on the main line runs, and a repair is a branch the unit takes or not.

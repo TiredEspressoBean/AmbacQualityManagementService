@@ -39,6 +39,7 @@ export type BomLine = {
   find_number?: string | null;
   reference_designator?: string | null;
   is_optional?: boolean | null;
+  usage_percent?: string | number | null;
   consumed_at_step?: string | number | null;
 };
 
@@ -70,6 +71,9 @@ export function BomLineDialog({
   const [findNumber, setFindNumber] = useState("");
   const [refDes, setRefDes] = useState("");
   const [optional, setOptional] = useState(false);
+  // Optional lines only: the share of units expected to use the part (blank: not
+  // planned and not drawn unless the step asks "used?").
+  const [usagePct, setUsagePct] = useState("");
   const [consumedStepId, setConsumedStepId] = useState<string>(NO_STEP);
 
   // Hydrate on open (create → defaults; edit → the line's values).
@@ -92,6 +96,7 @@ export function BomLineDialog({
       setFindNumber(line.find_number ?? "");
       setRefDes(line.reference_designator ?? "");
       setOptional(!!line.is_optional);
+      setUsagePct(line.usage_percent != null ? String(Number(line.usage_percent)) : "");
       setConsumedStepId(line.consumed_at_step != null ? String(line.consumed_at_step) : NO_STEP);
     } else {
       setSource("BUY");
@@ -101,6 +106,7 @@ export function BomLineDialog({
       setFindNumber("");
       setRefDes("");
       setOptional(false);
+      setUsagePct("");
       setConsumedStepId(NO_STEP);
     }
   }, [open, line]);
@@ -156,6 +162,8 @@ export function BomLineDialog({
       find_number: findNumber,
       reference_designator: refDes,
       is_optional: optional,
+      // A string (DecimalField); cleared for a required line, which is always used.
+      usage_percent: optional && usagePct.trim() !== "" ? String(Number(usagePct)) : null,
       consumed_at_step: consumedStepId === NO_STEP ? null : consumedStepId,
     };
     const done = () => onOpenChange(false);
@@ -264,6 +272,18 @@ export function BomLineDialog({
             <Checkbox checked={optional} onCheckedChange={(v) => setOptional(!!v)} />
             Optional line
           </label>
+          {optional && (
+            <div className="space-y-1">
+              <Label>Usage %</Label>
+              <Input type="number" min={0} max={100} step="any" className="w-[120px]"
+                     value={usagePct} onChange={(e) => setUsagePct(e.target.value)} placeholder="blank" />
+              <p className="text-xs text-muted-foreground">
+                The share of units expected to use it. Planning counts this share, and units
+                passing the step draw at this rate unless the step asks "used?". Blank: not
+                planned or drawn.
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

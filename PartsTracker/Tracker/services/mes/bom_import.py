@@ -42,6 +42,7 @@ COLUMNS = OrderedDict([
     ('find_number', ()),
     ('reference_designator', ('ref_des',)),
     ('is_optional', ('optional',)),
+    ('usage_percent', ('usage', 'usage_pct')),
     ('allow_harvested', ()),
     ('notes', ()),
 ])
@@ -139,6 +140,18 @@ def _line_values(row: dict) -> dict:
         vals['is_optional'] = bool(parse_boolean(row['is_optional']))
     if not _blank(row.get('allow_harvested')):
         vals['allow_harvested'] = parse_boolean(row['allow_harvested'])
+    if not _blank(row.get('usage_percent')):
+        try:
+            pct = Decimal(str(row['usage_percent']).strip().rstrip('%'))
+        except InvalidOperation:
+            raise serializers.ValidationError(
+                {'usage_percent': f"'{row['usage_percent']}' isn't a percentage."})
+        if not Decimal(0) <= pct <= Decimal(100):
+            raise serializers.ValidationError({'usage_percent': "Usage % is 0 to 100."})
+        if not vals.get('is_optional'):
+            raise serializers.ValidationError(
+                {'usage_percent': "A usage % is for an optional line."})
+        vals['usage_percent'] = pct
     if not _blank(row.get('line_number')):
         try:
             vals['line_number'] = int(float(str(row['line_number'])))
@@ -150,7 +163,7 @@ def _line_values(row: dict) -> dict:
 
 _COMPARED = ('component_type_id', 'material_id', 'quantity', 'unit_of_measure', 'source',
              'consumed_at_step_id', 'find_number', 'reference_designator', 'is_optional',
-             'allow_harvested', 'notes', 'line_number')
+             'usage_percent', 'allow_harvested', 'notes', 'line_number')
 
 
 def _signature(lines) -> list:
@@ -174,6 +187,8 @@ def _as_compared(vals: dict, line_number: int) -> dict:
         'find_number': vals.get('find_number', ''),
         'reference_designator': vals.get('reference_designator', ''),
         'is_optional': vals.get('is_optional', False),
+        'usage_percent': (vals['usage_percent'].quantize(Decimal('0.01'))
+                          if vals.get('usage_percent') is not None else None),
         'allow_harvested': vals.get('allow_harvested'),
         'notes': vals.get('notes', ''),
         'line_number': line_number,

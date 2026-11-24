@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from Tracker.services.mes.bom import buy_line_item
+from Tracker.services.mes.bom import buy_line_item, planned_share
 from Tracker.services.reman.demand import (
     LineDemand, takes_pooled_parts, work_order_line_demand,
 )
@@ -97,8 +97,14 @@ def work_order_material_requirements(work_order) -> dict:
     drawn = drawn_by_work_order(tenant, [work_order.id]) if reman is None else {}
     for line in lines:
         buy = buy_line_item(line)
+        expected = None
         if reman is None:
             required = float(Decimal(str(line.quantity)) * Decimal(work_order.quantity))
+            if line.is_optional and planned_share(line) is not None:
+                # What the job is expected to use of an optional line (its usage %),
+                # beside the "up to" — before the netting below takes the draws.
+                have = drawn.get((work_order.id, buy.key), 0.0) if buy is not None else 0.0
+                expected = max(0.0, float(Decimal(str(required)) * planned_share(line)) - have)
             if buy is not None:
                 required = net_of_drawn(drawn, work_order.id, buy.key, required)
             line_forecast, pool_ok = 0.0, False
@@ -115,6 +121,9 @@ def work_order_material_requirements(work_order) -> dict:
             'unit_of_measure': line.unit_of_measure or '',
             'consumed_at_step': step,
             'is_optional': line.is_optional,
+            # An optional line's expected use (quantity x usage %, net of draws); null
+            # when it has no usage % (or isn't optional).
+            'expected': None if expected is None else round(expected, 2),
             # Present on every row so the response shape is uniform; the BUY branch
             # below fills them in. A MAKE line is built, not bought, so it has neither
             # a purchase kind nor a stocking buffer.
@@ -147,7 +156,9 @@ def work_order_material_requirements(work_order) -> dict:
             # count; a report that quietly shrinks it would have the picker and the
             # planner disagreeing about the same bin.
             safety = buy.safety_stock
-            short = max(0.0, required - (on_hand - safety) - in_time)
+            # An optional line is owed only its expected use (none without a usage %).
+            owed = (expected or 0.0) if line.is_optional else required
+            short = max(0.0, owed - (on_hand - safety) - in_time)
             lead = buy.lead_time_days
             order_by = (need_by - timedelta(days=lead)) if lead else need_by
             # The RECOVER lane: what the core bank could yield of this component.
@@ -321,15 +332,20 @@ def sourcing_requirements(tenant) -> dict:
         if pt_id is None:
             continue
         wo_need = sched.get((wo.id, None)) or wo.expected_start or h_date
-        lines = [ln for ln in _lines(pt_id) if not ln.is_optional]
+        is_reman = bool(wo.cores.all())
+        # Optional lines count at their usage % (planned_share), and only on a new
+        # build: reman replace-if-worn runs through findings and the rebuild plan.
+        lines = [ln for ln in _lines(pt_id)
+                 if not ln.is_optional or (not is_reman and planned_share(ln) is not None)]
         # A reman work order's demand is read per core from where each core is, not
         # from its process BOM times its quantity: that asked for a full rebuild kit
         # per core, for exchange cores only being harvested and for a unit's own
         # nozzles that go back into it.
-        reman = work_order_line_demand(wo, lines) if wo.cores.all() else None
+        reman = work_order_line_demand(wo, lines) if is_reman else None
         for line in lines:
             if reman is None:
-                firm, fc, pool = float(line.quantity) * wo.quantity, 0.0, 0.0
+                firm = float(line.quantity * planned_share(line)) * wo.quantity
+                fc, pool = 0.0, 0.0
             else:
                 d = reman.get(line.id)
                 if d is None:

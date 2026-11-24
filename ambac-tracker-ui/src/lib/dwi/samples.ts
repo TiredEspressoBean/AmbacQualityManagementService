@@ -38,6 +38,7 @@ export { SAMPLE_PART_CALLOUT } from "@/components/dwi/nodes/PartCallout";
 export { SAMPLE_HARVESTED_COMPONENT_CAPTURE } from "@/components/dwi/nodes/HarvestedComponentCapture";
 export { SAMPLE_COMPONENT_INSTALL_CAPTURE } from "@/components/dwi/nodes/ComponentInstallCapture";
 export { SAMPLE_REBUILD_FINDING_CAPTURE } from "@/components/dwi/nodes/RebuildFindingCapture";
+export { SAMPLE_OPTIONAL_PART_USED } from "@/components/dwi/nodes/OptionalPartUsedCapture";
 
 // ---------------------------------------------------------------------------
 // Bundles — pre-composed sets of nodes for "I want a whole inspection

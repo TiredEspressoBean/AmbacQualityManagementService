@@ -856,6 +856,9 @@ class SubstepResponseKind(models.TextChoices):
     HARVESTED_COMPONENTS = 'harvested_components', 'Harvested components (teardown)'
     COMPONENT_INSTALL = 'component_install', 'Components installed (rebuild)'
     REBUILD_FINDING = 'rebuild_finding', 'Finding raised during rebuild'
+    # Whether this unit used an optional BOM line's part, and how many — the draw is
+    # made from this answer when the unit leaves the step (services/mes/optional_usage).
+    OPTIONAL_PART_USED = 'optional_part_used', 'Optional part used?'
 
 
 class SubstepGateCompletion(SecureModel):

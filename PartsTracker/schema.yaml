@@ -37200,6 +37200,7 @@ paths:
           - equipment_roles
           - file
           - harvested_components
+          - optional_part_used
           - personnel_roles
           - photo
           - rebuild_finding
@@ -37230,6 +37231,7 @@ paths:
           * `harvested_components` - Harvested components (teardown)
           * `component_install` - Components installed (rebuild)
           * `rebuild_finding` - Finding raised during rebuild
+          * `optional_part_used` - Optional part used?
       - name: limit
         required: false
         in: query
@@ -53859,6 +53861,15 @@ components:
           maxLength: 100
         is_optional:
           type: boolean
+        usage_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: 'Optional lines only: the share of units expected to use this
+            part. Planning counts quantity x this; units passing the consuming step
+            draw at this rate (unless a ''used?'' question on the step asks instead).
+            Blank: not planned and not drawn.'
         allow_harvested:
           type: boolean
           nullable: true
@@ -53949,6 +53960,15 @@ components:
           maxLength: 100
         is_optional:
           type: boolean
+        usage_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: 'Optional lines only: the share of units expected to use this
+            part. Planning counts quantity x this; units passing the consuming step
+            draw at this rate (unless a ''used?'' question on the step asks instead).
+            Blank: not planned and not drawn.'
         allow_harvested:
           type: boolean
           nullable: true
@@ -72636,6 +72656,15 @@ components:
           maxLength: 100
         is_optional:
           type: boolean
+        usage_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: 'Optional lines only: the share of units expected to use this
+            part. Planning counts quantity x this; units passing the consuming step
+            draw at this rate (unless a ''used?'' question on the step asks instead).
+            Blank: not planned and not drawn.'
         allow_harvested:
           type: boolean
           nullable: true
@@ -76291,6 +76320,7 @@ components:
             * `harvested_components` - Harvested components (teardown)
             * `component_install` - Components installed (rebuild)
             * `rebuild_finding` - Finding raised during rebuild
+            * `optional_part_used` - Optional part used?
         value_text:
           type: string
           description: 'Short text capture: text input, choice selection, scan code.'
@@ -87918,6 +87948,7 @@ components:
             * `harvested_components` - Harvested components (teardown)
             * `component_install` - Components installed (rebuild)
             * `rebuild_finding` - Finding raised during rebuild
+            * `optional_part_used` - Optional part used?
         value_text:
           type: string
           description: 'Short text capture: text input, choice selection, scan code.'
@@ -87982,6 +88013,7 @@ components:
       - harvested_components
       - component_install
       - rebuild_finding
+      - optional_part_used
       type: string
       description: |-
         * `text` - Text input
@@ -88002,6 +88034,7 @@ components:
         * `harvested_components` - Harvested components (teardown)
         * `component_install` - Components installed (rebuild)
         * `rebuild_finding` - Finding raised during rebuild
+        * `optional_part_used` - Optional part used?
     SubstepResponseRequest:
       type: object
       description: |-
@@ -88048,6 +88081,7 @@ components:
             * `harvested_components` - Harvested components (teardown)
             * `component_install` - Components installed (rebuild)
             * `rebuild_finding` - Finding raised during rebuild
+            * `optional_part_used` - Optional part used?
         value_text:
           type: string
           description: 'Short text capture: text input, choice selection, scan code.'
@@ -93585,6 +93619,10 @@ components:
           type: string
         is_optional:
           type: boolean
+        expected:
+          type: number
+          format: double
+          nullable: true
         lead_time_days:
           type: integer
           nullable: true
@@ -93600,6 +93638,7 @@ components:
       - buy_kind
       - component
       - consumed_at_step
+      - expected
       - forecast
       - incoming
       - is_optional

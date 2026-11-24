@@ -22754,6 +22754,11 @@ export interface components {
             /** @description Reference designator(s) - e.g., 'R1, R2, R3' for electronics */
             reference_designator?: string;
             is_optional?: boolean;
+            /**
+             * Format: decimal
+             * @description Optional lines only: the share of units expected to use this part. Planning counts quantity x this; units passing the consuming step draw at this rate (unless a 'used?' question on the step asks instead). Blank: not planned and not drawn.
+             */
+            usage_percent?: string | null;
             /** @description Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item. */
             allow_harvested?: boolean | null;
             notes?: string;
@@ -22804,6 +22809,11 @@ export interface components {
             /** @description Reference designator(s) - e.g., 'R1, R2, R3' for electronics */
             reference_designator?: string;
             is_optional?: boolean;
+            /**
+             * Format: decimal
+             * @description Optional lines only: the share of units expected to use this part. Planning counts quantity x this; units passing the consuming step draw at this rate (unless a 'used?' question on the step asks instead). Blank: not planned and not drawn.
+             */
+            usage_percent?: string | null;
             /** @description Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item. */
             allow_harvested?: boolean | null;
             notes?: string;
@@ -31966,6 +31976,11 @@ export interface components {
             /** @description Reference designator(s) - e.g., 'R1, R2, R3' for electronics */
             reference_designator?: string;
             is_optional?: boolean;
+            /**
+             * Format: decimal
+             * @description Optional lines only: the share of units expected to use this part. Planning counts quantity x this; units passing the consuming step draw at this rate (unless a 'used?' question on the step asks instead). Blank: not planned and not drawn.
+             */
+            usage_percent?: string | null;
             /** @description Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item. */
             allow_harvested?: boolean | null;
             notes?: string;
@@ -34144,6 +34159,7 @@ export interface components {
              *     * `harvested_components` - Harvested components (teardown)
              *     * `component_install` - Components installed (rebuild)
              *     * `rebuild_finding` - Finding raised during rebuild
+             *     * `optional_part_used` - Optional part used?
              */
             kind?: components["schemas"]["SubstepResponseKindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
@@ -39969,6 +39985,7 @@ export interface components {
              *     * `harvested_components` - Harvested components (teardown)
              *     * `component_install` - Components installed (rebuild)
              *     * `rebuild_finding` - Finding raised during rebuild
+             *     * `optional_part_used` - Optional part used?
              */
             kind: components["schemas"]["SubstepResponseKindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
@@ -40012,9 +40029,10 @@ export interface components {
          *     * `harvested_components` - Harvested components (teardown)
          *     * `component_install` - Components installed (rebuild)
          *     * `rebuild_finding` - Finding raised during rebuild
+         *     * `optional_part_used` - Optional part used?
          * @enum {string}
          */
-        SubstepResponseKindEnum: "text" | "choice" | "photo" | "video" | "scan" | "file" | "timer" | "computed" | "attestation" | "status" | "equipment_roles" | "personnel_roles" | "signatures" | "defects" | "annotation" | "harvested_components" | "component_install" | "rebuild_finding";
+        SubstepResponseKindEnum: "text" | "choice" | "photo" | "video" | "scan" | "file" | "timer" | "computed" | "attestation" | "status" | "equipment_roles" | "personnel_roles" | "signatures" | "defects" | "annotation" | "harvested_components" | "component_install" | "rebuild_finding" | "optional_part_used";
         /**
          * @description Per-node operator capture rows (text / choice / photo / file /
          *     timer / computed).
@@ -40053,6 +40071,7 @@ export interface components {
              *     * `harvested_components` - Harvested components (teardown)
              *     * `component_install` - Components installed (rebuild)
              *     * `rebuild_finding` - Finding raised during rebuild
+             *     * `optional_part_used` - Optional part used?
              */
             kind: components["schemas"]["SubstepResponseKindEnum"];
             /** @description Short text capture: text input, choice selection, scan code. */
@@ -42545,6 +42564,8 @@ export interface components {
             short_qty: number;
             status: string;
             is_optional: boolean;
+            /** Format: double */
+            expected: number | null;
             lead_time_days: number | null;
             /** Format: date */
             need_by: string | null;
@@ -69859,8 +69880,9 @@ export interface operations {
                  *     * `harvested_components` - Harvested components (teardown)
                  *     * `component_install` - Components installed (rebuild)
                  *     * `rebuild_finding` - Finding raised during rebuild
+                 *     * `optional_part_used` - Optional part used?
                  */
-                kind?: "annotation" | "attestation" | "choice" | "component_install" | "computed" | "defects" | "equipment_roles" | "file" | "harvested_components" | "personnel_roles" | "photo" | "rebuild_finding" | "scan" | "signatures" | "status" | "text" | "timer" | "video";
+                kind?: "annotation" | "attestation" | "choice" | "component_install" | "computed" | "defects" | "equipment_roles" | "file" | "harvested_components" | "optional_part_used" | "personnel_roles" | "photo" | "rebuild_finding" | "scan" | "signatures" | "status" | "text" | "timer" | "video";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 node_id?: string;

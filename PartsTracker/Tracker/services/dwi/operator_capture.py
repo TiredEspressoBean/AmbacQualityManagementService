@@ -277,6 +277,29 @@ def submit_substep(
                     response_count += 1
                 continue
 
+            if kind == "optional_part_used":
+                if is_batch:
+                    raise ValidationError(
+                        "'Used?' is answered per unit; not valid on a batch substep."
+                    )
+                # Only the answer is stored here; the draw is made from it when the unit
+                # leaves the step (services/mes/optional_usage), so one path draws.
+                from Tracker.services.mes.optional_usage import validate_answer
+                try:
+                    cap = validate_answer(substep, node_id, cap, step_execution)
+                except ValueError as exc:
+                    raise ValidationError(str(exc)) from exc
+                sr = _write_substep_response(
+                    substep=substep,
+                    step_execution=step_execution,
+                    batch_execution=batch_execution,
+                    user=user,
+                    cap=cap,
+                )
+                if sr is not None:
+                    response_count += 1
+                continue
+
             if kind == "rebuild_finding":
                 if is_batch:
                     raise ValidationError(
@@ -559,6 +582,10 @@ def _capture_missing_reason(node_type, attrs, cap) -> Optional[str]:
     if node_type in ("harvestedComponentCapture", "componentInstallCapture", "rebuildFindingCapture"):
         rows = cap.get("rows") if cap and isinstance(cap.get("rows"), list) else []
         return None if rows else "No components recorded"
+
+    if node_type == "optionalPartUsed":
+        from Tracker.services.mes.optional_usage import answer_problem
+        return answer_problem(attrs, cap)
 
     # partAnnotation and unknown nodes: treated as satisfied (FE parity).
     return None
@@ -925,6 +952,7 @@ def _write_substep_response(*, substep, step_execution=None, batch_execution=Non
         SubstepResponseKind.HARVESTED_COMPONENTS,
         SubstepResponseKind.COMPONENT_INSTALL,
         SubstepResponseKind.REBUILD_FINDING,
+        SubstepResponseKind.OPTIONAL_PART_USED,
     }:
         # Drop bookkeeping fields the model doesn't need; keep everything
         # else as a generic blob.
@@ -1377,6 +1405,8 @@ _CAPTURE_NODE_TYPES = {
     # Reman teardown and rebuild capture. The harvest node was missing here, so the
     # server's required check never saw it — only the client enforced it.
     'harvestedComponentCapture', 'componentInstallCapture', 'rebuildFindingCapture',
+    # "Used?" for one optional BOM line — always required (services/mes/optional_usage).
+    'optionalPartUsed',
 }
 
 
@@ -1448,6 +1478,9 @@ def _response_from_stored(node_type, attrs, sr):
         # Both runtimes read `{rows: [...]}`; resuming a half-done teardown or rebuild
         # reseeds them from what was recorded rather than from the BOM.
         return {'rows': payload.get('rows') or []}
+    if node_type == 'optionalPartUsed':
+        return {'used': payload.get('used'), 'quantity': payload.get('quantity'),
+                'lots': payload.get('lots') or []}
     return sr.value_text or payload
 
 

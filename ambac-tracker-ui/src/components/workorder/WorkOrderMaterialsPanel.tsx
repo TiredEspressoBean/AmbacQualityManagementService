@@ -94,6 +94,10 @@ export function WorkOrderMaterialsPanel({ workOrderId }: { workOrderId: string }
                     {/* An optional line is never drawn from stock, so nothing comes off
                         it as units are built: it's the most the job could use. */}
                     {r.is_optional && "up to "}{num(r.quantity)} {r.unit_of_measure}
+                    {/* An optional line with a usage %: what the job is expected to use. */}
+                    {r.is_optional && r.expected != null && (
+                      <div className="text-xs text-muted-foreground">expected {num(r.expected)}</div>
+                    )}
                     {/* A reman order's expected replacements on units not yet opened —
                         a forecast, shown beside the firm quantity and never added to it. */}
                     {(r.forecast ?? 0) > 0 && (

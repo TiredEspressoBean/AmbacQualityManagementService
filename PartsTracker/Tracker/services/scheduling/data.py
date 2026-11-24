@@ -988,7 +988,9 @@ def get_material_gates(tenant, horizon: HorizonData):
     from collections import defaultdict
     from datetime import datetime as _dt, time as _time
     from Tracker.models import BOM, BOMLine, MaterialLot, WorkOrder, WorkOrderStatus
-    from Tracker.services.mes.bom import buy_item_from_values, values_row_allows_recovery
+    from Tracker.services.mes.bom import (
+        buy_item_from_values, planned_share, values_row_allows_recovery,
+    )
 
     # Keyed (kind, id): a BUY line points at a raw Material or a buyable PartType, and
     # their stock hangs off different columns of the same lot table.
@@ -1039,7 +1041,7 @@ def get_material_gates(tenant, horizon: HorizonData):
                     'component_type__can_buy', 'component_type__can_recover',
                     'component_type__purchase_lead_time_days',
                     'quantity', 'source', 'consumed_at_step_id', 'allow_harvested',
-                    'is_optional'))
+                    'is_optional', 'usage_percent'))
                 if bom else [])
         return bom_cache[pt_id]
 
@@ -1062,7 +1064,11 @@ def get_material_gates(tenant, horizon: HorizonData):
             continue
         is_reman = wo.cores.exists()
         for line in _bom_lines(pt_id):
-            if line['source'] != 'BUY' or line['is_optional']:
+            if line['source'] != 'BUY':
+                continue
+            # An optional line at its usage % on a new build, not at all otherwise.
+            share = planned_share(line)
+            if share is None or (line['is_optional'] and is_reman):
                 continue
             # Resolved from the item master (override -> can_recover -> no), not the
             # raw flag: a raw-material line can never be recovered, and the flag used to
@@ -1072,7 +1078,8 @@ def get_material_gates(tenant, horizon: HorizonData):
             item = buy_item_from_values(line)
             if item is None:
                 continue  # BUY line with no purchasable component — nothing to net
-            required = net_of_drawn(drawn, wo.id, item, float(line['quantity']) * wo.quantity)
+            required = net_of_drawn(drawn, wo.id, item,
+                                    float(line['quantity'] * share) * wo.quantity)
             have = onhand.get(item, 0.0)
             if have >= required:
                 continue  # enough on hand → no gate

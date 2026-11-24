@@ -1089,7 +1089,7 @@ class BOMLineSerializer(SecureModelMixin):
             'material', 'material_name', 'source',
             'consumed_at_step', 'consumed_at_step_name',
             'quantity', 'unit_of_measure', 'find_number', 'reference_designator',
-            'is_optional', 'allow_harvested', 'notes', 'line_number',
+            'is_optional', 'usage_percent', 'allow_harvested', 'notes', 'line_number',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = ('created_at', 'updated_at')
@@ -1117,6 +1117,9 @@ class BOMLineSerializer(SecureModelMixin):
                 "A raw material can't be made in-house — use source=BUY, or point the "
                 "line at a part type."
             )
+        if pick('usage_percent') is not None and not pick('is_optional'):
+            raise serializers.ValidationError({'usage_percent': (
+                "A usage % is for an optional line; a required line is always used.")})
         return attrs
 
 

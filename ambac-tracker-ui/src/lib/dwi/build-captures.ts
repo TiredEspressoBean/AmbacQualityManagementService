@@ -86,6 +86,14 @@ function checkSatisfied(
             return Array.isArray(rows) && rows.length > 0 ? null : "No components recorded as fitted";
         }
 
+        case "optionalPartUsed": {
+            // Mirrors the server's optional_usage.answer_problem.
+            const a = (response ?? {}) as { used?: unknown; quantity?: unknown };
+            if (typeof a.used !== "boolean") return "Say whether it was used";
+            if (a.used && !(Number(a.quantity) > 0)) return "Say how many were used";
+            return null;
+        }
+
         case "rebuildFindingCapture": {
             const rows = findingRows(response);
             if (rows.some((r) => !r.grade || !r.finding.trim())) return "A finding needs a new grade and what was found";
@@ -444,6 +452,19 @@ export function buildCaptures(
                 // described is still being written, and the server would refuse it.
                 const rows = findingRows(response).filter((r) => r.grade && r.finding.trim());
                 if (rows.length > 0) captures.push({ node_id, kind: "rebuild_finding", rows });
+                break;
+            }
+
+            case "optionalPartUsed": {
+                // Used or not, how many, and the lots named — the draw is made from this
+                // when the unit leaves the step.
+                const a = (response ?? {}) as { used?: unknown; quantity?: unknown; lots?: unknown };
+                if (typeof a.used === "boolean") {
+                    const lots = Array.isArray(a.lots)
+                        ? (a.lots as { lot_id?: string }[]).filter((l) => l.lot_id) : [];
+                    captures.push({ node_id, kind: "optional_part_used", used: a.used,
+                                    quantity: a.used ? String(a.quantity ?? "") : "0", lots });
+                }
                 break;
             }
 

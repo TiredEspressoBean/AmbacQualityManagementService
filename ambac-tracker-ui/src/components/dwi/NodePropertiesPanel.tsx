@@ -34,6 +34,7 @@ import { PartAnnotationEditForm } from "./nodes/PartAnnotation";
 import { PartCalloutEditForm } from "./nodes/PartCallout";
 import { HarvestedComponentCaptureEditForm } from "./nodes/HarvestedComponentCapture";
 import { ComponentInstallCaptureEditForm } from "./nodes/ComponentInstallCapture";
+import { OptionalPartUsedCaptureEditForm } from "./nodes/OptionalPartUsedCapture";
 import { RebuildFindingCaptureEditForm } from "./nodes/RebuildFindingCapture";
 
 const FORMS: Record<string, React.ComponentType<NodeViewProps>> = {
@@ -59,6 +60,7 @@ const FORMS: Record<string, React.ComponentType<NodeViewProps>> = {
     harvestedComponentCapture: HarvestedComponentCaptureEditForm,
     componentInstallCapture: ComponentInstallCaptureEditForm,
     rebuildFindingCapture: RebuildFindingCaptureEditForm,
+    optionalPartUsed: OptionalPartUsedCaptureEditForm,
 };
 
 const NODE_LABELS: Record<string, string> = {
@@ -84,6 +86,7 @@ const NODE_LABELS: Record<string, string> = {
     harvestedComponentCapture: "Harvested components (teardown)",
     componentInstallCapture: "Components installed (rebuild)",
     rebuildFindingCapture: "Rebuild finding",
+    optionalPartUsed: "Optional part used?",
 };
 
 export function NodePropertiesPanel({ editor }: { editor: Editor | null }) {

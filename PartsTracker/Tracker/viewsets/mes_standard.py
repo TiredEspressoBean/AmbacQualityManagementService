@@ -1865,7 +1865,8 @@ _BOM_SHEET = [
     ('quantity', 'quantity'), ('unit_of_measure', 'unit_of_measure'),
     ('source', 'source'), ('consumed_at_step__ref', 'consumed_at_step'),
     ('find_number', 'find_number'), ('reference_designator', 'reference_designator'),
-    ('is_optional', 'is_optional'), ('allow_harvested', 'allow_harvested'),
+    ('is_optional', 'is_optional'), ('usage_percent', 'usage_percent'),
+    ('allow_harvested', 'allow_harvested'),
     ('notes', 'notes'),
 ]
 

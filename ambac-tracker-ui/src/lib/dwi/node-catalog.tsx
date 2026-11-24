@@ -58,6 +58,7 @@ import {
     SAMPLE_HARVESTED_COMPONENT_CAPTURE,
     SAMPLE_COMPONENT_INSTALL_CAPTURE,
     SAMPLE_REBUILD_FINDING_CAPTURE,
+    SAMPLE_OPTIONAL_PART_USED,
     QUALITY_REPORT_BUNDLE,
 } from "@/lib/dwi/samples";
 import { withFreshNodeId, type TemplateNode } from "@/lib/dwi/node-id";
@@ -126,6 +127,7 @@ export const NODE_CATALOG: CatalogCategory[] = [
             { id: "harvested", label: "Harvested components", description: "Teardown capture", keywords: "reman disassembly core", icon: <PackageOpen className="h-4 w-4" />, content: SAMPLE_HARVESTED_COMPONENT_CAPTURE },
             { id: "finding", label: "Rebuild finding", description: "Reman rebuild — flag a component found worse, for a lead to decide", keywords: "reman rebuild finding regrade worse over and above core", icon: <SearchCheck className="h-4 w-4" />, content: SAMPLE_REBUILD_FINDING_CAPTURE },
             { id: "installed", label: "Components installed", description: "Rebuild capture — what went into each slot", keywords: "reman rebuild install fit core slot", icon: <PackageCheck className="h-4 w-4" />, content: SAMPLE_COMPONENT_INSTALL_CAPTURE },
+            { id: "optionalUsed", label: "Optional part used?", description: "Per unit: was an optional BOM part fitted, and how many — drawn from the answer", keywords: "optional bom part used fitted draw consume kit oring seal", icon: <PackageCheck className="h-4 w-4" />, content: SAMPLE_OPTIONAL_PART_USED },
         ],
     },
     {

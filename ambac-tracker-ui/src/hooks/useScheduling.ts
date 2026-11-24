@@ -838,6 +838,9 @@ export type MaterialRequirementRow = {
   /** Expected replacements on a unit not yet opened. Never in `short_qty`. */
   forecast?: number;
   short_qty: number; status: string; is_optional: boolean;
+  /** An optional line's expected use (quantity x usage %, net of draws); null without
+   *  a usage %. */
+  expected?: number | null;
   lead_time_days: number | null; need_by: string | null; order_by: string | null;
 };
 export const workOrderMaterialRequirementsOptions = (id: string | null) =>

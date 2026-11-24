@@ -784,6 +784,14 @@ export type BOMLine = {
    */
   string | undefined;
   is_optional?: boolean | undefined;
+  usage_percent?:
+    | /**
+     * Optional lines only: the share of units expected to use this part. Planning counts quantity x this; units passing the consuming step draw at this rate (unless a 'used?' question on the step asks instead). Blank: not planned and not drawn.
+     *
+     * @pattern ^-?\d{0,3}(?:\.\d{0,2})?$
+     */
+    (string | null)
+    | undefined;
   allow_harvested?:
     | /**
      * Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item.
@@ -857,6 +865,14 @@ export type BOMLineRequest = {
    */
   string | undefined;
   is_optional?: boolean | undefined;
+  usage_percent?:
+    | /**
+     * Optional lines only: the share of units expected to use this part. Planning counts quantity x this; units passing the consuming step draw at this rate (unless a 'used?' question on the step asks instead). Blank: not planned and not drawn.
+     *
+     * @pattern ^-?\d{0,3}(?:\.\d{0,2})?$
+     */
+    (string | null)
+    | undefined;
   allow_harvested?:
     | /**
      * Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item.
@@ -11742,6 +11758,7 @@ export type SubstepResponse = {
     * `harvested_components` - Harvested components (teardown)
     * `component_install` - Components installed (rebuild)
     * `rebuild_finding` - Finding raised during rebuild
+    * `optional_part_used` - Optional part used?
      */
   kind: SubstepResponseKindEnum;
   value_text?: /**
@@ -11790,8 +11807,9 @@ export type SubstepResponseKindEnum =
    * `harvested_components` - Harvested components (teardown)
    * `component_install` - Components installed (rebuild)
    * `rebuild_finding` - Finding raised during rebuild
+   * `optional_part_used` - Optional part used?
    *
-   * @enum text, choice, photo, video, scan, file, timer, computed, attestation, status, equipment_roles, personnel_roles, signatures, defects, annotation, harvested_components, component_install, rebuild_finding
+   * @enum text, choice, photo, video, scan, file, timer, computed, attestation, status, equipment_roles, personnel_roles, signatures, defects, annotation, harvested_components, component_install, rebuild_finding, optional_part_used
    */
   | "text"
   | "choice"
@@ -11810,7 +11828,8 @@ export type SubstepResponseKindEnum =
   | "annotation"
   | "harvested_components"
   | "component_install"
-  | "rebuild_finding";
+  | "rebuild_finding"
+  | "optional_part_used";
 export type PaginatedSubstepTranslationList = {
   /**
    * @example 123
@@ -13631,6 +13650,12 @@ export type PatchedBOMLineRequest = Partial<{
    */
   reference_designator: string;
   is_optional: boolean;
+  /**
+   * Optional lines only: the share of units expected to use this part. Planning counts quantity x this; units passing the consuming step draw at this rate (unless a 'used?' question on the step asks instead). Blank: not planned and not drawn.
+   *
+   * @pattern ^-?\d{0,3}(?:\.\d{0,2})?$
+   */
+  usage_percent: string | null;
   /**
    * Per-use OVERRIDE of the component type's `can_recover`. Leave blank to follow the item master, which is the right answer almost always. Set False for the exception: a safety-critical position or a customer contract that forbids reuse even of a normally recoverable item.
    */
@@ -15946,6 +15971,7 @@ export type PatchedSubstepResponseRequest = Partial<{
     * `harvested_components` - Harvested components (teardown)
     * `component_install` - Components installed (rebuild)
     * `rebuild_finding` - Finding raised during rebuild
+    * `optional_part_used` - Optional part used?
      */
   kind: SubstepResponseKindEnum;
   /**
@@ -18870,6 +18896,7 @@ export type SubstepResponseRequest = {
     * `harvested_components` - Harvested components (teardown)
     * `component_install` - Components installed (rebuild)
     * `rebuild_finding` - Finding raised during rebuild
+    * `optional_part_used` - Optional part used?
      */
   kind: SubstepResponseKindEnum;
   value_text?: /**
@@ -19803,6 +19830,7 @@ export type WorkOrderMaterialRequirementRow = {
   short_qty: number;
   status: string;
   is_optional: boolean;
+  expected: number | null;
   lead_time_days: number | null;
   need_by: string | null;
   order_by: string | null;
@@ -20268,6 +20296,10 @@ const BOMLine = z.object({
   find_number: z.string().max(20).optional(),
   reference_designator: z.string().max(100).optional(),
   is_optional: z.boolean().optional(),
+  usage_percent: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
+    .nullish(),
   allow_harvested: z.boolean().nullish(),
   notes: z.string().optional(),
   line_number: z.number().int().gte(0).lte(2147483647).optional(),
@@ -20292,6 +20324,10 @@ const BOMLineRequest = z.object({
   find_number: z.string().max(20).optional(),
   reference_designator: z.string().max(100).optional(),
   is_optional: z.boolean().optional(),
+  usage_percent: z
+    .string()
+    .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
+    .nullish(),
   allow_harvested: z.boolean().nullish(),
   notes: z.string().optional(),
   line_number: z.number().int().gte(0).lte(2147483647).optional(),
@@ -20309,6 +20345,10 @@ const PatchedBOMLineRequest = z
     find_number: z.string().max(20),
     reference_designator: z.string().max(100),
     is_optional: z.boolean(),
+    usage_percent: z
+      .string()
+      .regex(/^-?\d{0,3}(?:\.\d{0,2})?$/)
+      .nullable(),
     allow_harvested: z.boolean().nullable(),
     notes: z.string(),
     line_number: z.number().int().gte(0).lte(2147483647),
@@ -28028,6 +28068,7 @@ const SubstepResponseKindEnum = z.enum([
   "harvested_components",
   "component_install",
   "rebuild_finding",
+  "optional_part_used",
 ]);
 const SubstepResponse = z.object({
   id: z.string().uuid(),
@@ -29694,6 +29735,7 @@ const WorkOrderMaterialRequirementRow = z.object({
   short_qty: z.number(),
   status: z.string(),
   is_optional: z.boolean(),
+  expected: z.number().nullable(),
   lead_time_days: z.number().int().nullable(),
   need_by: z.string().nullable(),
   order_by: z.string().nullable(),
@@ -61225,6 +61267,7 @@ substep (the typical authoring-popover query).`,
             "equipment_roles",
             "file",
             "harvested_components",
+            "optional_part_used",
             "personnel_roles",
             "photo",
             "rebuild_finding",

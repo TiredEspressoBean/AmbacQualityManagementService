@@ -50,7 +50,7 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
     """
     from django.db.models import Q
     from Tracker.models import BOM, BOMLine, MaterialLot, Processes, WorkOrder
-    from Tracker.services.mes.bom import buy_line_item
+    from Tracker.services.mes.bom import buy_line_item, planned_share
 
     n = len(buckets)
     extra_demand = extra_demand or []
@@ -117,10 +117,13 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
         pt = pt_of_process.get(wo.process_id)
         if pt is None:
             continue
-        # MAKE lines are their own work orders with their own demand; optional lines
-        # aren't commitments. Counting either here double-books the plan.
-        lines = [line for line in _lines(pt) if not line.is_optional]
-        per_core = work_order_line_demand(wo, lines) if wo.id in reman_wos else None
+        # MAKE lines are their own work orders with their own demand. An optional line
+        # counts at its usage % on a new build (planned_share), and not on reman, whose
+        # replace-if-worn runs through findings — the Requirements page's rule.
+        is_reman = wo.id in reman_wos
+        lines = [line for line in _lines(pt)
+                 if not line.is_optional or (not is_reman and planned_share(line) is not None)]
+        per_core = work_order_line_demand(wo, lines) if is_reman else None
         for line in lines:
             buy = buy_line_item(line)
             if buy is None:
@@ -130,8 +133,8 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
                 d = per_core.get(line.id)
                 qty = d.firm if d is not None else 0.0
             else:
-                qty = net_of_drawn(drawn, wo.id, buy.key,
-                                   float(Decimal(str(line.quantity)) * wo.quantity))
+                qty = net_of_drawn(drawn, wo.id, buy.key, float(
+                    Decimal(str(line.quantity)) * planned_share(line) * wo.quantity))
             if qty:
                 _add(buy, qty, idx, 'firm')
 
@@ -154,9 +157,10 @@ def material_series(tenant, buckets, wo_starts: dict, extra_demand: list | None 
         if depth > 10 or part_type_id in seen:  # a BOM cycle is an authoring error; stop
             return
         for line in _lines(part_type_id):
-            if line.is_optional:
+            share = planned_share(line)   # an optional line at its usage %, or not at all
+            if share is None:
                 continue
-            line_qty = float(Decimal(str(line.quantity))) * qty
+            line_qty = float(Decimal(str(line.quantity)) * share) * qty
             buy = buy_line_item(line)
             if buy is not None:
                 _add(buy, line_qty, idx, band)

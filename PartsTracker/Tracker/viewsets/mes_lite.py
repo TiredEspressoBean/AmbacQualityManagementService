@@ -2988,6 +2988,9 @@ class WorkOrderViewSet(TenantScopedMixin, SecondPersonMixin, ListMetadataMixin, 
                 "short_qty": serializers.FloatField(),
                 "status": serializers.CharField(),          # ok / short / building
                 "is_optional": serializers.BooleanField(),
+                # An optional line's expected use (quantity x usage %, net of draws);
+                # null without a usage %.
+                "expected": serializers.FloatField(allow_null=True),
                 # "When to order" — set on short BUY lines; null for MAKE / covered lines.
                 "lead_time_days": serializers.IntegerField(allow_null=True),
                 "need_by": serializers.DateField(allow_null=True),

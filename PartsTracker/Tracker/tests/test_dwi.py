@@ -511,6 +511,8 @@ class SubstepResponseKindTests(DwiPhase2BaseTestCase):
                 'signatures', 'defects', 'annotation',
                 # Reman teardown and rebuild capture
                 'harvested_components', 'component_install', 'rebuild_finding',
+                # "Used?" for an optional BOM line (services/mes/optional_usage)
+                'optional_part_used',
             },
         )
 
